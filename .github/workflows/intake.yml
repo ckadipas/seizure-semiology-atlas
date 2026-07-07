@@ -1,0 +1,90 @@
+name: Paper intake (PDF → PR)
+
+# PRIMARY intake route. When a paper is submitted as an issue labelled "intake"
+# with a PDF attached, extract short, page-cited findings with Claude and open a
+# PR the owner approves. Only the derived findings are committed — the full PDF /
+# full text stays on the runner (IP boundary preserved).
+#
+# One-time setup: add an ANTHROPIC_API_KEY repository secret
+# (Settings → Secrets and variables → Actions → New repository secret).
+
+on:
+  issues:
+    types: [opened, labeled]
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: Issue number to (re)process
+        required: true
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: read
+
+concurrency:
+  group: intake-${{ github.event.issue.number || github.event.inputs.issue_number }}
+  cancel-in-progress: false
+
+jobs:
+  intake:
+    # Only run for the intake label (or a manual dispatch).
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.issue.labels.*.name, 'intake')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install the Anthropic SDK
+        run: pip install --quiet anthropic
+
+      - name: Resolve the target issue
+        id: issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const num = context.eventName === 'workflow_dispatch'
+              ? Number(context.payload.inputs.issue_number)
+              : context.payload.issue.number;
+            const { data: issue } = await github.rest.issues.get({
+              owner: context.repo.owner, repo: context.repo.repo, issue_number: num });
+            core.setOutput('number', String(num));
+            core.setOutput('title', issue.title || '');
+            core.exportVariable('ISSUE_BODY', issue.body || '');
+            core.exportVariable('ISSUE_TITLE', issue.title || '');
+
+      - name: Extract page-cited findings from the PDF
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python3 tools/intake_ci.py
+
+      - name: Rebuild enrichment, then gate on provenance + schema
+        run: |
+          python3 enrichment/build_enrichment.py
+          python3 tools/check_provenance.py
+          python3 tools/validate_data.py
+          python3 generator/gen_study.py
+
+      - name: Open a pull request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: intake/issue-${{ steps.issue.outputs.number }}
+          title: "[intake] Findings from issue #${{ steps.issue.outputs.number }}"
+          commit-message: "Intake: page-cited findings from issue #${{ steps.issue.outputs.number }}"
+          add-paths: |
+            enrichment/intake_findings.json
+            enrichment/enrichment.json
+          body: |
+            Automated intake for issue #${{ steps.issue.outputs.number }} — ${{ steps.issue.outputs.title }}.
+
+            Page-cited findings were extracted from the attached PDF by
+            `tools/intake_ci.py` (Claude `claude-opus-4-8`). Only short, attributed
+            extractions **with their source page** were committed — the PDF and full
+            text were not.
+
+            Review each finding against the cited page, then merge to deploy.
+
+            Closes #${{ steps.issue.outputs.number }}
