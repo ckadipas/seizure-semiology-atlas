@@ -76,5 +76,7 @@ jobs:
             6. Run and make all pass, fixing your JSON as needed:
                `python3 enrichment/build_enrichment.py && python3 tools/check_provenance.py && python3 tools/validate_data.py && python3 generator/gen_study.py`
             7. IMPORTANT — the IP boundary: do NOT commit the PDF or any full/long text. Stage ONLY enrichment/intake_findings.json and enrichment/enrichment.json.
-            8. Commit to a new branch `intake/issue-${{ steps.ctx.outputs.number }}` and open a PR:
+            8. Commit to a new branch `intake/issue-${{ steps.ctx.outputs.number }}` and open a PR (the `Closes #N` auto-closes the issue when it merges):
                `gh pr create --base main --head intake/issue-${{ steps.ctx.outputs.number }} --title "[intake] Findings from issue #${{ steps.ctx.outputs.number }}" --body "Page-cited findings extracted from the attached PDF by Claude Code. Only short attributed extractions with their source pages were committed; the PDF/full text was not. Review each finding against its cited page, then merge. Closes #${{ steps.ctx.outputs.number }}"`
+            9. Leave a clean trail: post a short summary comment on the issue with
+               `gh issue comment ${{ steps.ctx.outputs.number }} --body "..."` — name the paper, how many findings you added, their source pages, and which sign(s) they attach to, and link the PR. If you added no findings (e.g. the paper has no usable localizing/lateralizing data, or it does not address what the submitter asked), say that and explain why instead of opening an empty PR.
