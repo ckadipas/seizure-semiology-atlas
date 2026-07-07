@@ -12,6 +12,15 @@ Format loosely follows Keep a Changelog; dates are ISO-8601.
 - Late forced head version: corroborating Foldvary-Schaefer & Unnwongse 2011
   evidence — version-accompanied head deviation is contralateral, whereas
   non-versive head rotation tends to be ipsilateral.
+- Footer "Contribute a paper or correction" link to the GitHub issue chooser.
+### Changed
+- Front-page declutter: trimmed the intro to a single instruction line, removed
+  the header stat badges and decorative emoji, and collapsed the
+  lateralizing-reliability chart and framework callout into closed-by-default
+  disclosures so the sign index is visible on landing.
+- Subregions are now collapsible banners under each region (e.g. Mesial Temporal
+  under Temporal), collapsed by default; search/filter auto-expands matches, and
+  Expand/Collapse all now cover subregions.
 
 ## [1.0.0]
 ### Added
