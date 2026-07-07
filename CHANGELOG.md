@@ -9,6 +9,9 @@ Format loosely follows Keep a Changelog; dates are ISO-8601.
   issue/PR templates, and a paper-intake pipeline.
 - Public-repo publishing path (free GitHub Pages) and `CITATION.cff` for a
   citable release (Zenodo-DOI ready).
+- Late forced head version: corroborating Foldvary-Schaefer & Unnwongse 2011
+  evidence — version-accompanied head deviation is contralateral, whereas
+  non-versive head rotation tends to be ipsilateral.
 
 ## [1.0.0]
 ### Added
