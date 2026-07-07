@@ -32,6 +32,7 @@ add("figure-of-4","Marashly 2015","Caution: in a systematic video-PPV analysis, 
 
 add("late forced","Loddenkemper 2005","Forced version present in 22.2% of FLE; contralateral to the EZ in 100% (Brodmann 6/8), especially the pre-GTCS versive turn.")
 add("late forced","Roh 1996","Forced version occurred exclusively on the contralateral side in 89% of seizures.")
+add("late forced","Foldvary-Schaefer 2011","Head/eye deviation accompanied by true forced version is contralateral to the seizure-onset zone; head rotation without a versive component tends to be ipsilateral — the versive quality, not the turn itself, carries the lateralizing value.")
 
 add("early non-forced","Roh 1996","Non-forced head deviation was contralateral in 63% and ipsilateral in 35% — weak and not statistically significant, unlike forced version.")
 
