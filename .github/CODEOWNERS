@@ -1,8 +1,8 @@
-# Every change requires review by the repository owner by default.
-# Replace @OWNER with your GitHub handle after creating the repo.
-*                 @OWNER
+# Every change requires review by the repository ckadipas by default.
+# Replace @ckadipas with your GitHub handle after creating the repo.
+*                 @ckadipas
 
 # The dataset & enrichment logic are the scientific core — guard them explicitly.
-/data/            @OWNER
-/enrichment/      @OWNER
-/generator/       @OWNER
+/data/            @ckadipas
+/enrichment/      @ckadipas
+/generator/       @ckadipas
