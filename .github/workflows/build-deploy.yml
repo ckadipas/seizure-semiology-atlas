@@ -64,3 +64,19 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+  smoke:
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify the published site is live and non-empty
+        run: |
+          url="https://ckadipas.github.io/seizure-semiology-atlas/"
+          for i in $(seq 1 10); do
+            code=$(curl -s -o body.html -w '%{http_code}' "$url" || true)
+            if [ "$code" = "200" ] && grep -qi "Seizure Semiology" body.html; then
+              echo "Live OK"; exit 0
+            fi
+            echo "attempt $i: HTTP $code — retrying"; sleep 15
+          done
+          echo "::error::published site did not become healthy"; exit 1
