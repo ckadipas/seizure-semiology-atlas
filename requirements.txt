@@ -1,0 +1,8 @@
+# The HTML build (generator/gen_study.py, enrichment/build_enrichment.py) uses
+# the Python standard library ONLY — no pip install required.
+#
+# Optional, for the paper-intake tooling (tools/intake_paper.py):
+#   - poppler-utils (provides `pdftotext`, `pdfinfo`) — system package, e.g.
+#       Debian/Ubuntu:  sudo apt-get install poppler-utils
+#       macOS (brew):   brew install poppler
+#   - tesseract-ocr    — only for scanned PDFs (fallback OCR)

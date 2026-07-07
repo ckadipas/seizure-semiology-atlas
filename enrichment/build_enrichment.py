@@ -1,0 +1,166 @@
+import json, re, os
+def _find_root(start):
+    d = os.path.dirname(os.path.abspath(start))
+    while True:
+        if os.path.exists(os.path.join(d, ".atlas-root")): return d
+        p = os.path.dirname(d)
+        if p == d: return os.path.dirname(os.path.abspath(start))
+        d = p
+ROOT = _find_root(__file__)
+
+# ---------------- CORPUS EVIDENCE (match substring in sign name -> list of findings) ----------------
+# Each finding: p=paper label, f=finding text (source-grounded), y=year
+E = {}
+def add(key, p, f):
+    E.setdefault(key, []).append({"p":p,"f":f})
+
+add("epigastric","Foldvary-Schaefer 2011","Abdominal auras associated with TLE in 74%; rising to 98% when the seizure evolves into an automotor component.")
+
+
+
+add("oral automatisms","Loddenkemper 2005","Unilateral automatisms are typically ipsilateral to the epileptogenic zone; strongest when paired with contralateral dystonic posturing.")
+
+add("unilateral manual","Loddenkemper 2005","Unilateral automatisms tend to be ipsilateral to the EZ; the pairing 'ipsilateral automatism + contralateral dystonia' is the classic lateralizing dyad.")
+add("unilateral manual","Fakhoury 1994","In R-vs-L TLE, ipsilateral limb automatisms combined with contralateral posturing best separated the groups; contralateral posturing tends to inhibit ipsilateral automatisms.")
+
+add("contralateral dystonic","Loddenkemper 2005","Unilateral dystonic posturing occurs in 43.9% of TLE and is contralateral to the EZ in ~100% (single exception reported by Yen); mechanism = basal-ganglia activation.")
+add("contralateral dystonic","Foldvary-Schaefer 2011","Limb dystonia is contralateral to the EZ in >90% of cases.")
+
+add("figure-of-4","Kotagal 2000","In secondarily-generalized seizures the extended elbow was contralateral to onset in 94.4% (extratemporal) and 83–88% (temporal); asymmetric tonic limb posturing present in 75% of TLE and 53% of extratemporal 2°-GTC seizures.")
+add("figure-of-4","Loddenkemper 2005","Figure-of-4 present in 17.7% of TLE / 15% of extratemporal epilepsy; extended arm contralateral in 89%.")
+add("figure-of-4","Marashly 2015","Caution: in a systematic video-PPV analysis, figure-of-4 and hand dystonia had PPV <80% — less reliable in isolation than version, unilateral tonic posturing, M2e, or unilateral clonic activity.")
+
+add("late forced","Loddenkemper 2005","Forced version present in 22.2% of FLE; contralateral to the EZ in 100% (Brodmann 6/8), especially the pre-GTCS versive turn.")
+add("late forced","Roh 1996","Forced version occurred exclusively on the contralateral side in 89% of seizures.")
+
+add("early non-forced","Roh 1996","Non-forced head deviation was contralateral in 63% and ipsilateral in 35% — weak and not statistically significant, unlike forced version.")
+
+add("automatism + contralateral","Fakhoury 1994","The ipsilateral-automatism-plus-contralateral-posturing pattern differentiated right from left TLE; contralateral posturing inhibits ipsilateral automatisms.")
+
+add("preserved responsiveness","Loddenkemper 2005","Automatisms with preserved responsiveness occur in 5.7% of TLE and lateralize to the non-dominant hemisphere in ~100% (one exception, Janszky).")
+add("preserved responsiveness","Foldvary-Schaefer 2011","Preserved consciousness during automatisms supports a non-dominant temporal origin.")
+
+add("ictal spitting","Loddenkemper 2005","Ictal spitting occurs in ~0.3% of monitored patients; non-dominant in 75%.")
+
+add("ictus emeticus","Loddenkemper 2005","Ictal vomiting in ~2% of monitored patients; non-dominant (right) in 81% (14/16 right-lateralized); non-dominant temporal + Papez circuit.")
+add("ictus emeticus","Foldvary-Schaefer 2011","Abdominal aura combined with vomiting further increases the probability of temporal (non-dominant) origin.")
+
+add("eye blinking","Loddenkemper 2005","Unilateral ictal eye-blinking in ~1.5% of monitored patients; ipsilateral to the EZ in 83%.")
+add("eye blinking","Roh 1996","Unilateral eye-blinking occurred ipsilateral to ictal EEG onset in 85.7%.")
+
+add("postictal nose","Loddenkemper 2005","Postictal nose-wiping in 53.2% of TLE; the wiping hand is ipsilateral to the EZ in 92%.")
+
+add("postictal aphasia","Gabr 1989","Postictal dysphasia lateralized to the dominant temporal lobe in 92% (p<0.001).")
+add("postictal aphasia","Loddenkemper 2005","Postictal dysphasia/aphasia is dominant-hemisphere in 80–100% across series.")
+add("postictal aphasia","Serafetinides 1963","Classic n=100 anterior-temporal-lobectomy series establishing dysphasia with dominant-temporal seizure origin.")
+add("postictal aphasia","Unterberger 2021","Critical appraisal: 'epileptic aphasia' is heterogeneous — post-ictal aphasia is a robust dominant-hemisphere sign, but ictal language phenomena require careful, structured testing to interpret.")
+
+add("ictal aphasia","Gabr 1989","Ictal dysphasia/aphasia lateralized to the dominant hemisphere in ~100%; ictal preserved (identifiable) speech to the non-dominant side in 83%.")
+add("ictal aphasia","Loddenkemper 2005","Ictal speech that is preserved/identifiable is non-dominant in 83%; ictal dysphasia is dominant in 100%.")
+
+add("ictal aphasia / speech arrest","Gabr 1989","Ictal dysphasia dominant ~100%; preserved ictal speech non-dominant 83%.")
+
+add("paraphasia","Gabr 1989","Paraphasic/abnormal ictal speech carries dominant-hemisphere lateralizing value; abnormal speech occurred (ictally or postictally) in 51.4% of patients studied.")
+add("paraphasia","Unterberger 2021","Ictal paraphasia is an uncommon but dominant-lateralizing language sign requiring structured ictal testing to capture.")
+
+add("focal clonic","Loddenkemper 2005","Unilateral clonic activity in 44.4% of FLE; contralateral to the EZ in 83% (Brodmann 4/6).")
+add("focal clonic","Marashly 2015","Unilateral clonic activity is a 'reliable' motor sign (PPV >80%) for contralateral lateralization.")
+
+add("focal hand/finger clonic","Loddenkemper 2005","Unilateral clonic activity contralateral in 83%; hand representation most common.")
+
+add("todd","Loddenkemper 2005","Postictal (Todd's) palsy in ~0.6% of monitored patients; contralateral to the EZ in 93%.")
+add("postictal unilateral limb","Loddenkemper 2005","Postictal paresis is contralateral to the EZ in 93% (Todd's palsy data).")
+
+add("bilateral asymmetric tonic","Loddenkemper 2005","Tonic activity in 48.1% of FLE; the asymmetric (extended) side is contralateral in 89% (SMA / Brodmann 6).")
+add("bilateral asymmetric tonic","Marashly 2015","Unilateral tonic posturing is a 'reliable' sign (PPV >80%); two reliable signs pointing the same way give ~100% lateralization accuracy.")
+
+add("somatosensory aura","Loddenkemper 2005","Unilateral sensory aura in 6.1% of patients; contralateral in 89% (Brodmann 1/2/3).")
+
+add("ictal pain","Hwang 2019","Ictal pain occurs in 0.2–2.8% of people with epilepsy (up to 4.1% in focal epilepsy). Somatosensory pain → parietal operculum / insula; abdominal pain → temporal & parietal foci (amygdala/insula). Contralateral when somatotopically organized.")
+
+add("elementary visual","Loddenkemper 2005","Hemifield visual aura in 28.6% of occipital-lobe epilepsy; contralateral hemifield in 100% (Brodmann 17–19).")
+
+add("m2e","Marashly 2015","M2e (mouth-to-hand, Ajmone-Marsan) is a 'reliable' motor sign (PPV >80%) with strong contralateral value — provided the contralateral arm is the one moving to the mouth.")
+
+
+add("hypermotor","Bonini 2014","French SEEG analysis maps hypermotor behaviour along a rostro-caudal frontal gradient; ventromedial-prefrontal/orbitofrontal onset yields the most distal, integrated hyperkinetic behaviours.")
+
+
+
+# ---------------- NEW SIGNS surfaced by the corpus ----------------
+NEW = [
+  {"region":"Frontal","sub":"Frontal / Precentral Operculum (Brodmann 6 / 44)",
+   "sign":"Ictal dysprosody (altered speech melody / prosody)","phase":"Ictal",
+   "lat":"Non-dominant hemisphere","latcode":"nondominant",
+   "loc":"Non-dominant precentral (frontal) operculum, Brodmann 6/44",
+   "sens":"Rare","spec":"High when present","evid":"II",
+   "notes":"Recurrent ictal speech utterances with abnormal melody/intonation (dysprosody) rather than aphasic content. Intracranial EEG localizes the discharge to the NON-dominant precentral operculum — the prosodic mirror of dominant-hemisphere language cortex. Helps lateralize to the non-dominant frontal operculum when speech is altered but not aphasic.",
+   "cite":"Montavont et al., Epileptic Disord 2005",
+   "_ev":[{"p":"Montavont 2005","f":"Ictal recurrent speech with altered prosody corresponded to ictal discharge of the non-dominant precentral operculum, giving dysprosody localizing value to the non-dominant frontal operculum."}]},
+]
+
+# ---------------- PAPER LIBRARY (deduplicated) ----------------
+PAPERS = [
+ ("Loddenkemper & Kotagal 2005","Epilepsy & Behavior","Lateralizing signs during seizures in focal epilepsy","Comprehensive lateralizing-sign review; source of the frequency + lateralization-% table used throughout."),
+ ("Foldvary-Schaefer & Unnwongse 2011","Epilepsy & Behavior","Localizing and lateralizing features of auras and seizures","Aura/seizure localization review; abdominal-aura → TLE probabilities and motor-sign lateralization."),
+ ("Marashly et al. 2015","Epilepsia","Ictal motor sequences: lateralization and localization values","PPV-based ranking of motor signs and the sequence rule (≥2 reliable signs → ~100% accuracy)."),
+ ("Kotagal et al. 2000","Epilepsia","Lateralizing value of asymmetric tonic limb posturing in secondarily generalized seizures","Figure-of-4 / ATLP quantification: extended elbow contralateral in up to 94%."),
+ ("Kotagal & Lay 2018","Seizure","Lateralizing / localizing value of seizure semiology (update)","Contemporary synthesis of semiological lateralizing signs."),
+ ("Gabr et al. 1989","Annals of Neurology","Speech manifestations in lateralization of temporal lobe seizures","Postictal dysphasia → dominant 92%; preserved ictal speech → non-dominant 83%."),
+ ("Serafetinides & Falconer 1963","Brain","Speech disturbances in temporal lobe seizures (n=100 ATL)","Classic large series linking ictal dysphasia to the dominant temporal lobe."),
+ ("Montavont et al. 2005","Epileptic Disorders","Ictal dysprosody and the non-dominant frontal operculum","Establishes dysprosody as a non-dominant frontal-opercular sign."),
+ ("Unterberger et al. 2021","Epilepsy & Behavior","Epileptic aphasia — a critical appraisal","Critical synthesis of ictal/postictal language phenomena and their localizing limits."),
+ ("Fakhoury et al. 1994","Epilepsia","Differentiating clinical features of right and left temporal lobe seizures","R-vs-L TLE semiology; automatism–posturing dyad."),
+ ("Roh et al. 1996","(Journal of Korean Neurology)","Lateralizing value of ictal behaviors in temporal lobe epilepsy","Version contralateral 89%; eye-blink & unilateral automatism ipsilateral ~85%."),
+ ("Bonini et al. 2014","Epilepsia","Frontal lobe seizures: from clinical semiology to localization","French SEEG cohort mapping frontal semiology along a rostro-caudal gradient."),
+ ("Khoo et al. 2023","Seizure","Value of semiology in predicting EZ and outcome in frontal lobe surgery","Semiology's predictive value for the frontal EZ and surgical outcome."),
+ ("Chauvel & McGonigal 2014","Epilepsy & Behavior","Emergence of semiology in epileptic seizures","Network/dynamic framework: semiology reflects dynamic network interaction, not propagation alone."),
+ ("McGonigal et al. 2021","Epilepsia","On seizure semiology","Conceptual framework linking semiology to organized brain networks."),
+ ("McGonigal 2022","Journal of Neurology","Frontal lobe seizures: overview and update","Modern overview of frontal-lobe seizure semiology and SEEG correlation."),
+ ("Bartolomei / Isnard et al. 2018","Clinical Neurophysiology","French guidelines on SEEG","Methodological standard for stereo-EEG-based anatomo-electro-clinical correlation."),
+ ("Maillard et al. 2004","Epilepsia","Semiologic and electrophysiologic correlations in temporal lobe seizure subtypes","SEEG-defined mesial/lateral/mesiolateral temporal subtypes and their semiology."),
+ ("Lüders et al. 1998","Epilepsia","Semiological seizure classification","The symptom-based (semiological) seizure classification framework."),
+ ("Hwang et al. 2019","Current Pain & Headache Reports","Painful seizures: a review of epileptic ictal pain","Prevalence and network basis of ictal pain (parietal operculum / insula)."),
+ ("Kinney, Kovac & Diehl 2019","Seizure","Structured testing during seizures: a practical guide","European consensus ictal–postictal testing battery (how to elicit/verify each sign)."),
+ ("Jonas et al. 2016","Frontiers in Human Neuroscience","Language mapping using stereo-EEG","SEEG language-mapping methods relevant to ictal language signs."),
+ ("Gibbs et al. 2019","Epilepsia","Clinical features of sleep-related hypermotor epilepsy vs seizure-onset zone","Semiology of SHE in relation to onset zone."),
+ ("Suzuki et al. 2017","NMC Case Report Journal","Sensorimotor networks in reflex seizures","Reflex/sensorimotor-network contribution to seizure generation."),
+ ("Blair 2012","Epilepsy Research & Treatment","Temporal lobe epilepsy semiology","Focused review of TLE semiology."),
+ ("Sisodiya 2004","Lancet Neurology","Malformations of cortical development and epilepsy","Structural substrate context for focal epilepsy."),
+ ("Jain et al. 2021","J Neurosurg Pediatrics","Bottom-of-sulcus dysplasia resection (pediatric)","Lesional/EZ concordance in focal dysplasia (pediatric context)."),
+ ("Hauser 1993","Epilepsia","Epidemiology of epilepsy","Population context for focal epilepsy syndromes."),
+ ("Chowdhury & Walker (Localisation practical guide)","Practical Neurology","Localisation in focal epilepsy: a practical guide","Bedside synthesis of localizing/lateralizing semiology."),
+ ("Kotagal (Ictal Speech & Cerebral Dominance)","(monograph excerpt)","Ictal speech disturbance and cerebral dominance","Speech-dominance correlation reference."),
+ ("(Ictal paraphasia case study)","Neurocase","Ictal paraphasia as an atypical TLE manifestation","Illustrative dominant-temporal ictal language disturbance."),
+]
+
+# ---------------- LATERALIZATION RELIABILITY DATA ----------------
+# Single-source, primary-literature: Loddenkemper & Kotagal 2005 (Epilepsy & Behavior), Table 1.
+# pct = % of cases lateralizing in the stated direction; freq = reported frequency in the cited population.
+# dir uses the resource's existing latcode palette: contra / ipsi / dominant / nondominant.
+LATERAL = [
+ # ---- Contralateral ----
+ {"sign":"Forced version (pre-GTC)","dir":"contra","pct":100,"freq":"22.2% of FLE"},
+ {"sign":"Unilateral dystonic posturing","dir":"contra","pct":100,"freq":"43.9% of TLE"},
+ {"sign":"Hemifield visual aura","dir":"contra","pct":100,"freq":"28.6% of OLE"},
+ {"sign":"Postictal (Todd's) palsy","dir":"contra","pct":93,"freq":"0.6% of EMU pts"},
+ {"sign":"Tonic activity (asymmetric)","dir":"contra","pct":89,"freq":"48.1% of FLE"},
+ {"sign":"Figure-of-4 (extended arm)","dir":"contra","pct":89,"freq":"17.7% of TLE"},
+ {"sign":"Unilateral sensory aura","dir":"contra","pct":89,"freq":"6.1% of pts"},
+ {"sign":"Unilateral clonic activity","dir":"contra","pct":83,"freq":"44.4% of FLE"},
+ # ---- Ipsilateral ----
+ {"sign":"Postictal nose-wiping","dir":"ipsi","pct":92,"freq":"53.2% of TLE"},
+ {"sign":"Unilateral eye-blinking","dir":"ipsi","pct":83,"freq":"1.5% of EMU pts"},
+ # ---- Dominant hemisphere ----
+ {"sign":"Ictal dysphasia / aphasia","dir":"dominant","pct":100,"freq":"34.2% of EMU pts"},
+ # ---- Non-dominant hemisphere ----
+ {"sign":"Automatisms w/ preserved responsiveness","dir":"nondominant","pct":100,"freq":"5.7% of TLE"},
+ {"sign":"Ictal speech (preserved/identifiable)","dir":"nondominant","pct":83,"freq":"34.2% of EMU pts"},
+ {"sign":"Ictal vomiting","dir":"nondominant","pct":81,"freq":"2% of EMU pts"},
+ {"sign":"Ictal spitting","dir":"nondominant","pct":75,"freq":"0.3% of EMU pts"},
+]
+
+out = {"evidence":E,"new_signs":NEW,"papers":PAPERS,"lateral":LATERAL}
+json.dump(out, open(os.path.join(ROOT,"enrichment","enrichment.json"),"w"), indent=1)
+print("Evidence keys:",len(E)," New signs:",len(NEW)," Papers:",len(PAPERS)," Lateral rows:",len(LATERAL))
+print("Total evidence findings:", sum(len(v) for v in E.values()))

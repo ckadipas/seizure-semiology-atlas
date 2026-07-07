@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Seizure semiology sign record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "region",
+    "sub",
+    "sign",
+    "phase",
+    "lat",
+    "latcode",
+    "loc",
+    "sens",
+    "spec",
+    "evid",
+    "notes",
+    "cite"
+  ],
+  "properties": {
+    "id": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "region": {
+      "enum": [
+        "Temporal",
+        "Frontal",
+        "Parietal",
+        "Occipital",
+        "Insular",
+        "Deep/Subcortical",
+        "Multiregional/Propagation"
+      ]
+    },
+    "sub": {
+      "type": "string",
+      "minLength": 3
+    },
+    "sign": {
+      "type": "string",
+      "minLength": 2
+    },
+    "phase": {
+      "enum": [
+        "Aura",
+        "Aura/Ictal",
+        "Ictal",
+        "Ictal/Postictal",
+        "Postictal",
+        "Peri-ictal",
+        "Interictal"
+      ]
+    },
+    "lat": {
+      "type": "string",
+      "minLength": 2
+    },
+    "latcode": {
+      "enum": [
+        "contra",
+        "ipsi",
+        "dominant",
+        "nondominant",
+        "right",
+        "nonlat",
+        "variable"
+      ]
+    },
+    "loc": {
+      "type": "string",
+      "minLength": 2
+    },
+    "sens": {
+      "type": "string"
+    },
+    "spec": {
+      "type": "string"
+    },
+    "evid": {
+      "enum": [
+        "I",
+        "II",
+        "III"
+      ]
+    },
+    "notes": {
+      "type": "string",
+      "minLength": 2
+    },
+    "cite": {
+      "type": "string",
+      "minLength": 2
+    },
+    "_ev": {
+      "type": "array"
+    }
+  }
+}

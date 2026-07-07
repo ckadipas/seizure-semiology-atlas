@@ -1,0 +1,54 @@
+name: "🩺 Report a correction"
+description: Flag an error or suggest an improvement to a specific sign.
+title: "[correction] <sign name>: <what's wrong>"
+labels: ["correction"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for improving the atlas. Corrections must be **traceable to a source** —
+        the whole point of this resource is that every figure can be defended.
+        Educational use only; do not include patient-identifiable information.
+  - type: input
+    id: sign
+    attributes:
+      label: Which sign?
+      description: The exact sign name (and id if you know it) from the reference.
+      placeholder: "Figure-of-4 sign (id 14)"
+    validations: { required: true }
+  - type: dropdown
+    id: field
+    attributes:
+      label: Which field is wrong?
+      options:
+        - Lateralization (lat / latcode)
+        - Localization (loc)
+        - Sensitivity (sens)
+        - Specificity (spec)
+        - Evidence level (evid)
+        - Clinical notes / mechanism (notes)
+        - Citation (cite)
+        - Region / subregion placement
+        - Other
+    validations: { required: true }
+  - type: textarea
+    id: current
+    attributes:
+      label: Current value (as shown)
+    validations: { required: true }
+  - type: textarea
+    id: proposed
+    attributes:
+      label: Proposed correction
+    validations: { required: true }
+  - type: textarea
+    id: source
+    attributes:
+      label: Source / citation supporting the change
+      description: Author, year, journal, and the specific figure or statement. A DOI is ideal.
+      placeholder: "Kotagal et al., Epilepsia 2000 — extended elbow contralateral in 94.4%."
+    validations: { required: true }
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else (optional)

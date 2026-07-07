@@ -1,0 +1,64 @@
+name: "📄 Submit a paper for intake"
+description: Propose a new paper/resource to be screened, categorized, and integrated.
+title: "[intake] <Author YEAR> — <short title>"
+labels: ["intake"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this to nominate a paper for the corpus. A maintainer (or an automated
+        session running `tools/intake_paper.py`) will screen it, extract figures,
+        and wire the source-grounded findings into the dataset.
+
+        **Do not attach the full PDF of a copyrighted article to a shareable repo.**
+        Provide the DOI/link; maintainers keep working PDFs in the local,
+        git-ignored `corpus/pdfs/` folder.
+  - type: input
+    id: citation
+    attributes:
+      label: Citation (Author et al. YEAR)
+      placeholder: "Maillard et al. 2004"
+    validations: { required: true }
+  - type: input
+    id: doi
+    attributes:
+      label: DOI or stable link
+    validations: { required: true }
+  - type: input
+    id: journal
+    attributes:
+      label: Journal / source
+  - type: textarea
+    id: relevance
+    attributes:
+      label: Why is it relevant?
+      description: Which signs or regions does it inform? What figures does it add?
+    validations: { required: true }
+  - type: dropdown
+    id: type
+    attributes:
+      label: Study type
+      options:
+        - Primary series (defined cohort, explicit ground truth)
+        - SEEG / anatomo-electro-clinical
+        - Review / synthesis
+        - Case report / small series
+        - Other
+    validations: { required: true }
+  - type: dropdown
+    id: reliability
+    attributes:
+      label: Reliability self-check
+      description: See README §Design decisions — be wary of literature-mined meta-analyses with incoherent sign categories.
+      options:
+        - "Disciplined sign definitions + explicit ground truth"
+        - "Mixed / needs scrutiny"
+        - "Unsure — please assess"
+    validations: { required: true }
+  - type: checkboxes
+    id: permission
+    attributes:
+      label: Rights
+      options:
+        - label: I confirm only short, attributed factual extractions will be added (the full article will not be redistributed in this repo).
+          required: true

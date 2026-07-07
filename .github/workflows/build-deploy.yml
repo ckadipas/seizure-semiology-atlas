@@ -1,0 +1,60 @@
+name: Build & Deploy
+
+# Rebuilds the interactive reference from source and publishes it to GitHub Pages.
+# The HTML is a BUILD ARTIFACT — it is produced here, never hand-edited or committed.
+#
+# One-time setup after creating the repo:
+#   Settings → Pages → "Build and deployment" → Source: "GitHub Actions"
+#   (Private-repo Pages requires a GitHub Pro/Team/Enterprise plan.)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Validate dataset (integrity gate)
+        run: python3 tools/validate_data.py
+
+      - name: Verify enrichment.json is in sync with its source
+        run: |
+          python3 enrichment/build_enrichment.py
+          git diff --exit-code enrichment/enrichment.json \
+            || (echo "::error::enrichment.json is stale. Run 'make build' locally and commit it." && exit 1)
+
+      - name: Build the HTML
+        run: python3 generator/gen_study.py
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

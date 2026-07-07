@@ -1,0 +1,16 @@
+# --- generated build artifact (built by CI, deployed to Pages) ---
+docs/*.html
+
+# --- working corpus: copyrighted source material stays LOCAL, never committed ---
+corpus/pdfs/*
+!corpus/pdfs/.gitkeep
+corpus/txt/*
+!corpus/txt/.gitkeep
+intake/inbox/*
+!intake/inbox/.gitkeep
+
+# --- python / os cruft ---
+__pycache__/
+*.pyc
+.DS_Store
+.venv/
