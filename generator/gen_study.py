@@ -135,7 +135,7 @@ for r in region_order:
 </section>''')
 sections_html = "\n".join(sections)
 
-# ---------- Probabilistic forest plot (Alim-Marvasti 2022) ----------
+# ---------- Lateralizing-reliability chart (Loddenkemper & Kotagal 2005, Table 1) ----------
 def build_lateral(rows):
     dirs=[("contra","Contralateral to the seizure focus"),
           ("ipsi","Ipsilateral to the focus"),
