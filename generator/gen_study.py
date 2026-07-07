@@ -122,7 +122,16 @@ for r in region_order:
     </div>
   </div>
 </div>''')
-        sub_blocks.append(f'<div class="sub-block"><div class="sub-label">&#8627;&nbsp; {esc(sub)}</div>\n{chr(10).join(rows)}\n</div>')
+        sub_blocks.append(f'''<div class="sub-block collapsed" data-sub="{esc(sub)}">
+  <button class="sub-toggle" aria-expanded="false">
+    <span class="sub-chev">&#9656;</span>
+    <span class="sub-name">{esc(sub)}</span>
+    <span class="sub-count">{len(signs)}</span>
+  </button>
+  <div class="sub-body">
+{chr(10).join(rows)}
+  </div>
+</div>''')
     sections.append(f'''<section class="region-section" id="sec-{slug(r)}" data-region="{esc(r)}">
   <button class="region-toggle" style="--rc:{rc}" aria-expanded="true">
     <span class="region-chev">&#9662;</span>
@@ -181,7 +190,7 @@ lateral_svg = build_lateral(LATERAL)
 forest_html = f'''<div class="forest-wrap">
   <div class="forest-card">
     <div class="forest-head">
-      <h2>&#129517; Lateralizing reliability of the classic bedside signs</h2>
+      <h2>Lateralizing reliability of the classic bedside signs</h2>
       <p>How often each sign points to the correct <em>side</em>, from Loddenkemper &amp; Kotagal 2005 (<em>Epilepsy &amp; Behavior</em>), Table&nbsp;1 &mdash; a single primary review compiling named source studies. These figures answer <strong>which hemisphere</strong> (and how reliably), not which lobe. The most dependable are near-deterministic: forced version, unilateral dystonic posturing, and hemifield visual auras are contralateral in ~100%, while postictal dysphasia is dominant-hemisphere in 100%. Bar length = % lateralizing in the stated direction; small grey text = reported frequency in the cited population.</p>
     </div>
     <div class="forest-body">{lateral_svg}</div>
@@ -197,6 +206,15 @@ forest_html = f'''<div class="forest-wrap">
 callout_html = '''<div class="callout"><div class="callout-inner">
 <span class="tag">Framework</span><strong>Semiology is a network phenomenon, not a single spot.</strong> The French anatomo-electro-clinical school (Bancaud, Talairach, Chauvel, Bartolomei, McGonigal) frames each sign as the output of a dynamically interacting network that unfolds over time &mdash; the epileptogenic zone plus its early-spread network &mdash; rather than one fixed &ldquo;symptomatogenic&rdquo; locus. Read the chronology of a seizure (aura &#8594; first objective sign &#8594; sequence) as a trajectory through connected nodes; the <em>order</em> of signs often localizes better than any one sign alone (Chauvel &amp; McGonigal 2014; Bartolomei/Isnard SEEG guidelines 2018). A practical corollary from Marashly 2015: when two independent &ldquo;reliable&rdquo; signs point the same way, lateralization approaches 100%.
 </div></div>'''
+
+# wrap the reliability chart and the framework callout in collapsed-by-default
+# disclosures so they don't wall off the sign index on landing
+forest_fold = ('<details class="frontpage-fold">\n'
+    '<summary>Lateralizing-reliability chart &mdash; Loddenkemper &amp; Kotagal 2005</summary>\n'
+    + forest_html + '\n</details>')
+callout_fold = ('<details class="frontpage-fold">\n'
+    '<summary>Framework &mdash; semiology as a dynamic network</summary>\n'
+    + callout_html + '\n</details>')
 
 papers_html = "\n".join(
     f'<div class="paper"><div class="p-cite">{esc(c)}</div><div class="p-jrnl">{esc(j)}</div>'
@@ -265,8 +283,24 @@ main{padding:16px 16px 48px;max-width:1180px;margin:0 auto}
 .region-body{padding:10px 0 4px}
 .region-section.collapsed .region-body{display:none}
 
-.sub-block{margin:8px 0 14px}
-.sub-label{font-size:.78rem;font-weight:700;font-style:italic;color:#5a6478;padding:6px 6px 8px;letter-spacing:.01em}
+.sub-block{margin:8px 0 10px}
+.sub-toggle{width:100%;display:flex;align-items:center;gap:10px;background:#eef2f7;border:1px solid var(--line);border-radius:9px;padding:9px 14px;cursor:pointer;text-align:left;font-family:inherit;font-size:.82rem;font-weight:700;color:#3f4a5e;transition:background .12s,border-color .12s}
+.sub-toggle:hover{background:#e6edf6;border-color:#cdd7e6}
+.sub-chev{font-size:.7rem;color:var(--teal-d);transition:transform .18s;flex:0 0 auto;line-height:1}
+.sub-block:not(.collapsed) .sub-chev{transform:rotate(90deg)}
+.sub-name{flex:1;letter-spacing:.01em}
+.sub-count{font-size:.68rem;font-weight:800;color:var(--muted);background:#fff;border:1px solid var(--line);border-radius:10px;padding:1px 8px}
+.sub-body{padding:5px 0 2px}
+.sub-block.collapsed .sub-body{display:none}
+
+/* ---------- COLLAPSIBLE FRONT-PAGE FOLDS (chart + framework) ---------- */
+.frontpage-fold{max-width:1180px;margin:0 auto 12px;padding:0 16px}
+.frontpage-fold>summary{list-style:none;cursor:pointer;background:#eef2f7;border:1px solid var(--line);border-radius:10px;padding:11px 16px;font-size:.82rem;font-weight:700;color:#3f4a5e;display:flex;align-items:center;gap:9px}
+.frontpage-fold>summary::-webkit-details-marker{display:none}
+.frontpage-fold>summary::before{content:"\25B8";font-size:.72rem;color:var(--teal-d);transition:transform .15s}
+.frontpage-fold[open]>summary::before{transform:rotate(90deg)}
+.frontpage-fold[open]>summary{margin-bottom:8px}
+.frontpage-fold .forest-wrap,.frontpage-fold .callout{max-width:none;margin:0;padding:0}
 
 /* ---------- SIGN (collapsed row) ---------- */
 .sign{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:9px;margin:7px 0;overflow:hidden;transition:box-shadow .12s,border-color .12s}
@@ -375,6 +409,8 @@ body.quiz .lib-chip{display:none}
 .abbrev-item strong{color:var(--navy)}
 .footer{background:var(--navy);color:#8fa0b4;padding:20px 24px;font-size:.76rem;line-height:1.75}
 .footer strong{color:#b3c1d1}
+.footer a{color:#9fc3e0;text-decoration:underline}
+.footer a:hover{color:#cfe0ee}
 
 /* ==================== MOBILE ==================== */
 @media (max-width:760px){
@@ -445,6 +481,18 @@ sections.forEach(sec=>{
   });
 });
 
+// subregion collapse
+document.querySelectorAll('.sub-toggle').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    const sb=btn.closest('.sub-block');
+    const collapsed=sb.classList.toggle('collapsed');
+    btn.setAttribute('aria-expanded',!collapsed);
+    if(!collapsed){
+      sb.querySelectorAll('.sign.open').forEach(s=>{const d=s.querySelector('.detail');d.style.maxHeight=d.scrollHeight+'px';});
+    }
+  });
+});
+
 // region-jump pills
 document.querySelectorAll('.pill').forEach(p=>{
   p.addEventListener('click',()=>{
@@ -483,11 +531,23 @@ function filterAll(){
     }
   });
 
-  // hide empty sub-blocks
+  // hide empty sub-blocks; when a search/filter is active, reveal matching
+  // subregions so results are visible, otherwise restore the collapsed default
+  const active=!!(q||reg||ph||lat||ev);
   document.querySelectorAll('.sub-block').forEach(sb=>{
     const any=Array.from(sb.querySelectorAll('.sign')).some(s=>s.style.display!=='none');
     sb.style.display=any?'':'none';
+    const t=sb.querySelector('.sub-toggle');
+    if(active){ if(any){ sb.classList.remove('collapsed'); if(t) t.setAttribute('aria-expanded','true'); } }
+    else { sb.classList.add('collapsed'); if(t) t.setAttribute('aria-expanded','false'); }
   });
+  // matched signs were opened while their sub-block may have been hidden;
+  // recompute their heights now that the sub-block is revealed
+  if(active){
+    document.querySelectorAll('.sub-block:not(.collapsed) .sign.open').forEach(s=>{
+      const d=s.querySelector('.detail'); d.style.maxHeight=d.scrollHeight+'px';
+    });
+  }
   // hide empty sections + update counts
   sections.forEach(sec=>{
     const r=sec.dataset.region;
@@ -517,10 +577,14 @@ function filterAll(){
 
 // expand / collapse all (visible)
 document.getElementById('expand-all').addEventListener('click',()=>{
+  document.querySelectorAll('.sub-block').forEach(sb=>sb.classList.remove('collapsed'));
+  document.querySelectorAll('.sub-toggle').forEach(b=>b.setAttribute('aria-expanded','true'));
   signs.forEach(s=>{ if(s.style.display!=='none') openSign(s); });
 });
 document.getElementById('collapse-all').addEventListener('click',()=>{
   signs.forEach(s=>closeSign(s));
+  document.querySelectorAll('.sub-block').forEach(sb=>sb.classList.add('collapsed'));
+  document.querySelectorAll('.sub-toggle').forEach(b=>b.setAttribute('aria-expanded','false'));
 });
 
 // filters toggle (mobile)
@@ -562,16 +626,9 @@ HEAD = """<!DOCTYPE html>
 <body>
 
 <div class="site-header">
-  <h1>&#129504; Seizure Semiology &mdash; Interactive Study Reference</h1>
-  <p>A browsable, expandable guide to localizing &amp; lateralizing signs for epilepsy fellows &mdash; now grounded in a curated library of """ + str(len(PAPERS)) + """ primary papers. Scan the sign names, then tap any entry to reveal its localization, sensitivity, specificity, mechanism, citations, and the specific evidence from your uploaded literature.</p>
+  <h1>Seizure Semiology &mdash; Interactive Study Reference</h1>
+  <p>Scan the sign names, then tap any entry to reveal its localization, sensitivity, specificity, mechanism, citations, and the specific evidence from your uploaded literature.</p>
   <div class="edu-note">&#9888;&#65039; Educational &amp; training reference only &mdash; not a tool for clinical decision-making.</div>
-  <div class="header-meta">
-    <span class="header-badge">&#128203; """ + str(len(data)) + """ Signs</span>
-    <span class="header-badge">&#128218; """ + str(n_ev_signs) + """ Signs Source-Grounded</span>
-    <span class="header-badge">&#129517; Lateralization Reliability Chart</span>
-    <span class="header-badge">&#127891; Quiz Mode</span>
-    <span class="header-badge">&#127467;&#127479; French SEEG + &#127482;&#127480; Cleveland</span>
-  </div>
 </div>
 
 <div class="sticky-head">
@@ -583,7 +640,7 @@ HEAD = """<!DOCTYPE html>
       <span class="search-icon">&#128269;</span>
       <input type="text" id="search-input" placeholder="Search signs, mechanisms, citations...">
     </div>
-    <button class="filter-toggle" id="filter-toggle" aria-expanded="false"><span>&#9881;&#65039; Filters</span><span class="chev">&#9660;</span></button>
+    <button class="filter-toggle" id="filter-toggle" aria-expanded="false"><span>Filters</span><span class="chev">&#9660;</span></button>
     <div class="filter-panel" id="filter-panel">
       <div class="filter-field"><span class="ctrl-label">Region</span>
         <select id="filter-region">
@@ -638,15 +695,15 @@ HEAD = """<!DOCTYPE html>
 </div>
 
 <main>
-""" + forest_html + callout_html + """
-  <div class="quiz-hint">&#127891; <strong>Quiz mode on:</strong> lateralization &amp; evidence cues are hidden. Read each sign, predict its localization/lateralization, then expand to check yourself.</div>
+""" + forest_fold + callout_fold + """
+  <div class="quiz-hint"><strong>Quiz mode on:</strong> lateralization &amp; evidence cues are hidden. Read each sign, predict its localization/lateralization, then expand to check yourself.</div>
 """ + sections_html + """
   <div id="no-results">No signs match the current search or filters. Try clearing them.</div>
 </main>
 
 <div class="lib">
   <details class="lib-details">
-    <summary>&#128218; Source Library &mdash; """ + str(len(PAPERS)) + """ papers grounding this resource</summary>
+    <summary>Source Library &mdash; """ + str(len(PAPERS)) + """ papers grounding this resource</summary>
     <div class="lib-grid">
 """ + papers_html + """
     </div>
@@ -655,7 +712,7 @@ HEAD = """<!DOCTYPE html>
 
 <div class="abbrev">
   <details class="abbrev-details">
-    <summary>&#128220; Abbreviations &amp; Terminology</summary>
+    <summary>Abbreviations &amp; Terminology</summary>
     <div class="abbrev-grid">
       <div class="abbrev-item"><strong>EZ</strong> = Epileptogenic Zone</div>
       <div class="abbrev-item"><strong>MTLE</strong> = Mesial Temporal Lobe Epilepsy</div>
@@ -691,7 +748,8 @@ HEAD = """<!DOCTYPE html>
 <div class="footer">
   <strong>Educational use:</strong> This reference is designed for teaching and self-study by epilepsy trainees. Sensitivity and specificity values are approximate teaching figures drawn from single- and multi-center cohorts and reflect performance within the populations studied; they are <strong>not</strong> validated for individual clinical decision-making. Real localization always integrates ictal EEG, imaging, neuropsychology, and history. &nbsp;|&nbsp;
   <strong>Evidence tiers:</strong> I = multiple cohort studies / validated SEEG stimulation series; II = retrospective case series or single-center; III = case reports, expert opinion, or isolated stimulation observations. &nbsp;|&nbsp;
-  <strong>Schools referenced:</strong> Paris SEEG (Bancaud, Talairach, Chauvel, Bartolomei, McGonigal); Cleveland Clinic (L&#252;ders, Kotagal, Bleasel, Dinner); Lyon SEEG (Isnard, Maugui&#232;re, Ryvlin, Ostrowsky); Montreal (Penfield, Jasper, Rasmussen).
+  <strong>Schools referenced:</strong> Paris SEEG (Bancaud, Talairach, Chauvel, Bartolomei, McGonigal); Cleveland Clinic (L&#252;ders, Kotagal, Bleasel, Dinner); Lyon SEEG (Isnard, Maugui&#232;re, Ryvlin, Ostrowsky); Montreal (Penfield, Jasper, Rasmussen). &nbsp;|&nbsp;
+  <strong>Contribute a paper or correction:</strong> this site is read-only, but new evidence is welcome &mdash; <a href="https://github.com/ckadipas/seizure-semiology-atlas/issues/new/choose">open an issue on GitHub</a>. Every submission is reviewed and approved before it appears here.
 </div>
 
 <script>""" + JS + """</script>
