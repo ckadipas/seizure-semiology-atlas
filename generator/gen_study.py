@@ -81,7 +81,11 @@ for r in region_order:
             lib_chip = ('<span class="chip lib-chip" title="Grounded in your uploaded literature">&#128218; '+str(len(d["_ev"]))+'</span>') if has_ev else ''
             ev_block = ''
             if has_ev:
-                items = "".join('<li><span class="ev-src">'+esc(e["p"])+'</span> '+esc(e["f"])+'</li>' for e in d["_ev"])
+                items = "".join(
+                    '<li><span class="ev-src">'+esc(e["p"])+'</span>'
+                    + ((' <span class="ev-pg" title="Source page">'+esc(e["pg"])+'</span>') if e.get("pg") else '')
+                    + ' '+esc(e["f"])+'</li>'
+                    for e in d["_ev"])
                 ev_block = ('<div class="d-row d-ev"><span class="d-label">&#128218; Evidence in your library</span>'
                             '<ul class="ev-list">'+items+'</ul></div>')
             rows.append(f'''<div class="sign" data-region="{esc(d['region'])}" data-phase="{esc(d['phase'])}" data-latcode="{lc}" data-evid="{ec}" data-search="{esc(search_str)}" style="--accent:{accent}">
@@ -361,6 +365,7 @@ body.quiz .lib-chip{display:none}
 .ev-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
 .ev-list li{font-size:.82rem;line-height:1.5;color:#3a3a3a;padding-left:12px;border-left:2px solid #e8b878}
 .ev-src{font-weight:800;color:#8a4b00;display:inline-block;margin-right:4px}
+.ev-pg{font-size:.68rem;font-weight:700;color:#8a4b00;background:#fff0d9;border:1px solid #e8b878;border-radius:4px;padding:0 5px;margin-right:3px;white-space:nowrap;vertical-align:baseline}
 
 /* framework callout */
 .callout{max-width:1180px;margin:0 auto 14px;padding:0 16px}

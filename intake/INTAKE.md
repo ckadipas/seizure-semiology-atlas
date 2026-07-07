@@ -10,6 +10,31 @@ intake gate is where that discipline is enforced.
                 reliable?)   card)                     build)
 ```
 
+## Automated intake (primary route)
+
+Attach a PDF to an issue labelled **`intake`** and the
+`.github/workflows/intake.yml` workflow does the mechanical *and* the extraction
+work for you: it downloads the PDF on the runner (which can reach GitHub
+attachments), sends it to Claude (`claude-opus-4-8`) with the current sign list
+and paper library as context, and writes short, **page-cited** findings to
+`enrichment/intake_findings.json` — then opens a PR for the owner to approve.
+
+- **Page provenance ("page checkers").** Every machine-added finding records the
+  source page (`pg`, e.g. `p.608`). `tools/check_provenance.py` fails CI if any
+  finding lacks a page or maps to no real sign, so nothing is integrated that
+  can't be checked against the paper.
+- **IP boundary preserved.** Only the derived short extractions are committed;
+  the PDF and full text stay on the runner and are never pushed.
+- **One-time setup:** add an `ANTHROPIC_API_KEY` repository secret
+  (*Settings → Secrets and variables → Actions*). Re-run on an existing issue via
+  *Actions → Paper intake → Run workflow* with the issue number.
+- **Fallback:** when a paper is submitted as a DOI/PubMed link with no PDF, use
+  the web-search route (fetch the published record) — not every paper is reachable
+  in full text, so the PDF route is primary and the DOI route is the backstop.
+
+The manual steps below still apply for corrections, direct edits, and reviewing
+what the automated route proposes.
+
 ## 0. Two ways to nominate
 - **No-code:** open a *"📄 Submit a paper for intake"* issue (DOI + why relevant).
 - **Hands-on:** drop the PDF in `intake/inbox/` and run:

@@ -1,0 +1,5 @@
+{
+ "_comment": "Machine-managed by .github/workflows/intake.yml (tools/intake_ci.py). Each finding is a short, attributed factual extraction carrying a source PAGE reference for provenance. Do not hand-edit; add evidence in build_enrichment.py or via the intake workflow. tools/check_provenance.py gates every entry.",
+ "papers": [],
+ "findings": []
+}
