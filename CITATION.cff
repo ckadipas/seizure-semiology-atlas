@@ -8,8 +8,8 @@ abstract: >-
   curated dataset. Educational use only — not for clinical decision-making.
 type: dataset
 authors:
-  - family-names: "<YOUR SURNAME>"
-    given-names: "<YOUR GIVEN NAME>"
+  - family-names: "CM"
+    given-names: "CM"
     # orcid: "https://orcid.org/0000-0000-0000-0000"
 keywords:
   - epilepsy
@@ -19,7 +19,7 @@ keywords:
   - epileptology
   - medical education
 license: CC-BY-NC-SA-4.0
-repository-code: "https://github.com/OWNER/seizure-semiology-atlas"
+repository-code: "https://github.com/ckadipas/seizure-semiology-atlas"
 # version: 1.0.0
 # date-released: 2025-01-01
-# doi: 10.5281/zenodo.XXXXXXX   # add after linking Zenodo and publishing a release
+# doi: 10.5281/zenodo.XXXXXXX   # if linking Zenodo and publishing a release

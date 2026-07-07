@@ -698,8 +698,9 @@ HEAD = """<!DOCTYPE html>
 </body>
 </html>"""
 
-with open(os.path.join(DOCS,"seizure_semiology_localization.html"),"w") as f:
-    f.write(HEAD)
+for name in ("seizure_semiology_localization.html", "index.html"):
+    with open(os.path.join(DOCS, name), "w") as f:
+        f.write(HEAD)
 
 print(f"Written: {len(HEAD)} chars, {len(data)} signs")
 
