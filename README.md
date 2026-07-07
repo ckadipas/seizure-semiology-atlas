@@ -24,6 +24,7 @@ HTML page that is published to GitHub Pages.
 | `corpus/manifest.csv` | Bibliographic metadata for the source library. |
 | `corpus/corpus_extract_summary.md` | Human-readable ledger of source-grounded figures. |
 | `intake/INTAKE.md` | The paper-intake standard operating procedure. |
+| `CITATION.cff` | Citation metadata (for a citable public release / Zenodo DOI). |
 | `docs/…​.html` | **Build artifact** — produced by CI, deployed to Pages. Do not edit. |
 
 Not committed (git-ignored, kept local): the working corpus of PDFs
@@ -49,28 +50,44 @@ make intake PDF=intake/inbox/your_paper.pdf
 
 ---
 
-## Publish to a private GitHub Pages site (one-time)
+## Publish to GitHub Pages (one-time)
 
-Private-repo Pages requires a **GitHub Pro/Team/Enterprise** plan.
+This repo is designed to be **public-safe**: it commits only the dataset and
+short, attributed extractions — never the source PDFs or full article text (those
+are git-ignored). A public repo gets **GitHub Pages for free** (no paid plan
+needed). The bundle already contains an initial commit, so you don't need to
+`git init`.
 
 ```bash
-# from the repo root, after unpacking:
-git init -b main
-git add .
-git commit -m "Seizure Semiology Atlas: initial version-controlled release"
-gh repo create seizure-semiology-atlas --private --source=. --push
-# (or create the repo in the GitHub UI and: git remote add origin … ; git push -u origin main)
+tar -xzf seizure-semiology-atlas.tar.gz && cd seizure-semiology-atlas
+
+# create the public repo and push (GitHub CLI):
+gh repo create seizure-semiology-atlas --public --source=. --push
+# — or, via the GitHub UI, create an empty repo then:
+#     git remote add origin git@github.com:<you>/seizure-semiology-atlas.git
+#     git push -u origin main
 ```
 
 Then in the repo on GitHub:
 1. **Settings → Pages → Build and deployment → Source: “GitHub Actions.”**
-2. Edit `.github/CODEOWNERS` and the `LICENSE` files: replace `@OWNER` / `<YOUR
-   NAME>` with your handle/name.
-3. Push to `main` → the **Build & Deploy** workflow builds and publishes the
-   page; the private Pages URL appears in the workflow's `deploy` step and under
-   Settings → Pages.
-4. (Recommended) **Settings → Branches → protect `main`**: require the
-   **Validate PR** check and a review, so corrections land through PRs.
+2. Replace placeholders: `@OWNER` in `.github/CODEOWNERS` and
+   `.github/ISSUE_TEMPLATE/config.yml`; `<YOUR NAME>` in `LICENSE`; and the author
+   fields in `CITATION.cff`.
+3. Push to `main` → the **Build & Deploy** workflow renders the page and
+   publishes it; the public Pages URL appears in the workflow's `deploy` step and
+   under Settings → Pages (typically `https://<you>.github.io/seizure-semiology-atlas/`).
+4. **Recommended — Settings → Branches → protect `main`:** require the
+   **Validate PR** check and one review, so corrections always land through a
+   gated PR rather than a direct push.
+
+**Optional — mint a citable DOI.** Link the repo to
+[Zenodo](https://zenodo.org) (Zenodo → GitHub → toggle the repo on), then publish
+a GitHub *Release*. Zenodo archives that release and issues a DOI you can cite;
+update `CITATION.cff` with it.
+
+**Prefer private instead?** Everything works identically in a private repo; only
+private-repo *Pages* requires a GitHub Pro/Team/Enterprise plan. Use
+`gh repo create … --private` if so.
 
 Share access via **Settings → Collaborators** (or a Team). Collaborators can
 propose corrections with the issue forms or PRs; CI validates every change.

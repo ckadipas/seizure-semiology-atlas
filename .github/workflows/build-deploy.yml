@@ -5,7 +5,8 @@ name: Build & Deploy
 #
 # One-time setup after creating the repo:
 #   Settings → Pages → "Build and deployment" → Source: "GitHub Actions"
-#   (Private-repo Pages requires a GitHub Pro/Team/Enterprise plan.)
+#   Public repos get GitHub Pages for free. (Only PRIVATE-repo Pages needs a
+#   GitHub Pro/Team/Enterprise plan.)
 
 on:
   push:

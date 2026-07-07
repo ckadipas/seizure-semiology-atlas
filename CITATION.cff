@@ -1,0 +1,25 @@
+cff-version: 1.2.0
+message: "If you use this educational resource, please cite it as below."
+title: "Seizure Semiology Atlas: an interactive, source-grounded reference of localizing and lateralizing signs"
+abstract: >-
+  A living, version-controlled educational reference of localizing and
+  lateralizing seizure semiology for epilepsy training. Signs are grounded in the
+  primary literature; the interactive HTML is regenerated deterministically from a
+  curated dataset. Educational use only — not for clinical decision-making.
+type: dataset
+authors:
+  - family-names: "<YOUR SURNAME>"
+    given-names: "<YOUR GIVEN NAME>"
+    # orcid: "https://orcid.org/0000-0000-0000-0000"
+keywords:
+  - epilepsy
+  - seizure semiology
+  - localization
+  - lateralization
+  - epileptology
+  - medical education
+license: CC-BY-NC-SA-4.0
+repository-code: "https://github.com/OWNER/seizure-semiology-atlas"
+# version: 1.0.0
+# date-released: 2025-01-01
+# doi: 10.5281/zenodo.XXXXXXX   # add after linking Zenodo and publishing a release

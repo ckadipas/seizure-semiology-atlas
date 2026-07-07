@@ -7,6 +7,8 @@ Format loosely follows Keep a Changelog; dates are ISO-8601.
 ### Added
 - Repository scaffold: version-controlled data, CI build/deploy, validation gate,
   issue/PR templates, and a paper-intake pipeline.
+- Public-repo publishing path (free GitHub Pages) and `CITATION.cff` for a
+  citable release (Zenodo-DOI ready).
 
 ## [1.0.0]
 ### Added
