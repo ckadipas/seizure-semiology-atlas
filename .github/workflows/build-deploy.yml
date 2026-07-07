@@ -44,6 +44,11 @@ jobs:
       - name: Build the HTML
         run: python3 generator/gen_study.py
 
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
