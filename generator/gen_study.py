@@ -29,6 +29,7 @@ def _load_optional(*parts):
     return None
 META = _load_optional("enrichment", "meta_analysis.json")
 FLAGS = _load_optional("enrichment", "review_flags.json")
+CORPUS = _load_optional("enrichment", "corpus_findings.json")
 
 # assign ids to new signs and append
 _nextid = max(x["id"] for x in data) + 1
@@ -391,6 +392,85 @@ def build_meta(meta, flags):
 </details>'''
 meta_fold = build_meta(META, FLAGS)
 
+# ---------- Source-figures explorer (every extracted data point) ----------
+# Renders ALL findings from enrichment/corpus_findings.json as a compact, filterable,
+# searchable table so every figure the corpus reading produced is on the page and
+# checkable against its verbatim quote - not only the lateralization figures that
+# feed the pooled plot. Frequency / localization / PPV / odds-ratio figures live
+# here because they are population-specific and heterogeneous (they don't pool into
+# one model), but they are still fully accounted for and inspectable.
+def build_figures(corpus):
+    if not corpus or not corpus.get("papers"):
+        return ""
+    mlabel = {"lateralization_pct":"Lateralization","frequency_pct":"Frequency",
+              "localization_pct":"Localization","ppv":"PPV","sensitivity":"Sensitivity",
+              "specificity":"Specificity","odds_ratio":"Odds ratio","other":"Other"}
+    mcolor = {"lateralization_pct":"#c0392b","frequency_pct":"#2471a3","localization_pct":"#8e44ad",
+              "ppv":"#0a7a8a","sensitivity":"#1a7a4a","specificity":"#1a7a4a","odds_ratio":"#95691a","other":"#6b7280"}
+    rows = []
+    counts = {}
+    n_excl = 0
+    for p in corpus["papers"]:
+        excl = bool(p.get("is_literature_mined_meta") and "Alim" in (p.get("cite") or ""))
+        cite = p.get("cite") or "?"
+        cite_short = cite.split(".")[0][:46]
+        for f in p.get("findings", []):
+            m = f.get("metric", "other")
+            counts[m] = counts.get(m, 0) + 1
+            if excl:
+                n_excl += 1
+            dirn = f.get("direction") or ""
+            region = f.get("lobe") or f.get("gyrus") or ""
+            ba = f.get("ba") or ""
+            v = f.get("value")
+            vt = f.get("value_text") or ""
+            if isinstance(v, (int, float)):
+                if m in ("lateralization_pct","frequency_pct","localization_pct","ppv","sensitivity","specificity"):
+                    val = f"{v:g}%"
+                elif m == "odds_ratio":
+                    val = f"OR {v:g}"
+                else:
+                    val = f"{v:g}"
+            else:
+                val = vt if len(vt) <= 40 else vt[:38] + "…"
+            val_full = vt or val
+            quote = f.get("quote") or ""
+            loc = f.get("locator") or ""
+            pop = f.get("population") or ""
+            searchable = " ".join([f.get("phenomenon",""), val, region, ba, pop, cite, quote, dirn, mlabel.get(m,m)]).lower().replace('"',"")
+            dchip = (f'<span class="fx-dir fx-{dirn}">{esc(dirn)}</span>' if dirn and dirn not in ("none","") else "")
+            rows.append(
+                f'<div class="fx-row" data-metric="{m}" data-excl="{"1" if excl else "0"}" data-fq="{esc(searchable)}">'
+                f'<span class="fx-m" style="background:{mcolor.get(m,"#888")}">{esc(mlabel.get(m,m))}</span>'
+                f'<span class="fx-ph">{esc(f.get("phenomenon",""))}{dchip}'
+                + (f'<span class="fx-reg">{esc(region)}{(" &middot; "+esc(ba)) if ba else ""}{(" &middot; "+esc(pop)) if pop else ""}</span>' if (region or pop) else '')
+                + f'</span>'
+                f'<span class="fx-val" title="{esc(val_full)}">{esc(val)}</span>'
+                f'<span class="fx-src">{esc(cite_short)}{(" &middot; "+esc(loc)) if loc else ""}{" &middot; <b>excluded</b>" if excl else ""}</span>'
+                + (f'<span class="fx-q" title="{esc(quote)}">&ldquo;{esc(quote)}&rdquo;</span>' if quote else '')
+                + '</div>')
+    total = sum(counts.values())
+    order = ["lateralization_pct","localization_pct","frequency_pct","ppv","odds_ratio","sensitivity","specificity","other"]
+    btns = ['<button class="fxb on" data-f="all">All <i>'+str(total)+'</i></button>']
+    for m in order:
+        if counts.get(m):
+            btns.append(f'<button class="fxb" data-f="{m}">{esc(mlabel[m])} <i>{counts[m]}</i></button>')
+    return f'''<details class="frontpage-fold figures-fold">
+<summary>Source figures &mdash; every extracted data point ({total} from {len(corpus["papers"])} papers)</summary>
+<div class="fx-wrap">
+  <div class="fx-intro">Every figure the corpus reading produced, each checkable against its <em>verbatim quote</em> from the paper. The pooled plot above uses the <strong>lateralization</strong> rows; frequency, localization, PPV and odds-ratio figures are population-specific and don't pool into one model, so they live here &mdash; fully accounted for and searchable. Alim-Marvasti 2022 rows are marked <strong>excluded</strong> (literature-mined) and are shown for the record only.</div>
+  <div class="fx-tools">
+    <input type="text" id="fx-search" placeholder="Search signs, values, papers, quotes&hellip;">
+    <div class="fx-btns">{"".join(btns)}</div>
+  </div>
+  <div class="fx-count" id="fx-count"></div>
+  <div class="fx-table" id="fx-table">
+{chr(10).join(rows)}
+  </div>
+</div>
+</details>'''
+figures_fold = build_figures(CORPUS)
+
 forest_html = f'''<div class="forest-wrap">
   <div class="forest-card">
     <div class="forest-head">
@@ -667,6 +747,39 @@ body.quiz .lib-chip{display:none}
   .mc-cite{grid-area:cite}.mc-val{grid-area:val;text-align:right}.mc-wt{grid-area:wt}
   .mc-cl{grid-area:cl}.mc-gt{grid-area:gt}.mc-n,.mc-pg{display:none}
   .mdetail-in{padding:10px 10px 12px 16px}
+}
+
+/* ---------- SOURCE-FIGURES EXPLORER ---------- */
+.figures-fold>summary{background:#eef2f7;color:#3f4a5e}
+.fx-wrap{max-width:1180px;margin:0;background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.fx-intro{font-size:.78rem;line-height:1.55;color:#4a5568;padding:13px 16px;background:#fbfcfe;border-bottom:1px solid var(--line2)}
+.fx-tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:11px 16px 6px}
+#fx-search{flex:0 0 auto;width:270px;border:1px solid var(--line);border-radius:7px;padding:8px 11px;font-size:.84rem;outline:none}
+#fx-search:focus{border-color:var(--teal);box-shadow:0 0 0 3px rgba(14,157,176,.13)}
+.fx-btns{display:flex;gap:6px;flex-wrap:wrap}
+.fxb{border:1px solid var(--line);background:#fff;color:var(--navy);border-radius:16px;padding:5px 10px;font-size:.73rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:5px}
+.fxb:hover{border-color:var(--teal);color:var(--teal-d)}
+.fxb.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.fxb i{font-style:normal;font-size:.64rem;opacity:.7;font-weight:800}
+.fx-count{font-size:.72rem;color:var(--muted);font-style:italic;padding:2px 16px 8px}
+.fx-table{max-height:560px;overflow-y:auto;border-top:1px solid var(--line2)}
+.fx-row{display:grid;grid-template-columns:96px minmax(150px,1.4fr) 88px minmax(120px,1fr);gap:8px;align-items:start;padding:7px 16px;border-bottom:1px solid var(--line2);font-size:.78rem}
+.fx-row:nth-child(even){background:#fbfcfe}
+.fx-row[data-excl="1"]{opacity:.55}
+.fx-m{grid-column:1;color:#fff;font-size:.6rem;font-weight:800;text-transform:uppercase;letter-spacing:.03em;padding:2px 6px;border-radius:4px;text-align:center;align-self:start;white-space:nowrap}
+.fx-ph{grid-column:2;font-weight:700;color:var(--navy);line-height:1.3}
+.fx-dir{font-size:.58rem;font-weight:800;padding:1px 5px;border-radius:3px;margin-left:6px;vertical-align:middle;border:1px solid currentColor}
+.fx-dir.fx-contra{color:#c0392b}.fx-dir.fx-ipsi{color:#2471a3}.fx-dir.fx-dominant{color:#8e44ad}.fx-dir.fx-nondominant{color:#1a7a4a}.fx-dir.fx-variable{color:#95691a}
+.fx-reg{display:block;font-size:.66rem;font-weight:600;color:#8a93a5;margin-top:1px}
+.fx-val{grid-column:3;font-weight:800;color:var(--ink);font-variant-numeric:tabular-nums;font-size:.76rem}
+.fx-src{grid-column:4;font-size:.7rem;color:#5a6478;line-height:1.35}
+.fx-src b{color:#b5470b}
+.fx-q{grid-column:2 / -1;font-size:.72rem;color:#6b7280;font-style:italic;line-height:1.4;padding-top:3px;border-top:1px dotted var(--line2);margin-top:3px}
+.fx-row.fx-hidden{display:none}
+@media (max-width:760px){
+  .fx-row{grid-template-columns:1fr auto;grid-template-areas:"m val" "ph ph" "src src" "q q";gap:3px 8px}
+  .fx-m{grid-area:m}.fx-ph{grid-area:ph}.fx-val{grid-area:val;text-align:right}.fx-src{grid-area:src}.fx-q{grid-area:q}
+  #fx-search{width:100%}
 }
 
 /* probabilistic forest-plot section */
@@ -950,6 +1063,34 @@ if(mSort){
   });
 }
 
+// ---- source-figures explorer: filter + search ----
+(function(){
+  const search=document.getElementById('fx-search');
+  const table=document.getElementById('fx-table');
+  const count=document.getElementById('fx-count');
+  if(!table) return;
+  const rows=Array.from(table.querySelectorAll('.fx-row'));
+  let mfilter='all';
+  function apply(){
+    const q=(search.value||'').toLowerCase().trim();
+    let vis=0;
+    rows.forEach(r=>{
+      const okM=(mfilter==='all')||r.dataset.metric===mfilter;
+      const okQ=!q||(r.dataset.fq||'').includes(q);
+      const show=okM&&okQ;
+      r.classList.toggle('fx-hidden',!show);
+      if(show) vis++;
+    });
+    count.textContent=vis+' of '+rows.length+' figures shown';
+  }
+  document.querySelectorAll('.fxb').forEach(b=>b.addEventListener('click',()=>{
+    document.querySelectorAll('.fxb').forEach(x=>x.classList.toggle('on',x===b));
+    mfilter=b.dataset.f; apply();
+  }));
+  search.addEventListener('input',apply);
+  apply();
+})();
+
 filterAll();
 """
 
@@ -1033,7 +1174,7 @@ HEAD = """<!DOCTYPE html>
 </div>
 
 <main>
-""" + meta_fold + forest_fold + callout_fold + """
+""" + meta_fold + figures_fold + forest_fold + callout_fold + """
   <div class="quiz-hint"><strong>Quiz mode on:</strong> lateralization &amp; evidence cues are hidden. Read each sign, predict its localization/lateralization, then expand to check yourself.</div>
 """ + sections_html + """
   <div id="no-results">No signs match the current search or filters. Try clearing them.</div>
