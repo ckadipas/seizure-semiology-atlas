@@ -5,17 +5,17 @@
   "double_count_points": 2.0
  },
  "summary": {
-  "sens_spec_estimate": 1,
+  "sens_spec_provenance": 1,
   "conflict": 2,
   "double_count": 9,
   "single_source": 3
  },
  "flags": [
   {
-   "kind": "sens_spec_estimate",
+   "kind": "sens_spec_provenance",
    "severity": "info",
-   "sign": "(all cards)",
-   "detail": "sensitivity/specificity on cards are curator teaching estimates, not pooled: the source corpus contains 1 sens/spec figure(s) total. Cards mark these 'est.'.",
+   "sign": "(cards)",
+   "detail": "sensitivity is computed as P(sign|localization) for 9 sign(s) from tagged ledger frequencies (marked 'corpus'); the rest, and ALL specificity, remain curator estimates (marked 'est.') because the corpus reports 1 specificity figure(s).",
    "evidence": []
   },
   {

@@ -54,10 +54,18 @@ page can never disagree:
   explicit `card_ids`, assigned by an exact phenomenon match (never a fuzzy one).
   PPV is population-specific, so it is listed per source with its context, not
   pooled. Ambiguous or aggregate PPV figures are left in the table only.
-- **Sensitivity / specificity** are **curator teaching estimates**, tagged `est.`
-  on the card. Re-reading every paper against its source text confirmed the corpus
-  reports essentially none (one cited-literature value corpus-wide), so these
-  cannot be — and are not — presented as pooled figures.
+- **Sensitivity** is **computed** as `P(sign | localization)` — how often the sign
+  appears within a localization group, which is exactly a frequency-within-that-group
+  figure. Qualifying verified frequency findings are tagged in the ledger
+  (`sens_card_ids` + `sens_for`); the meta engine groups them per (sign, localization)
+  and the card, the *Descriptive statistics — sensitivity by localization* section, and
+  the explorer all read the same numbers. Tag another finding and every one of them
+  updates on the next build. A card with a computed value shows it tagged `corpus`; a
+  card without one keeps a curator estimate tagged `est.`.
+- **Specificity** is **not computed**: it needs the sign's rate in the *other*
+  localization groups (the false-positive side), which this corpus reports for
+  essentially no sign. Card specificity therefore stays a curator teaching estimate,
+  tagged `est.` — never fabricated as a source figure.
 
 ## Review checks — `tools/adversarial_review.py`
 
@@ -65,10 +73,12 @@ Runs on every pull request and writes `enrichment/review_flags.json`. It flags
 studies that disagree on a sign's figure, a pooled direction that contradicts the
 curated card, the same figure entered under two studies or two signs, a figure
 that attaches to no sign, figures resting on a single study, a PPV figure whose
-`card_ids` point at a card that does not exist, and a PPV direction that
-contradicts the card it is surfaced on. It also records that card sens/spec are
-teaching estimates. These are advisory — a genuine, disclosed disagreement (e.g.
-ictal spitting) is surfaced on the relevant sign, not silently reconciled.
+`card_ids` point at a card that does not exist, a PPV direction that contradicts
+the card it is surfaced on, and a sensitivity-tagged finding that links to a
+missing card, names no localization group, or sits on a non-frequency figure. It
+also records which signs have a computed sensitivity vs a curator estimate. These
+are advisory — a genuine, disclosed disagreement (e.g. ictal spitting) is surfaced
+on the relevant sign, not silently reconciled.
 
 ## Source-figures table — `generator/gen_study.py`
 
