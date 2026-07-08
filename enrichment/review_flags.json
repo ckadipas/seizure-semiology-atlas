@@ -5,17 +5,20 @@
   "double_count_points": 2.0
  },
  "summary": {
-  "single_source": 9,
+  "conflict": 2,
   "double_count": 9,
-  "direction_clash": 1
+  "direction_clash": 1,
+  "single_source": 3
  },
  "flags": [
   {
-   "kind": "single_source",
-   "severity": "low",
+   "kind": "conflict",
+   "severity": "high",
    "sign": "Automatisms with preserved responsiveness",
-   "detail": "pooled figure rests on a single study (Loddenkemper & Kotagal 2005); treat as provisional until corroborated.",
-   "evidence": []
+   "detail": "studies disagree by 38 points on the nondominant figure (pooled 67.6%, range 62-100%).",
+   "evidence": [
+    "Loddenkemper & Kotagal 2005 100%, Elwan et al. 2018 62%"
+   ]
   },
   {
    "kind": "double_count",
@@ -43,13 +46,6 @@
    "severity": "low",
    "sign": "Forced head/eye version",
    "detail": "review Loddenkemper & Kotagal 2005 (100%) and primary Roh et al. 1996 (100%) agree within 2.0 points - the review may be citing the primary series; pooling both slightly double-weights this datum.",
-   "evidence": []
-  },
-  {
-   "kind": "single_source",
-   "severity": "low",
-   "sign": "Hemifield visual aura",
-   "detail": "pooled figure rests on a single study (Loddenkemper & Kotagal 2005); treat as provisional until corroborated.",
    "evidence": []
   },
   {
@@ -81,20 +77,6 @@
    "evidence": []
   },
   {
-   "kind": "single_source",
-   "severity": "low",
-   "sign": "Lower facial weakness (mimetic)",
-   "detail": "pooled figure rests on a single study (Blair 2012); treat as provisional until corroborated.",
-   "evidence": []
-  },
-  {
-   "kind": "single_source",
-   "severity": "low",
-   "sign": "Postictal (Todd's) palsy",
-   "detail": "pooled figure rests on a single study (Loddenkemper & Kotagal 2005); treat as provisional until corroborated.",
-   "evidence": []
-  },
-  {
    "kind": "double_count",
    "severity": "low",
    "sign": "Postictal dysphasia / aphasia",
@@ -109,11 +91,13 @@
    "evidence": []
   },
   {
-   "kind": "single_source",
-   "severity": "low",
+   "kind": "conflict",
+   "severity": "high",
    "sign": "Postictal nose-wiping",
-   "detail": "pooled figure rests on a single study (Loddenkemper & Kotagal 2005); treat as provisional until corroborated.",
-   "evidence": []
+   "detail": "studies disagree by 30 points on the ipsi figure (pooled 66.4%, range 62-92%).",
+   "evidence": [
+    "Loddenkemper & Kotagal 2005 92%, Elwan et al. 2018 62%"
+   ]
   },
   {
    "kind": "double_count",
@@ -134,13 +118,6 @@
    "severity": "low",
    "sign": "Unilateral dystonic posturing",
    "detail": "review Loddenkemper & Kotagal 2005 (100%) and primary Roh et al. 1996 (100%) agree within 2.0 points - the review may be citing the primary series; pooling both slightly double-weights this datum.",
-   "evidence": []
-  },
-  {
-   "kind": "single_source",
-   "severity": "low",
-   "sign": "Unilateral somatosensory aura",
-   "detail": "pooled figure rests on a single study (Loddenkemper & Kotagal 2005); treat as provisional until corroborated.",
    "evidence": []
   }
  ]
