@@ -58,6 +58,10 @@
    {
     "p": "Foldvary-Schaefer 2011",
     "f": "Head/eye deviation accompanied by true forced version is contralateral to the seizure-onset zone; head rotation without a versive component tends to be ipsilateral \u2014 the versive quality, not the turn itself, carries the lateralizing value."
+   },
+   {
+    "p": "Wyllie 1986",
+    "f": "Foundational series (37 patients, 74 seizures): versive (forced, involuntary, sustained) head/eye deviation was contralateral to the focus in every lateralizing instance \u2014 contralateral versive in 61 seizures / 27 patients, with ipsilateral versive never observed \u2014 whereas non-versive turning occurred ipsi- and contralaterally with equal frequency and was non-localizing."
    }
   ],
   "early non-forced": [
@@ -435,6 +439,12 @@
    "Neurocase",
    "Ictal paraphasia as an atypical TLE manifestation",
    "Illustrative dominant-temporal ictal language disturbance."
+  ],
+  [
+   "Wyllie et al. 1986",
+   "Neurology",
+   "The lateralizing significance of versive head and eye movements during epileptic seizures",
+   "Foundational series: versive (forced, sustained) head/eye deviation is reliably contralateral; non-versive turning is non-localizing."
   ]
  ],
  "lateral": [

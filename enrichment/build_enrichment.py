@@ -33,6 +33,7 @@ add("figure-of-4","Marashly 2015","Caution: in a systematic video-PPV analysis, 
 add("late forced","Loddenkemper 2005","Forced version present in 22.2% of FLE; contralateral to the EZ in 100% (Brodmann 6/8), especially the pre-GTCS versive turn.")
 add("late forced","Roh 1996","Forced version occurred exclusively on the contralateral side in 89% of seizures.")
 add("late forced","Foldvary-Schaefer 2011","Head/eye deviation accompanied by true forced version is contralateral to the seizure-onset zone; head rotation without a versive component tends to be ipsilateral — the versive quality, not the turn itself, carries the lateralizing value.")
+add("late forced","Wyllie 1986","Foundational series (37 patients, 74 seizures): versive (forced, involuntary, sustained) head/eye deviation was contralateral to the focus in every lateralizing instance — contralateral versive in 61 seizures / 27 patients, with ipsilateral versive never observed — whereas non-versive turning occurred ipsi- and contralaterally with equal frequency and was non-localizing.")
 
 add("early non-forced","Roh 1996","Non-forced head deviation was contralateral in 63% and ipsilateral in 35% — weak and not statistically significant, unlike forced version.")
 
@@ -133,6 +134,7 @@ PAPERS = [
  ("Chowdhury & Walker (Localisation practical guide)","Practical Neurology","Localisation in focal epilepsy: a practical guide","Bedside synthesis of localizing/lateralizing semiology."),
  ("Kotagal (Ictal Speech & Cerebral Dominance)","(monograph excerpt)","Ictal speech disturbance and cerebral dominance","Speech-dominance correlation reference."),
  ("(Ictal paraphasia case study)","Neurocase","Ictal paraphasia as an atypical TLE manifestation","Illustrative dominant-temporal ictal language disturbance."),
+ ("Wyllie et al. 1986","Neurology","The lateralizing significance of versive head and eye movements during epileptic seizures","Foundational series: versive (forced, sustained) head/eye deviation is reliably contralateral; non-versive turning is non-localizing."),
 ]
 
 # ---------------- LATERALIZATION RELIABILITY DATA ----------------
