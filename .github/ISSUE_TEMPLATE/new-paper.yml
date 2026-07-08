@@ -6,9 +6,9 @@ body:
   - type: markdown
     attributes:
       value: |
-        Use this to nominate a paper for the corpus. A maintainer (or an automated
-        session running `tools/intake_paper.py`) will screen it, extract figures,
-        and wire the source-grounded findings into the dataset.
+        Use this to nominate a paper for the corpus. The maintainers will screen
+        it, extract the figures, and wire the source-grounded findings into the
+        dataset.
 
         **Do not attach the full PDF of a copyrighted article to a shareable repo.**
         Provide the DOI/link; maintainers keep working PDFs in the local,

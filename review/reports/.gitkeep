@@ -1,2 +1,0 @@
-Adversarial-review reports are written here by .github/workflows/review.yml
-(the semantic reviewer agent). Each run produces review-<run_id>.md.
