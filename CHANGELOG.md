@@ -11,6 +11,28 @@ Format loosely follows Keep a Changelog; dates are ISO-8601.
   so a sign shows identical stats and citations everywhere (previously the card and
   the plot were computed from two disconnected paths and could disagree, e.g. forced
   version showed 40–50%/75–80% on the card but 98.6% across 6 studies in the plot).
+- **Single source of truth extended to predictive value.** Cards now surface the
+  corpus PPV figures for their sign, drawn from the same `corpus_findings.json`
+  ledger the source-figures explorer renders, linked by each finding's explicit
+  `card_ids` (assigned by exact phenomenon match, never fuzzy). 28 PPV figures across
+  10 signs (version, tonic/dystonic/clonic posturing, figure-of-4, preserved-
+  responsiveness automatisms, nose-wiping, Todd's palsy, epigastric aura) now appear
+  identically on the card and in the explorer, each with population context and its
+  verbatim quote. Ambiguous or aggregate PPV figures (asymmetric clonic *ending*, the
+  M2e naming collision, multi-sign combinations, hemianopia) are deliberately left
+  explorer-only rather than force-attached.
+- **Sensitivity/specificity honestly marked as estimates.** A full re-reading of every
+  paper against its source text established that the corpus reports essentially no
+  sensitivity/specificity figures for these signs (1 cited-literature value corpus-
+  wide). The card sens/spec values are therefore curator teaching estimates, and are
+  now tagged **est.** with a tooltip saying so — they are not, and never were, pooled
+  from the papers. They are kept for orientation, not presented as source data.
+### Verified
+- **Adversarial re-verification of the corpus against source text.** Every recorded
+  finding was re-read against its paper: 485/489 confirmed (99.2%), 4 corrected, 0
+  fabricated. Corrections: Loddenkemper ictal-speech direction → dominant; a
+  Serafetinides metrazol-vs-amygdala misattribution; a Bonini Group-4 v-test note. Two
+  byte-identical duplicate papers were removed (33 papers / 487 findings).
 ### Fixed
 - **Consolidated a duplicate sign.** "Late forced/tonic head version" (#12) and
   "Forced contralateral tonic head/eye version" (#60) were the same sign filed under
@@ -49,7 +71,9 @@ Format loosely follows Keep a Changelog; dates are ISO-8601.
   contralateral lower facial (mimetic) weakness sign.
 - **Source-review checks** (`tools/adversarial_review.py`): flags studies that
   disagree on a sign, a pooled direction that contradicts the curated card,
-  duplicated figures, orphaned figures, and single-source figures →
+  duplicated figures, orphaned figures, single-source figures, a PPV figure linked
+  to a non-existent card, a PPV direction that contradicts the card it is shown on,
+  and records that card sens/spec are teaching estimates →
   `enrichment/review_flags.json`. CI regenerates and sync-checks the generated
   JSON; `make review` reruns the analysis + review.
 ### Fixed
