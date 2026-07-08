@@ -280,15 +280,9 @@ def build_meta(meta, flags):
         return "".join(rows)
 
     def caveats(s):
-        out = []
         if s.get("contested"):
-            out.append('<div class="mcav mcav-warn">&#9888;&#65039; <strong>Contested lateralization.</strong> '+esc(s["contested"])+'</div>')
-        for fl in flag_by_sign.get(s["sign"], []):
-            if fl["kind"] == "double_count":
-                out.append('<div class="mcav mcav-dup">&#8635; '+esc(fl["detail"])+'</div>')
-            elif fl["kind"] == "single_source":
-                out.append('<div class="mcav mcav-mut">&#9737; '+esc(fl["detail"])+'</div>')
-        return "".join(out)
+            return '<div class="mcav mcav-warn"><strong>Contested.</strong> '+esc(s["contested"])+'</div>'
+        return ""
 
     _rid = [0]
     def row(s, view):
@@ -300,7 +294,7 @@ def build_meta(meta, flags):
         rng = (f'<span class="mrange">{s["low"]:g}&#8211;{s["high"]:g}</span>' if s.get("pooled") is not None and s["high"]>s["low"] else '')
         pips = certpips.get(s.get("certainty"),1)
         pip_html = "".join('<i class="'+("on" if k<pips else "off")+'"></i>' for k in range(3))
-        contested_mark = ' <span class="mflag" title="contested / conflicting evidence">&#9888;&#65039;</span>' if s.get("contested") else ''
+        contested_mark = ' <span class="mflag" title="contested">&#9888;&#65039;</span>' if s.get("contested") else ''
         nsent = s["n_studies"] + s.get("n_qualitative",0)
         summ = ''
         if s.get("pooled") is not None:
@@ -343,29 +337,13 @@ def build_meta(meta, flags):
     # view (ii): by semiology alphabetical
     view_sign = "".join(row(s,"s") for s in meta["by_sign"])
 
-    # conflicting-evidence panel (concise: genuine conflicts only)
-    conflicts = [fl for fl in (flags or {}).get("flags", []) if fl["kind"] in ("conflict","direction_clash","orphan_stem")]
-    conf_html = ""
-    if conflicts:
-        items = "".join(
-            f'<li><span class="cf-kind cf-{fl["kind"]}">{esc(fl["kind"].replace("_"," "))}</span>'
-            f'<strong>{esc(fl["sign"])}</strong> &mdash; {esc(fl["detail"])}</li>'
-            for fl in conflicts)
-        conf_html = (f'<div class="mconf"><div class="mconf-h">&#9888;&#65039; Conflicting evidence '
-                     f'<span class="mconf-n">{len(conflicts)}</span></div>'
-                     f'<ul class="mconf-list">{items}</ul>'
-                     f'<div class="mconf-note">Genuine disagreements between sources (or between a source and this atlas\'s curated card). '
-                     f'Surfaced, not silently reconciled. Robustness caveats (single-source, possible double-count) are shown inline under each sign.</div></div>')
-
-    npooled = sum(1 for s in meta["by_sign"] if s.get("pooled") is not None)
     return f'''<details class="frontpage-fold meta-fold" open>
-<summary>Weighted meta-analysis &mdash; aggregated lateralization across the source library</summary>
+<summary>Weighted meta-analysis &mdash; lateralizing reliability across the source library</summary>
 <div class="meta-wrap"><div class="meta-card">
   <div class="meta-head">
     <h2>Weighted meta-analysis of lateralizing reliability</h2>
-    <p>Each semiology's lateralization percentage <strong>pooled across every source that reports it</strong>, weighting studies by evidence class and ground-truth directness (SEEG / post-op &gt; video-EEG &gt; review). {npooled} signs carry a pooled figure; the marker is the weighted estimate, the pale bar its across-study range, and the pips its certainty. <strong>Click any row</strong> to see each study's value, the exact weight it contributed, and its source page &mdash; every figure is traceable to where it came from. Method: <code>tools/meta_analysis.py</code> (deterministic).</p>
+    <p>Each semiology's lateralization percentage pooled across the sources that report it, weighting studies by evidence class and ground-truth directness (SEEG / post-op &gt; video-EEG &gt; review). The marker is the weighted estimate, the pale bar its across-study range, the pips its certainty. Click any row for each study's value, weight, and source.</p>
   </div>
-  {conf_html}
   <div class="meta-tabs">
     <button class="mtab on" data-view="region">By region &rarr; gyrus (Brodmann) &rarr; sign</button>
     <button class="mtab" data-view="sign">By semiology (A&ndash;Z) &rarr; region</button>
@@ -409,16 +387,12 @@ def build_figures(corpus):
               "ppv":"#0a7a8a","sensitivity":"#1a7a4a","specificity":"#1a7a4a","odds_ratio":"#95691a","other":"#6b7280"}
     rows = []
     counts = {}
-    n_excl = 0
     for p in corpus["papers"]:
-        excl = bool(p.get("is_literature_mined_meta") and "Alim" in (p.get("cite") or ""))
         cite = p.get("cite") or "?"
         cite_short = cite.split(".")[0][:46]
         for f in p.get("findings", []):
             m = f.get("metric", "other")
             counts[m] = counts.get(m, 0) + 1
-            if excl:
-                n_excl += 1
             dirn = f.get("direction") or ""
             region = f.get("lobe") or f.get("gyrus") or ""
             ba = f.get("ba") or ""
@@ -440,13 +414,13 @@ def build_figures(corpus):
             searchable = " ".join([f.get("phenomenon",""), val, region, ba, pop, cite, quote, dirn, mlabel.get(m,m)]).lower().replace('"',"")
             dchip = (f'<span class="fx-dir fx-{dirn}">{esc(dirn)}</span>' if dirn and dirn not in ("none","") else "")
             rows.append(
-                f'<div class="fx-row" data-metric="{m}" data-excl="{"1" if excl else "0"}" data-fq="{esc(searchable)}">'
+                f'<div class="fx-row" data-metric="{m}" data-fq="{esc(searchable)}">'
                 f'<span class="fx-m" style="background:{mcolor.get(m,"#888")}">{esc(mlabel.get(m,m))}</span>'
                 f'<span class="fx-ph">{esc(f.get("phenomenon",""))}{dchip}'
                 + (f'<span class="fx-reg">{esc(region)}{(" &middot; "+esc(ba)) if ba else ""}{(" &middot; "+esc(pop)) if pop else ""}</span>' if (region or pop) else '')
                 + f'</span>'
                 f'<span class="fx-val" title="{esc(val_full)}">{esc(val)}</span>'
-                f'<span class="fx-src">{esc(cite_short)}{(" &middot; "+esc(loc)) if loc else ""}{" &middot; <b>excluded</b>" if excl else ""}</span>'
+                f'<span class="fx-src">{esc(cite_short)}{(" &middot; "+esc(loc)) if loc else ""}</span>'
                 + (f'<span class="fx-q" title="{esc(quote)}">&ldquo;{esc(quote)}&rdquo;</span>' if quote else '')
                 + '</div>')
     total = sum(counts.values())
@@ -458,7 +432,7 @@ def build_figures(corpus):
     return f'''<details class="frontpage-fold figures-fold">
 <summary>Source figures &mdash; every extracted data point ({total} from {len(corpus["papers"])} papers)</summary>
 <div class="fx-wrap">
-  <div class="fx-intro">Every figure the corpus reading produced, each checkable against its <em>verbatim quote</em> from the paper. The pooled plot above uses the <strong>lateralization</strong> rows; frequency, localization, PPV and odds-ratio figures are population-specific and don't pool into one model, so they live here &mdash; fully accounted for and searchable. Alim-Marvasti 2022 rows are marked <strong>excluded</strong> (literature-mined) and are shown for the record only.</div>
+  <div class="fx-intro">Every extracted figure, each shown with the verbatim quote it came from. The pooled plot above uses the lateralization rows; frequency, localization, and PPV figures are population-specific and are listed here rather than pooled.</div>
   <div class="fx-tools">
     <input type="text" id="fx-search" placeholder="Search signs, values, papers, quotes&hellip;">
     <div class="fx-btns">{"".join(btns)}</div>
@@ -707,8 +681,6 @@ body.quiz .lib-chip{display:none}
 .mcav{font-size:.74rem;line-height:1.45;border-radius:7px;padding:6px 10px;margin-bottom:6px}
 .mcav-warn{background:#fff6e9;border:1px solid #f0cf8f;color:#7a4a06}
 .mcav-warn strong{color:#7a3e00}
-.mcav-dup{background:#eef4fb;border:1px solid #c6dcef;color:#28516f}
-.mcav-mut{background:#f5f6f8;border:1px solid #e0e5ec;color:#6b7280}
 .mctab{border:1px solid var(--line2);border-radius:8px;overflow:hidden}
 .mc-head,.mc-row{display:grid;grid-template-columns:minmax(120px,1.5fr) 46px 92px 34px minmax(80px,1fr) 30px 46px;gap:6px;align-items:center;font-size:.72rem;padding:5px 9px}
 .mc-head{background:#f1f4f8;font-weight:800;color:#6b7280;text-transform:uppercase;letter-spacing:.03em;font-size:.6rem}
@@ -723,18 +695,6 @@ body.quiz .lib-chip{display:none}
 .mc-cl,.mc-gt,.mc-n,.mc-pg{color:#4a5568}
 .mc-pg{font-weight:700;color:#8a4b00}
 .mc-note{font-size:.72rem;color:#5a6478;line-height:1.45;padding:2px 9px 7px 9px;border-top:1px dotted var(--line2);background:#fbfcfe}
-
-.mconf{margin:11px 16px 4px;border:1px solid #f0cf8f;background:#fffaf1;border-radius:10px;overflow:hidden}
-.mconf-h{background:#fbeecf;color:#7a4a06;font-weight:800;font-size:.78rem;padding:8px 13px;display:flex;align-items:center;gap:8px}
-.mconf-n{background:#c0392b;color:#fff;border-radius:10px;font-size:.66rem;padding:1px 8px}
-.mconf-list{list-style:none;margin:0;padding:8px 13px}
-.mconf-list li{font-size:.77rem;line-height:1.5;color:#3a3a3a;padding:4px 0;border-bottom:1px dotted #ecdcbb}
-.mconf-list li:last-child{border-bottom:none}
-.cf-kind{display:inline-block;font-size:.58rem;font-weight:800;text-transform:uppercase;letter-spacing:.03em;padding:1px 6px;border-radius:4px;margin-right:7px;vertical-align:middle;color:#fff}
-.cf-conflict{background:#c0392b}
-.cf-direction_clash{background:#b5470b}
-.cf-orphan_stem{background:#7a5c00}
-.mconf-note{font-size:.7rem;color:#8a6a2a;padding:2px 13px 10px;line-height:1.45}
 
 @media (max-width:760px){
   .msign-head{grid-template-columns:14px 60px 1fr;grid-template-areas:"chev dir name" "strip strip val";row-gap:5px}
@@ -1228,7 +1188,7 @@ HEAD = """<!DOCTYPE html>
   <strong>Educational use:</strong> This reference is designed for teaching and self-study by epilepsy trainees. Sensitivity and specificity values are approximate teaching figures drawn from single- and multi-center cohorts and reflect performance within the populations studied; they are <strong>not</strong> validated for individual clinical decision-making. Real localization always integrates ictal EEG, imaging, neuropsychology, and history. &nbsp;|&nbsp;
   <strong>Evidence tiers:</strong> I = multiple cohort studies / validated SEEG stimulation series; II = retrospective case series or single-center; III = case reports, expert opinion, or isolated stimulation observations. &nbsp;|&nbsp;
   <strong>Schools referenced:</strong> Paris SEEG (Bancaud, Talairach, Chauvel, Bartolomei, McGonigal); Cleveland Clinic (L&#252;ders, Kotagal, Bleasel, Dinner); Lyon SEEG (Isnard, Maugui&#232;re, Ryvlin, Ostrowsky); Montreal (Penfield, Jasper, Rasmussen). &nbsp;|&nbsp;
-  <strong>Contribute a paper or correction:</strong> this site is read-only, but new evidence is welcome &mdash; <a href="https://github.com/ckadipas/seizure-semiology-atlas/issues/new/choose">open an issue on GitHub</a>. Every submission is reviewed and approved before it appears here.
+  <strong>Contribute a paper or correction:</strong> new evidence is welcome &mdash; <a href="https://github.com/ckadipas/seizure-semiology-atlas/issues/new/choose">submit it here</a>. Every submission is reviewed by the maintainers before it appears.
 </div>
 
 <script>""" + JS + """</script>

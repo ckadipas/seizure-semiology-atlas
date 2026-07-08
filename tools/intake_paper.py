@@ -133,9 +133,9 @@ def main():
 - Study type: [ ] primary series  [ ] SEEG/anatomo-electro-clinical  [ ] review  [ ] case report
 - Ground truth (postop Sf / SEEG / imaging concordance):
 - Sample size (N):
-- ⚠️ Reliability check — beware literature-mined meta-analyses with incoherent
-  sign categories (see README §Design decisions, "Alim-Marvasti"). Prefer
-  disciplined sign definitions with explicit ground truth.
+- Reliability check — beware literature-mined meta-analyses with incoherent
+  sign categories (see README, Design decisions). Prefer disciplined sign
+  definitions with explicit ground truth.
 
 ## 3. Findings to integrate  _(one row per usable figure)_
 | Sign (must match a sign name substring) | Finding (short, attributed, with N) | Direction / % / OR |

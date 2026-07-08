@@ -311,17 +311,34 @@
          "freq": "5.7% of TLE",
          "note": "Non-dominant in ~100% (one exception, Janszky).",
          "value": 100
+        },
+        {
+         "study": "Elwan 2018",
+         "cite": "Elwan et al. 2018",
+         "eclass": "II",
+         "ground_truth": "postop",
+         "n": 73,
+         "weight": 5.795,
+         "weight_parts": {
+          "class_base": 2.0,
+          "ground_truth_mult": 1.5,
+          "size_factor": 1.932
+         },
+         "pg": null,
+         "freq": null,
+         "note": "Automatisms with preserved responsiveness non-dominant (right) in 62% (single-lobe-resection cohort) - lower than the review figure.",
+         "value": 62
         }
        ],
-       "n_studies": 1,
+       "n_studies": 2,
        "n_qualitative": 0,
-       "pooled": 100.0,
-       "low": 100,
+       "pooled": 67.6,
+       "low": 62,
        "high": 100,
-       "spread": 0,
-       "wsd": 0.0,
-       "total_weight": 1.0,
-       "certainty": "single_source"
+       "spread": 38,
+       "wsd": 13.5,
+       "total_weight": 6.79,
+       "certainty": "well_supported"
       }
      ]
     },
@@ -355,10 +372,44 @@
          "freq": "2% of EMU pts",
          "note": "Non-dominant (right) in 81% (14/16 right-lateralized).",
          "value": 81
+        },
+        {
+         "study": "Roh 1996",
+         "cite": "Roh et al. 1996",
+         "eclass": "II",
+         "ground_truth": "video_eeg",
+         "n": 19,
+         "weight": 3.935,
+         "weight_parts": {
+          "class_base": 2.0,
+          "ground_truth_mult": 1.2,
+          "size_factor": 1.639
+         },
+         "pg": null,
+         "freq": null,
+         "note": "Ictal vomiting seen in right (non-dominant) TLE.",
+         "qualitative": "nondominant"
+        },
+        {
+         "study": "Blair 2012",
+         "cite": "Blair 2012",
+         "eclass": "III",
+         "ground_truth": "review",
+         "n": null,
+         "weight": 1.0,
+         "weight_parts": {
+          "class_base": 1.0,
+          "ground_truth_mult": 1.0,
+          "size_factor": 1.0
+         },
+         "pg": null,
+         "freq": null,
+         "note": "Epigastric sensation with ictal vomiting strongly associated with non-dominant (right) temporal onset.",
+         "qualitative": "nondominant"
         }
        ],
        "n_studies": 1,
-       "n_qualitative": 0,
+       "n_qualitative": 2,
        "pooled": 81.0,
        "low": 81,
        "high": 81,
@@ -381,7 +432,7 @@
        "ba": "BA 28 (non-dominant)",
        "metric": "lateralization",
        "direction": "nondominant",
-       "contested": "Lateralization is genuinely contested: Loddenkemper's review reports non-dominant (right) in 75%, whereas several primary TLE series (e.g. Kellinghaus) find ictal spitting more often in the language-DOMINANT (left) hemisphere - which is why this atlas's curated card localizes it dominant. Surfaced as conflicting evidence rather than forced to one side.",
+       "contested": "Lateralization disputed: Loddenkemper reports non-dominant (right) in 75%; several TLE series (Kellinghaus) find it more often in the language-dominant (left) hemisphere, as this atlas's curated card reflects.",
        "contributions": [
         {
          "study": "Loddenkemper 2005",
@@ -443,17 +494,51 @@
          "freq": "53.2% of TLE",
          "note": "Wiping hand ipsilateral to the EZ in 92%.",
          "value": 92
+        },
+        {
+         "study": "Elwan 2018",
+         "cite": "Elwan et al. 2018",
+         "eclass": "II",
+         "ground_truth": "postop",
+         "n": 73,
+         "weight": 5.795,
+         "weight_parts": {
+          "class_base": 2.0,
+          "ground_truth_mult": 1.5,
+          "size_factor": 1.932
+         },
+         "pg": null,
+         "freq": null,
+         "note": "Postictal nose-wiping ipsilateral in 62% (single-lobe-resection cohort) - lower than the review figure.",
+         "value": 62
+        },
+        {
+         "study": "Foldvary-Schaefer 2011",
+         "cite": "Foldvary-Schaefer & Unnwongse 2011",
+         "eclass": "III",
+         "ground_truth": "review",
+         "n": null,
+         "weight": 1.0,
+         "weight_parts": {
+          "class_base": 1.0,
+          "ground_truth_mult": 1.0,
+          "size_factor": 1.0
+         },
+         "pg": null,
+         "freq": null,
+         "note": "Nose-wiping performed with the hand ipsilateral to the seizure focus.",
+         "qualitative": "ipsi"
         }
        ],
-       "n_studies": 1,
-       "n_qualitative": 0,
-       "pooled": 92.0,
-       "low": 92,
+       "n_studies": 2,
+       "n_qualitative": 1,
+       "pooled": 66.4,
+       "low": 62,
        "high": 92,
-       "spread": 0,
-       "wsd": 0.0,
-       "total_weight": 1.0,
-       "certainty": "single_source"
+       "spread": 30,
+       "wsd": 10.6,
+       "total_weight": 6.79,
+       "certainty": "well_supported"
       }
      ]
     },
@@ -992,19 +1077,70 @@
          },
          "pg": null,
          "freq": "0.6% of EMU pts",
-         "note": "Postictal paresis contralateral to the EZ in 93% (traces to Kellinghaus; Kinney 2019 re-quotes the same 93%, not counted twice).",
+         "note": "Postictal (Todd's) paresis contralateral to the EZ in 93% of 44 patients.",
          "value": 93
+        },
+        {
+         "study": "Kinney 2019",
+         "cite": "Kinney, Kovac & Diehl 2019",
+         "eclass": "III",
+         "ground_truth": "review",
+         "n": null,
+         "weight": 1.0,
+         "weight_parts": {
+          "class_base": 1.0,
+          "ground_truth_mult": 1.0,
+          "size_factor": 1.0
+         },
+         "pg": null,
+         "freq": null,
+         "note": "Todd's paresis contralateral in 93% (Kellinghaus series).",
+         "value": 93
+        },
+        {
+         "study": "Marashly 2015",
+         "cite": "Marashly et al. 2015",
+         "eclass": "II",
+         "ground_truth": "imaging_concordance",
+         "n": null,
+         "weight": 2.3,
+         "weight_parts": {
+          "class_base": 2.0,
+          "ground_truth_mult": 1.15,
+          "size_factor": 1.0
+         },
+         "pg": null,
+         "freq": null,
+         "note": "Todd's paralysis almost 100% contralateral; a reliable localizing/lateralizing motor sign.",
+         "qualitative": "contra"
+        },
+        {
+         "study": "Foldvary-Schaefer 2011",
+         "cite": "Foldvary-Schaefer & Unnwongse 2011",
+         "eclass": "III",
+         "ground_truth": "review",
+         "n": null,
+         "weight": 1.0,
+         "weight_parts": {
+          "class_base": 1.0,
+          "ground_truth_mult": 1.0,
+          "size_factor": 1.0
+         },
+         "pg": null,
+         "freq": null,
+         "note": "Postictal limb paresis (Todd's) contralateral; reported in 0.5-13% of focal seizures.",
+         "qualitative": "contra"
         }
        ],
-       "n_studies": 1,
-       "n_qualitative": 0,
+       "n_studies": 2,
+       "n_qualitative": 2,
        "pooled": 93.0,
        "low": 93,
        "high": 93,
        "spread": 0,
        "wsd": 0.0,
-       "total_weight": 1.0,
-       "certainty": "single_source"
+       "total_weight": 2.0,
+       "certainty": "moderate"
       }
      ]
     },
@@ -1129,19 +1265,53 @@
          },
          "pg": null,
          "freq": "6.1% of pts",
-         "note": "Unilateral sensory aura contralateral in 89% (Kinney 2019 re-quotes this same figure, so it is not counted twice).",
+         "note": "Unilateral sensory aura contralateral in 89%.",
          "value": 89
+        },
+        {
+         "study": "Kinney 2019",
+         "cite": "Kinney, Kovac & Diehl 2019",
+         "eclass": "III",
+         "ground_truth": "review",
+         "n": null,
+         "weight": 1.0,
+         "weight_parts": {
+          "class_base": 1.0,
+          "ground_truth_mult": 1.0,
+          "size_factor": 1.0
+         },
+         "pg": null,
+         "freq": "<10% of LTM",
+         "note": "Unilateral somatosensory aura contralateral in 89% of seizures.",
+         "value": 89
+        },
+        {
+         "study": "Hwang 2019",
+         "cite": "Hwang et al. 2019",
+         "eclass": "III",
+         "ground_truth": "review",
+         "n": null,
+         "weight": 1.0,
+         "weight_parts": {
+          "class_base": 1.0,
+          "ground_truth_mult": 1.0,
+          "size_factor": 1.0
+         },
+         "pg": null,
+         "freq": null,
+         "note": "Painful somatosensory seizures typically contralateral, localizing to the parietal operculum / insula.",
+         "qualitative": "contra"
         }
        ],
-       "n_studies": 1,
-       "n_qualitative": 0,
+       "n_studies": 2,
+       "n_qualitative": 1,
        "pooled": 89.0,
        "low": 89,
        "high": 89,
        "spread": 0,
        "wsd": 0.0,
-       "total_weight": 1.0,
-       "certainty": "single_source"
+       "total_weight": 2.0,
+       "certainty": "moderate"
       }
      ]
     }
@@ -1178,19 +1348,36 @@
          },
          "pg": null,
          "freq": "28.6% of OLE",
-         "note": "Contralateral hemifield in 100%.",
+         "note": "Contralateral hemifield in 100% (12/42 patients with lateralized visual aura).",
+         "value": 100
+        },
+        {
+         "study": "Kinney 2019",
+         "cite": "Kinney, Kovac & Diehl 2019",
+         "eclass": "III",
+         "ground_truth": "review",
+         "n": null,
+         "weight": 1.0,
+         "weight_parts": {
+          "class_base": 1.0,
+          "ground_truth_mult": 1.0,
+          "size_factor": 1.0
+         },
+         "pg": null,
+         "freq": ">70%",
+         "note": "Ictal homonymous hemianopia / lateralized visual aura contralateral with 100% predictive value (Salanova series).",
          "value": 100
         }
        ],
-       "n_studies": 1,
+       "n_studies": 2,
        "n_qualitative": 0,
        "pooled": 100.0,
        "low": 100,
        "high": 100,
        "spread": 0,
        "wsd": 0.0,
-       "total_weight": 1.0,
-       "certainty": "single_source"
+       "total_weight": 2.0,
+       "certainty": "moderate"
       }
      ]
     }
@@ -1379,17 +1566,34 @@
      "freq": "5.7% of TLE",
      "note": "Non-dominant in ~100% (one exception, Janszky).",
      "value": 100
+    },
+    {
+     "study": "Elwan 2018",
+     "cite": "Elwan et al. 2018",
+     "eclass": "II",
+     "ground_truth": "postop",
+     "n": 73,
+     "weight": 5.795,
+     "weight_parts": {
+      "class_base": 2.0,
+      "ground_truth_mult": 1.5,
+      "size_factor": 1.932
+     },
+     "pg": null,
+     "freq": null,
+     "note": "Automatisms with preserved responsiveness non-dominant (right) in 62% (single-lobe-resection cohort) - lower than the review figure.",
+     "value": 62
     }
    ],
-   "n_studies": 1,
+   "n_studies": 2,
    "n_qualitative": 0,
-   "pooled": 100.0,
-   "low": 100,
+   "pooled": 67.6,
+   "low": 62,
    "high": 100,
-   "spread": 0,
-   "wsd": 0.0,
-   "total_weight": 1.0,
-   "certainty": "single_source"
+   "spread": 38,
+   "wsd": 13.5,
+   "total_weight": 6.79,
+   "certainty": "well_supported"
   },
   {
    "sign": "Figure-of-4 (extended arm)",
@@ -1610,19 +1814,36 @@
      },
      "pg": null,
      "freq": "28.6% of OLE",
-     "note": "Contralateral hemifield in 100%.",
+     "note": "Contralateral hemifield in 100% (12/42 patients with lateralized visual aura).",
+     "value": 100
+    },
+    {
+     "study": "Kinney 2019",
+     "cite": "Kinney, Kovac & Diehl 2019",
+     "eclass": "III",
+     "ground_truth": "review",
+     "n": null,
+     "weight": 1.0,
+     "weight_parts": {
+      "class_base": 1.0,
+      "ground_truth_mult": 1.0,
+      "size_factor": 1.0
+     },
+     "pg": null,
+     "freq": ">70%",
+     "note": "Ictal homonymous hemianopia / lateralized visual aura contralateral with 100% predictive value (Salanova series).",
      "value": 100
     }
    ],
-   "n_studies": 1,
+   "n_studies": 2,
    "n_qualitative": 0,
    "pooled": 100.0,
    "low": 100,
    "high": 100,
    "spread": 0,
    "wsd": 0.0,
-   "total_weight": 1.0,
-   "certainty": "single_source"
+   "total_weight": 2.0,
+   "certainty": "moderate"
   },
   {
    "sign": "Ictal dysphasia / aphasia",
@@ -1725,7 +1946,7 @@
    "ba": "BA 28 (non-dominant)",
    "metric": "lateralization",
    "direction": "nondominant",
-   "contested": "Lateralization is genuinely contested: Loddenkemper's review reports non-dominant (right) in 75%, whereas several primary TLE series (e.g. Kellinghaus) find ictal spitting more often in the language-DOMINANT (left) hemisphere - which is why this atlas's curated card localizes it dominant. Surfaced as conflicting evidence rather than forced to one side.",
+   "contested": "Lateralization disputed: Loddenkemper reports non-dominant (right) in 75%; several TLE series (Kellinghaus) find it more often in the language-dominant (left) hemisphere, as this atlas's curated card reflects.",
    "contributions": [
     {
      "study": "Loddenkemper 2005",
@@ -1781,10 +2002,44 @@
      "freq": "2% of EMU pts",
      "note": "Non-dominant (right) in 81% (14/16 right-lateralized).",
      "value": 81
+    },
+    {
+     "study": "Roh 1996",
+     "cite": "Roh et al. 1996",
+     "eclass": "II",
+     "ground_truth": "video_eeg",
+     "n": 19,
+     "weight": 3.935,
+     "weight_parts": {
+      "class_base": 2.0,
+      "ground_truth_mult": 1.2,
+      "size_factor": 1.639
+     },
+     "pg": null,
+     "freq": null,
+     "note": "Ictal vomiting seen in right (non-dominant) TLE.",
+     "qualitative": "nondominant"
+    },
+    {
+     "study": "Blair 2012",
+     "cite": "Blair 2012",
+     "eclass": "III",
+     "ground_truth": "review",
+     "n": null,
+     "weight": 1.0,
+     "weight_parts": {
+      "class_base": 1.0,
+      "ground_truth_mult": 1.0,
+      "size_factor": 1.0
+     },
+     "pg": null,
+     "freq": null,
+     "note": "Epigastric sensation with ictal vomiting strongly associated with non-dominant (right) temporal onset.",
+     "qualitative": "nondominant"
     }
    ],
    "n_studies": 1,
-   "n_qualitative": 0,
+   "n_qualitative": 2,
    "pooled": 81.0,
    "low": 81,
    "high": 81,
@@ -1855,19 +2110,70 @@
      },
      "pg": null,
      "freq": "0.6% of EMU pts",
-     "note": "Postictal paresis contralateral to the EZ in 93% (traces to Kellinghaus; Kinney 2019 re-quotes the same 93%, not counted twice).",
+     "note": "Postictal (Todd's) paresis contralateral to the EZ in 93% of 44 patients.",
      "value": 93
+    },
+    {
+     "study": "Kinney 2019",
+     "cite": "Kinney, Kovac & Diehl 2019",
+     "eclass": "III",
+     "ground_truth": "review",
+     "n": null,
+     "weight": 1.0,
+     "weight_parts": {
+      "class_base": 1.0,
+      "ground_truth_mult": 1.0,
+      "size_factor": 1.0
+     },
+     "pg": null,
+     "freq": null,
+     "note": "Todd's paresis contralateral in 93% (Kellinghaus series).",
+     "value": 93
+    },
+    {
+     "study": "Marashly 2015",
+     "cite": "Marashly et al. 2015",
+     "eclass": "II",
+     "ground_truth": "imaging_concordance",
+     "n": null,
+     "weight": 2.3,
+     "weight_parts": {
+      "class_base": 2.0,
+      "ground_truth_mult": 1.15,
+      "size_factor": 1.0
+     },
+     "pg": null,
+     "freq": null,
+     "note": "Todd's paralysis almost 100% contralateral; a reliable localizing/lateralizing motor sign.",
+     "qualitative": "contra"
+    },
+    {
+     "study": "Foldvary-Schaefer 2011",
+     "cite": "Foldvary-Schaefer & Unnwongse 2011",
+     "eclass": "III",
+     "ground_truth": "review",
+     "n": null,
+     "weight": 1.0,
+     "weight_parts": {
+      "class_base": 1.0,
+      "ground_truth_mult": 1.0,
+      "size_factor": 1.0
+     },
+     "pg": null,
+     "freq": null,
+     "note": "Postictal limb paresis (Todd's) contralateral; reported in 0.5-13% of focal seizures.",
+     "qualitative": "contra"
     }
    ],
-   "n_studies": 1,
-   "n_qualitative": 0,
+   "n_studies": 2,
+   "n_qualitative": 2,
    "pooled": 93.0,
    "low": 93,
    "high": 93,
    "spread": 0,
    "wsd": 0.0,
-   "total_weight": 1.0,
-   "certainty": "single_source"
+   "total_weight": 2.0,
+   "certainty": "moderate"
   },
   {
    "sign": "Postictal dysphasia / aphasia",
@@ -2001,17 +2307,51 @@
      "freq": "53.2% of TLE",
      "note": "Wiping hand ipsilateral to the EZ in 92%.",
      "value": 92
+    },
+    {
+     "study": "Elwan 2018",
+     "cite": "Elwan et al. 2018",
+     "eclass": "II",
+     "ground_truth": "postop",
+     "n": 73,
+     "weight": 5.795,
+     "weight_parts": {
+      "class_base": 2.0,
+      "ground_truth_mult": 1.5,
+      "size_factor": 1.932
+     },
+     "pg": null,
+     "freq": null,
+     "note": "Postictal nose-wiping ipsilateral in 62% (single-lobe-resection cohort) - lower than the review figure.",
+     "value": 62
+    },
+    {
+     "study": "Foldvary-Schaefer 2011",
+     "cite": "Foldvary-Schaefer & Unnwongse 2011",
+     "eclass": "III",
+     "ground_truth": "review",
+     "n": null,
+     "weight": 1.0,
+     "weight_parts": {
+      "class_base": 1.0,
+      "ground_truth_mult": 1.0,
+      "size_factor": 1.0
+     },
+     "pg": null,
+     "freq": null,
+     "note": "Nose-wiping performed with the hand ipsilateral to the seizure focus.",
+     "qualitative": "ipsi"
     }
    ],
-   "n_studies": 1,
-   "n_qualitative": 0,
-   "pooled": 92.0,
-   "low": 92,
+   "n_studies": 2,
+   "n_qualitative": 1,
+   "pooled": 66.4,
+   "low": 62,
    "high": 92,
-   "spread": 0,
-   "wsd": 0.0,
-   "total_weight": 1.0,
-   "certainty": "single_source"
+   "spread": 30,
+   "wsd": 10.6,
+   "total_weight": 6.79,
+   "certainty": "well_supported"
   },
   {
    "sign": "Preserved / identifiable ictal speech",
@@ -2380,19 +2720,53 @@
      },
      "pg": null,
      "freq": "6.1% of pts",
-     "note": "Unilateral sensory aura contralateral in 89% (Kinney 2019 re-quotes this same figure, so it is not counted twice).",
+     "note": "Unilateral sensory aura contralateral in 89%.",
      "value": 89
+    },
+    {
+     "study": "Kinney 2019",
+     "cite": "Kinney, Kovac & Diehl 2019",
+     "eclass": "III",
+     "ground_truth": "review",
+     "n": null,
+     "weight": 1.0,
+     "weight_parts": {
+      "class_base": 1.0,
+      "ground_truth_mult": 1.0,
+      "size_factor": 1.0
+     },
+     "pg": null,
+     "freq": "<10% of LTM",
+     "note": "Unilateral somatosensory aura contralateral in 89% of seizures.",
+     "value": 89
+    },
+    {
+     "study": "Hwang 2019",
+     "cite": "Hwang et al. 2019",
+     "eclass": "III",
+     "ground_truth": "review",
+     "n": null,
+     "weight": 1.0,
+     "weight_parts": {
+      "class_base": 1.0,
+      "ground_truth_mult": 1.0,
+      "size_factor": 1.0
+     },
+     "pg": null,
+     "freq": null,
+     "note": "Painful somatosensory seizures typically contralateral, localizing to the parietal operculum / insula.",
+     "qualitative": "contra"
     }
    ],
-   "n_studies": 1,
-   "n_qualitative": 0,
+   "n_studies": 2,
+   "n_qualitative": 1,
    "pooled": 89.0,
    "low": 89,
    "high": 89,
    "spread": 0,
    "wsd": 0.0,
-   "total_weight": 1.0,
-   "certainty": "single_source"
+   "total_weight": 2.0,
+   "certainty": "moderate"
   }
  ]
 }

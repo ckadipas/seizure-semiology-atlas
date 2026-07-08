@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-"""Deterministic weighted meta-analysis engine (the "statistical agent", run as CI).
+"""Deterministic weighted meta-analysis engine (run in CI).
 
 Reads enrichment/observations.json (structured, source-traceable records), applies
 the transparent weighting scheme declared in that file, pools the lateralization
 percentage for each semiology across its contributing studies, and writes
 enrichment/meta_analysis.json for the generator to render.
 
-Design principles the resource demands:
-  * ROBUST + REPRODUCIBLE  - all arithmetic is deterministic Python, not an LLM
-    guessing numbers at build time. Re-running always yields the same output.
+Design principles:
+  * ROBUST + REPRODUCIBLE  - all arithmetic is deterministic; re-running always
+    yields the same output.
   * TRACEABLE              - every pooled figure carries the exact per-study values
     and the weight each contributed, so you can see where and how it was derived.
   * TUNABLE               - the weighting scheme lives in observations.json; change

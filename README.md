@@ -116,15 +116,13 @@ Kotagal 2005 (Table 1)** — how often each classic sign points to the correct
 *side*. It answers *which hemisphere, and how reliably*, a claim the primary
 literature supports.
 
-**Alim-Marvasti 2022 ("Probabilistic landscape") was deliberately removed and
-should not be re-added as an evidence source.** Its literature-mined taxonomy
-produces semiotically incoherent categories (e.g. "whole-body / other
-automatisms" bundling blinking, cough, gelastic, dacrystic, nose-wiping) paired
-with sparse localization cells, yielding large but artifactual odds ratios (the
-~OR 14 to hypothalamus is a few gelastic/hamartoma cases). Big *N* does not fix
-bad labels, and leading a teaching resource with that plot mis-educates. A future
-quantitative layer, if wanted, should come from SEEG-anchored primary series with
-disciplined sign definitions and explicit ground truth.
+**Literature-mined meta-analyses are not used as an evidence source.** A large
+sample size does not fix bad labels: when phenomenologically unrelated signs are
+bundled into one category and paired with sparse localization cells, the
+resulting odds ratios can be large but artifactual. Quantitative figures here
+come from primary series with disciplined sign definitions and an explicit ground
+truth (SEEG, postoperative seizure-freedom, or imaging/neurophysiology
+concordance).
 
 **Preserved teaching threads:** the French anatomo-electro-clinical / network
 framework (semiology as a dynamic network trajectory; the *order* of signs often
