@@ -248,9 +248,10 @@ def build_meta(meta, flags):
             g.append(f'<rect x="{X(lo):.1f}" y="{y-3}" width="{X(hi)-X(lo):.1f}" height="6" rx="3" fill="{col}" fill-opacity="0.28"/>')
             for v in (lo, hi):
                 g.append(f'<line x1="{X(v):.1f}" y1="{y-4}" x2="{X(v):.1f}" y2="{y+4}" stroke="{col}" stroke-width="1" stroke-opacity="0.55"/>')
-        # pooled marker
+        # pooled marker (native hover tooltip via <title>)
         r = 3.2 + certpips.get(s.get("certainty"),1)*0.7
-        g.append(f'<circle cx="{X(pooled):.1f}" cy="{y}" r="{r:.1f}" fill="{col}" stroke="#fff" stroke-width="1.4"/>')
+        tip = f'{s["sign"]} — pooled {pooled:g}% {s["direction"]}; range {lo:g}-{hi:g}%; {s["n_studies"]} stud{"y" if s["n_studies"]==1 else "ies"}'
+        g.append(f'<circle cx="{X(pooled):.1f}" cy="{y}" r="{r:.1f}" fill="{col}" stroke="#fff" stroke-width="1.4"><title>{esc(tip)}</title></circle>')
         g.append('</svg>')
         return "".join(g)
 
@@ -307,8 +308,9 @@ def build_meta(meta, flags):
                     f'&middot; {nsent} stud{"y" if nsent==1 else "ies"} &middot; {certname.get(s.get("certainty"),"?")}')
         else:
             summ = f'direction-only ({nsent} qualitative source{"s" if nsent!=1 else ""}); no comparable percentage to pool'
+        sortp = s["pooled"] if s.get("pooled") is not None else -1
         return (
-        f'<div class="msign" data-dir="{s["direction"]}">'
+        f'<div class="msign" data-dir="{s["direction"]}" data-pooled="{sortp:g}" data-cert="{pips}" data-name="{esc(s["sign"].lower())}">'
         f'<button class="msign-head" aria-expanded="false" data-tgt="{rid}">'
         f'<span class="mchev">&#8250;</span>'
         f'<span class="mdir" style="color:{col};background:{bg};border-color:{col}">{dirlabel.get(s["direction"],"?")}</span>'
@@ -366,6 +368,14 @@ def build_meta(meta, flags):
   <div class="meta-tabs">
     <button class="mtab on" data-view="region">By region &rarr; gyrus (Brodmann) &rarr; sign</button>
     <button class="mtab" data-view="sign">By semiology (A&ndash;Z) &rarr; region</button>
+    <label class="msort" hidden><span>sort</span>
+      <select id="meta-sort">
+        <option value="name">A&ndash;Z</option>
+        <option value="pooled">reliability &darr;</option>
+        <option value="cert">certainty &darr;</option>
+        <option value="dir">direction</option>
+      </select>
+    </label>
     <span class="meta-axis"><span class="ma-lab">reliability</span><span class="ma-scale"><i>50%</i><i>75%</i><i>100%</i></span></span>
   </div>
   <div class="meta-legend">
@@ -576,6 +586,9 @@ body.quiz .lib-chip{display:none}
 .mtab{border:1px solid var(--line);background:#fff;color:var(--navy);border-radius:20px;padding:6px 13px;font-size:.76rem;font-weight:700;cursor:pointer;transition:all .12s}
 .mtab:hover{border-color:var(--teal);color:var(--teal-d)}
 .mtab.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.msort{display:inline-flex;align-items:center;gap:5px;font-size:.64rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:#8a93a5}
+.msort select{border:1px solid var(--line);border-radius:6px;padding:4px 7px;font-size:.74rem;font-weight:700;color:var(--navy);background:#fff;outline:none;cursor:pointer}
+.msort select:focus{border-color:var(--teal)}
 .meta-axis{margin-left:auto;display:flex;align-items:center;gap:7px;font-size:.62rem;color:#9aa3b2}
 .meta-axis .ma-lab{text-transform:uppercase;letter-spacing:.06em;font-weight:800}
 .ma-scale{position:relative;width:208px;display:flex;justify-content:space-between}
@@ -908,17 +921,34 @@ function mClose(row){const d=row.querySelector('.mdetail');row.classList.remove(
 document.querySelectorAll('.msign-head').forEach(h=>{
   h.addEventListener('click',()=>{const r=h.closest('.msign');r.classList.contains('open')?mClose(r):mOpen(r);});
 });
+const mSortWrap=document.querySelector('.msort');
 document.querySelectorAll('.mtab').forEach(tab=>{
   tab.addEventListener('click',()=>{
     const v=tab.dataset.view;
     document.querySelectorAll('.mtab').forEach(t=>t.classList.toggle('on',t===tab));
     document.getElementById('meta-view-region').hidden=(v!=='region');
     document.getElementById('meta-view-sign').hidden=(v!=='sign');
-    // recompute heights of any open rows now that their view is visible
+    if(mSortWrap) mSortWrap.hidden=(v!=='sign');   // sorting only makes sense in the flat A–Z view
     document.querySelectorAll('.meta-view:not([hidden]) .msign.open').forEach(r=>{
       const d=r.querySelector('.mdetail');d.style.maxHeight=d.scrollHeight+'px';});
   });
 });
+const mSort=document.getElementById('meta-sort');
+const dirRank={contra:0,ipsi:1,dominant:2,nondominant:3};
+if(mSort){
+  mSort.addEventListener('change',()=>{
+    const view=document.getElementById('meta-view-sign');
+    const rows=Array.from(view.querySelectorAll('.msign'));
+    const k=mSort.value;
+    rows.sort((a,b)=>{
+      if(k==='pooled') return (+b.dataset.pooled)-(+a.dataset.pooled);
+      if(k==='cert')   return (+b.dataset.cert)-(+a.dataset.cert) || a.dataset.name.localeCompare(b.dataset.name);
+      if(k==='dir')    return (dirRank[a.dataset.dir]-dirRank[b.dataset.dir]) || a.dataset.name.localeCompare(b.dataset.name);
+      return a.dataset.name.localeCompare(b.dataset.name);
+    });
+    rows.forEach(r=>view.appendChild(r));
+  });
+}
 
 filterAll();
 """
