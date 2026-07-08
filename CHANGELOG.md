@@ -13,6 +13,10 @@ Format loosely follows Keep a Changelog; dates are ISO-8601.
   evidence — version-accompanied head deviation is contralateral, whereas
   non-versive head rotation tends to be ipsilateral.
 - Footer "Contribute a paper or correction" link to the GitHub issue chooser.
+- Late forced head version: added Wyllie et al. 1986 (Neurology) — the
+  foundational series establishing versive (forced, sustained) head/eye
+  deviation as reliably contralateral and non-versive turning as
+  non-localizing. Added to the source library (from intake issue #7).
 ### Changed
 - Front-page declutter: trimmed the intro to a single instruction line, removed
   the header stat badges and decorative emoji, and collapsed the
