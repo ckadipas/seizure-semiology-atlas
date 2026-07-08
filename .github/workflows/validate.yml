@@ -31,8 +31,11 @@ jobs:
           git diff --exit-code enrichment/enrichment.json \
             || (echo "::error::enrichment.json is out of sync. Run 'make build' and commit the result." && exit 1)
 
+      - name: Check intake provenance (every AI-added finding is page-cited)
+        run: python3 tools/check_provenance.py
+
       - name: Build must succeed
         run: python3 generator/gen_study.py
 
       - name: Summarize
-        run: echo "✅ Dataset valid, enrichment in sync, HTML builds."
+        run: echo "✅ Dataset valid, enrichment in sync, provenance OK, HTML builds."

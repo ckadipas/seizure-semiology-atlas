@@ -13,6 +13,13 @@ Format loosely follows Keep a Changelog; dates are ISO-8601.
   evidence — version-accompanied head deviation is contralateral, whereas
   non-versive head rotation tends to be ipsilateral.
 - Footer "Contribute a paper or correction" link to the GitHub issue chooser.
+- Automated paper-intake pipeline (`.github/workflows/intake.yml`): a PDF attached
+  to an `intake` issue is read by **Claude Code** (`anthropics/claude-code-action`,
+  authenticated with a `CLAUDE_CODE_OAUTH_TOKEN` from your Claude subscription — no
+  separate API key), which writes short, **page-cited** findings and opens a PR for
+  owner approval. Machine-added evidence lives in `enrichment/intake_findings.json`;
+  `tools/check_provenance.py` gates every finding on a source page. Evidence entries
+  can now carry a `pg` page reference, shown on the sign's evidence panel.
 - Late forced head version: added Wyllie et al. 1986 (Neurology) — the
   foundational series establishing versive (forced, sustained) head/eye
   deviation as reliably contralateral and non-versive turning as

@@ -11,8 +11,11 @@ ROOT = _find_root(__file__)
 # ---------------- CORPUS EVIDENCE (match substring in sign name -> list of findings) ----------------
 # Each finding: p=paper label, f=finding text (source-grounded), y=year
 E = {}
-def add(key, p, f):
-    E.setdefault(key, []).append({"p":p,"f":f})
+def add(key, p, f, pg=None):
+    item = {"p": p, "f": f}
+    if pg:
+        item["pg"] = pg          # source page reference (provenance) when known
+    E.setdefault(key, []).append(item)
 
 add("epigastric","Foldvary-Schaefer 2011","Abdominal auras associated with TLE in 74%; rising to 98% when the seizure evolves into an automotor component.")
 
@@ -162,6 +165,24 @@ LATERAL = [
  {"sign":"Ictal vomiting","dir":"nondominant","pct":81,"freq":"2% of EMU pts"},
  {"sign":"Ictal spitting","dir":"nondominant","pct":75,"freq":"0.3% of EMU pts"},
 ]
+
+# ---------------- MACHINE-INTEGRATED INTAKE (CI-appended, page-cited) ----------------
+# tools/intake_ci.py appends AI-extracted, page-referenced findings to
+# intake_findings.json from the automated PDF-intake workflow. Kept separate from
+# the hand-authored evidence above so provenance stays auditable;
+# tools/check_provenance.py gates every entry (each must carry a source page).
+_intake_path = os.path.join(ROOT, "enrichment", "intake_findings.json")
+if os.path.exists(_intake_path):
+    with open(_intake_path) as _f:
+        _intake = json.load(_f)
+    _known = {p[0] for p in PAPERS}
+    for _pap in _intake.get("papers", []):
+        _cite = _pap.get("cite")
+        if _cite and _cite not in _known:
+            PAPERS.append((_cite, _pap.get("journal", ""), _pap.get("title", ""), _pap.get("contribution", "")))
+            _known.add(_cite)
+    for _fnd in _intake.get("findings", []):
+        add(_fnd["sign_stem"], _fnd["paper"], _fnd["finding"], _fnd.get("pg"))
 
 out = {"evidence":E,"new_signs":NEW,"papers":PAPERS,"lateral":LATERAL}
 json.dump(out, open(os.path.join(ROOT,"enrichment","enrichment.json"),"w"), indent=1)

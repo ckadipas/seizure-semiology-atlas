@@ -1,0 +1,82 @@
+name: Paper intake (Claude Code → PR)
+
+# PRIMARY intake route, powered by your Claude subscription (no separate API key).
+# When a paper is submitted as an issue labelled "intake" with a PDF attached,
+# Claude Code reads the PDF and writes short, page-cited findings to
+# enrichment/intake_findings.json, then opens a PR the owner approves. Only the
+# derived findings are committed — the PDF / full text stays on the runner.
+#
+# One-time setup: run `claude setup-token` locally (Claude Pro/Max), then add the
+# printed token as a CLAUDE_CODE_OAUTH_TOKEN repository secret
+# (Settings → Secrets and variables → Actions).
+
+on:
+  issues:
+    types: [opened, labeled]
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: Issue number to (re)process
+        required: true
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: intake-${{ github.event.issue.number || github.event.inputs.issue_number }}
+  cancel-in-progress: false
+
+jobs:
+  intake:
+    # Only run for the intake label (or a manual dispatch).
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.issue.labels.*.name, 'intake')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Resolve the target issue
+        id: ctx
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const num = context.eventName === 'workflow_dispatch'
+              ? Number(context.payload.inputs.issue_number)
+              : context.payload.issue.number;
+            const { data: issue } = await github.rest.issues.get({
+              owner: context.repo.owner, repo: context.repo.repo, issue_number: num });
+            core.setOutput('number', String(num));
+            core.setOutput('title', issue.title || '');
+            core.setOutput('body', issue.body || '');
+
+      - name: Extract page-cited findings and open a PR
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: '--max-turns 30 --allowedTools "Read,Edit,Write,Bash(git:*),Bash(gh:*),Bash(curl:*),Bash(python3:*)"'
+          prompt: |
+            You are integrating a paper into a source-grounded, educational epilepsy-semiology atlas.
+
+            Intake issue #${{ steps.ctx.outputs.number }}
+            Title: ${{ steps.ctx.outputs.title }}
+            Body:
+            ${{ steps.ctx.outputs.body }}
+
+            Do this:
+            1. Find the PDF attachment URL in the issue body (a https://github.com/user-attachments/... link ending in .pdf). If there is none, comment on the issue asking for a PDF or a DOI, and stop.
+            2. Download it: `curl -L -o /tmp/paper.pdf "<url>"`, then Read /tmp/paper.pdf.
+            3. Read enrichment/intake_findings.json (the schema + existing machine findings), data/semiology_data.json (the sign names), and enrichment/enrichment.json (the "papers" list, so you don't duplicate a paper).
+            4. Extract ONLY short, attributed, PAGE-CITED findings that bear on LOCALIZING or LATERALIZING semiology. For each finding: a one- or two-sentence paraphrase in your own words (never a long verbatim quote), including the reported figure/percentage/N; a "pg" source page (e.g. "p.608" or "pp.606-611"); and a "sign_stem" that is a lowercase substring of an existing sign name. Add any paper not already in the library under "papers" (cite, journal, title, contribution). Follow any specific instructions in the issue body (e.g. "check whether it discusses X"). Never fabricate a figure; omit anything the paper does not support. Prefer disciplined primary series; treat literature-mined meta-analyses skeptically.
+            5. Append your findings to enrichment/intake_findings.json, keeping it valid JSON.
+            6. Run and make all pass, fixing your JSON as needed:
+               `python3 enrichment/build_enrichment.py && python3 tools/check_provenance.py && python3 tools/validate_data.py && python3 generator/gen_study.py`
+            7. IMPORTANT — the IP boundary: do NOT commit the PDF or any full/long text. Stage ONLY enrichment/intake_findings.json and enrichment/enrichment.json.
+            8. Commit to a new branch `intake/issue-${{ steps.ctx.outputs.number }}` and open a PR (the `Closes #N` auto-closes the issue when it merges):
+               `gh pr create --base main --head intake/issue-${{ steps.ctx.outputs.number }} --title "[intake] Findings from issue #${{ steps.ctx.outputs.number }}" --body "Page-cited findings extracted from the attached PDF by Claude Code. Only short attributed extractions with their source pages were committed; the PDF/full text was not. Review each finding against its cited page, then merge. Closes #${{ steps.ctx.outputs.number }}"`
+            9. Leave a clean trail: post a short summary comment on the issue with
+               `gh issue comment ${{ steps.ctx.outputs.number }} --body "..."` — name the paper, how many findings you added, their source pages, and which sign(s) they attach to, and link the PR. If you added no findings (e.g. the paper has no usable localizing/lateralizing data, or it does not address what the submitter asked), say that and explain why instead of opening an empty PR.
