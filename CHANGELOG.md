@@ -21,12 +21,18 @@ Format loosely follows Keep a Changelog; dates are ISO-8601.
   verbatim quote. Ambiguous or aggregate PPV figures (asymmetric clonic *ending*, the
   M2e naming collision, multi-sign combinations, hemianopia) are deliberately left
   explorer-only rather than force-attached.
-- **Sensitivity/specificity honestly marked as estimates.** A full re-reading of every
-  paper against its source text established that the corpus reports essentially no
-  sensitivity/specificity figures for these signs (1 cited-literature value corpus-
-  wide). The card sens/spec values are therefore curator teaching estimates, and are
-  now tagged **est.** with a tooltip saying so — they are not, and never were, pooled
-  from the papers. They are kept for orientation, not presented as source data.
+- **Sensitivity is now computed from the master ledger.** Sensitivity of a sign for a
+  localization = `P(sign | localization)` — its frequency within that group — so the raw
+  data is the verified frequency-within-a-group findings. Eleven such findings across
+  nine signs are now tagged in the ledger (`sens_card_ids` + `sens_for`); the meta engine
+  computes per-(sign, localization) descriptive statistics and the card (tagged
+  **corpus**), a new **Descriptive statistics — sensitivity by localization** report
+  section, and the explorer all render the same numbers. Tag another finding and all
+  three update on the next build. A note states the method; coverage counts are shown.
+- **Specificity stays a marked estimate, honestly.** It needs the sign's rate in the
+  *other* localization groups, which the corpus reports for essentially no sign, so it is
+  not computed — card specificity is tagged **est.** with a tooltip, never fabricated.
+  Sensitivity on signs with no localization-conditioned frequency is likewise **est.**
 ### Verified
 - **Adversarial re-verification of the corpus against source text.** Every recorded
   finding was re-read against its paper: 485/489 confirmed (99.2%), 4 corrected, 0
@@ -73,9 +79,10 @@ Format loosely follows Keep a Changelog; dates are ISO-8601.
   disagree on a sign, a pooled direction that contradicts the curated card,
   duplicated figures, orphaned figures, single-source figures, a PPV figure linked
   to a non-existent card, a PPV direction that contradicts the card it is shown on,
-  and records that card sens/spec are teaching estimates →
-  `enrichment/review_flags.json`. CI regenerates and sync-checks the generated
-  JSON; `make review` reruns the analysis + review.
+  a sensitivity-tagged finding pointing at a missing card / naming no group / sitting
+  on a non-frequency figure, and records which signs have a computed sensitivity vs
+  an estimate → `enrichment/review_flags.json`. CI regenerates and sync-checks the
+  generated JSON; `make review` reruns the analysis + review.
 ### Fixed
 - Corrected a propagated misreading: Roh 1996 forced version was recorded as "89%
   contralateral"; the source shows version contralateral in 14/14 (100%) — the

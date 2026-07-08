@@ -19,8 +19,11 @@ evidence is added:
   * PPV_ORPHAN_LINK - a corpus PPV finding's card_ids point at a card that doesn't exist.
   * PPV_DIRECTION_CLASH - a directional PPV finding contradicts the latcode of the card
                       it is surfaced on (the card and the explorer would disagree).
-  * SENS_SPEC_ESTIMATE  - informational: cards' sensitivity/specificity are curator
-                      teaching estimates, not corpus-pooled (the corpus reports none).
+  * SENS_ORPHAN_LINK / SENS_NO_CONDITION / SENS_BAD_METRIC - a frequency finding tagged
+                      as sensitivity data links to a missing card, names no localization
+                      group, or is not a numeric frequency figure.
+  * SENS_SPEC_PROVENANCE - informational: which signs have a computed sensitivity vs a
+                      curator estimate, and that specificity is always an estimate.
 
 Emits enrichment/review_flags.json and prints a summary in CI. Advisory by default;
 pass --strict to exit non-zero when any CONFLICT / DIRECTION_CLASH / DUPLICATE /
@@ -82,28 +85,44 @@ def review():
     for p in corpus.get("papers", []):
         cite = (p.get("cite") or "?").split(".")[0][:40]
         for f in p.get("findings", []):
-            if f.get("metric") != "ppv":
-                continue
-            for cid in f.get("card_ids", []) or []:
-                card = by_id.get(cid)
-                if not card:
-                    flag("ppv_orphan_link", "high", f.get("phenomenon", "?"),
-                         f"PPV finding links to card #{cid}, which does not exist ({cite}).")
-                    continue
-                fdir, cdir = f.get("direction") or "", card.get("latcode")
-                if (cdir, fdir) in _dirclash:
-                    flag("ppv_direction_clash", "high", card["sign"],
-                         f"PPV finding direction '{fdir}' contradicts card #{cid} latcode "
-                         f"'{cdir}' ({cite}: {f.get('value_text','')}).")
+            if f.get("metric") == "ppv":
+                for cid in f.get("card_ids", []) or []:
+                    card = by_id.get(cid)
+                    if not card:
+                        flag("ppv_orphan_link", "high", f.get("phenomenon", "?"),
+                             f"PPV finding links to card #{cid}, which does not exist ({cite}).")
+                        continue
+                    fdir, cdir = f.get("direction") or "", card.get("latcode")
+                    if (cdir, fdir) in _dirclash:
+                        flag("ppv_direction_clash", "high", card["sign"],
+                             f"PPV finding direction '{fdir}' contradicts card #{cid} latcode "
+                             f"'{cdir}' ({cite}: {f.get('value_text','')}).")
+            # ---- SENSITIVITY tags: a frequency-within-a-group finding promoted to a
+            #      computed sensitivity must resolve to a card and name its group.
+            if f.get("sens_card_ids"):
+                if not f.get("sens_for"):
+                    flag("sens_no_condition", "high", f.get("phenomenon", "?"),
+                         f"finding is tagged as sensitivity data but names no localization group ({cite}).")
+                if f.get("metric") != "frequency_pct" or not isinstance(f.get("value"), (int, float)):
+                    flag("sens_bad_metric", "high", f.get("phenomenon", "?"),
+                         f"sensitivity tag must sit on a numeric frequency figure; this is "
+                         f"metric '{f.get('metric')}' value '{f.get('value')}' ({cite}).")
+                for cid in f["sens_card_ids"]:
+                    if cid not in by_id:
+                        flag("sens_orphan_link", "high", f.get("phenomenon", "?"),
+                             f"sensitivity finding links to card #{cid}, which does not exist ({cite}).")
 
-    # ---- Sensitivity/specificity provenance (informational, once): the corpus
-    #      reports essentially no sens/spec, so the card figures are curator teaching
-    #      estimates. Record it so the invariant is visible, not silently assumed.
-    corpus_ss = sum(1 for p in corpus.get("papers", [])
-                    for f in p.get("findings", []) if f.get("metric") in ("sensitivity", "specificity"))
-    flag("sens_spec_estimate", "info", "(all cards)",
-         f"sensitivity/specificity on cards are curator teaching estimates, not pooled: "
-         f"the source corpus contains {corpus_ss} sens/spec figure(s) total. Cards mark these 'est.'.")
+    # ---- Sensitivity/specificity provenance (informational, once). Sensitivity is now
+    #      computed as P(sign|localization) from tagged frequency findings; specificity
+    #      still cannot be (corpus lacks the false-positive side) and stays an estimate.
+    corpus_spec = sum(1 for p in corpus.get("papers", [])
+                      for f in p.get("findings", []) if f.get("metric") == "specificity")
+    sens_cards = {cid for p in corpus.get("papers", []) for f in p.get("findings", [])
+                  for cid in (f.get("sens_card_ids") or [])}
+    flag("sens_spec_provenance", "info", "(cards)",
+         f"sensitivity is computed as P(sign|localization) for {len(sens_cards)} sign(s) from tagged "
+         f"ledger frequencies (marked 'corpus'); the rest, and ALL specificity, remain curator "
+         f"estimates (marked 'est.') because the corpus reports {corpus_spec} specificity figure(s).")
 
     for s in meta["by_sign"]:
         contribs = s["contributions"]
@@ -196,7 +215,8 @@ def review():
 
     if "--strict" in sys.argv:
         blocking = [f for f in flags if f["kind"] in ("conflict", "direction_clash", "duplicate",
-                                                       "orphan_stem", "ppv_orphan_link", "ppv_direction_clash")]
+                                                       "orphan_stem", "ppv_orphan_link", "ppv_direction_clash",
+                                                       "sens_orphan_link", "sens_no_condition", "sens_bad_metric")]
         if blocking:
             print(f"\nSTRICT: {len(blocking)} blocking flag(s).")
             return 1

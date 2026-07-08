@@ -152,6 +152,35 @@ def ppv_block_for(cid):
     return ('<div class="d-row d-ev d-ppv"><span class="d-label">&#127919; Predictive value in the source corpus</span>'
             '<ul class="ev-list">'+"".join(items)+'</ul></div>')
 
+# ---- SINGLE SOURCE OF TRUTH (cont.): sensitivity = P(sign | localization), computed
+# by the meta engine from the ledger's tagged frequency-within-a-group findings and
+# read back here by card id, so the card, the descriptive-stats report, and the
+# explorer all show the same numbers.
+sens_by_cardid = (META.get("sensitivity", {}) or {}).get("by_card", {}) if META else {}
+
+def sens_block_for(cid):
+    blk = sens_by_cardid.get(str(cid))
+    if not blk:
+        return ""
+    items = []
+    for c in blk["conditions"]:
+        s0 = c["sources"][0]
+        kmeta = (f' <span class="ev-meta">(k={c["k"]}, mean of {c["k"]})</span>' if c["k"] > 1 else
+                 f' <span class="ev-meta">({esc(s0["cite"])})</span>')
+        rng = (f' <span class="ev-pop">range {c["low"]:g}&#8211;{c["high"]:g}%</span>' if c["k"] > 1 else "")
+        q = (f' <span class="ev-quote" title="'+esc(s0["quote"])+'">&ldquo;&hellip;&rdquo;</span>') if s0.get("quote") else ""
+        items.append(f'<li><strong>{c["mean"]:g}%</strong> in <span class="ev-src">{esc(c["cond"])}</span>{kmeta}{rng}{q}</li>')
+    return ('<div class="d-row d-ev d-sens"><span class="d-label">&#128200; Sensitivity by localization &mdash; P(sign | group), computed from the corpus</span>'
+            '<ul class="ev-list">'+"".join(items)+'</ul></div>')
+
+def top_sens(cid):
+    """Highest computed sensitivity for the compact metric tile, or None."""
+    blk = sens_by_cardid.get(str(cid))
+    if not blk:
+        return None
+    best = max(blk["conditions"], key=lambda c: c["high"])
+    return f'{best["mean"]:g}% in {best["cond"]}'
+
 # ---- build sections ----
 sections = []
 for r in region_order:
@@ -165,7 +194,9 @@ for r in region_order:
             _ms = meta_by_cardid.get(d.get("id"))
             ev_text = " ".join(e["p"]+" "+e["f"] for e in d.get("_ev",[]))
             ppv_text = " ".join((r["value_text"]+" "+r["cite"]+" ppv predictive value") for r in ppv_by_cardid.get(d.get("id"), []))
-            search_str = " ".join([d["sign"],d["phase"],d["lat"],d["loc"],d["sens"],d["spec"],d["notes"],d["cite"],d["region"],d["sub"],ev_text,ppv_text]).lower().replace('"',"")
+            _sblk = sens_by_cardid.get(str(d.get("id")))
+            sens_text = ("sensitivity " + " ".join(c["cond"]+" "+c["sources"][0]["cite"] for c in _sblk["conditions"])) if _sblk else ""
+            search_str = " ".join([d["sign"],d["phase"],d["lat"],d["loc"],d["sens"],d["spec"],d["notes"],d["cite"],d["region"],d["sub"],ev_text,ppv_text,sens_text]).lower().replace('"',"")
             # SINGLE SOURCE: if this card is in the meta ledger, its evidence IS the
             # ledger's per-study sources (identical to the top plot). Otherwise fall
             # back to the substring-matched library evidence.
@@ -186,6 +217,19 @@ for r in region_order:
                     ev_block = ('<div class="d-row d-ev"><span class="d-label">&#128218; Evidence in the source library</span>'
                                 '<ul class="ev-list">'+items+'</ul></div>')
             ppv_block = ppv_block_for(d.get("id"))
+            sens_block = sens_block_for(d.get("id"))
+            # Sensitivity tile: prefer the computed corpus figure; fall back to the
+            # curator estimate (marked 'est.'). Specificity is never in the corpus, so
+            # it is always a marked estimate.
+            _tsens = top_sens(d.get("id"))
+            if _tsens:
+                sens_metric = (f'<span class="d-label">Sensitivity <span class="src-tag" title="Computed from the corpus as P(sign | localization). See the sensitivity breakdown below and the descriptive-statistics section.">corpus</span></span>'
+                               f'<span class="metric-val">{esc(_tsens)}</span>')
+            else:
+                sens_metric = (f'<span class="d-label">Sensitivity <span class="est-tag" title="Curator teaching estimate. The source corpus reports no localization-conditioned frequency for this sign, so its sensitivity is not computed; this approximate range is for orientation only.">est.</span></span>'
+                               f'<span class="metric-val">{esc(d["sens"])}</span>')
+            spec_metric = (f'<span class="d-label">Specificity <span class="est-tag" title="Curator teaching estimate. Specificity needs the sign\'s rate in the other localization groups, which the source corpus does not report; this is for orientation only, not computed.">est.</span></span>'
+                           f'<span class="metric-val">{esc(d["spec"])}</span>')
             rows.append(f'''<div class="sign" data-region="{esc(d['region'])}" data-phase="{esc(d['phase'])}" data-latcode="{lc}" data-evid="{ec}" data-search="{esc(search_str)}" style="--accent:{accent}">
   <button class="sign-head" aria-expanded="false">
     <span class="chevron">&#8250;</span>
@@ -208,8 +252,8 @@ for r in region_order:
         <span class="d-value">{esc(d['loc'])}</span>
       </div>
       <div class="d-metrics">
-        <div class="metric"><span class="d-label">Sensitivity <span class="est-tag" title="Curator teaching estimate. The source corpus reports no sensitivity/specificity figures for the signs in this atlas; these approximate ranges are for orientation only, not pooled from the papers.">est.</span></span><span class="metric-val">{esc(d['sens'])}</span></div>
-        <div class="metric"><span class="d-label">Specificity <span class="est-tag" title="Curator teaching estimate. The source corpus reports no sensitivity/specificity figures for the signs in this atlas; these approximate ranges are for orientation only, not pooled from the papers.">est.</span></span><span class="metric-val">{esc(d['spec'])}</span></div>
+        <div class="metric">{sens_metric}</div>
+        <div class="metric">{spec_metric}</div>
         <div class="metric"><span class="d-label">Evidence</span><span class="metric-val"><span class="evid-badge" style="background:{evidcolor.get(ec,'#888')}">{ec}</span></span></div>
       </div>
       <div class="d-row d-notes">
@@ -221,6 +265,7 @@ for r in region_order:
         <span class="d-value cite">{esc(d['cite'])}</span>
       </div>
       {ev_block}
+      {sens_block}
       {ppv_block}
     </div>
   </div>
@@ -531,6 +576,42 @@ def build_figures(corpus):
 </details>'''
 figures_fold = build_figures(CORPUS)
 
+
+# ---------- Descriptive statistics: sensitivity by localization ----------
+# Auto-generated from meta_analysis.json["sensitivity"], which the meta engine computes
+# from the ledger's tagged frequency-within-a-group findings. Tag another finding in the
+# ledger and this section, the cards, and the coverage counts all update on the next build.
+def build_sensitivity_report(meta):
+    sens = (meta or {}).get("sensitivity")
+    if not sens or not sens.get("by_card"):
+        return ""
+    name_by_id = {d["id"]: d["sign"] for d in data}
+    cov = sens["coverage"]
+    trows = []
+    for cid, blk in sorted(sens["by_card"].items(), key=lambda x: int(x[0])):
+        nm = name_by_id.get(int(cid), f"#{cid}")
+        for i, c in enumerate(blk["conditions"]):
+            s0 = c["sources"][0]
+            val = (f'{c["mean"]:g}%' + (f' <span class="ds-rng">({c["low"]:g}&#8211;{c["high"]:g})</span>' if c["k"] > 1 else ''))
+            srcs = "; ".join(sorted({s["cite"] for s in c["sources"]}))
+            signcell = (f'<td class="ds-sign" rowspan="{len(blk["conditions"])}">{esc(nm)}</td>' if i == 0 else "")
+            trows.append(
+                f'<tr>{signcell}<td class="ds-cond">{esc(c["cond"])}</td>'
+                f'<td class="ds-val">{val}</td><td class="ds-k">{c["k"]}</td>'
+                f'<td class="ds-src" title="{esc(s0.get("quote",""))}">{esc(srcs)}</td></tr>')
+    return f'''<details class="frontpage-fold ds-fold">
+<summary>Descriptive statistics &mdash; sensitivity by localization ({cov["data_points"]} figures, {cov["cards_with_sensitivity"]} signs)</summary>
+<div class="ds-wrap">
+  <p class="ds-method">{esc(sens["method"])}</p>
+  <div class="ds-tablewrap"><table class="ds-table">
+    <thead><tr><th>Sign</th><th>Localization</th><th>Sensitivity &mdash; P(sign&nbsp;|&nbsp;group)</th><th>k</th><th>Source(s)</th></tr></thead>
+    <tbody>{"".join(trows)}</tbody>
+  </table></div>
+  <p class="ds-spec">&#9888;&#65039; <strong>Specificity is not computed.</strong> {esc(sens["note_specificity"])}</p>
+</div>
+</details>'''
+sens_report_fold = build_sensitivity_report(META)
+
 forest_html = f'''<div class="forest-wrap">
   <div class="forest-card">
     <div class="forest-head">
@@ -711,6 +792,13 @@ body.quiz .lib-chip{display:none}
 .pooled-warn{font-size:.76rem;background:#fff6e9;border:1px solid #f0cf8f;color:#7a4a06;border-radius:7px;padding:6px 10px;margin-bottom:8px;line-height:1.45}
 .ev-meta{font-size:.72rem;color:#a15c00;font-weight:700}
 .est-tag{font-size:.56rem;font-weight:800;letter-spacing:.03em;color:#8a93a5;background:#eef1f6;border:1px solid #d5dbe6;border-radius:4px;padding:0 4px;margin-left:4px;text-transform:none;cursor:help;vertical-align:middle}
+.src-tag{font-size:.56rem;font-weight:800;letter-spacing:.03em;color:#1a6b4a;background:#e8f7ef;border:1px solid #a9dcc3;border-radius:4px;padding:0 4px;margin-left:4px;text-transform:none;cursor:help;vertical-align:middle}
+/* sensitivity block: green accent (distinct from amber lateralization + teal PPV) */
+.d-sens{background:#f2faf5;border-color:#c2e6d3}
+.d-sens .d-label{color:#1a6b4a}
+.d-sens .ev-list li{border-left-color:#5cc08a}
+.d-sens .ev-src{color:#1a6b4a}
+.d-sens .ev-meta{color:#1a6b4a}
 /* predictive-value block: same layout as the evidence block, teal accent to set it apart */
 .d-ppv{background:#f1fafb;border-color:#bfe3e8}
 .d-ppv .d-label{color:#0a6472}
@@ -811,6 +899,21 @@ body.quiz .lib-chip{display:none}
 
 /* ---------- SOURCE-FIGURES EXPLORER ---------- */
 .figures-fold>summary{background:#eef2f7;color:#3f4a5e}
+/* descriptive-statistics (sensitivity) fold */
+.ds-fold>summary{background:#eaf6ef;color:#1a5c40}
+.ds-wrap{max-width:1180px;background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.ds-method{font-size:.78rem;line-height:1.55;color:#3a5648;padding:13px 16px;background:#f6fbf8;border-bottom:1px solid var(--line2);margin:0}
+.ds-tablewrap{overflow-x:auto}
+.ds-table{width:100%;border-collapse:collapse;font-size:.82rem}
+.ds-table th{text-align:left;font-size:.62rem;text-transform:uppercase;letter-spacing:.06em;color:#6a7686;background:#f8fafc;padding:8px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+.ds-table td{padding:8px 12px;border-bottom:1px solid #eef1f5;vertical-align:top}
+.ds-sign{font-weight:700;color:var(--navy);background:#fbfdfc;border-right:1px solid #eef1f5}
+.ds-cond{color:#1a6b4a;font-weight:600}
+.ds-val{font-family:'SF Mono','Consolas',monospace;font-weight:700;color:var(--navy);white-space:nowrap}
+.ds-rng{font-weight:500;color:#8a93a5}
+.ds-k{text-align:center;color:#6a7686}
+.ds-src{color:#4a5568;font-size:.76rem}
+.ds-spec{font-size:.78rem;line-height:1.55;color:#7a4a06;background:#fff7ec;border-top:1px solid #f0dcbd;padding:12px 16px;margin:0}
 .fx-wrap{max-width:1180px;margin:0;background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden}
 .fx-intro{font-size:.78rem;line-height:1.55;color:#4a5568;padding:13px 16px;background:#fbfcfe;border-bottom:1px solid var(--line2)}
 .fx-tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:11px 16px 6px}
@@ -1234,7 +1337,7 @@ HEAD = """<!DOCTYPE html>
 </div>
 
 <main>
-""" + meta_fold + figures_fold + forest_fold + callout_fold + """
+""" + meta_fold + sens_report_fold + figures_fold + forest_fold + callout_fold + """
   <div class="quiz-hint"><strong>Quiz mode on:</strong> lateralization &amp; evidence cues are hidden. Read each sign, predict its localization/lateralization, then expand to check yourself.</div>
 """ + sections_html + """
   <div id="no-results">No signs match the current search or filters. Try clearing them.</div>

@@ -1549,7 +1549,11 @@
      "n": null,
      "population": "FLE seizure-free after surgery",
      "locator": "Section 3.3",
-     "quote": "Janszky et al. found unilateral clonic activity in 33% of patients with frontal lobe epilepsy rendered seizure free after epilepsy surgery. Clonic activity was ipsilateral to the seizure focus in 2 and contralateral in 10 patients [53]."
+     "quote": "Janszky et al. found unilateral clonic activity in 33% of patients with frontal lobe epilepsy rendered seizure free after epilepsy surgery. Clonic activity was ipsilateral to the seizure focus in 2 and contralateral in 10 patients [53].",
+     "sens_card_ids": [
+      38
+     ],
+     "sens_for": "FLE (post-op sz-free)"
     },
     {
      "phenomenon": "last clonic jerk (asymmetric ending)",
@@ -1773,7 +1777,11 @@
      "n": 123,
      "population": "TLE (video/EEG + MRI)",
      "locator": "Section 3.10",
-     "quote": "Ebner et al., who evaluated 123 patients with temporal lobe epilepsy ... 7 of whom had automatisms and preserved consciousness (5.7%). Automatisms with preserved responsiveness were observed exclusively during seizures arising from the right nondominant temporal lobe and occurred in 10% of these patients."
+     "quote": "Ebner et al., who evaluated 123 patients with temporal lobe epilepsy ... 7 of whom had automatisms and preserved consciousness (5.7%). Automatisms with preserved responsiveness were observed exclusively during seizures arising from the right nondominant temporal lobe and occurred in 10% of these patients.",
+     "sens_card_ids": [
+      22
+     ],
+     "sens_for": "TLE"
     },
     {
      "phenomenon": "emotional facial asymmetry (lower facial weakness)",
@@ -2186,7 +2194,11 @@
      "n": null,
      "population": "OLE",
      "locator": "Table 1",
-     "quote": "Hemifield visual aura [26] | 28.6% OLE | 100% contralateral | Brodmann areas 17-19 and adjacent areas"
+     "quote": "Hemifield visual aura [26] | 28.6% OLE | 100% contralateral | Brodmann areas 17-19 and adjacent areas",
+     "sens_card_ids": [
+      73
+     ],
+     "sens_for": "OLE"
     },
     {
      "phenomenon": "hemifield visual aura",
@@ -2214,7 +2226,11 @@
      "n": null,
      "population": "FLE",
      "locator": "Table 1",
-     "quote": "Version [46,53] | 22.2% FLE | 100% contralateral | Brodmann areas 6 and 8"
+     "quote": "Version [46,53] | 22.2% FLE | 100% contralateral | Brodmann areas 6 and 8",
+     "sens_card_ids": [
+      12
+     ],
+     "sens_for": "FLE"
     },
     {
      "phenomenon": "version",
@@ -2242,7 +2258,11 @@
      "n": null,
      "population": "FLE",
      "locator": "Table 1",
-     "quote": "Clonic activity [53] | 44.4% FLE | 83% contralateral | Brodmann areas 4 and 6"
+     "quote": "Clonic activity [53] | 44.4% FLE | 83% contralateral | Brodmann areas 4 and 6",
+     "sens_card_ids": [
+      38
+     ],
+     "sens_for": "FLE"
     },
     {
      "phenomenon": "clonic activity",
@@ -2270,7 +2290,11 @@
      "n": null,
      "population": "FLE",
      "locator": "Table 1",
-     "quote": "Tonic activity [53] | 48.1% FLE | 89% contralateral | SMA, possibly also Brodmann area 6, the anterior cingulate gyrus, and subcortical structures"
+     "quote": "Tonic activity [53] | 48.1% FLE | 89% contralateral | SMA, possibly also Brodmann area 6, the anterior cingulate gyrus, and subcortical structures",
+     "sens_card_ids": [
+      44
+     ],
+     "sens_for": "FLE"
     },
     {
      "phenomenon": "tonic activity",
@@ -2298,7 +2322,11 @@
      "n": null,
      "population": "TLE",
      "locator": "Table 1",
-     "quote": "'Figure-of-4 sign' [60,64] | 17.7% TLE; 15% ETLE | 89% contralateral | SMA or prefrontal areas"
+     "quote": "'Figure-of-4 sign' [60,64] | 17.7% TLE; 15% ETLE | 89% contralateral | SMA or prefrontal areas",
+     "sens_card_ids": [
+      14
+     ],
+     "sens_for": "TLE"
     },
     {
      "phenomenon": "figure-of-4 sign (asymmetric tonic limb posturing)",
@@ -2312,7 +2340,11 @@
      "n": null,
      "population": "ETLE",
      "locator": "Table 1",
-     "quote": "'Figure-of-4 sign' [60,64] | 17.7% TLE; 15% ETLE | 89% contralateral | SMA or prefrontal areas"
+     "quote": "'Figure-of-4 sign' [60,64] | 17.7% TLE; 15% ETLE | 89% contralateral | SMA or prefrontal areas",
+     "sens_card_ids": [
+      14
+     ],
+     "sens_for": "ETLE"
     },
     {
      "phenomenon": "figure-of-4 sign (asymmetric tonic limb posturing)",
@@ -2340,7 +2372,11 @@
      "n": null,
      "population": "TLE",
      "locator": "Table 1",
-     "quote": "Unilateral dystonic posturing [75,78] | 43.9% TLE | 100% contralateral; one exemption reported by Yen | Activation of basal ganglia"
+     "quote": "Unilateral dystonic posturing [75,78] | 43.9% TLE | 100% contralateral; one exemption reported by Yen | Activation of basal ganglia",
+     "sens_card_ids": [
+      11
+     ],
+     "sens_for": "TLE"
     },
     {
      "phenomenon": "unilateral dystonic posturing",
@@ -2564,7 +2600,11 @@
      "n": null,
      "population": "TLE",
      "locator": "Table 1",
-     "quote": "Postictal nosewiping [170] | 53.2% TLE | 92% ipsilateral | Unknown"
+     "quote": "Postictal nosewiping [170] | 53.2% TLE | 92% ipsilateral | Unknown",
+     "sens_card_ids": [
+      23
+     ],
+     "sens_for": "TLE"
     },
     {
      "phenomenon": "postictal nosewiping",
@@ -5111,7 +5151,11 @@
      "n": 55,
      "population": "55 unilateral TLE (39 left, 16 right)",
      "locator": "Results, Postictal behavior; p.1596",
-     "quote": "Postictal dysphasia was statistically more frequent in left than in right temporal lobe seizures ... (61.5% vs 12.5%; p < 0.001)"
+     "quote": "Postictal dysphasia was statistically more frequent in left than in right temporal lobe seizures ... (61.5% vs 12.5%; p < 0.001)",
+     "sens_card_ids": [
+      24
+     ],
+     "sens_for": "dominant (left) TLE"
     },
     {
      "phenomenon": "Postictal dysphasia - lateralizing value to left (dominant) temporal",
