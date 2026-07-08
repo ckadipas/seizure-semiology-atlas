@@ -37,8 +37,17 @@ def main():
 
     data = json.load(open(path))
     signs = json.load(open(os.path.join(root, "data", "semiology_data.json")))
+    # A finding may attach to an existing curated sign OR to a new sign proposed in
+    # this same intake (a paper introducing a sign not yet in the atlas).
     names = [s["sign"].lower() for s in signs]
+    names += [ns.get("sign", "").lower() for ns in data.get("new_signs", []) if ns.get("sign")]
     errors = []
+
+    # Proposed new signs must be complete enough to render and stay attributable.
+    for i, ns in enumerate(data.get("new_signs", [])):
+        for req in ("region", "sub", "sign", "phase", "lat", "latcode", "loc", "evid", "notes", "cite"):
+            if not ns.get(req):
+                errors.append(f"new_signs[{i}]: missing or empty '{req}'")
 
     for i, f in enumerate(data.get("findings", [])):
         where = f"findings[{i}]"

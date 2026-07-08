@@ -5,6 +5,15 @@ Format loosely follows Keep a Changelog; dates are ISO-8601.
 
 ## [Unreleased]
 ### Added
+- **Ictal central apnea** and **postictal central apnea** added as new mesial-temporal
+  signs (Lacuey 2024; Meletti 2025; Ochoa-Urrea 2025): objective breathing cessation
+  that predicts mesial temporal onset (OR 3.8, spec 0.82) — distinct from the
+  subjective dyspnea aura.
+- **Intake can now propose new signs.** A submitted paper describing a well-evidenced
+  sign not yet in the atlas is added under `new_signs` in `intake_findings.json`
+  (merged into the atlas at build time) rather than declined — the maintainer approves
+  by merging the pull request. `tools/check_provenance.py` validates each proposed
+  new-sign record and lets findings attach to it.
 - **Weighted meta-analysis** (top foldable plot): each semiology's lateralization
   percentage pooled across every source that reports it, weighted by evidence
   class and ground-truth directness (`tools/meta_analysis.py`, deterministic).

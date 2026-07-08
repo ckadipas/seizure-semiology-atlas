@@ -102,6 +102,30 @@ NEW = [
    "notes":"Recurrent ictal speech utterances with abnormal melody/intonation (dysprosody) rather than aphasic content. Intracranial EEG localizes the discharge to the NON-dominant precentral operculum — the prosodic mirror of dominant-hemisphere language cortex. Helps lateralize to the non-dominant frontal operculum when speech is altered but not aphasic.",
    "cite":"Montavont et al., Epileptic Disord 2005",
    "_ev":[{"p":"Montavont 2005","f":"Ictal recurrent speech with altered prosody corresponded to ictal discharge of the non-dominant precentral operculum, giving dysprosody localizing value to the non-dominant frontal operculum."}]},
+
+  {"region":"Temporal","sub":"Mesial Temporal (Amygdala / Hippocampus / Entorhinal Cortex)",
+   "sign":"Ictal central apnea (breathing cessation)","phase":"Ictal",
+   "lat":"Non-lateralizing (localizes to mesial temporal)","latcode":"nonlat",
+   "loc":"Mesial temporal — amygdala / peri-amygdalar central-apnea network",
+   "sens":"~45% for mesial temporal onset","spec":"~82% (0.95 when followed by focal impaired awareness)","evid":"II",
+   "notes":"Objective cessation of airflow AND respiratory effort during a focal seizure — distinct from the subjective dyspnea / respiratory-distress aura. Strongly predicts MESIAL TEMPORAL onset: OR 3.8 (specificity 0.82, sensitivity 0.45); when it is followed by focal impaired awareness the odds rise ~30-fold (specificity 0.95). No lateral-temporal or insular onsets showed it. Occurs in ~17.5% of focal seizures / 39% of patients, who have more temporal-lobe onset (85% vs 52%). The amygdala ipsilateral to the epileptogenic zone is enlarged in affected patients (a structural, not lateralizing, correlate). Clinically important as a SUDEP-relevant sign.",
+   "cite":"Lacuey et al., Ann Neurol 2024; Meletti et al., Neurology 2025",
+   "_ev":[
+     {"p":"Lacuey 2024","f":"Ictal central apnea predicted mesial temporal seizure onset (OR 3.8, specificity 0.82, sensitivity 0.45); when followed by focal impaired awareness, specificity rose to 0.95; no lateral-temporal or insular onsets showed it.","pg":"pp.998-1008"},
+     {"p":"Meletti 2025","f":"Ictal central apnea in 17.5% of focal seizures / 39% of patients; patients with it had higher temporal-lobe onset than those without (85% vs 52%, p=0.01).","pg":"p.e213856"}
+   ]},
+
+  {"region":"Temporal","sub":"Mesial Temporal (Amygdala / Hippocampus / Entorhinal Cortex)",
+   "sign":"Postictal central apnea (breathing cessation)","phase":"Postictal",
+   "lat":"Non-lateralizing (localizes to mesial temporal / TLE)","latcode":"nonlat",
+   "loc":"Mesial temporal; downstream of ictal central apnea; ipsilateral amygdala enlargement",
+   "sens":"Rare (~6% of focal seizures)","spec":"High for TLE when present","evid":"II",
+   "notes":"Central apnea persisting AFTER seizure end. Occurs in 5.9% of focal seizures and 33.8% of seizures that had ictal central apnea; never observed without a preceding or concurrent ictal central apnea. Associated with temporal-lobe epilepsy and with an enlarged amygdala ipsilateral to the epileptogenic zone. Established mainly as a SUDEP risk marker (longer postictal central apnea → higher hazard of sudden death) rather than a validated lateralizing sign.",
+   "cite":"Meletti et al., Neurology 2025; Ochoa-Urrea et al., Lancet 2025",
+   "_ev":[
+     {"p":"Meletti 2025","f":"Postictal central apnea in 24/406 (5.9%) focal seizures and 24/71 (33.8%) of seizures with ictal central apnea; never without a preceding/concurrent ictal central apnea; associated with TLE and ipsilateral amygdala enlargement.","pg":"p.e213856"},
+     {"p":"Ochoa-Urrea 2025","f":"Longer postictal central apnea was a risk marker for sudden unexpected death in epilepsy (hazard ratio 1.32 per 10 s; cutoff >14 s).","pg":"pp.1497-1507"}
+   ]},
 ]
 
 # ---------------- PAPER LIBRARY (deduplicated) ----------------
@@ -138,6 +162,9 @@ PAPERS = [
  ("Kotagal (Ictal Speech & Cerebral Dominance)","(monograph excerpt)","Ictal speech disturbance and cerebral dominance","Speech-dominance correlation reference."),
  ("(Ictal paraphasia case study)","Neurocase","Ictal paraphasia as an atypical TLE manifestation","Illustrative dominant-temporal ictal language disturbance."),
  ("Wyllie et al. 1986","Neurology","The lateralizing significance of versive head and eye movements during epileptic seizures","Foundational series: versive (forced, sustained) head/eye deviation is reliably contralateral; non-versive turning is non-localizing."),
+ ("Lacuey et al. 2024","Annals of Neurology","Ictal central apnea is predictive of mesial temporal seizure onsets","Intracranial study: ictal central apnea predicts mesial temporal onset (OR 3.8, spec 0.82)."),
+ ("Meletti et al. 2025","Neurology","Persistent postictal central apnea in focal seizures: incidence, features, and imaging findings","Postictal central apnea incidence/features; TLE association and ipsilateral amygdala enlargement."),
+ ("Ochoa-Urrea et al. 2025","Lancet","Risk markers for sudden unexpected death in epilepsy: an observational, prospective, multicentre cohort study","SUDEP cohort: ictal/postictal central-apnea duration as mortality risk markers."),
 ]
 
 # ---------------- LATERALIZATION RELIABILITY DATA ----------------
@@ -180,6 +207,14 @@ if os.path.exists(_intake_path):
         if _cite and _cite not in _known:
             PAPERS.append((_cite, _pap.get("journal", ""), _pap.get("title", ""), _pap.get("contribution", "")))
             _known.add(_cite)
+    # New signs proposed by intake (a paper presenting a sign not yet in the atlas).
+    # They are added just like the hand-authored NEW signs above and get an id at
+    # build time; findings can then attach to them.
+    _newnames = {n["sign"].lower() for n in NEW}
+    for _ns in _intake.get("new_signs", []):
+        if _ns.get("sign") and _ns["sign"].lower() not in _newnames:
+            NEW.append(_ns)
+            _newnames.add(_ns["sign"].lower())
     for _fnd in _intake.get("findings", []):
         add(_fnd["sign_stem"], _fnd["paper"], _fnd["finding"], _fnd.get("pg"))
 
