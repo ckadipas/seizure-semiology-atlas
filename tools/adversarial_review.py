@@ -16,6 +16,14 @@ evidence is added:
   * ORPHAN_STEM     - an observation's sign_stem matches no curated sign name, so the
                       figure would not attach to anything (traceability break).
   * SINGLE_SOURCE   - a pooled figure rests on one study only (low robustness).
+  * PPV_ORPHAN_LINK - a corpus PPV finding's card_ids point at a card that doesn't exist.
+  * PPV_DIRECTION_CLASH - a directional PPV finding contradicts the latcode of the card
+                      it is surfaced on (the card and the explorer would disagree).
+  * SENS_ORPHAN_LINK / SENS_NO_CONDITION / SENS_BAD_METRIC - a frequency finding tagged
+                      as sensitivity data links to a missing card, names no localization
+                      group, or is not a numeric frequency figure.
+  * SENS_SPEC_PROVENANCE - informational: which signs have a computed sensitivity vs a
+                      curator estimate, and that specificity is always an estimate.
 
 Emits enrichment/review_flags.json and prints a summary in CI. Advisory by default;
 pass --strict to exit non-zero when any CONFLICT / DIRECTION_CLASH / DUPLICATE /
@@ -55,6 +63,10 @@ def review():
     meta = load("enrichment", "meta_analysis.json")
     data = load("data", "semiology_data.json")
     enr = load("enrichment", "enrichment.json")
+    try:
+        corpus = load("enrichment", "corpus_findings.json")
+    except FileNotFoundError:
+        corpus = {"papers": []}
 
     flags = []
 
@@ -63,6 +75,58 @@ def review():
                       "detail": detail, "evidence": evidence or []})
 
     sign_names = [d["sign"].lower() for d in data] + [n["sign"].lower() for n in enr.get("new_signs", [])]
+    by_id = {d["id"]: d for d in data}
+
+    # ---- PPV card-link integrity (single-source: cards surface corpus PPV findings
+    #      via each finding's explicit card_ids). Every linked id must resolve to a
+    #      card, and a directional PPV must not contradict that card's lateralization.
+    _dirclash = {("ipsi", "contra"), ("contra", "ipsi"),
+                 ("dominant", "nondominant"), ("nondominant", "dominant")}
+    for p in corpus.get("papers", []):
+        cite = (p.get("cite") or "?").split(".")[0][:40]
+        for f in p.get("findings", []):
+            if f.get("metric") == "ppv":
+                for cid in f.get("card_ids", []) or []:
+                    card = by_id.get(cid)
+                    if not card:
+                        flag("ppv_orphan_link", "high", f.get("phenomenon", "?"),
+                             f"PPV finding links to card #{cid}, which does not exist ({cite}).")
+                        continue
+                    fdir, cdir = f.get("direction") or "", card.get("latcode")
+                    if (cdir, fdir) in _dirclash:
+                        flag("ppv_direction_clash", "high", card["sign"],
+                             f"PPV finding direction '{fdir}' contradicts card #{cid} latcode "
+                             f"'{cdir}' ({cite}: {f.get('value_text','')}).")
+            # ---- SENSITIVITY tags: each `sens` entry promotes a frequency-within-a-group
+            #      figure to a computed sensitivity; it must resolve to a card, name its
+            #      group, carry a numeric value, and sit on a frequency finding.
+            if f.get("sens"):
+                if f.get("metric") != "frequency_pct":
+                    flag("sens_bad_metric", "high", f.get("phenomenon", "?"),
+                         f"sensitivity tags must sit on a frequency figure; this is "
+                         f"metric '{f.get('metric')}' ({cite}).")
+                for entry in f["sens"]:
+                    if not entry.get("group"):
+                        flag("sens_no_condition", "high", f.get("phenomenon", "?"),
+                             f"a sensitivity entry names no localization group ({cite}).")
+                    if not isinstance(entry.get("value"), (int, float)):
+                        flag("sens_bad_metric", "high", f.get("phenomenon", "?"),
+                             f"a sensitivity entry has a non-numeric value '{entry.get('value')}' ({cite}).")
+                    if entry.get("card_id") not in by_id:
+                        flag("sens_orphan_link", "high", f.get("phenomenon", "?"),
+                             f"sensitivity entry links to card #{entry.get('card_id')}, which does not exist ({cite}).")
+
+    # ---- Sensitivity/specificity provenance (informational, once). Sensitivity is now
+    #      computed as P(sign|localization) from tagged frequency findings; specificity
+    #      still cannot be (corpus lacks the false-positive side) and stays an estimate.
+    corpus_spec = sum(1 for p in corpus.get("papers", [])
+                      for f in p.get("findings", []) if f.get("metric") == "specificity")
+    sens_cards = {e.get("card_id") for p in corpus.get("papers", []) for f in p.get("findings", [])
+                  for e in (f.get("sens") or [])}
+    flag("sens_spec_provenance", "info", "(cards)",
+         f"sensitivity is computed as P(sign|localization) for {len(sens_cards)} sign(s) from tagged "
+         f"ledger frequencies (marked 'corpus'); the rest, and ALL specificity, remain curator "
+         f"estimates (marked 'est.') because the corpus reports {corpus_spec} specificity figure(s).")
 
     for s in meta["by_sign"]:
         contribs = s["contributions"]
@@ -82,13 +146,20 @@ def review():
                  f"(pooled {s['pooled']}%, range {s['low']}-{s['high']}%).",
                  [vals])
 
-        # DIRECTION_CLASH - pooled direction vs curated latcode
-        matched = [d for d in data if stem and stem in d["sign"].lower()]
-        for d in matched:
-            if d["latcode"] in ("contra", "ipsi", "dominant", "nondominant") and d["latcode"] != s["direction"]:
+        # CROSS-SECTION CONSISTENCY via the explicit card link (not substring).
+        # DUPLICATE_CARD: one analyzed sign mapping to >1 curated card = duplicate cards.
+        linked = s.get("sign_ids", []) or []
+        if len(linked) > 1:
+            names = ", ".join(f"#{cid} '{by_id[cid]['sign']}'" for cid in linked if cid in by_id)
+            flag("duplicate_card", "high", s["sign"],
+                 f"maps to {len(linked)} curated cards that are the same sign ({names}); consolidate to one.")
+        # DIRECTION_CLASH: the card the plot feeds must agree with the pooled direction.
+        for cid in linked:
+            d = by_id.get(cid)
+            if d and d["latcode"] in ("contra", "ipsi", "dominant", "nondominant") and d["latcode"] != s["direction"]:
                 flag("direction_clash", "high", s["sign"],
-                     f"meta-analysis direction '{s['direction']}' conflicts with curated "
-                     f"sign '{d['sign']}' latcode '{d['latcode']}'.")
+                     f"pooled direction '{s['direction']}' conflicts with curated card #{cid} "
+                     f"'{d['sign']}' latcode '{d['latcode']}'.")
 
         # DUPLICATE - same study twice for one sign
         seen = {}
@@ -147,7 +218,9 @@ def review():
         print(f"  [{fl['severity']:>6}] {fl['kind']:<15} {fl['sign']}: {fl['detail']}")
 
     if "--strict" in sys.argv:
-        blocking = [f for f in flags if f["kind"] in ("conflict", "direction_clash", "duplicate", "orphan_stem")]
+        blocking = [f for f in flags if f["kind"] in ("conflict", "direction_clash", "duplicate",
+                                                       "orphan_stem", "ppv_orphan_link", "ppv_direction_clash",
+                                                       "sens_orphan_link", "sens_no_condition", "sens_bad_metric")]
         if blocking:
             print(f"\nSTRICT: {len(blocking)} blocking flag(s).")
             return 1

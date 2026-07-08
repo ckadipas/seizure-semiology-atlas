@@ -5,12 +5,19 @@
   "double_count_points": 2.0
  },
  "summary": {
+  "sens_spec_provenance": 1,
   "conflict": 2,
   "double_count": 9,
-  "direction_clash": 1,
   "single_source": 3
  },
  "flags": [
+  {
+   "kind": "sens_spec_provenance",
+   "severity": "info",
+   "sign": "(cards)",
+   "detail": "sensitivity is computed as P(sign|localization) for 15 sign(s) from tagged ledger frequencies (marked 'corpus'); the rest, and ALL specificity, remain curator estimates (marked 'est.') because the corpus reports 1 specificity figure(s).",
+   "evidence": []
+  },
   {
    "kind": "conflict",
    "severity": "high",
@@ -53,13 +60,6 @@
    "severity": "low",
    "sign": "Ictal dysphasia / aphasia",
    "detail": "review Loddenkemper & Kotagal 2005 (100%) and primary Gabr et al. 1989 (100%) agree within 2.0 points - the review may be citing the primary series; pooling both slightly double-weights this datum.",
-   "evidence": []
-  },
-  {
-   "kind": "direction_clash",
-   "severity": "high",
-   "sign": "Ictal spitting",
-   "detail": "meta-analysis direction 'nondominant' conflicts with curated sign 'Ictal spitting' latcode 'dominant'.",
    "evidence": []
   },
   {

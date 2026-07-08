@@ -78,6 +78,109 @@ for r in region_order:
     pills.append(f'<button class="pill" data-target="sec-{slug(r)}"><span class="pill-name">{esc(region_short[r])}</span><span class="pill-count" data-region="{esc(r)}">{region_counts[r]}</span></button>')
 pills_html = "\n".join(pills)
 
+# ---- SINGLE SOURCE OF TRUTH: link each curated card to its meta-analysis ledger
+# entry (by explicit id, not fragile substring), so the card renders the SAME
+# pooled lateralization figure and the SAME per-study source list as the top plot.
+meta_by_cardid = {}
+if META:
+    for ms in META.get("by_sign", []):
+        for cid in ms.get("sign_ids", []) or []:
+            meta_by_cardid[cid] = ms
+_gtname = {"seeg":"SEEG","postop":"post-op sz-freedom","intracranial_eeg":"intracranial EEG",
+           "video_eeg":"video-EEG","scalp_eeg":"scalp EEG","imaging_concordance":"imaging concordance",
+           "review":"review","none":"none"}
+_dirword = {"contra":"Contralateral","ipsi":"Ipsilateral","dominant":"Dominant hemisphere","nondominant":"Non-dominant hemisphere"}
+_certword = {"well_supported":"well supported","moderate":"moderate","single_source":"single source"}
+
+def pooled_block_for(ms):
+    """The card's lateralization evidence, rendered from the shared meta ledger."""
+    if not ms:
+        return "", 0
+    items = []
+    for c in ms.get("contributions", []):
+        val = (f'{c["value"]:g}%' if "value" in c else esc(c.get("qualitative","supportive")))
+        meta = f'{c.get("eclass") or "?"} / {_gtname.get(c.get("ground_truth"), c.get("ground_truth") or "-")}'
+        items.append('<li><span class="ev-src">'+esc(c.get("cite", c["study"]))+'</span>'
+                     + ((' <span class="ev-pg" title="Source page">'+esc(c["pg"])+'</span>') if c.get("pg") else '')
+                     + ' <strong>'+val+'</strong> <span class="ev-meta">('+esc(meta)+')</span>'
+                     + ((' &mdash; '+esc(c["note"])) if c.get("note") else '') + '</li>')
+    nsent = ms.get("n_studies", 0) + ms.get("n_qualitative", 0)   # same count the top plot shows
+    if ms.get("pooled") is not None:
+        head = (f'<span class="pooled-hd"><strong>{ms["pooled"]:g}% {esc(_dirword.get(ms["direction"], ms["direction"]))}</strong> '
+                f'&middot; range {ms["low"]:g}&#8211;{ms["high"]:g}% &middot; {nsent} '
+                f'stud{"y" if nsent==1 else "ies"} &middot; {_certword.get(ms.get("certainty"),"?")}</span>')
+    else:
+        head = f'<span class="pooled-hd"><strong>{esc(_dirword.get(ms["direction"], ms["direction"]))}</strong> &middot; direction-only (no pooled %)</span>'
+    contested = ('<div class="pooled-warn">&#9888;&#65039; '+esc(ms["contested"])+'</div>') if ms.get("contested") else ''
+    block = ('<div class="d-row d-ev d-pooled"><span class="d-label">&#128218; Pooled lateralization &amp; sources (meta-analysis)</span>'
+             + head + contested + '<ul class="ev-list">'+"".join(items)+'</ul></div>')
+    return block, len([c for c in ms.get("contributions", []) if "value" in c])
+
+# ---- SINGLE SOURCE OF TRUTH (cont.): predictive-value figures come from the SAME
+# corpus_findings ledger the source-figures explorer renders, surfaced on the card
+# via the finding's explicit card_ids link (assigned by exact phenomenon match, not
+# fuzzy). Population-specific, so listed per source rather than pooled into one number.
+ppv_by_cardid = {}
+if CORPUS:
+    for _p in CORPUS.get("papers", []):
+        _cite = (_p.get("cite") or "?").split(".")[0][:46]
+        for _f in _p.get("findings", []):
+            if _f.get("metric") != "ppv":
+                continue
+            for _cid in _f.get("card_ids", []) or []:
+                ppv_by_cardid.setdefault(_cid, []).append({
+                    "value_text": _f.get("value_text") or (f'{_f["value"]:g}%' if isinstance(_f.get("value"), (int, float)) else ""),
+                    "direction": _f.get("direction") or "",
+                    "population": _f.get("population") or "",
+                    "cite": _cite, "locator": _f.get("locator") or "", "quote": _f.get("quote") or "",
+                })
+
+def ppv_block_for(cid):
+    """Predictive-value figures for a card, rendered from the shared corpus ledger."""
+    rows = ppv_by_cardid.get(cid)
+    if not rows:
+        return ""
+    items = []
+    for r in rows:
+        dchip = (f' <span class="ev-dir">{esc(r["direction"])}</span>' if r["direction"] and r["direction"] not in ("none","") else "")
+        pop = (f' <span class="ev-pop">{esc(r["population"])}</span>' if r["population"] else "")
+        items.append('<li><span class="ev-src">'+esc(r["cite"])+'</span>'
+                     + ((' <span class="ev-pg" title="Source locator">'+esc(r["locator"])+'</span>') if r["locator"] else '')
+                     + ' <strong>'+esc(r["value_text"])+'</strong>'+dchip+pop
+                     + ((' <span class="ev-quote" title="'+esc(r["quote"])+'">&ldquo;&hellip;&rdquo;</span>') if r["quote"] else '')
+                     + '</li>')
+    return ('<div class="d-row d-ev d-ppv"><span class="d-label">&#127919; Predictive value in the source corpus</span>'
+            '<ul class="ev-list">'+"".join(items)+'</ul></div>')
+
+# ---- SINGLE SOURCE OF TRUTH (cont.): sensitivity = P(sign | localization), computed
+# by the meta engine from the ledger's tagged frequency-within-a-group findings and
+# read back here by card id, so the card, the descriptive-stats report, and the
+# explorer all show the same numbers.
+sens_by_cardid = (META.get("sensitivity", {}) or {}).get("by_card", {}) if META else {}
+
+def sens_block_for(cid):
+    blk = sens_by_cardid.get(str(cid))
+    if not blk:
+        return ""
+    items = []
+    for c in blk["conditions"]:
+        s0 = c["sources"][0]
+        kmeta = (f' <span class="ev-meta">(k={c["k"]}, mean of {c["k"]})</span>' if c["k"] > 1 else
+                 f' <span class="ev-meta">({esc(s0["cite"])})</span>')
+        rng = (f' <span class="ev-pop">range {c["low"]:g}&#8211;{c["high"]:g}%</span>' if c["k"] > 1 else "")
+        q = (f' <span class="ev-quote" title="'+esc(s0["quote"])+'">&ldquo;&hellip;&rdquo;</span>') if s0.get("quote") else ""
+        items.append(f'<li><strong>{c["mean"]:g}%</strong> in <span class="ev-src">{esc(c["cond"])}</span>{kmeta}{rng}{q}</li>')
+    return ('<div class="d-row d-ev d-sens"><span class="d-label">&#128200; Sensitivity by localization &mdash; P(sign | group), computed from the corpus</span>'
+            '<ul class="ev-list">'+"".join(items)+'</ul></div>')
+
+def top_sens(cid):
+    """Highest computed sensitivity for the compact metric tile, or None."""
+    blk = sens_by_cardid.get(str(cid))
+    if not blk:
+        return None
+    best = max(blk["conditions"], key=lambda c: c["high"])
+    return f'{best["mean"]:g}% in {best["cond"]}'
+
 # ---- build sections ----
 sections = []
 for r in region_order:
@@ -88,19 +191,45 @@ for r in region_order:
         for d in signs:
             lc, ec = d["latcode"], d["evid"]
             accent = latcolor.get(lc,"#999")
+            _ms = meta_by_cardid.get(d.get("id"))
             ev_text = " ".join(e["p"]+" "+e["f"] for e in d.get("_ev",[]))
-            search_str = " ".join([d["sign"],d["phase"],d["lat"],d["loc"],d["sens"],d["spec"],d["notes"],d["cite"],d["region"],d["sub"],ev_text]).lower().replace('"',"")
-            has_ev = bool(d.get("_ev"))
-            lib_chip = ('<span class="chip lib-chip" title="Grounded in your uploaded literature">&#128218; '+str(len(d["_ev"]))+'</span>') if has_ev else ''
-            ev_block = ''
-            if has_ev:
-                items = "".join(
-                    '<li><span class="ev-src">'+esc(e["p"])+'</span>'
-                    + ((' <span class="ev-pg" title="Source page">'+esc(e["pg"])+'</span>') if e.get("pg") else '')
-                    + ' '+esc(e["f"])+'</li>'
-                    for e in d["_ev"])
-                ev_block = ('<div class="d-row d-ev"><span class="d-label">&#128218; Evidence in your library</span>'
-                            '<ul class="ev-list">'+items+'</ul></div>')
+            ppv_text = " ".join((r["value_text"]+" "+r["cite"]+" ppv predictive value") for r in ppv_by_cardid.get(d.get("id"), []))
+            _sblk = sens_by_cardid.get(str(d.get("id")))
+            sens_text = ("sensitivity " + " ".join(c["cond"]+" "+c["sources"][0]["cite"] for c in _sblk["conditions"])) if _sblk else ""
+            search_str = " ".join([d["sign"],d["phase"],d["lat"],d["loc"],d["sens"],d["spec"],d["notes"],d["cite"],d["region"],d["sub"],ev_text,ppv_text,sens_text]).lower().replace('"',"")
+            # SINGLE SOURCE: if this card is in the meta ledger, its evidence IS the
+            # ledger's per-study sources (identical to the top plot). Otherwise fall
+            # back to the substring-matched library evidence.
+            if _ms:
+                ev_block, _nsrc = pooled_block_for(_ms)
+                has_ev = True
+                lib_chip = ('<span class="chip lib-chip" title="Pooled from the meta-analysis ledger">&#128218; '+str(len(_ms.get("contributions",[])))+'</span>')
+            else:
+                has_ev = bool(d.get("_ev"))
+                lib_chip = ('<span class="chip lib-chip" title="Grounded in the source library">&#128218; '+str(len(d["_ev"]))+'</span>') if has_ev else ''
+                ev_block = ''
+                if has_ev:
+                    items = "".join(
+                        '<li><span class="ev-src">'+esc(e["p"])+'</span>'
+                        + ((' <span class="ev-pg" title="Source page">'+esc(e["pg"])+'</span>') if e.get("pg") else '')
+                        + ' '+esc(e["f"])+'</li>'
+                        for e in d["_ev"])
+                    ev_block = ('<div class="d-row d-ev"><span class="d-label">&#128218; Evidence in the source library</span>'
+                                '<ul class="ev-list">'+items+'</ul></div>')
+            ppv_block = ppv_block_for(d.get("id"))
+            sens_block = sens_block_for(d.get("id"))
+            # Sensitivity tile: prefer the computed corpus figure; fall back to the
+            # curator estimate (marked 'est.'). Specificity is never in the corpus, so
+            # it is always a marked estimate.
+            _tsens = top_sens(d.get("id"))
+            if _tsens:
+                sens_metric = (f'<span class="d-label">Sensitivity <span class="src-tag" title="Computed from the corpus as P(sign | localization). See the sensitivity breakdown below and the descriptive-statistics section.">corpus</span></span>'
+                               f'<span class="metric-val">{esc(_tsens)}</span>')
+            else:
+                sens_metric = (f'<span class="d-label">Sensitivity <span class="est-tag" title="Curator teaching estimate. The source corpus reports no localization-conditioned frequency for this sign, so its sensitivity is not computed; this approximate range is for orientation only.">est.</span></span>'
+                               f'<span class="metric-val">{esc(d["sens"])}</span>')
+            spec_metric = (f'<span class="d-label">Specificity <span class="est-tag" title="Curator teaching estimate. Specificity needs the sign\'s rate in the other localization groups, which the source corpus does not report; this is for orientation only, not computed.">est.</span></span>'
+                           f'<span class="metric-val">{esc(d["spec"])}</span>')
             rows.append(f'''<div class="sign" data-region="{esc(d['region'])}" data-phase="{esc(d['phase'])}" data-latcode="{lc}" data-evid="{ec}" data-search="{esc(search_str)}" style="--accent:{accent}">
   <button class="sign-head" aria-expanded="false">
     <span class="chevron">&#8250;</span>
@@ -123,8 +252,8 @@ for r in region_order:
         <span class="d-value">{esc(d['loc'])}</span>
       </div>
       <div class="d-metrics">
-        <div class="metric"><span class="d-label">Sensitivity</span><span class="metric-val">{esc(d['sens'])}</span></div>
-        <div class="metric"><span class="d-label">Specificity</span><span class="metric-val">{esc(d['spec'])}</span></div>
+        <div class="metric">{sens_metric}</div>
+        <div class="metric">{spec_metric}</div>
         <div class="metric"><span class="d-label">Evidence</span><span class="metric-val"><span class="evid-badge" style="background:{evidcolor.get(ec,'#888')}">{ec}</span></span></div>
       </div>
       <div class="d-row d-notes">
@@ -136,6 +265,8 @@ for r in region_order:
         <span class="d-value cite">{esc(d['cite'])}</span>
       </div>
       {ev_block}
+      {sens_block}
+      {ppv_block}
     </div>
   </div>
 </div>''')
@@ -445,6 +576,42 @@ def build_figures(corpus):
 </details>'''
 figures_fold = build_figures(CORPUS)
 
+
+# ---------- Descriptive statistics: sensitivity by localization ----------
+# Auto-generated from meta_analysis.json["sensitivity"], which the meta engine computes
+# from the ledger's tagged frequency-within-a-group findings. Tag another finding in the
+# ledger and this section, the cards, and the coverage counts all update on the next build.
+def build_sensitivity_report(meta):
+    sens = (meta or {}).get("sensitivity")
+    if not sens or not sens.get("by_card"):
+        return ""
+    name_by_id = {d["id"]: d["sign"] for d in data}
+    cov = sens["coverage"]
+    trows = []
+    for cid, blk in sorted(sens["by_card"].items(), key=lambda x: int(x[0])):
+        nm = name_by_id.get(int(cid), f"#{cid}")
+        for i, c in enumerate(blk["conditions"]):
+            s0 = c["sources"][0]
+            val = (f'{c["mean"]:g}%' + (f' <span class="ds-rng">({c["low"]:g}&#8211;{c["high"]:g})</span>' if c["k"] > 1 else ''))
+            srcs = "; ".join(sorted({s["cite"] for s in c["sources"]}))
+            signcell = (f'<td class="ds-sign" rowspan="{len(blk["conditions"])}">{esc(nm)}</td>' if i == 0 else "")
+            trows.append(
+                f'<tr>{signcell}<td class="ds-cond">{esc(c["cond"])}</td>'
+                f'<td class="ds-val">{val}</td><td class="ds-k">{c["k"]}</td>'
+                f'<td class="ds-src" title="{esc(s0.get("quote",""))}">{esc(srcs)}</td></tr>')
+    return f'''<details class="frontpage-fold ds-fold">
+<summary>Descriptive statistics &mdash; sensitivity by localization ({cov["data_points"]} figures, {cov["cards_with_sensitivity"]} signs)</summary>
+<div class="ds-wrap">
+  <p class="ds-method">{esc(sens["method"])}</p>
+  <div class="ds-tablewrap"><table class="ds-table">
+    <thead><tr><th>Sign</th><th>Localization</th><th>Sensitivity &mdash; P(sign&nbsp;|&nbsp;group)</th><th>k</th><th>Source(s)</th></tr></thead>
+    <tbody>{"".join(trows)}</tbody>
+  </table></div>
+  <p class="ds-spec">&#9888;&#65039; <strong>Specificity is not computed.</strong> {esc(sens["note_specificity"])}</p>
+</div>
+</details>'''
+sens_report_fold = build_sensitivity_report(META)
+
 forest_html = f'''<div class="forest-wrap">
   <div class="forest-card">
     <div class="forest-head">
@@ -620,6 +787,27 @@ body.quiz .lib-chip{display:none}
 .ev-list li{font-size:.82rem;line-height:1.5;color:#3a3a3a;padding-left:12px;border-left:2px solid #e8b878}
 .ev-src{font-weight:800;color:#8a4b00;display:inline-block;margin-right:4px}
 .ev-pg{font-size:.68rem;font-weight:700;color:#8a4b00;background:#fff0d9;border:1px solid #e8b878;border-radius:4px;padding:0 5px;margin-right:3px;white-space:nowrap;vertical-align:baseline}
+.pooled-hd{display:block;font-size:.84rem;color:var(--navy);margin-bottom:8px;font-variant-numeric:tabular-nums}
+.pooled-hd strong{color:#8a4b00}
+.pooled-warn{font-size:.76rem;background:#fff6e9;border:1px solid #f0cf8f;color:#7a4a06;border-radius:7px;padding:6px 10px;margin-bottom:8px;line-height:1.45}
+.ev-meta{font-size:.72rem;color:#a15c00;font-weight:700}
+.est-tag{font-size:.56rem;font-weight:800;letter-spacing:.03em;color:#8a93a5;background:#eef1f6;border:1px solid #d5dbe6;border-radius:4px;padding:0 4px;margin-left:4px;text-transform:none;cursor:help;vertical-align:middle}
+.src-tag{font-size:.56rem;font-weight:800;letter-spacing:.03em;color:#1a6b4a;background:#e8f7ef;border:1px solid #a9dcc3;border-radius:4px;padding:0 4px;margin-left:4px;text-transform:none;cursor:help;vertical-align:middle}
+/* sensitivity block: green accent (distinct from amber lateralization + teal PPV) */
+.d-sens{background:#f2faf5;border-color:#c2e6d3}
+.d-sens .d-label{color:#1a6b4a}
+.d-sens .ev-list li{border-left-color:#5cc08a}
+.d-sens .ev-src{color:#1a6b4a}
+.d-sens .ev-meta{color:#1a6b4a}
+/* predictive-value block: same layout as the evidence block, teal accent to set it apart */
+.d-ppv{background:#f1fafb;border-color:#bfe3e8}
+.d-ppv .d-label{color:#0a6472}
+.d-ppv .ev-list li{border-left-color:#5cc0cd}
+.d-ppv .ev-src{color:#0a6472}
+.d-ppv .ev-pg{color:#0a6472;background:#e0f4f6;border-color:#a7dbe1}
+.ev-dir{font-size:.66rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#0a6472;background:#e0f4f6;border-radius:4px;padding:0 5px;margin-left:2px}
+.ev-pop{font-size:.72rem;color:#5a6472;font-style:italic;margin-left:3px}
+.ev-quote{color:#0a6472;cursor:help;font-weight:800}
 
 /* framework callout */
 .callout{max-width:1180px;margin:0 auto 14px;padding:0 16px}
@@ -711,6 +899,21 @@ body.quiz .lib-chip{display:none}
 
 /* ---------- SOURCE-FIGURES EXPLORER ---------- */
 .figures-fold>summary{background:#eef2f7;color:#3f4a5e}
+/* descriptive-statistics (sensitivity) fold */
+.ds-fold>summary{background:#eaf6ef;color:#1a5c40}
+.ds-wrap{max-width:1180px;background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.ds-method{font-size:.78rem;line-height:1.55;color:#3a5648;padding:13px 16px;background:#f6fbf8;border-bottom:1px solid var(--line2);margin:0}
+.ds-tablewrap{overflow-x:auto}
+.ds-table{width:100%;border-collapse:collapse;font-size:.82rem}
+.ds-table th{text-align:left;font-size:.62rem;text-transform:uppercase;letter-spacing:.06em;color:#6a7686;background:#f8fafc;padding:8px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+.ds-table td{padding:8px 12px;border-bottom:1px solid #eef1f5;vertical-align:top}
+.ds-sign{font-weight:700;color:var(--navy);background:#fbfdfc;border-right:1px solid #eef1f5}
+.ds-cond{color:#1a6b4a;font-weight:600}
+.ds-val{font-family:'SF Mono','Consolas',monospace;font-weight:700;color:var(--navy);white-space:nowrap}
+.ds-rng{font-weight:500;color:#8a93a5}
+.ds-k{text-align:center;color:#6a7686}
+.ds-src{color:#4a5568;font-size:.76rem}
+.ds-spec{font-size:.78rem;line-height:1.55;color:#7a4a06;background:#fff7ec;border-top:1px solid #f0dcbd;padding:12px 16px;margin:0}
 .fx-wrap{max-width:1180px;margin:0;background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden}
 .fx-intro{font-size:.78rem;line-height:1.55;color:#4a5568;padding:13px 16px;background:#fbfcfe;border-bottom:1px solid var(--line2)}
 .fx-tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:11px 16px 6px}
@@ -1134,7 +1337,7 @@ HEAD = """<!DOCTYPE html>
 </div>
 
 <main>
-""" + meta_fold + figures_fold + forest_fold + callout_fold + """
+""" + meta_fold + sens_report_fold + figures_fold + forest_fold + callout_fold + """
   <div class="quiz-hint"><strong>Quiz mode on:</strong> lateralization &amp; evidence cues are hidden. Read each sign, predict its localization/lateralization, then expand to check yourself.</div>
 """ + sections_html + """
   <div id="no-results">No signs match the current search or filters. Try clearing them.</div>
