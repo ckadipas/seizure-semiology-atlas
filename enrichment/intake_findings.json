@@ -1,6 +1,7 @@
 {
- "_comment": "Page-cited intake findings. Each is a short, attributed factual extraction carrying a source PAGE reference for provenance. tools/check_provenance.py gates every entry.",
+ "_comment": "Page-cited intake findings. Each is a short, attributed factual extraction carrying a source PAGE reference for provenance. tools/check_provenance.py gates every entry. 'new_signs' holds signs a paper introduces that are not yet in data/semiology_data.json (full sign records, merged into the atlas at build time); 'findings' can attach to them by sign_stem.",
  "papers": [],
+ "new_signs": [],
  "findings": [
   {
    "sign_stem": "late forced",
