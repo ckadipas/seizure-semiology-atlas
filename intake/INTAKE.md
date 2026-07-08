@@ -12,12 +12,16 @@ intake gate is where that discipline is enforced.
 
 ## Automated intake (primary route)
 
-Attach a PDF to an issue labelled **`intake`** and the
-`.github/workflows/intake.yml` workflow does the mechanical *and* the extraction
-work for you. It runs **Claude Code** (`anthropics/claude-code-action`, powered by
-your Claude subscription — no separate API key): Claude downloads the PDF on the
-runner, reads it, and writes short, **page-cited** findings to
-`enrichment/intake_findings.json`, then opens a PR for the owner to approve.
+Submit a paper as an issue with the **PDF attached**. When a maintainer decides to
+process it, they trigger the run themselves — *Actions → Paper intake → Run
+workflow → issue number*. **This manual trigger is the spend gate:** Claude never
+runs, and nothing costs anything, until you deliberately kick it off (the workflow
+has no automatic trigger). The run uses **Claude Code**
+(`anthropics/claude-code-action`, powered by your Claude subscription — no separate
+API key): Claude downloads the PDF on the runner, reads it, writes short,
+**page-cited** findings to `enrichment/intake_findings.json`, and opens a PR. Two
+gates, two different jobs: **triggering the run** gates *spend*; **merging the PR**
+gates what gets *published* to the live atlas.
 
 - **Page provenance ("page checkers").** Every machine-added finding records the
   source page (`pg`, e.g. `p.608`). `tools/check_provenance.py` fails CI if any
