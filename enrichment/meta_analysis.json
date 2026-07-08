@@ -42,6 +42,9 @@
        "ba": "BA 22 / 44-45 (dominant)",
        "metric": "lateralization",
        "direction": "dominant",
+       "sign_ids": [
+        25
+       ],
        "contested": null,
        "contributions": [
         {
@@ -103,6 +106,9 @@
        "ba": "BA 22 (dominant)",
        "metric": "lateralization",
        "direction": "dominant",
+       "sign_ids": [
+        24
+       ],
        "contested": null,
        "contributions": [
         {
@@ -215,6 +221,7 @@
        "ba": "BA 22 (non-dominant)",
        "metric": "lateralization",
        "direction": "nondominant",
+       "sign_ids": [],
        "contested": null,
        "contributions": [
         {
@@ -293,6 +300,9 @@
        "ba": "BA 28 / 34-36 (non-dominant)",
        "metric": "lateralization",
        "direction": "nondominant",
+       "sign_ids": [
+        22
+       ],
        "contested": null,
        "contributions": [
         {
@@ -354,6 +364,9 @@
        "ba": "BA 28 (non-dominant)",
        "metric": "lateralization",
        "direction": "nondominant",
+       "sign_ids": [
+        17
+       ],
        "contested": null,
        "contributions": [
         {
@@ -432,7 +445,10 @@
        "ba": "BA 28 (non-dominant)",
        "metric": "lateralization",
        "direction": "nondominant",
-       "contested": "The sources here lateralize non-dominant (Loddenkemper 75% right; Fakhoury found ictal spitting exclusively in right TLE), but this atlas's curated card localizes it dominant - a discrepancy flagged for review rather than reconciled.",
+       "sign_ids": [
+        16
+       ],
+       "contested": "Genuinely contested: this atlas's curated card cites Kellinghaus 2003 for a DOMINANT (left) predominance, whereas the pooled sources here (Loddenkemper 2005 75% right; Fakhoury 1994 exclusively right TLE) lateralize NON-dominant. Surfaced as conflicting evidence, not reconciled.",
        "contributions": [
         {
          "study": "Loddenkemper 2005",
@@ -493,6 +509,9 @@
        "ba": "BA 28 / 21-22",
        "metric": "lateralization",
        "direction": "ipsi",
+       "sign_ids": [
+        23
+       ],
        "contested": null,
        "contributions": [
         {
@@ -571,6 +590,9 @@
        "ba": "BA 21-22",
        "metric": "lateralization",
        "direction": "ipsi",
+       "sign_ids": [
+        18
+       ],
        "contested": null,
        "contributions": [
         {
@@ -632,6 +654,9 @@
        "ba": "BA 28 / 34-36",
        "metric": "lateralization",
        "direction": "ipsi",
+       "sign_ids": [
+        10
+       ],
        "contested": null,
        "contributions": [
         {
@@ -715,6 +740,9 @@
        "ba": "BA 6 / 8",
        "metric": "lateralization",
        "direction": "contra",
+       "sign_ids": [
+        12
+       ],
        "contested": null,
        "contributions": [
         {
@@ -844,6 +872,9 @@
        "ba": "BA 6 (SMA)",
        "metric": "lateralization",
        "direction": "contra",
+       "sign_ids": [
+        44
+       ],
        "contested": null,
        "contributions": [
         {
@@ -922,6 +953,9 @@
        "ba": "BA 6",
        "metric": "lateralization",
        "direction": "contra",
+       "sign_ids": [
+        14
+       ],
        "contested": null,
        "contributions": [
         {
@@ -1000,6 +1034,9 @@
        "ba": "BA 4 / 6",
        "metric": "lateralization",
        "direction": "contra",
+       "sign_ids": [
+        38
+       ],
        "contested": null,
        "contributions": [
         {
@@ -1078,6 +1115,9 @@
        "ba": "BA 4",
        "metric": "lateralization",
        "direction": "contra",
+       "sign_ids": [
+        40
+       ],
        "contested": null,
        "contributions": [
         {
@@ -1173,6 +1213,7 @@
        "ba": "BA 4 (face)",
        "metric": "lateralization",
        "direction": "contra",
+       "sign_ids": [],
        "contested": null,
        "contributions": [
         {
@@ -1251,6 +1292,7 @@
        "ba": "BA 6 / 44 (non-dominant)",
        "metric": "lateralization",
        "direction": "nondominant",
+       "sign_ids": [],
        "contested": null,
        "contributions": [
         {
@@ -1300,6 +1342,9 @@
        "ba": "BA 1-3",
        "metric": "lateralization",
        "direction": "contra",
+       "sign_ids": [
+        62
+       ],
        "contested": null,
        "contributions": [
         {
@@ -1383,6 +1428,9 @@
        "ba": "BA 17-19",
        "metric": "lateralization",
        "direction": "contra",
+       "sign_ids": [
+        73
+       ],
        "contested": null,
        "contributions": [
         {
@@ -1449,6 +1497,9 @@
        "ba": "n/a (subcortical)",
        "metric": "lateralization",
        "direction": "contra",
+       "sign_ids": [
+        11
+       ],
        "contested": null,
        "contributions": [
         {
@@ -1527,6 +1578,9 @@
    "ba": "BA 6 (SMA)",
    "metric": "lateralization",
    "direction": "contra",
+   "sign_ids": [
+    44
+   ],
    "contested": null,
    "contributions": [
     {
@@ -1599,6 +1653,9 @@
    "ba": "BA 28 / 34-36 (non-dominant)",
    "metric": "lateralization",
    "direction": "nondominant",
+   "sign_ids": [
+    22
+   ],
    "contested": null,
    "contributions": [
     {
@@ -1654,6 +1711,9 @@
    "ba": "BA 6",
    "metric": "lateralization",
    "direction": "contra",
+   "sign_ids": [
+    14
+   ],
    "contested": null,
    "contributions": [
     {
@@ -1726,6 +1786,9 @@
    "ba": "BA 6 / 8",
    "metric": "lateralization",
    "direction": "contra",
+   "sign_ids": [
+    12
+   ],
    "contested": null,
    "contributions": [
     {
@@ -1849,6 +1912,9 @@
    "ba": "BA 17-19",
    "metric": "lateralization",
    "direction": "contra",
+   "sign_ids": [
+    73
+   ],
    "contested": null,
    "contributions": [
     {
@@ -1904,6 +1970,9 @@
    "ba": "BA 22 / 44-45 (dominant)",
    "metric": "lateralization",
    "direction": "dominant",
+   "sign_ids": [
+    25
+   ],
    "contested": null,
    "contributions": [
     {
@@ -1959,6 +2028,7 @@
    "ba": "BA 6 / 44 (non-dominant)",
    "metric": "lateralization",
    "direction": "nondominant",
+   "sign_ids": [],
    "contested": null,
    "contributions": [
     {
@@ -1997,7 +2067,10 @@
    "ba": "BA 28 (non-dominant)",
    "metric": "lateralization",
    "direction": "nondominant",
-   "contested": "The sources here lateralize non-dominant (Loddenkemper 75% right; Fakhoury found ictal spitting exclusively in right TLE), but this atlas's curated card localizes it dominant - a discrepancy flagged for review rather than reconciled.",
+   "sign_ids": [
+    16
+   ],
+   "contested": "Genuinely contested: this atlas's curated card cites Kellinghaus 2003 for a DOMINANT (left) predominance, whereas the pooled sources here (Loddenkemper 2005 75% right; Fakhoury 1994 exclusively right TLE) lateralize NON-dominant. Surfaced as conflicting evidence, not reconciled.",
    "contributions": [
     {
      "study": "Loddenkemper 2005",
@@ -2052,6 +2125,9 @@
    "ba": "BA 28 (non-dominant)",
    "metric": "lateralization",
    "direction": "nondominant",
+   "sign_ids": [
+    17
+   ],
    "contested": null,
    "contributions": [
     {
@@ -2124,6 +2200,7 @@
    "ba": "BA 4 (face)",
    "metric": "lateralization",
    "direction": "contra",
+   "sign_ids": [],
    "contested": null,
    "contributions": [
     {
@@ -2196,6 +2273,9 @@
    "ba": "BA 4",
    "metric": "lateralization",
    "direction": "contra",
+   "sign_ids": [
+    40
+   ],
    "contested": null,
    "contributions": [
     {
@@ -2285,6 +2365,9 @@
    "ba": "BA 22 (dominant)",
    "metric": "lateralization",
    "direction": "dominant",
+   "sign_ids": [
+    24
+   ],
    "contested": null,
    "contributions": [
     {
@@ -2391,6 +2474,9 @@
    "ba": "BA 28 / 21-22",
    "metric": "lateralization",
    "direction": "ipsi",
+   "sign_ids": [
+    23
+   ],
    "contested": null,
    "contributions": [
     {
@@ -2463,6 +2549,7 @@
    "ba": "BA 22 (non-dominant)",
    "metric": "lateralization",
    "direction": "nondominant",
+   "sign_ids": [],
    "contested": null,
    "contributions": [
     {
@@ -2535,6 +2622,9 @@
    "ba": "BA 28 / 34-36",
    "metric": "lateralization",
    "direction": "ipsi",
+   "sign_ids": [
+    10
+   ],
    "contested": null,
    "contributions": [
     {
@@ -2607,6 +2697,9 @@
    "ba": "BA 4 / 6",
    "metric": "lateralization",
    "direction": "contra",
+   "sign_ids": [
+    38
+   ],
    "contested": null,
    "contributions": [
     {
@@ -2679,6 +2772,9 @@
    "ba": "n/a (subcortical)",
    "metric": "lateralization",
    "direction": "contra",
+   "sign_ids": [
+    11
+   ],
    "contested": null,
    "contributions": [
     {
@@ -2751,6 +2847,9 @@
    "ba": "BA 21-22",
    "metric": "lateralization",
    "direction": "ipsi",
+   "sign_ids": [
+    18
+   ],
    "contested": null,
    "contributions": [
     {
@@ -2806,6 +2905,9 @@
    "ba": "BA 1-3",
    "metric": "lateralization",
    "direction": "contra",
+   "sign_ids": [
+    62
+   ],
    "contested": null,
    "contributions": [
     {

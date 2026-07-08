@@ -4,6 +4,22 @@ All notable changes to the dataset and resource are recorded here.
 Format loosely follows Keep a Changelog; dates are ISO-8601.
 
 ## [Unreleased]
+### Changed
+- **Single source of truth.** Each curated sign card is now linked (by explicit id,
+  not fragile substring) to its meta-analysis ledger entry, and renders the SAME
+  pooled lateralization figure and the SAME per-study source list as the top plot —
+  so a sign shows identical stats and citations everywhere (previously the card and
+  the plot were computed from two disconnected paths and could disagree, e.g. forced
+  version showed 40–50%/75–80% on the card but 98.6% across 6 studies in the plot).
+### Fixed
+- **Consolidated a duplicate sign.** "Late forced/tonic head version" (#12) and
+  "Forced contralateral tonic head/eye version" (#60) were the same sign filed under
+  two regions; merged into one card under the frontal FEF home.
+- **Ictal spitting marked contested.** The card cited Kellinghaus 2003 (dominant)
+  while the pooled corpus (Loddenkemper, Fakhoury) lateralizes non-dominant — now
+  surfaced as a genuine conflict rather than a silent single-side claim.
+- The adversarial review now flags **duplicate cards** and **card↔ledger direction
+  mismatches** through the explicit link.
 ### Added
 - **Ictal central apnea** and **postictal central apnea** added as new mesial-temporal
   signs (Lacuey 2024; Meletti 2025; Ochoa-Urrea 2025): objective breathing cessation

@@ -89,6 +89,7 @@ def pool_sign(sign, studies, scheme):
         "ba": sign.get("ba", ""),
         "metric": sign.get("metric", "lateralization"),
         "direction": sign["direction"],
+        "sign_ids": sign.get("sign_ids", []),
         "contested": sign.get("contested"),
         "contributions": numeric + qualitative,
         "n_studies": len(numeric),

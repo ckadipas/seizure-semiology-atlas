@@ -63,6 +63,7 @@ def review():
                       "detail": detail, "evidence": evidence or []})
 
     sign_names = [d["sign"].lower() for d in data] + [n["sign"].lower() for n in enr.get("new_signs", [])]
+    by_id = {d["id"]: d for d in data}
 
     for s in meta["by_sign"]:
         contribs = s["contributions"]
@@ -82,13 +83,20 @@ def review():
                  f"(pooled {s['pooled']}%, range {s['low']}-{s['high']}%).",
                  [vals])
 
-        # DIRECTION_CLASH - pooled direction vs curated latcode
-        matched = [d for d in data if stem and stem in d["sign"].lower()]
-        for d in matched:
-            if d["latcode"] in ("contra", "ipsi", "dominant", "nondominant") and d["latcode"] != s["direction"]:
+        # CROSS-SECTION CONSISTENCY via the explicit card link (not substring).
+        # DUPLICATE_CARD: one analyzed sign mapping to >1 curated card = duplicate cards.
+        linked = s.get("sign_ids", []) or []
+        if len(linked) > 1:
+            names = ", ".join(f"#{cid} '{by_id[cid]['sign']}'" for cid in linked if cid in by_id)
+            flag("duplicate_card", "high", s["sign"],
+                 f"maps to {len(linked)} curated cards that are the same sign ({names}); consolidate to one.")
+        # DIRECTION_CLASH: the card the plot feeds must agree with the pooled direction.
+        for cid in linked:
+            d = by_id.get(cid)
+            if d and d["latcode"] in ("contra", "ipsi", "dominant", "nondominant") and d["latcode"] != s["direction"]:
                 flag("direction_clash", "high", s["sign"],
-                     f"meta-analysis direction '{s['direction']}' conflicts with curated "
-                     f"sign '{d['sign']}' latcode '{d['latcode']}'.")
+                     f"pooled direction '{s['direction']}' conflicts with curated card #{cid} "
+                     f"'{d['sign']}' latcode '{d['latcode']}'.")
 
         # DUPLICATE - same study twice for one sign
         seen = {}
