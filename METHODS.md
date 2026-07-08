@@ -56,12 +56,17 @@ page can never disagree:
   pooled. Ambiguous or aggregate PPV figures are left in the table only.
 - **Sensitivity** is **computed** as `P(sign | localization)` — how often the sign
   appears within a localization group, which is exactly a frequency-within-that-group
-  figure. Qualifying verified frequency findings are tagged in the ledger
-  (`sens_card_ids` + `sens_for`); the meta engine groups them per (sign, localization)
-  and the card, the *Descriptive statistics — sensitivity by localization* section, and
-  the explorer all read the same numbers. Tag another finding and every one of them
-  updates on the next build. A card with a computed value shows it tagged `corpus`; a
-  card without one keeps a curator estimate tagged `est.`.
+  figure. Qualifying verified frequency findings carry a `sens` list in the ledger,
+  each entry `{card_id, group, value}`; one finding can feed several groups at once
+  (e.g. a temporal SEEG paper that reports a sign's rate in mesial vs mesiolateral vs
+  lateral subtypes contributes three entries, its `M/ML/L %` parsed straight from the
+  tabulated value). The meta engine groups every entry per (sign, localization) and the
+  card (tagged `corpus`), the *Descriptive statistics — sensitivity by localization*
+  section, and the explorer all read the same numbers. Tag another finding and every
+  one of them updates on the next build. Coverage is sparse and uneven — the corpus
+  reports these frequencies inconsistently — so each figure shows its source count `k`;
+  a card with no localization-conditioned frequency keeps a curator estimate tagged
+  `est.`.
 - **Specificity** is **not computed**: it needs the sign's rate in the *other*
   localization groups (the false-positive side), which this corpus reports for
   essentially no sign. Card specificity therefore stays a curator teaching estimate,

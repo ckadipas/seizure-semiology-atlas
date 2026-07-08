@@ -139,23 +139,23 @@ def build_sensitivity():
     with open(path) as f:
         corpus = json.load(f)
 
-    by_card = {}          # cid -> {cond -> [source dicts]}
+    by_card = {}          # cid -> {group -> [source dicts]}
     spec_points = 0
     for p in corpus.get("papers", []):
         cite = (p.get("cite") or "?").split(".")[0][:46]
         for fnd in p.get("findings", []):
-            if fnd.get("metric") in ("sensitivity", "specificity"):
-                spec_points += 1 if fnd.get("metric") == "specificity" else 0
-            if not fnd.get("sens_card_ids") or fnd.get("sens_for") is None:
-                continue
-            v = fnd.get("value")
-            if not isinstance(v, (int, float)):
-                continue
-            src = {"cite": cite, "value": v, "n": fnd.get("n"),
-                   "locator": fnd.get("locator") or "", "quote": fnd.get("quote") or "",
-                   "phenomenon": fnd.get("phenomenon") or ""}
-            for cid in fnd["sens_card_ids"]:
-                by_card.setdefault(cid, {}).setdefault(fnd["sens_for"], []).append(src)
+            if fnd.get("metric") == "specificity":
+                spec_points += 1
+            for entry in fnd.get("sens", []):
+                v = entry.get("value")
+                cid = entry.get("card_id")
+                grp = entry.get("group")
+                if not isinstance(v, (int, float)) or cid is None or not grp:
+                    continue
+                src = {"cite": cite, "value": v, "n": fnd.get("n"),
+                       "locator": fnd.get("locator") or "", "quote": fnd.get("quote") or "",
+                       "phenomenon": fnd.get("phenomenon") or ""}
+                by_card.setdefault(cid, {}).setdefault(grp, []).append(src)
 
     cards = {}
     n_points = 0

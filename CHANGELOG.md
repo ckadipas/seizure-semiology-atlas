@@ -23,12 +23,16 @@ Format loosely follows Keep a Changelog; dates are ISO-8601.
   explorer-only rather than force-attached.
 - **Sensitivity is now computed from the master ledger.** Sensitivity of a sign for a
   localization = `P(sign | localization)` — its frequency within that group — so the raw
-  data is the verified frequency-within-a-group findings. Eleven such findings across
-  nine signs are now tagged in the ledger (`sens_card_ids` + `sens_for`); the meta engine
-  computes per-(sign, localization) descriptive statistics and the card (tagged
-  **corpus**), a new **Descriptive statistics — sensitivity by localization** report
-  section, and the explorer all render the same numbers. Tag another finding and all
-  three update on the next build. A note states the method; coverage counts are shown.
+  data is the verified frequency-within-a-group findings. Each carries a `sens` list of
+  `{card_id, group, value}` entries; the meta engine computes per-(sign, localization)
+  descriptive statistics and the card (tagged **corpus**), a new **Descriptive
+  statistics — sensitivity by localization** report section, and the explorer all render
+  the same numbers. **32 figures across 15 signs**, including temporal SEEG-subtype
+  sensitivities (mesial / mesiolateral / lateral, from Maillard 2004) whose `M/ML/L %`
+  are parsed straight from the tabulated values — so e.g. epigastric aura reads
+  mesial 46% ▸ mesiolateral 39% ▸ lateral 8%. Coverage is deliberately sparse (the
+  corpus reports these inconsistently); each figure shows its source count `k`. Tag
+  another finding and all three surfaces update on the next build.
 - **Specificity stays a marked estimate, honestly.** It needs the sign's rate in the
   *other* localization groups, which the corpus reports for essentially no sign, so it is
   not computed — card specificity is tagged **est.** with a tooltip, never fabricated.
