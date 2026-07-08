@@ -1550,10 +1550,13 @@
      "population": "FLE seizure-free after surgery",
      "locator": "Section 3.3",
      "quote": "Janszky et al. found unilateral clonic activity in 33% of patients with frontal lobe epilepsy rendered seizure free after epilepsy surgery. Clonic activity was ipsilateral to the seizure focus in 2 and contralateral in 10 patients [53].",
-     "sens_card_ids": [
-      38
-     ],
-     "sens_for": "FLE (post-op sz-free)"
+     "sens": [
+      {
+       "card_id": 38,
+       "group": "FLE (post-op sz-free)",
+       "value": 33
+      }
+     ]
     },
     {
      "phenomenon": "last clonic jerk (asymmetric ending)",
@@ -1778,10 +1781,13 @@
      "population": "TLE (video/EEG + MRI)",
      "locator": "Section 3.10",
      "quote": "Ebner et al., who evaluated 123 patients with temporal lobe epilepsy ... 7 of whom had automatisms and preserved consciousness (5.7%). Automatisms with preserved responsiveness were observed exclusively during seizures arising from the right nondominant temporal lobe and occurred in 10% of these patients.",
-     "sens_card_ids": [
-      22
-     ],
-     "sens_for": "TLE"
+     "sens": [
+      {
+       "card_id": 22,
+       "group": "TLE",
+       "value": 5.7
+      }
+     ]
     },
     {
      "phenomenon": "emotional facial asymmetry (lower facial weakness)",
@@ -2195,10 +2201,13 @@
      "population": "OLE",
      "locator": "Table 1",
      "quote": "Hemifield visual aura [26] | 28.6% OLE | 100% contralateral | Brodmann areas 17-19 and adjacent areas",
-     "sens_card_ids": [
-      73
-     ],
-     "sens_for": "OLE"
+     "sens": [
+      {
+       "card_id": 73,
+       "group": "OLE",
+       "value": 28.6
+      }
+     ]
     },
     {
      "phenomenon": "hemifield visual aura",
@@ -2227,10 +2236,13 @@
      "population": "FLE",
      "locator": "Table 1",
      "quote": "Version [46,53] | 22.2% FLE | 100% contralateral | Brodmann areas 6 and 8",
-     "sens_card_ids": [
-      12
-     ],
-     "sens_for": "FLE"
+     "sens": [
+      {
+       "card_id": 12,
+       "group": "FLE",
+       "value": 22.2
+      }
+     ]
     },
     {
      "phenomenon": "version",
@@ -2259,10 +2271,13 @@
      "population": "FLE",
      "locator": "Table 1",
      "quote": "Clonic activity [53] | 44.4% FLE | 83% contralateral | Brodmann areas 4 and 6",
-     "sens_card_ids": [
-      38
-     ],
-     "sens_for": "FLE"
+     "sens": [
+      {
+       "card_id": 38,
+       "group": "FLE",
+       "value": 44.4
+      }
+     ]
     },
     {
      "phenomenon": "clonic activity",
@@ -2291,10 +2306,13 @@
      "population": "FLE",
      "locator": "Table 1",
      "quote": "Tonic activity [53] | 48.1% FLE | 89% contralateral | SMA, possibly also Brodmann area 6, the anterior cingulate gyrus, and subcortical structures",
-     "sens_card_ids": [
-      44
-     ],
-     "sens_for": "FLE"
+     "sens": [
+      {
+       "card_id": 44,
+       "group": "FLE",
+       "value": 48.1
+      }
+     ]
     },
     {
      "phenomenon": "tonic activity",
@@ -2323,10 +2341,13 @@
      "population": "TLE",
      "locator": "Table 1",
      "quote": "'Figure-of-4 sign' [60,64] | 17.7% TLE; 15% ETLE | 89% contralateral | SMA or prefrontal areas",
-     "sens_card_ids": [
-      14
-     ],
-     "sens_for": "TLE"
+     "sens": [
+      {
+       "card_id": 14,
+       "group": "TLE",
+       "value": 17.7
+      }
+     ]
     },
     {
      "phenomenon": "figure-of-4 sign (asymmetric tonic limb posturing)",
@@ -2341,10 +2362,13 @@
      "population": "ETLE",
      "locator": "Table 1",
      "quote": "'Figure-of-4 sign' [60,64] | 17.7% TLE; 15% ETLE | 89% contralateral | SMA or prefrontal areas",
-     "sens_card_ids": [
-      14
-     ],
-     "sens_for": "ETLE"
+     "sens": [
+      {
+       "card_id": 14,
+       "group": "ETLE",
+       "value": 15
+      }
+     ]
     },
     {
      "phenomenon": "figure-of-4 sign (asymmetric tonic limb posturing)",
@@ -2373,10 +2397,13 @@
      "population": "TLE",
      "locator": "Table 1",
      "quote": "Unilateral dystonic posturing [75,78] | 43.9% TLE | 100% contralateral; one exemption reported by Yen | Activation of basal ganglia",
-     "sens_card_ids": [
-      11
-     ],
-     "sens_for": "TLE"
+     "sens": [
+      {
+       "card_id": 11,
+       "group": "TLE",
+       "value": 43.9
+      }
+     ]
     },
     {
      "phenomenon": "unilateral dystonic posturing",
@@ -2601,10 +2628,13 @@
      "population": "TLE",
      "locator": "Table 1",
      "quote": "Postictal nosewiping [170] | 53.2% TLE | 92% ipsilateral | Unknown",
-     "sens_card_ids": [
-      23
-     ],
-     "sens_for": "TLE"
+     "sens": [
+      {
+       "card_id": 23,
+       "group": "TLE",
+       "value": 53.2
+      }
+     ]
     },
     {
      "phenomenon": "postictal nosewiping",
@@ -4647,7 +4677,24 @@
      "n": 55,
      "population": "SEEG TLS subtypes M=24/ML=18/L=13",
      "locator": "Table 2; p.1594",
-     "quote": "Epigastric sensation 11 (45.8) 7 (38.9) 1 (7.7) p = 0.054"
+     "quote": "Epigastric sensation 11 (45.8) 7 (38.9) 1 (7.7) p = 0.054",
+     "sens": [
+      {
+       "card_id": 1,
+       "group": "mesial TLE",
+       "value": 45.8
+      },
+      {
+       "card_id": 1,
+       "group": "mesiolateral TLE",
+       "value": 38.9
+      },
+      {
+       "card_id": 1,
+       "group": "lateral TLE",
+       "value": 7.7
+      }
+     ]
     },
     {
      "phenomenon": "Fear / anxiety (aura)",
@@ -4661,7 +4708,24 @@
      "n": 55,
      "population": "SEEG TLS subtypes M=24/ML=18/L=13",
      "locator": "Table 2; p.1594",
-     "quote": "Fear 9 (37.5) 4 (22.2) 0 p = 0.026"
+     "quote": "Fear 9 (37.5) 4 (22.2) 0 p = 0.026",
+     "sens": [
+      {
+       "card_id": 2,
+       "group": "mesial TLE",
+       "value": 37.5
+      },
+      {
+       "card_id": 2,
+       "group": "mesiolateral TLE",
+       "value": 22.2
+      },
+      {
+       "card_id": 2,
+       "group": "lateral TLE",
+       "value": 0.0
+      }
+     ]
     },
     {
      "phenomenon": "Dreamy state (aura)",
@@ -4675,7 +4739,24 @@
      "n": 55,
      "population": "SEEG TLS subtypes M=24/ML=18/L=13",
      "locator": "Table 2; p.1594",
-     "quote": "Dreamy state 7 (29.2) 5 (27.8) 0 p = 0.08"
+     "quote": "Dreamy state 7 (29.2) 5 (27.8) 0 p = 0.08",
+     "sens": [
+      {
+       "card_id": 37,
+       "group": "mesial TLE",
+       "value": 29.2
+      },
+      {
+       "card_id": 37,
+       "group": "mesiolateral TLE",
+       "value": 27.8
+      },
+      {
+       "card_id": 37,
+       "group": "lateral TLE",
+       "value": 0.0
+      }
+     ]
     },
     {
      "phenomenon": "Auditory hallucination or illusion (aura)",
@@ -4703,7 +4784,24 @@
      "n": 55,
      "population": "SEEG TLS subtypes M=24/ML=18/L=13",
      "locator": "Table 2; p.1594",
-     "quote": "Vertigo 2 (8.3) 2 (11.1) 2 (15.4) p = 0.86"
+     "quote": "Vertigo 2 (8.3) 2 (11.1) 2 (15.4) p = 0.86",
+     "sens": [
+      {
+       "card_id": 32,
+       "group": "mesial TLE",
+       "value": 8.3
+      },
+      {
+       "card_id": 32,
+       "group": "mesiolateral TLE",
+       "value": 11.1
+      },
+      {
+       "card_id": 32,
+       "group": "lateral TLE",
+       "value": 15.4
+      }
+     ]
     },
     {
      "phenomenon": "Visual hallucination or illusion (aura)",
@@ -4745,7 +4843,24 @@
      "n": 55,
      "population": "SEEG TLS subtypes M=24/ML=18/L=13",
      "locator": "Table 2; p.1594",
-     "quote": "Gustatory hallucination 2 (8.3) 1 (5.6) 0 p = 0.78"
+     "quote": "Gustatory hallucination 2 (8.3) 1 (5.6) 0 p = 0.78",
+     "sens": [
+      {
+       "card_id": 6,
+       "group": "mesial TLE",
+       "value": 8.3
+      },
+      {
+       "card_id": 6,
+       "group": "mesiolateral TLE",
+       "value": 5.6
+      },
+      {
+       "card_id": 6,
+       "group": "lateral TLE",
+       "value": 0.0
+      }
+     ]
     },
     {
      "phenomenon": "Initial or secondary loss of contact (whole seizure)",
@@ -4773,7 +4888,24 @@
      "n": 55,
      "population": "SEEG TLS subtypes M=24/ML=18/L=13",
      "locator": "Table 3; p.1595",
-     "quote": "Oroalimentary automatisms 15 (62.5) 11 (61.1) 2 (15.4) p = 0.014"
+     "quote": "Oroalimentary automatisms 15 (62.5) 11 (61.1) 2 (15.4) p = 0.014",
+     "sens": [
+      {
+       "card_id": 9,
+       "group": "mesial TLE",
+       "value": 62.5
+      },
+      {
+       "card_id": 9,
+       "group": "mesiolateral TLE",
+       "value": 61.1
+      },
+      {
+       "card_id": 9,
+       "group": "lateral TLE",
+       "value": 15.4
+      }
+     ]
     },
     {
      "phenomenon": "Upper-limb elementary automatisms (whole seizure)",
@@ -4899,7 +5031,24 @@
      "n": 55,
      "population": "SEEG TLS subtypes M=24/ML=18/L=13",
      "locator": "Table 3; p.1595",
-     "quote": "Postictal dysphasia 12 (50) 11 (61.1) 3 (23.1) p = 0.10"
+     "quote": "Postictal dysphasia 12 (50) 11 (61.1) 3 (23.1) p = 0.10",
+     "sens": [
+      {
+       "card_id": 24,
+       "group": "mesial TLE",
+       "value": 50.0
+      },
+      {
+       "card_id": 24,
+       "group": "mesiolateral TLE",
+       "value": 61.1
+      },
+      {
+       "card_id": 24,
+       "group": "lateral TLE",
+       "value": 23.1
+      }
+     ]
     },
     {
      "phenomenon": "Initial loss of contact (first 10 s)",
@@ -5152,10 +5301,13 @@
      "population": "55 unilateral TLE (39 left, 16 right)",
      "locator": "Results, Postictal behavior; p.1596",
      "quote": "Postictal dysphasia was statistically more frequent in left than in right temporal lobe seizures ... (61.5% vs 12.5%; p < 0.001)",
-     "sens_card_ids": [
-      24
-     ],
-     "sens_for": "dominant (left) TLE"
+     "sens": [
+      {
+       "card_id": 24,
+       "group": "dominant (left) TLE",
+       "value": 61.5
+      }
+     ]
     },
     {
      "phenomenon": "Postictal dysphasia - lateralizing value to left (dominant) temporal",

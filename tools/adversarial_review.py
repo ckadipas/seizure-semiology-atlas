@@ -97,28 +97,32 @@ def review():
                         flag("ppv_direction_clash", "high", card["sign"],
                              f"PPV finding direction '{fdir}' contradicts card #{cid} latcode "
                              f"'{cdir}' ({cite}: {f.get('value_text','')}).")
-            # ---- SENSITIVITY tags: a frequency-within-a-group finding promoted to a
-            #      computed sensitivity must resolve to a card and name its group.
-            if f.get("sens_card_ids"):
-                if not f.get("sens_for"):
-                    flag("sens_no_condition", "high", f.get("phenomenon", "?"),
-                         f"finding is tagged as sensitivity data but names no localization group ({cite}).")
-                if f.get("metric") != "frequency_pct" or not isinstance(f.get("value"), (int, float)):
+            # ---- SENSITIVITY tags: each `sens` entry promotes a frequency-within-a-group
+            #      figure to a computed sensitivity; it must resolve to a card, name its
+            #      group, carry a numeric value, and sit on a frequency finding.
+            if f.get("sens"):
+                if f.get("metric") != "frequency_pct":
                     flag("sens_bad_metric", "high", f.get("phenomenon", "?"),
-                         f"sensitivity tag must sit on a numeric frequency figure; this is "
-                         f"metric '{f.get('metric')}' value '{f.get('value')}' ({cite}).")
-                for cid in f["sens_card_ids"]:
-                    if cid not in by_id:
+                         f"sensitivity tags must sit on a frequency figure; this is "
+                         f"metric '{f.get('metric')}' ({cite}).")
+                for entry in f["sens"]:
+                    if not entry.get("group"):
+                        flag("sens_no_condition", "high", f.get("phenomenon", "?"),
+                             f"a sensitivity entry names no localization group ({cite}).")
+                    if not isinstance(entry.get("value"), (int, float)):
+                        flag("sens_bad_metric", "high", f.get("phenomenon", "?"),
+                             f"a sensitivity entry has a non-numeric value '{entry.get('value')}' ({cite}).")
+                    if entry.get("card_id") not in by_id:
                         flag("sens_orphan_link", "high", f.get("phenomenon", "?"),
-                             f"sensitivity finding links to card #{cid}, which does not exist ({cite}).")
+                             f"sensitivity entry links to card #{entry.get('card_id')}, which does not exist ({cite}).")
 
     # ---- Sensitivity/specificity provenance (informational, once). Sensitivity is now
     #      computed as P(sign|localization) from tagged frequency findings; specificity
     #      still cannot be (corpus lacks the false-positive side) and stays an estimate.
     corpus_spec = sum(1 for p in corpus.get("papers", [])
                       for f in p.get("findings", []) if f.get("metric") == "specificity")
-    sens_cards = {cid for p in corpus.get("papers", []) for f in p.get("findings", [])
-                  for cid in (f.get("sens_card_ids") or [])}
+    sens_cards = {e.get("card_id") for p in corpus.get("papers", []) for f in p.get("findings", [])
+                  for e in (f.get("sens") or [])}
     flag("sens_spec_provenance", "info", "(cards)",
          f"sensitivity is computed as P(sign|localization) for {len(sens_cards)} sign(s) from tagged "
          f"ledger frequencies (marked 'corpus'); the rest, and ALL specificity, remain curator "
