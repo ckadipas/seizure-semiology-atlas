@@ -7,7 +7,6 @@
  "summary": {
   "conflict": 2,
   "double_count": 9,
-  "direction_clash": 1,
   "single_source": 3
  },
  "flags": [
@@ -53,13 +52,6 @@
    "severity": "low",
    "sign": "Ictal dysphasia / aphasia",
    "detail": "review Loddenkemper & Kotagal 2005 (100%) and primary Gabr et al. 1989 (100%) agree within 2.0 points - the review may be citing the primary series; pooling both slightly double-weights this datum.",
-   "evidence": []
-  },
-  {
-   "kind": "direction_clash",
-   "severity": "high",
-   "sign": "Ictal spitting",
-   "detail": "meta-analysis direction 'nondominant' conflicts with curated sign 'Ictal spitting' latcode 'dominant'.",
    "evidence": []
   },
   {

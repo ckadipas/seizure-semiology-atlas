@@ -78,6 +78,44 @@ for r in region_order:
     pills.append(f'<button class="pill" data-target="sec-{slug(r)}"><span class="pill-name">{esc(region_short[r])}</span><span class="pill-count" data-region="{esc(r)}">{region_counts[r]}</span></button>')
 pills_html = "\n".join(pills)
 
+# ---- SINGLE SOURCE OF TRUTH: link each curated card to its meta-analysis ledger
+# entry (by explicit id, not fragile substring), so the card renders the SAME
+# pooled lateralization figure and the SAME per-study source list as the top plot.
+meta_by_cardid = {}
+if META:
+    for ms in META.get("by_sign", []):
+        for cid in ms.get("sign_ids", []) or []:
+            meta_by_cardid[cid] = ms
+_gtname = {"seeg":"SEEG","postop":"post-op sz-freedom","intracranial_eeg":"intracranial EEG",
+           "video_eeg":"video-EEG","scalp_eeg":"scalp EEG","imaging_concordance":"imaging concordance",
+           "review":"review","none":"none"}
+_dirword = {"contra":"Contralateral","ipsi":"Ipsilateral","dominant":"Dominant hemisphere","nondominant":"Non-dominant hemisphere"}
+_certword = {"well_supported":"well supported","moderate":"moderate","single_source":"single source"}
+
+def pooled_block_for(ms):
+    """The card's lateralization evidence, rendered from the shared meta ledger."""
+    if not ms:
+        return "", 0
+    items = []
+    for c in ms.get("contributions", []):
+        val = (f'{c["value"]:g}%' if "value" in c else esc(c.get("qualitative","supportive")))
+        meta = f'{c.get("eclass") or "?"} / {_gtname.get(c.get("ground_truth"), c.get("ground_truth") or "-")}'
+        items.append('<li><span class="ev-src">'+esc(c.get("cite", c["study"]))+'</span>'
+                     + ((' <span class="ev-pg" title="Source page">'+esc(c["pg"])+'</span>') if c.get("pg") else '')
+                     + ' <strong>'+val+'</strong> <span class="ev-meta">('+esc(meta)+')</span>'
+                     + ((' &mdash; '+esc(c["note"])) if c.get("note") else '') + '</li>')
+    nsent = ms.get("n_studies", 0) + ms.get("n_qualitative", 0)   # same count the top plot shows
+    if ms.get("pooled") is not None:
+        head = (f'<span class="pooled-hd"><strong>{ms["pooled"]:g}% {esc(_dirword.get(ms["direction"], ms["direction"]))}</strong> '
+                f'&middot; range {ms["low"]:g}&#8211;{ms["high"]:g}% &middot; {nsent} '
+                f'stud{"y" if nsent==1 else "ies"} &middot; {_certword.get(ms.get("certainty"),"?")}</span>')
+    else:
+        head = f'<span class="pooled-hd"><strong>{esc(_dirword.get(ms["direction"], ms["direction"]))}</strong> &middot; direction-only (no pooled %)</span>'
+    contested = ('<div class="pooled-warn">&#9888;&#65039; '+esc(ms["contested"])+'</div>') if ms.get("contested") else ''
+    block = ('<div class="d-row d-ev d-pooled"><span class="d-label">&#128218; Pooled lateralization &amp; sources (meta-analysis)</span>'
+             + head + contested + '<ul class="ev-list">'+"".join(items)+'</ul></div>')
+    return block, len([c for c in ms.get("contributions", []) if "value" in c])
+
 # ---- build sections ----
 sections = []
 for r in region_order:
@@ -88,19 +126,28 @@ for r in region_order:
         for d in signs:
             lc, ec = d["latcode"], d["evid"]
             accent = latcolor.get(lc,"#999")
+            _ms = meta_by_cardid.get(d.get("id"))
             ev_text = " ".join(e["p"]+" "+e["f"] for e in d.get("_ev",[]))
             search_str = " ".join([d["sign"],d["phase"],d["lat"],d["loc"],d["sens"],d["spec"],d["notes"],d["cite"],d["region"],d["sub"],ev_text]).lower().replace('"',"")
-            has_ev = bool(d.get("_ev"))
-            lib_chip = ('<span class="chip lib-chip" title="Grounded in your uploaded literature">&#128218; '+str(len(d["_ev"]))+'</span>') if has_ev else ''
-            ev_block = ''
-            if has_ev:
-                items = "".join(
-                    '<li><span class="ev-src">'+esc(e["p"])+'</span>'
-                    + ((' <span class="ev-pg" title="Source page">'+esc(e["pg"])+'</span>') if e.get("pg") else '')
-                    + ' '+esc(e["f"])+'</li>'
-                    for e in d["_ev"])
-                ev_block = ('<div class="d-row d-ev"><span class="d-label">&#128218; Evidence in your library</span>'
-                            '<ul class="ev-list">'+items+'</ul></div>')
+            # SINGLE SOURCE: if this card is in the meta ledger, its evidence IS the
+            # ledger's per-study sources (identical to the top plot). Otherwise fall
+            # back to the substring-matched library evidence.
+            if _ms:
+                ev_block, _nsrc = pooled_block_for(_ms)
+                has_ev = True
+                lib_chip = ('<span class="chip lib-chip" title="Pooled from the meta-analysis ledger">&#128218; '+str(len(_ms.get("contributions",[])))+'</span>')
+            else:
+                has_ev = bool(d.get("_ev"))
+                lib_chip = ('<span class="chip lib-chip" title="Grounded in the source library">&#128218; '+str(len(d["_ev"]))+'</span>') if has_ev else ''
+                ev_block = ''
+                if has_ev:
+                    items = "".join(
+                        '<li><span class="ev-src">'+esc(e["p"])+'</span>'
+                        + ((' <span class="ev-pg" title="Source page">'+esc(e["pg"])+'</span>') if e.get("pg") else '')
+                        + ' '+esc(e["f"])+'</li>'
+                        for e in d["_ev"])
+                    ev_block = ('<div class="d-row d-ev"><span class="d-label">&#128218; Evidence in the source library</span>'
+                                '<ul class="ev-list">'+items+'</ul></div>')
             rows.append(f'''<div class="sign" data-region="{esc(d['region'])}" data-phase="{esc(d['phase'])}" data-latcode="{lc}" data-evid="{ec}" data-search="{esc(search_str)}" style="--accent:{accent}">
   <button class="sign-head" aria-expanded="false">
     <span class="chevron">&#8250;</span>
@@ -620,6 +667,10 @@ body.quiz .lib-chip{display:none}
 .ev-list li{font-size:.82rem;line-height:1.5;color:#3a3a3a;padding-left:12px;border-left:2px solid #e8b878}
 .ev-src{font-weight:800;color:#8a4b00;display:inline-block;margin-right:4px}
 .ev-pg{font-size:.68rem;font-weight:700;color:#8a4b00;background:#fff0d9;border:1px solid #e8b878;border-radius:4px;padding:0 5px;margin-right:3px;white-space:nowrap;vertical-align:baseline}
+.pooled-hd{display:block;font-size:.84rem;color:var(--navy);margin-bottom:8px;font-variant-numeric:tabular-nums}
+.pooled-hd strong{color:#8a4b00}
+.pooled-warn{font-size:.76rem;background:#fff6e9;border:1px solid #f0cf8f;color:#7a4a06;border-radius:7px;padding:6px 10px;margin-bottom:8px;line-height:1.45}
+.ev-meta{font-size:.72rem;color:#a15c00;font-weight:700}
 
 /* framework callout */
 .callout{max-width:1180px;margin:0 auto 14px;padding:0 16px}
