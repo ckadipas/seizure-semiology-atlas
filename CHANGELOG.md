@@ -5,6 +5,14 @@ Format loosely follows Keep a Changelog; dates are ISO-8601.
 
 ## [Unreleased]
 ### Added
+- **Source-figures explorer** (new foldable section): every one of the 599
+  extracted figures rendered as a compact, searchable, type-filterable table
+  (lateralization / localization / frequency / PPV / odds-ratio / other), each row
+  checkable against its verbatim quote and source locator. This puts the frequency,
+  localization, and PPV figures — which are population-specific and don't pool into
+  one model — on the page too, so every extracted data point is accounted for and
+  inspectable, not just the lateralization figures that feed the pooled plot.
+  Alim-Marvasti rows are shown but marked excluded.
 - **Full-corpus extraction (37 papers).** Every paper in the library was read in
   full and machine-extracted into `enrichment/corpus_findings.json` (599 findings,
   each with a short verbatim quote + locator for verification) — the auditable raw
