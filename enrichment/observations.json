@@ -167,7 +167,9 @@
       "metric": "lateralization",
       "direction": "contra",
       "observations": [
-        {"study": "Blair 2012", "value": 75, "freq": null, "note": "Asymmetric lower facial weakness (emotional/mimetic) contralateral to the seizure focus in ~3/4 of 50 patients."}
+        {"study": "Loddenkemper 2005", "value": 86, "freq": null, "note": "Unilateral facial asymmetry in 36/50 (72%), contralateral to the focus in 31/36 (86%); and contralateral in 27/37 (73%) with a unilateral temporal focus."},
+        {"study": "Blair 2012", "value": 75, "freq": null, "note": "Asymmetric lower facial weakness (emotional/mimetic) contralateral to the seizure focus in ~3/4 of 50 patients."},
+        {"study": "Foldvary-Schaefer 2011", "value": null, "qualitative": "contra", "note": "Lower facial asymmetry in ~70% of TLE, usually contralateral to the EZ."}
       ]
     },
     {
@@ -249,9 +251,10 @@
       "ba": "BA 28 (non-dominant)",
       "metric": "lateralization",
       "direction": "nondominant",
-      "contested": "Lateralization disputed: Loddenkemper reports non-dominant (right) in 75%; several TLE series (Kellinghaus) find it more often in the language-dominant (left) hemisphere, as this atlas's curated card reflects.",
+      "contested": "The sources here lateralize non-dominant (Loddenkemper 75% right; Fakhoury found ictal spitting exclusively in right TLE), but this atlas's curated card localizes it dominant - a discrepancy flagged for review rather than reconciled.",
       "observations": [
-        {"study": "Loddenkemper 2005", "value": 75, "freq": "0.3% of EMU pts", "note": "Non-dominant (right) in 75% in this review's compiled figures."}
+        {"study": "Loddenkemper 2005", "value": 75, "freq": "0.3% of EMU pts", "note": "Ictal spitting non-dominant (right) in 9/12 (75%)."},
+        {"study": "Fakhoury 1994", "value": null, "qualitative": "nondominant", "note": "Ictal spitting occurred exclusively in right (non-dominant) TLE - 11 (21%) of right-TLE seizures vs 0 in left TLE."}
       ]
     },
     {
