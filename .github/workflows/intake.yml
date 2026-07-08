@@ -23,6 +23,7 @@ permissions:
   contents: write
   pull-requests: write
   issues: write
+  id-token: write        # required by claude-code-action to mint its GitHub token (OIDC)
 
 concurrency:
   group: intake-${{ github.event.issue.number || github.event.inputs.issue_number }}
