@@ -88,6 +88,11 @@ jobs:
           BR="intake/issue-${{ steps.ctx.outputs.number }}"
           SUM="$(cat /tmp/intake_summary.txt 2>/dev/null || echo '')"
           cp enrichment/intake_findings.json /tmp/intake_findings.json
+          # Authenticate git with the job's own token. The extraction step revokes
+          # the credential it set up when it finishes, so a plain push has no valid
+          # auth; use GITHUB_TOKEN directly and drop any leftover auth header.
+          git config --unset-all "http.https://github.com/.extraheader" 2>/dev/null || true
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           git config user.name "atlas-intake"
           git config user.email "atlas-intake@users.noreply.github.com"
           git fetch origin main
