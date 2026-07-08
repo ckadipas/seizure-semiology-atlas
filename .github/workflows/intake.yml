@@ -1,0 +1,107 @@
+name: Paper intake
+
+# Manual-only intake. A maintainer triggers this on a submitted issue (its attached
+# document is read on the runner); short, page-cited figures are extracted and a
+# pull request is opened for review. Only the derived figures are committed — the
+# document/full text stays on the runner.
+#
+# Setup: add a repository secret named INTAKE_TOKEN (Settings -> Secrets and
+# variables -> Actions) holding the extraction token.
+
+on:
+  # Manual only — nothing runs until a maintainer triggers it with the issue number.
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: Issue number to process (its attached document is read)
+        required: true
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  id-token: write
+
+concurrency:
+  group: intake-${{ github.event.inputs.issue_number }}
+  cancel-in-progress: false
+
+jobs:
+  intake:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Resolve the target issue
+        id: ctx
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const num = Number(context.payload.inputs.issue_number);
+            const { data: issue } = await github.rest.issues.get({
+              owner: context.repo.owner, repo: context.repo.repo, issue_number: num });
+            core.setOutput('number', String(num));
+            core.setOutput('title', issue.title || '');
+            core.setOutput('body', issue.body || '');
+
+      # Extraction step. Restricted to file editing only — no git, no gh — so it
+      # never commits or opens anything itself. It just leaves the findings file
+      # changed for the next step to publish under a neutral identity.
+      - name: Extract page-cited findings from the attached document
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.INTAKE_TOKEN }}
+          claude_args: '--max-turns 30 --allowedTools "Read,Edit,Write,Bash(curl:*),Bash(python3:*)"'
+          prompt: |
+            You are extracting quantitative figures from a paper for a source-grounded, educational epilepsy-semiology atlas.
+
+            Intake issue #${{ steps.ctx.outputs.number }}
+            Title: ${{ steps.ctx.outputs.title }}
+            Body:
+            ${{ steps.ctx.outputs.body }}
+
+            Do this:
+            1. Find the document URL in the issue body (a https://github.com/user-attachments/... link ending in .pdf). If there is none, write "NO_DOCUMENT" to /tmp/intake_summary.txt and stop.
+            2. Download it: `curl -L -o /tmp/paper.pdf "<url>"`, then Read /tmp/paper.pdf.
+            3. Read enrichment/intake_findings.json (schema + existing findings), data/semiology_data.json (sign names), and enrichment/enrichment.json (the "papers" list, so you don't duplicate a paper).
+            4. Extract ONLY short, attributed, PAGE-CITED findings bearing on LOCALIZING or LATERALIZING semiology. For each: a one- or two-sentence paraphrase in your own words (never a long verbatim quote) including the reported figure/percentage/N; a "pg" source page (e.g. "p.608"); and a "sign_stem" that is a lowercase substring of an existing sign name. Add any new paper under "papers" (cite, journal, title, contribution). Follow any specific instruction in the issue body. Never fabricate a figure; omit anything the paper does not support. Prefer disciplined primary series; treat literature-mined meta-analyses skeptically.
+            5. Append your findings to enrichment/intake_findings.json, keeping it valid JSON.
+            6. Run and make all pass, fixing your JSON as needed:
+               `python3 enrichment/build_enrichment.py && python3 tools/check_provenance.py && python3 tools/validate_data.py && python3 generator/gen_study.py`
+            7. IP boundary: do NOT keep the document or any full/long text in the repo. The only file you should change is enrichment/intake_findings.json.
+            8. Do NOT run git and do NOT open a pull request — leave the file changed for the publishing step.
+            9. Write a one-line summary to /tmp/intake_summary.txt: the paper, how many findings you added, their source pages, and which sign(s) they attach to. If you added nothing usable, write "NONE" and a short reason.
+
+      # Publish step. Rebuilds the branch fresh from main and commits/opens the PR
+      # under a neutral CI identity, so nothing carries the extraction step's author.
+      - name: Open the pull request
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          BR="intake/issue-${{ steps.ctx.outputs.number }}"
+          SUM="$(cat /tmp/intake_summary.txt 2>/dev/null || echo '')"
+          cp enrichment/intake_findings.json /tmp/intake_findings.json
+          git config user.name "atlas-intake"
+          git config user.email "atlas-intake@users.noreply.github.com"
+          git fetch origin main
+          git checkout -B "$BR" origin/main
+          cp /tmp/intake_findings.json enrichment/intake_findings.json
+          python3 enrichment/build_enrichment.py
+          if git diff --quiet -- enrichment/intake_findings.json enrichment/enrichment.json; then
+            gh issue comment "${{ steps.ctx.outputs.number }}" --body "Reviewed the submitted document — no changes to publish. ${SUM}"
+            exit 0
+          fi
+          git add enrichment/intake_findings.json enrichment/enrichment.json
+          git commit -m "Intake: page-cited findings from issue #${{ steps.ctx.outputs.number }}"
+          git push -u origin "$BR"
+          gh pr create --base main --head "$BR" \
+            --title "Intake: findings from issue #${{ steps.ctx.outputs.number }}" \
+            --body "Page-cited findings extracted from the submitted document. Only short attributed figures with their source pages were added; the document and full text were not committed. Review each finding against its cited page, then merge. ${SUM} Closes #${{ steps.ctx.outputs.number }}"
+          gh issue comment "${{ steps.ctx.outputs.number }}" --body "Opened a pull request with the extracted findings for review. ${SUM}"
