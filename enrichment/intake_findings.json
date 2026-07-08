@@ -1,5 +1,36 @@
 {
  "_comment": "Machine-managed by .github/workflows/intake.yml (tools/intake_ci.py). Each finding is a short, attributed factual extraction carrying a source PAGE reference for provenance. Do not hand-edit; add evidence in build_enrichment.py or via the intake workflow. tools/check_provenance.py gates every entry.",
  "papers": [],
- "findings": []
+ "findings": [
+  {
+   "sign_stem": "late forced",
+   "paper": "Wyllie 1986",
+   "finding": "Prior video-EEG series (Ochs 1984, Robillard 1983) had scored ipsiversion in 48-50% of seizures and concluded head turning had no lateralizing value; Wyllie attributes the discrepancy to their more permissive definition of 'versive' that included mild/ambiguous rotations. When only marked, sustained, unambiguous forced turning was scored as versive, ipsiversion was never observed (0/61).",
+   "pg": "pp.608-609"
+  },
+  {
+   "sign_stem": "late forced",
+   "paper": "Wyllie 1986",
+   "finding": "Version's temporal relationship to other ictal signs differed by lobe of onset: 35/61 (57%) versive seizures began with the versive movement itself, and 91% of these were frontal/extratemporal; none were temporal. All 18 seizures in which staring-plus-automatisms preceded contraversion (30% of the versive cohort) arose from temporal onset, and contraversion never occurred as the initial sign in a temporal-onset seizure.",
+   "pg": "p.607"
+  },
+  {
+   "sign_stem": "late forced",
+   "paper": "Wyllie 1986",
+   "finding": "Of the 27/61 (44%) versive seizures that secondarily generalized, 12 (44%) ended with ipsiversion during or after the generalized convulsion - only the first, pre-generalization versive movement reliably lateralizes; turning observed during/after secondary generalization can reverse side and should not be used for lateralization.",
+   "pg": "p.608"
+  },
+  {
+   "sign_stem": "late forced",
+   "paper": "Wyllie 1986",
+   "finding": "Interictal EEG foci among the 27 patients with versive seizures were exclusively contralateral to the versive direction in 81% (22/27) and never exclusively ipsilateral (5/27 bilateral), corroborating the ictal contralateral-version finding.",
+   "pg": "p.607"
+  },
+  {
+   "sign_stem": "early non-forced",
+   "paper": "Wyllie 1986",
+   "finding": "Nonversive (mild, unsustained, wandering, or seemingly voluntary) head/eye turning occurred in 13 seizures from 10 patients and was split almost evenly between ipsilateral (7 seizures/4 patients) and contralateral (6 seizures/6 patients) to seizure onset, confirming it carries no lateralizing value.",
+   "pg": "p.607"
+  }
+ ]
 }
