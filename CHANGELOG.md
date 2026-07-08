@@ -5,6 +5,23 @@ Format loosely follows Keep a Changelog; dates are ISO-8601.
 
 ## [Unreleased]
 ### Added
+- **Weighted meta-analysis** (top foldable plot): each semiology's lateralization
+  percentage pooled across every source that reports it, weighted by evidence
+  class and ground-truth directness (`tools/meta_analysis.py`, deterministic).
+  Two nested views — region → gyrus/Brodmann → sign, and semiology A–Z → region —
+  with the full per-study value + weight breakdown on expand, so every figure is
+  traceable. Structured source data lives in `enrichment/observations.json`;
+  method documented in `METHODS.md`.
+- **Adversarial clinical review.** Deterministic checker (`tools/adversarial_review.py`)
+  flags conflicts, direction clashes, duplicates/double-counts, orphaned figures,
+  and single-source figures → `enrichment/review_flags.json`. Genuine conflicts
+  surface in a new on-page "Conflicting evidence" panel (e.g. ictal spitting:
+  review reports non-dominant, curated card localizes dominant — surfaced, not
+  reconciled); robustness caveats show inline per sign. A manual LLM reviewer
+  workflow (`.github/workflows/review.yml`) re-reads the actual PDFs on the CI
+  runner to catch misreadings the mechanical pass cannot.
+- CI now regenerates and sync-checks `meta_analysis.json` and `review_flags.json`
+  alongside `enrichment.json`; `make review` reruns the analysis + review.
 - Repository scaffold: version-controlled data, CI build/deploy, validation gate,
   issue/PR templates, and a paper-intake pipeline.
 - Public-repo publishing path (free GitHub Pages) and `CITATION.cff` for a
