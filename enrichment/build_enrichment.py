@@ -166,10 +166,9 @@ LATERAL = [
  {"sign":"Ictal spitting","dir":"nondominant","pct":75,"freq":"0.3% of EMU pts"},
 ]
 
-# ---------------- MACHINE-INTEGRATED INTAKE (CI-appended, page-cited) ----------------
-# tools/intake_ci.py appends AI-extracted, page-referenced findings to
-# intake_findings.json from the automated PDF-intake workflow. Kept separate from
-# the hand-authored evidence above so provenance stays auditable;
+# ---------------- INTAKE FINDINGS (page-cited) ----------------
+# Page-referenced findings from intake live in intake_findings.json, kept separate
+# from the hand-authored evidence above so provenance stays auditable;
 # tools/check_provenance.py gates every entry (each must carry a source page).
 _intake_path = os.path.join(ROOT, "enrichment", "intake_findings.json")
 if os.path.exists(_intake_path):

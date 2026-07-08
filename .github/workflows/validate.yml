@@ -33,7 +33,7 @@ jobs:
           git diff --exit-code enrichment/enrichment.json enrichment/meta_analysis.json enrichment/review_flags.json \
             || (echo "::error::generated data is out of sync. Run 'make build' and commit the result." && exit 1)
 
-      - name: Check intake provenance (every AI-added finding is page-cited)
+      - name: Check intake provenance (every added finding is page-cited)
         run: python3 tools/check_provenance.py
 
       - name: Adversarial review (advisory — surfaces conflicts, does not block)

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Deterministic adversarial-review checks (the mechanical half of the "reviewer agent").
+"""Deterministic source-review checks.
 
-Catches the machine-checkable failure modes the resource must guard against as new
+Catches the checkable failure modes the resource must guard against as new
 evidence is added:
 
   * CONFLICT        - studies for one semiology disagree on the lateralization figure
@@ -17,12 +17,12 @@ evidence is added:
                       figure would not attach to anything (traceability break).
   * SINGLE_SOURCE   - a pooled figure rests on one study only (low robustness).
 
-Emits enrichment/review_flags.json (consumed by the page's "Conflicting / overlapping
-evidence" panel and printed in CI). Advisory by default; pass --strict to exit non-zero
-when any CONFLICT / DIRECTION_CLASH / DUPLICATE / ORPHAN_STEM flag is present.
+Emits enrichment/review_flags.json and prints a summary in CI. Advisory by default;
+pass --strict to exit non-zero when any CONFLICT / DIRECTION_CLASH / DUPLICATE /
+ORPHAN_STEM flag is present.
 
-Semantic misreading-detection (does a figure faithfully reflect the paper?) needs the
-actual PDF and is handled by the LLM reviewer workflow on the CI runner, not here.
+Checking whether a figure faithfully reflects its paper needs the source text and
+is done during intake review, not here.
 """
 import json
 import os

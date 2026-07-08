@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 """
-check_provenance.py — the "page checker" gate for machine-integrated intake.
+check_provenance.py — the page-provenance gate for intake findings.
 
-Every finding in enrichment/intake_findings.json (the file the CI intake
-pipeline appends to) must carry a source PAGE reference and map to a real sign.
-This is what makes an AI-added claim checkable against the paper: nothing is
-auto-integrated without a citable page. Runs in CI on every PR.
+Every finding in enrichment/intake_findings.json must carry a source PAGE
+reference and map to a real sign, so nothing is integrated without a citable
+page. Runs in CI on every PR.
 
 Exit non-zero (failing the build) if any entry is malformed or unprovenanced.
 Passes trivially when there are no intake findings.

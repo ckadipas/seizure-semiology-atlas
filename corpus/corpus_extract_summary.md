@@ -1,19 +1,5 @@
 # CORPUS EXTRACTION SUMMARY (source-grounded figures)
 
-## Alim-Marvasti 2022 (Brain Comms) — PRISMA meta-analysis, 11,230 datapoints / 4,643 pts / 309 articles
-Data-driven odds ratios (value ADDED over unbiased prior; CI excluding 1 = adds localizing value):
-- Somatosensory aura -> Parietal S1: OR 7.6 (5.1-11.3)  [STRONGEST common sign]
-- "Other automatisms"/whole-body -> Hypothalamus: OR 13.7 (9.2-20.4)
-- Mimetic automatism (grimace) -> Cingulate: OR 5.6 (3.6-8.7)
-- Olfactory aura -> Parietal: OR 4.6 (3.2-6.5)
-- Tonic -> Frontal: OR 3.0 (2.4-3.7)
-- Visual -> Occipital: OR 2.9 (1.8-4.6)
-- Autonomic aura -> Hypothalamus: OR 2.8 (1.8-4.4)
-- Epigastric aura -> Mesial temporal: OR 2.8 (2.3-2.9); Temporal OR 2.4 (1.9-2.9)
-- Dystonic -> Frontal: OR 2.0 (1.4-2.7)
-- Head version -> Frontal OR 0.9 (0.7-1.2) & Temporal OR 1.21 (0.9-1.6): CROSSES 1 = NO added localizing value
-Localization probabilities: epigastric->mesial temp 61%; autonomic->temp 58%/hypothal 15%; olfactory->temp 40%/pariet 28%/front 21%; head version->temp 46%/front 33%; tonic->front 54%; dystonic->front 53%; oral/manual->temp 47%/front 31%; dialeptic(LOA)->temp 42%/front 28%. Unbiased prior: temporal 44%, frontal 31%.
-
 ## Loddenkemper 2005 (Epilepsy&Behav) — lateralizing-signs review, Table 1
 - Unilateral sensory aura: 6.1% pts, 89% contra, BA1-3
 - Hemifield visual aura: 28.6% OLE, 100% contra, BA17-19
