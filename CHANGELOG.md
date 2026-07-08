@@ -20,6 +20,10 @@ Format loosely follows Keep a Changelog; dates are ISO-8601.
   owner approval. Machine-added evidence lives in `enrichment/intake_findings.json`;
   `tools/check_provenance.py` gates every finding on a source page. Evidence entries
   can now carry a `pg` page reference, shown on the sign's evidence panel.
+- Late forced head version: added Wyllie et al. 1986 (Neurology) — the
+  foundational series establishing versive (forced, sustained) head/eye
+  deviation as reliably contralateral and non-versive turning as
+  non-localizing. Added to the source library (from intake issue #7).
 ### Changed
 - Front-page declutter: trimmed the intro to a single instruction line, removed
   the header stat badges and decorative emoji, and collapsed the
