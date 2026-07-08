@@ -8,7 +8,7 @@
   "conflict": 2,
   "double_count": 9,
   "direction_clash": 1,
-  "single_source": 4
+  "single_source": 3
  },
  "flags": [
   {
@@ -74,13 +74,6 @@
    "severity": "low",
    "sign": "Ictal vomiting (ictus emeticus)",
    "detail": "pooled figure rests on a single study (Loddenkemper & Kotagal 2005); treat as provisional until corroborated.",
-   "evidence": []
-  },
-  {
-   "kind": "single_source",
-   "severity": "low",
-   "sign": "Lower facial weakness (mimetic)",
-   "detail": "pooled figure rests on a single study (Blair 2012); treat as provisional until corroborated.",
    "evidence": []
   },
   {

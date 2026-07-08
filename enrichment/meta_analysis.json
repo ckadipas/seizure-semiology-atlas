@@ -432,7 +432,7 @@
        "ba": "BA 28 (non-dominant)",
        "metric": "lateralization",
        "direction": "nondominant",
-       "contested": "Lateralization disputed: Loddenkemper reports non-dominant (right) in 75%; several TLE series (Kellinghaus) find it more often in the language-dominant (left) hemisphere, as this atlas's curated card reflects.",
+       "contested": "The sources here lateralize non-dominant (Loddenkemper 75% right; Fakhoury found ictal spitting exclusively in right TLE), but this atlas's curated card localizes it dominant - a discrepancy flagged for review rather than reconciled.",
        "contributions": [
         {
          "study": "Loddenkemper 2005",
@@ -448,12 +448,29 @@
          },
          "pg": null,
          "freq": "0.3% of EMU pts",
-         "note": "Non-dominant (right) in 75% in this review's compiled figures.",
+         "note": "Ictal spitting non-dominant (right) in 9/12 (75%).",
          "value": 75
+        },
+        {
+         "study": "Fakhoury 1994",
+         "cite": "Fakhoury et al. 1994",
+         "eclass": "II",
+         "ground_truth": "video_eeg",
+         "n": null,
+         "weight": 2.4,
+         "weight_parts": {
+          "class_base": 2.0,
+          "ground_truth_mult": 1.2,
+          "size_factor": 1.0
+         },
+         "pg": null,
+         "freq": null,
+         "note": "Ictal spitting occurred exclusively in right (non-dominant) TLE - 11 (21%) of right-TLE seizures vs 0 in left TLE.",
+         "qualitative": "nondominant"
         }
        ],
        "n_studies": 1,
-       "n_qualitative": 0,
+       "n_qualitative": 1,
        "pooled": 75.0,
        "low": 75,
        "high": 75,
@@ -1159,6 +1176,23 @@
        "contested": null,
        "contributions": [
         {
+         "study": "Loddenkemper 2005",
+         "cite": "Loddenkemper & Kotagal 2005",
+         "eclass": "III",
+         "ground_truth": "review",
+         "n": null,
+         "weight": 1.0,
+         "weight_parts": {
+          "class_base": 1.0,
+          "ground_truth_mult": 1.0,
+          "size_factor": 1.0
+         },
+         "pg": null,
+         "freq": null,
+         "note": "Unilateral facial asymmetry in 36/50 (72%), contralateral to the focus in 31/36 (86%); and contralateral in 27/37 (73%) with a unilateral temporal focus.",
+         "value": 86
+        },
+        {
          "study": "Blair 2012",
          "cite": "Blair 2012",
          "eclass": "III",
@@ -1174,17 +1208,34 @@
          "freq": null,
          "note": "Asymmetric lower facial weakness (emotional/mimetic) contralateral to the seizure focus in ~3/4 of 50 patients.",
          "value": 75
+        },
+        {
+         "study": "Foldvary-Schaefer 2011",
+         "cite": "Foldvary-Schaefer & Unnwongse 2011",
+         "eclass": "III",
+         "ground_truth": "review",
+         "n": null,
+         "weight": 1.0,
+         "weight_parts": {
+          "class_base": 1.0,
+          "ground_truth_mult": 1.0,
+          "size_factor": 1.0
+         },
+         "pg": null,
+         "freq": null,
+         "note": "Lower facial asymmetry in ~70% of TLE, usually contralateral to the EZ.",
+         "qualitative": "contra"
         }
        ],
-       "n_studies": 1,
-       "n_qualitative": 0,
-       "pooled": 75.0,
+       "n_studies": 2,
+       "n_qualitative": 1,
+       "pooled": 80.5,
        "low": 75,
-       "high": 75,
-       "spread": 0,
-       "wsd": 0.0,
-       "total_weight": 1.0,
-       "certainty": "single_source"
+       "high": 86,
+       "spread": 11,
+       "wsd": 5.5,
+       "total_weight": 2.0,
+       "certainty": "moderate"
       }
      ]
     },
@@ -1946,7 +1997,7 @@
    "ba": "BA 28 (non-dominant)",
    "metric": "lateralization",
    "direction": "nondominant",
-   "contested": "Lateralization disputed: Loddenkemper reports non-dominant (right) in 75%; several TLE series (Kellinghaus) find it more often in the language-dominant (left) hemisphere, as this atlas's curated card reflects.",
+   "contested": "The sources here lateralize non-dominant (Loddenkemper 75% right; Fakhoury found ictal spitting exclusively in right TLE), but this atlas's curated card localizes it dominant - a discrepancy flagged for review rather than reconciled.",
    "contributions": [
     {
      "study": "Loddenkemper 2005",
@@ -1962,12 +2013,29 @@
      },
      "pg": null,
      "freq": "0.3% of EMU pts",
-     "note": "Non-dominant (right) in 75% in this review's compiled figures.",
+     "note": "Ictal spitting non-dominant (right) in 9/12 (75%).",
      "value": 75
+    },
+    {
+     "study": "Fakhoury 1994",
+     "cite": "Fakhoury et al. 1994",
+     "eclass": "II",
+     "ground_truth": "video_eeg",
+     "n": null,
+     "weight": 2.4,
+     "weight_parts": {
+      "class_base": 2.0,
+      "ground_truth_mult": 1.2,
+      "size_factor": 1.0
+     },
+     "pg": null,
+     "freq": null,
+     "note": "Ictal spitting occurred exclusively in right (non-dominant) TLE - 11 (21%) of right-TLE seizures vs 0 in left TLE.",
+     "qualitative": "nondominant"
     }
    ],
    "n_studies": 1,
-   "n_qualitative": 0,
+   "n_qualitative": 1,
    "pooled": 75.0,
    "low": 75,
    "high": 75,
@@ -2059,6 +2127,23 @@
    "contested": null,
    "contributions": [
     {
+     "study": "Loddenkemper 2005",
+     "cite": "Loddenkemper & Kotagal 2005",
+     "eclass": "III",
+     "ground_truth": "review",
+     "n": null,
+     "weight": 1.0,
+     "weight_parts": {
+      "class_base": 1.0,
+      "ground_truth_mult": 1.0,
+      "size_factor": 1.0
+     },
+     "pg": null,
+     "freq": null,
+     "note": "Unilateral facial asymmetry in 36/50 (72%), contralateral to the focus in 31/36 (86%); and contralateral in 27/37 (73%) with a unilateral temporal focus.",
+     "value": 86
+    },
+    {
      "study": "Blair 2012",
      "cite": "Blair 2012",
      "eclass": "III",
@@ -2074,17 +2159,34 @@
      "freq": null,
      "note": "Asymmetric lower facial weakness (emotional/mimetic) contralateral to the seizure focus in ~3/4 of 50 patients.",
      "value": 75
+    },
+    {
+     "study": "Foldvary-Schaefer 2011",
+     "cite": "Foldvary-Schaefer & Unnwongse 2011",
+     "eclass": "III",
+     "ground_truth": "review",
+     "n": null,
+     "weight": 1.0,
+     "weight_parts": {
+      "class_base": 1.0,
+      "ground_truth_mult": 1.0,
+      "size_factor": 1.0
+     },
+     "pg": null,
+     "freq": null,
+     "note": "Lower facial asymmetry in ~70% of TLE, usually contralateral to the EZ.",
+     "qualitative": "contra"
     }
    ],
-   "n_studies": 1,
-   "n_qualitative": 0,
-   "pooled": 75.0,
+   "n_studies": 2,
+   "n_qualitative": 1,
+   "pooled": 80.5,
    "low": 75,
-   "high": 75,
-   "spread": 0,
-   "wsd": 0.0,
-   "total_weight": 1.0,
-   "certainty": "single_source"
+   "high": 86,
+   "spread": 11,
+   "wsd": 5.5,
+   "total_weight": 2.0,
+   "certainty": "moderate"
   },
   {
    "sign": "Postictal (Todd's) palsy",
