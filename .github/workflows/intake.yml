@@ -11,12 +11,15 @@ name: Paper intake (Claude Code → PR)
 # (Settings → Secrets and variables → Actions).
 
 on:
-  issues:
-    types: [opened, labeled]
+  # MANUAL ONLY — this is the spend gate. Claude Code (and your Claude
+  # subscription usage) runs ONLY when a maintainer triggers it here with the
+  # issue number. A submitted paper never runs Claude, or costs anything, until
+  # you deliberately kick it off. Merging the resulting PR is the separate gate
+  # that controls what actually gets published to the live atlas.
   workflow_dispatch:
     inputs:
       issue_number:
-        description: Issue number to (re)process
+        description: Issue number to process (its PDF attachment is read)
         required: true
 
 permissions:
@@ -26,13 +29,11 @@ permissions:
   id-token: write        # required by claude-code-action to mint its GitHub token (OIDC)
 
 concurrency:
-  group: intake-${{ github.event.issue.number || github.event.inputs.issue_number }}
+  group: intake-${{ github.event.inputs.issue_number }}
   cancel-in-progress: false
 
 jobs:
   intake:
-    # Only run for the intake label (or a manual dispatch).
-    if: github.event_name == 'workflow_dispatch' || contains(github.event.issue.labels.*.name, 'intake')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
