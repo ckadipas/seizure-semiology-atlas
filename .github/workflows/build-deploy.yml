@@ -35,11 +35,13 @@ jobs:
       - name: Validate dataset (integrity gate)
         run: python3 tools/validate_data.py
 
-      - name: Verify enrichment.json is in sync with its source
+      - name: Verify generated data is in sync with its sources
         run: |
           python3 enrichment/build_enrichment.py
-          git diff --exit-code enrichment/enrichment.json \
-            || (echo "::error::enrichment.json is stale. Run 'make build' locally and commit it." && exit 1)
+          python3 tools/meta_analysis.py
+          python3 tools/adversarial_review.py
+          git diff --exit-code enrichment/enrichment.json enrichment/meta_analysis.json enrichment/review_flags.json \
+            || (echo "::error::generated data is stale. Run 'make build' locally and commit it." && exit 1)
 
       - name: Build the HTML
         run: python3 generator/gen_study.py

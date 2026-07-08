@@ -25,17 +25,22 @@ jobs:
       - name: Validate dataset (schema + integrity)
         run: python3 tools/validate_data.py
 
-      - name: Check enrichment.json is in sync with build_enrichment.py
+      - name: Check generated data is in sync with its sources
         run: |
           python3 enrichment/build_enrichment.py
-          git diff --exit-code enrichment/enrichment.json \
-            || (echo "::error::enrichment.json is out of sync. Run 'make build' and commit the result." && exit 1)
+          python3 tools/meta_analysis.py
+          python3 tools/adversarial_review.py
+          git diff --exit-code enrichment/enrichment.json enrichment/meta_analysis.json enrichment/review_flags.json \
+            || (echo "::error::generated data is out of sync. Run 'make build' and commit the result." && exit 1)
 
       - name: Check intake provenance (every AI-added finding is page-cited)
         run: python3 tools/check_provenance.py
+
+      - name: Adversarial review (advisory — surfaces conflicts, does not block)
+        run: python3 tools/adversarial_review.py
 
       - name: Build must succeed
         run: python3 generator/gen_study.py
 
       - name: Summarize
-        run: echo "✅ Dataset valid, enrichment in sync, provenance OK, HTML builds."
+        run: echo "✅ Dataset valid, meta-analysis + review in sync, provenance OK, HTML builds."
