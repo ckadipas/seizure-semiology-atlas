@@ -116,6 +116,42 @@ def pooled_block_for(ms):
              + head + contested + '<ul class="ev-list">'+"".join(items)+'</ul></div>')
     return block, len([c for c in ms.get("contributions", []) if "value" in c])
 
+# ---- SINGLE SOURCE OF TRUTH (cont.): predictive-value figures come from the SAME
+# corpus_findings ledger the source-figures explorer renders, surfaced on the card
+# via the finding's explicit card_ids link (assigned by exact phenomenon match, not
+# fuzzy). Population-specific, so listed per source rather than pooled into one number.
+ppv_by_cardid = {}
+if CORPUS:
+    for _p in CORPUS.get("papers", []):
+        _cite = (_p.get("cite") or "?").split(".")[0][:46]
+        for _f in _p.get("findings", []):
+            if _f.get("metric") != "ppv":
+                continue
+            for _cid in _f.get("card_ids", []) or []:
+                ppv_by_cardid.setdefault(_cid, []).append({
+                    "value_text": _f.get("value_text") or (f'{_f["value"]:g}%' if isinstance(_f.get("value"), (int, float)) else ""),
+                    "direction": _f.get("direction") or "",
+                    "population": _f.get("population") or "",
+                    "cite": _cite, "locator": _f.get("locator") or "", "quote": _f.get("quote") or "",
+                })
+
+def ppv_block_for(cid):
+    """Predictive-value figures for a card, rendered from the shared corpus ledger."""
+    rows = ppv_by_cardid.get(cid)
+    if not rows:
+        return ""
+    items = []
+    for r in rows:
+        dchip = (f' <span class="ev-dir">{esc(r["direction"])}</span>' if r["direction"] and r["direction"] not in ("none","") else "")
+        pop = (f' <span class="ev-pop">{esc(r["population"])}</span>' if r["population"] else "")
+        items.append('<li><span class="ev-src">'+esc(r["cite"])+'</span>'
+                     + ((' <span class="ev-pg" title="Source locator">'+esc(r["locator"])+'</span>') if r["locator"] else '')
+                     + ' <strong>'+esc(r["value_text"])+'</strong>'+dchip+pop
+                     + ((' <span class="ev-quote" title="'+esc(r["quote"])+'">&ldquo;&hellip;&rdquo;</span>') if r["quote"] else '')
+                     + '</li>')
+    return ('<div class="d-row d-ev d-ppv"><span class="d-label">&#127919; Predictive value in the source corpus</span>'
+            '<ul class="ev-list">'+"".join(items)+'</ul></div>')
+
 # ---- build sections ----
 sections = []
 for r in region_order:
@@ -128,7 +164,8 @@ for r in region_order:
             accent = latcolor.get(lc,"#999")
             _ms = meta_by_cardid.get(d.get("id"))
             ev_text = " ".join(e["p"]+" "+e["f"] for e in d.get("_ev",[]))
-            search_str = " ".join([d["sign"],d["phase"],d["lat"],d["loc"],d["sens"],d["spec"],d["notes"],d["cite"],d["region"],d["sub"],ev_text]).lower().replace('"',"")
+            ppv_text = " ".join((r["value_text"]+" "+r["cite"]+" ppv predictive value") for r in ppv_by_cardid.get(d.get("id"), []))
+            search_str = " ".join([d["sign"],d["phase"],d["lat"],d["loc"],d["sens"],d["spec"],d["notes"],d["cite"],d["region"],d["sub"],ev_text,ppv_text]).lower().replace('"',"")
             # SINGLE SOURCE: if this card is in the meta ledger, its evidence IS the
             # ledger's per-study sources (identical to the top plot). Otherwise fall
             # back to the substring-matched library evidence.
@@ -148,6 +185,7 @@ for r in region_order:
                         for e in d["_ev"])
                     ev_block = ('<div class="d-row d-ev"><span class="d-label">&#128218; Evidence in the source library</span>'
                                 '<ul class="ev-list">'+items+'</ul></div>')
+            ppv_block = ppv_block_for(d.get("id"))
             rows.append(f'''<div class="sign" data-region="{esc(d['region'])}" data-phase="{esc(d['phase'])}" data-latcode="{lc}" data-evid="{ec}" data-search="{esc(search_str)}" style="--accent:{accent}">
   <button class="sign-head" aria-expanded="false">
     <span class="chevron">&#8250;</span>
@@ -170,8 +208,8 @@ for r in region_order:
         <span class="d-value">{esc(d['loc'])}</span>
       </div>
       <div class="d-metrics">
-        <div class="metric"><span class="d-label">Sensitivity</span><span class="metric-val">{esc(d['sens'])}</span></div>
-        <div class="metric"><span class="d-label">Specificity</span><span class="metric-val">{esc(d['spec'])}</span></div>
+        <div class="metric"><span class="d-label">Sensitivity <span class="est-tag" title="Curator teaching estimate. The source corpus reports no sensitivity/specificity figures for the signs in this atlas; these approximate ranges are for orientation only, not pooled from the papers.">est.</span></span><span class="metric-val">{esc(d['sens'])}</span></div>
+        <div class="metric"><span class="d-label">Specificity <span class="est-tag" title="Curator teaching estimate. The source corpus reports no sensitivity/specificity figures for the signs in this atlas; these approximate ranges are for orientation only, not pooled from the papers.">est.</span></span><span class="metric-val">{esc(d['spec'])}</span></div>
         <div class="metric"><span class="d-label">Evidence</span><span class="metric-val"><span class="evid-badge" style="background:{evidcolor.get(ec,'#888')}">{ec}</span></span></div>
       </div>
       <div class="d-row d-notes">
@@ -183,6 +221,7 @@ for r in region_order:
         <span class="d-value cite">{esc(d['cite'])}</span>
       </div>
       {ev_block}
+      {ppv_block}
     </div>
   </div>
 </div>''')
@@ -671,6 +710,16 @@ body.quiz .lib-chip{display:none}
 .pooled-hd strong{color:#8a4b00}
 .pooled-warn{font-size:.76rem;background:#fff6e9;border:1px solid #f0cf8f;color:#7a4a06;border-radius:7px;padding:6px 10px;margin-bottom:8px;line-height:1.45}
 .ev-meta{font-size:.72rem;color:#a15c00;font-weight:700}
+.est-tag{font-size:.56rem;font-weight:800;letter-spacing:.03em;color:#8a93a5;background:#eef1f6;border:1px solid #d5dbe6;border-radius:4px;padding:0 4px;margin-left:4px;text-transform:none;cursor:help;vertical-align:middle}
+/* predictive-value block: same layout as the evidence block, teal accent to set it apart */
+.d-ppv{background:#f1fafb;border-color:#bfe3e8}
+.d-ppv .d-label{color:#0a6472}
+.d-ppv .ev-list li{border-left-color:#5cc0cd}
+.d-ppv .ev-src{color:#0a6472}
+.d-ppv .ev-pg{color:#0a6472;background:#e0f4f6;border-color:#a7dbe1}
+.ev-dir{font-size:.66rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#0a6472;background:#e0f4f6;border-radius:4px;padding:0 5px;margin-left:2px}
+.ev-pop{font-size:.72rem;color:#5a6472;font-style:italic;margin-left:3px}
+.ev-quote{color:#0a6472;cursor:help;font-weight:800}
 
 /* framework callout */
 .callout{max-width:1180px;margin:0 auto 14px;padding:0 16px}

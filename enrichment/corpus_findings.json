@@ -1476,7 +1476,10 @@
      "n": 38,
      "population": "frontal and temporal lobe epilepsy (selected)",
      "locator": "Section 3.1",
-     "quote": "Chee et al. reviewed the lateralizing significance of version in 38 selected patients with frontal and temporal lobe epilepsy and found version in 45% of patients with a positive predictive value of 94% [4]."
+     "quote": "Chee et al. reviewed the lateralizing significance of version in 38 selected patients with frontal and temporal lobe epilepsy and found version in 45% of patients with a positive predictive value of 94% [4].",
+     "card_ids": [
+      12
+     ]
     },
     {
      "phenomenon": "version",
@@ -2037,7 +2040,10 @@
      "n": null,
      "population": "temporal lobe seizures (Wada-tested)",
      "locator": "Section 5.3",
-     "quote": "in 92% of patients with postictal dysphasia, the presumed epileptogenic zone was in the language-dominant hemisphere [145]."
+     "quote": "in 92% of patients with postictal dysphasia, the presumed epileptogenic zone was in the language-dominant hemisphere [145].",
+     "card_ids": [
+      24
+     ]
     },
     {
      "phenomenon": "postictal dysphasia and aphasia",
@@ -2051,7 +2057,10 @@
      "n": null,
      "population": "focal epilepsy",
      "locator": "Section 5.3",
-     "quote": "Others had similar results, with positive predictive values for postictal dysphasia and aphasia between 80 and 100% [144,146,167,168]."
+     "quote": "Others had similar results, with positive predictive values for postictal dysphasia and aphasia between 80 and 100% [144,146,167,168].",
+     "card_ids": [
+      24
+     ]
     },
     {
      "phenomenon": "postictal nosewiping",
@@ -2943,7 +2952,10 @@
      "n": 22,
      "population": "all lobes (14 patients, 22 seizures)",
      "locator": "Table 1",
-     "quote": "Version | Total 22 (14) | 0.74 | 100% (Contralateral)"
+     "quote": "Version | Total 22 (14) | 0.74 | 100% (Contralateral)",
+     "card_ids": [
+      12
+     ]
     },
     {
      "phenomenon": "unilateral clonic jerking",
@@ -2957,7 +2969,10 @@
      "n": 17,
      "population": "all lobes (12 patients, 17 seizures)",
      "locator": "Table 1",
-     "quote": "Unilateral clonic | Total 17 (12) | 0.81 | 100% (Contralateral)"
+     "quote": "Unilateral clonic | Total 17 (12) | 0.81 | 100% (Contralateral)",
+     "card_ids": [
+      38
+     ]
     },
     {
      "phenomenon": "unilateral tonic posturing",
@@ -2971,7 +2986,10 @@
      "n": 22,
      "population": "all lobes (14 patients, 22 seizures)",
      "locator": "Table 1",
-     "quote": "Unilateral tonic | Total 22 (14) | 0.56 | 77% (Contralateral)"
+     "quote": "Unilateral tonic | Total 22 (14) | 0.56 | 77% (Contralateral)",
+     "card_ids": [
+      44
+     ]
     },
     {
      "phenomenon": "unilateral tonic posturing",
@@ -2985,7 +3003,10 @@
      "n": 11,
      "population": "TLE (8 patients, 11 seizures)",
      "locator": "Table 1",
-     "quote": "Unilateral tonic ... Temporal 11 (8) 91%"
+     "quote": "Unilateral tonic ... Temporal 11 (8) 91%",
+     "card_ids": [
+      44
+     ]
     },
     {
      "phenomenon": "unilateral tonic posturing",
@@ -2999,7 +3020,10 @@
      "n": 6,
      "population": "FLE (3 patients, 6 seizures)",
      "locator": "Table 1",
-     "quote": "Unilateral tonic ... Frontal 6 (3) 33%"
+     "quote": "Unilateral tonic ... Frontal 6 (3) 33%",
+     "card_ids": [
+      44
+     ]
     },
     {
      "phenomenon": "unilateral tonic posturing",
@@ -3013,7 +3037,10 @@
      "n": 3,
      "population": "PLE (2 patients, 3 seizures)",
      "locator": "Table 1",
-     "quote": "Unilateral tonic ... Parietal 3 (2) 100%"
+     "quote": "Unilateral tonic ... Parietal 3 (2) 100%",
+     "card_ids": [
+      44
+     ]
     },
     {
      "phenomenon": "unilateral tonic posturing",
@@ -3027,7 +3054,10 @@
      "n": 2,
      "population": "OLE (1 patient, 2 seizures)",
      "locator": "Table 1",
-     "quote": "Unilateral tonic ... Occipital 2 (1) 100%"
+     "quote": "Unilateral tonic ... Occipital 2 (1) 100%",
+     "card_ids": [
+      44
+     ]
     },
     {
      "phenomenon": "figure 4 posturing",
@@ -3041,7 +3071,10 @@
      "n": 13,
      "population": "all lobes (9 patients, 13 seizures)",
      "locator": "Table 1",
-     "quote": "Figure 4 posturing | Total 13 (9) | 0.81 | 92% (Contralateral to the extended limb)"
+     "quote": "Figure 4 posturing | Total 13 (9) | 0.81 | 92% (Contralateral to the extended limb)",
+     "card_ids": [
+      14
+     ]
     },
     {
      "phenomenon": "figure 4 posturing",
@@ -3055,7 +3088,10 @@
      "n": 5,
      "population": "TLE (3 patients, 5 seizures)",
      "locator": "Table 1",
-     "quote": "Figure 4 posturing ... Temporal 5 (3) 100%"
+     "quote": "Figure 4 posturing ... Temporal 5 (3) 100%",
+     "card_ids": [
+      14
+     ]
     },
     {
      "phenomenon": "figure 4 posturing",
@@ -3069,7 +3105,10 @@
      "n": 7,
      "population": "FLE (5 patients, 7 seizures)",
      "locator": "Table 1",
-     "quote": "Figure 4 posturing ... Frontal 7 (5) 86%"
+     "quote": "Figure 4 posturing ... Frontal 7 (5) 86%",
+     "card_ids": [
+      14
+     ]
     },
     {
      "phenomenon": "unilateral dystonic posturing",
@@ -3083,7 +3122,10 @@
      "n": 8,
      "population": "TLE only (7 patients, 8 seizures)",
      "locator": "Table 1",
-     "quote": "Unilateral dystonic posturing | Total 8(7) | 0.8 | 75% (Contralateral) ... Only seen in patients with temporal lobe epilepsy"
+     "quote": "Unilateral dystonic posturing | Total 8(7) | 0.8 | 75% (Contralateral) ... Only seen in patients with temporal lobe epilepsy",
+     "card_ids": [
+      11
+     ]
     },
     {
      "phenomenon": "last clonic jerk (asymmetric ending)",
@@ -3125,7 +3167,10 @@
      "n": 21,
      "population": "all lobes (17 patients, 21 seizures) per Table 1",
      "locator": "Table 1",
-     "quote": "Automatisms with preserved responsiveness | Total 21 (17) | 0.89 | 62% (lateralized to the non-dominant hemisphere)"
+     "quote": "Automatisms with preserved responsiveness | Total 21 (17) | 0.89 | 62% (lateralized to the non-dominant hemisphere)",
+     "card_ids": [
+      22
+     ]
     },
     {
      "phenomenon": "automatisms with preserved responsiveness",
@@ -3139,7 +3184,10 @@
      "n": 5,
      "population": "TLE (right-handed patients)",
      "locator": "Section 5.1",
-     "quote": "Automatisms with preserved responsiveness (APR) were lateralizing to the non-dominant (right hemisphere) during 6/8 seizures in 4/5 patients who were all right handed."
+     "quote": "Automatisms with preserved responsiveness (APR) were lateralizing to the non-dominant (right hemisphere) during 6/8 seizures in 4/5 patients who were all right handed.",
+     "card_ids": [
+      22
+     ]
     },
     {
      "phenomenon": "postictal nose wiping",
@@ -3153,7 +3201,10 @@
      "n": 21,
      "population": "all lobes (17 patients, 21 seizures)",
      "locator": "Table 1",
-     "quote": "Post ictal nose wiping | Total 21(17) | 0.71 | 62% (Ipsilateral)"
+     "quote": "Post ictal nose wiping | Total 21(17) | 0.71 | 62% (Ipsilateral)",
+     "card_ids": [
+      23
+     ]
     },
     {
      "phenomenon": "postictal nose wiping",
@@ -3167,7 +3218,10 @@
      "n": 15,
      "population": "TLE (11 patients, 15 seizures)",
      "locator": "Table 1",
-     "quote": "Post ictal nose wiping ... Temporal 15(11) 60%"
+     "quote": "Post ictal nose wiping ... Temporal 15(11) 60%",
+     "card_ids": [
+      23
+     ]
     },
     {
      "phenomenon": "seizure semiology (overall aggregate)",
@@ -3404,7 +3458,10 @@
      "n": 47,
      "population": "Focal epilepsy, secondarily generalized motor seizures; own cohort",
      "locator": "Abstract/Results; Table 1",
-     "quote": "The \u201creliable\u201d motor signs with a robust lateralizing value (PPV>80%) were version, unilateral tonic posturing, M2e, unilateral clonic seizure, asymmetric clonic ending and Todd\u2019s paralysis"
+     "quote": "The \u201creliable\u201d motor signs with a robust lateralizing value (PPV>80%) were version, unilateral tonic posturing, M2e, unilateral clonic seizure, asymmetric clonic ending and Todd\u2019s paralysis",
+     "card_ids": [
+      12
+     ]
     },
     {
      "phenomenon": "Unilateral limb tonic posturing",
@@ -3418,7 +3475,10 @@
      "n": 47,
      "population": "Focal epilepsy, secondarily generalized motor seizures; own cohort",
      "locator": "Abstract/Results; Table 1",
-     "quote": "reliable\u201d motor signs with a robust lateralizing value (PPV>80%) were version, unilateral tonic posturing, M2e, unilateral clonic seizure, asymmetric clonic ending and Todd\u2019s paralysis"
+     "quote": "reliable\u201d motor signs with a robust lateralizing value (PPV>80%) were version, unilateral tonic posturing, M2e, unilateral clonic seizure, asymmetric clonic ending and Todd\u2019s paralysis",
+     "card_ids": [
+      44
+     ]
     },
     {
      "phenomenon": "Unilateral limb clonic seizure",
@@ -3432,7 +3492,10 @@
      "n": 47,
      "population": "Focal epilepsy, secondarily generalized motor seizures; own cohort",
      "locator": "Abstract/Results; Table 1",
-     "quote": "reliable\u201d motor signs with a robust lateralizing value (PPV>80%) were version, unilateral tonic posturing, M2e, unilateral clonic seizure, asymmetric clonic ending and Todd\u2019s paralysis"
+     "quote": "reliable\u201d motor signs with a robust lateralizing value (PPV>80%) were version, unilateral tonic posturing, M2e, unilateral clonic seizure, asymmetric clonic ending and Todd\u2019s paralysis",
+     "card_ids": [
+      38
+     ]
     },
     {
      "phenomenon": "Asymmetric clonic ending",
@@ -3460,7 +3523,10 @@
      "n": 47,
      "population": "Focal epilepsy, secondarily generalized motor seizures; own cohort",
      "locator": "Abstract/Results; Discussion",
-     "quote": "Todd\u2019s paralysis had a moderately strong PPV when compared to the literature"
+     "quote": "Todd\u2019s paralysis had a moderately strong PPV when compared to the literature",
+     "card_ids": [
+      40
+     ]
     },
     {
      "phenomenon": "M2e (tonic elevation/abduction of one arm, Ajmone-Marsan)",
@@ -3488,7 +3554,10 @@
      "n": 47,
      "population": "Focal epilepsy, secondarily generalized motor seizures; own cohort",
      "locator": "Results",
-     "quote": "Figure of 4 and ictal dystonia had poor lateralization value (PPV<80%) and were excluded from further analysis"
+     "quote": "Figure of 4 and ictal dystonia had poor lateralization value (PPV<80%) and were excluded from further analysis",
+     "card_ids": [
+      14
+     ]
     },
     {
      "phenomenon": "Ictal hand dystonia",
@@ -3502,7 +3571,10 @@
      "n": 47,
      "population": "Focal epilepsy, secondarily generalized motor seizures; own cohort",
      "locator": "Results/Discussion",
-     "quote": "Figure of 4 and ictal dystonia had poor lateralization value (PPV<80%) and were excluded from further analysis"
+     "quote": "Figure of 4 and ictal dystonia had poor lateralization value (PPV<80%) and were excluded from further analysis",
+     "card_ids": [
+      11
+     ]
     },
     {
      "phenomenon": "Combination of \u22652 reliable motor signs pointing to same side",
@@ -5785,7 +5857,10 @@
      "n": null,
      "population": "focal epilepsies (attributed to Henkel et al 2002, ref 16)",
      "locator": "Auras section",
-     "quote": "an abdominal aura (such as rising epigastric sensation or abdominal discomfort) is highly associated with temporal lobe epilepsy with a probability of 74%"
+     "quote": "an abdominal aura (such as rising epigastric sensation or abdominal discomfort) is highly associated with temporal lobe epilepsy with a probability of 74%",
+     "card_ids": [
+      1
+     ]
     },
     {
      "phenomenon": "abdominal aura evolving into automotor seizure",
@@ -5799,7 +5874,10 @@
      "n": null,
      "population": "focal epilepsies (attributed to Henkel et al 2002, ref 16)",
      "locator": "Auras section",
-     "quote": "the evolution of an abdominal aura into an automotor seizure increases the probability of temporal lobe epilepsy to 98%."
+     "quote": "the evolution of an abdominal aura into an automotor seizure increases the probability of temporal lobe epilepsy to 98%.",
+     "card_ids": [
+      1
+     ]
     },
     {
      "phenomenon": "somatosensory aura",
@@ -5869,7 +5947,10 @@
      "n": null,
      "population": "focal epilepsy (robust lateralising motor signs)",
      "locator": "Lateralising signs",
-     "quote": "Robust lateralising motor signs (positive predictive value of >80%) already discussed include unilateral clonic movements, unilateral tonic or dystonic posturing and early head version"
+     "quote": "Robust lateralising motor signs (positive predictive value of >80%) already discussed include unilateral clonic movements, unilateral tonic or dystonic posturing and early head version",
+     "card_ids": [
+      38
+     ]
     },
     {
      "phenomenon": "unilateral tonic or dystonic posturing",
@@ -5897,7 +5978,10 @@
      "n": null,
      "population": "focal epilepsy (robust lateralising motor signs)",
      "locator": "Lateralising signs",
-     "quote": "Robust lateralising motor signs (positive predictive value of >80%) already discussed include unilateral clonic movements, unilateral tonic or dystonic posturing and early head version"
+     "quote": "Robust lateralising motor signs (positive predictive value of >80%) already discussed include unilateral clonic movements, unilateral tonic or dystonic posturing and early head version",
+     "card_ids": [
+      12
+     ]
     },
     {
      "phenomenon": "gelastic seizures (distribution of origin)",

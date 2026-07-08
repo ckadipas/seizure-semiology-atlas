@@ -41,14 +41,34 @@ The plot offers two views of the same output: region → gyrus / Brodmann area �
 sign, and semiology A–Z → region. Each sign's per-study values and weights are one
 click below it.
 
+## Figures on the sign cards — one ledger, no re-typing
+
+A card shows only figures that trace to a ledger, so the card and the rest of the
+page can never disagree:
+
+- **Lateralization** comes from the sign's `observations.json` entry (linked by
+  explicit `sign_ids`); the card prints the same pooled value and per-study sources
+  as the top plot.
+- **Predictive value (PPV)** comes from `corpus_findings.json` — the same records
+  the source-figures table renders — surfaced on the card through each finding's
+  explicit `card_ids`, assigned by an exact phenomenon match (never a fuzzy one).
+  PPV is population-specific, so it is listed per source with its context, not
+  pooled. Ambiguous or aggregate PPV figures are left in the table only.
+- **Sensitivity / specificity** are **curator teaching estimates**, tagged `est.`
+  on the card. Re-reading every paper against its source text confirmed the corpus
+  reports essentially none (one cited-literature value corpus-wide), so these
+  cannot be — and are not — presented as pooled figures.
+
 ## Review checks — `tools/adversarial_review.py`
 
 Runs on every pull request and writes `enrichment/review_flags.json`. It flags
 studies that disagree on a sign's figure, a pooled direction that contradicts the
 curated card, the same figure entered under two studies or two signs, a figure
-that attaches to no sign, and figures resting on a single study. These are
-advisory — a genuine, disclosed disagreement (e.g. ictal spitting) is surfaced on
-the relevant sign, not silently reconciled.
+that attaches to no sign, figures resting on a single study, a PPV figure whose
+`card_ids` point at a card that does not exist, and a PPV direction that
+contradicts the card it is surfaced on. It also records that card sens/spec are
+teaching estimates. These are advisory — a genuine, disclosed disagreement (e.g.
+ictal spitting) is surfaced on the relevant sign, not silently reconciled.
 
 ## Source-figures table — `generator/gen_study.py`
 

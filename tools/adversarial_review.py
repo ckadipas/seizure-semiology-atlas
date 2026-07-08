@@ -16,6 +16,11 @@ evidence is added:
   * ORPHAN_STEM     - an observation's sign_stem matches no curated sign name, so the
                       figure would not attach to anything (traceability break).
   * SINGLE_SOURCE   - a pooled figure rests on one study only (low robustness).
+  * PPV_ORPHAN_LINK - a corpus PPV finding's card_ids point at a card that doesn't exist.
+  * PPV_DIRECTION_CLASH - a directional PPV finding contradicts the latcode of the card
+                      it is surfaced on (the card and the explorer would disagree).
+  * SENS_SPEC_ESTIMATE  - informational: cards' sensitivity/specificity are curator
+                      teaching estimates, not corpus-pooled (the corpus reports none).
 
 Emits enrichment/review_flags.json and prints a summary in CI. Advisory by default;
 pass --strict to exit non-zero when any CONFLICT / DIRECTION_CLASH / DUPLICATE /
@@ -55,6 +60,10 @@ def review():
     meta = load("enrichment", "meta_analysis.json")
     data = load("data", "semiology_data.json")
     enr = load("enrichment", "enrichment.json")
+    try:
+        corpus = load("enrichment", "corpus_findings.json")
+    except FileNotFoundError:
+        corpus = {"papers": []}
 
     flags = []
 
@@ -64,6 +73,37 @@ def review():
 
     sign_names = [d["sign"].lower() for d in data] + [n["sign"].lower() for n in enr.get("new_signs", [])]
     by_id = {d["id"]: d for d in data}
+
+    # ---- PPV card-link integrity (single-source: cards surface corpus PPV findings
+    #      via each finding's explicit card_ids). Every linked id must resolve to a
+    #      card, and a directional PPV must not contradict that card's lateralization.
+    _dirclash = {("ipsi", "contra"), ("contra", "ipsi"),
+                 ("dominant", "nondominant"), ("nondominant", "dominant")}
+    for p in corpus.get("papers", []):
+        cite = (p.get("cite") or "?").split(".")[0][:40]
+        for f in p.get("findings", []):
+            if f.get("metric") != "ppv":
+                continue
+            for cid in f.get("card_ids", []) or []:
+                card = by_id.get(cid)
+                if not card:
+                    flag("ppv_orphan_link", "high", f.get("phenomenon", "?"),
+                         f"PPV finding links to card #{cid}, which does not exist ({cite}).")
+                    continue
+                fdir, cdir = f.get("direction") or "", card.get("latcode")
+                if (cdir, fdir) in _dirclash:
+                    flag("ppv_direction_clash", "high", card["sign"],
+                         f"PPV finding direction '{fdir}' contradicts card #{cid} latcode "
+                         f"'{cdir}' ({cite}: {f.get('value_text','')}).")
+
+    # ---- Sensitivity/specificity provenance (informational, once): the corpus
+    #      reports essentially no sens/spec, so the card figures are curator teaching
+    #      estimates. Record it so the invariant is visible, not silently assumed.
+    corpus_ss = sum(1 for p in corpus.get("papers", [])
+                    for f in p.get("findings", []) if f.get("metric") in ("sensitivity", "specificity"))
+    flag("sens_spec_estimate", "info", "(all cards)",
+         f"sensitivity/specificity on cards are curator teaching estimates, not pooled: "
+         f"the source corpus contains {corpus_ss} sens/spec figure(s) total. Cards mark these 'est.'.")
 
     for s in meta["by_sign"]:
         contribs = s["contributions"]
@@ -155,7 +195,8 @@ def review():
         print(f"  [{fl['severity']:>6}] {fl['kind']:<15} {fl['sign']}: {fl['detail']}")
 
     if "--strict" in sys.argv:
-        blocking = [f for f in flags if f["kind"] in ("conflict", "direction_clash", "duplicate", "orphan_stem")]
+        blocking = [f for f in flags if f["kind"] in ("conflict", "direction_clash", "duplicate",
+                                                       "orphan_stem", "ppv_orphan_link", "ppv_direction_clash")]
         if blocking:
             print(f"\nSTRICT: {len(blocking)} blocking flag(s).")
             return 1

@@ -5,11 +5,19 @@
   "double_count_points": 2.0
  },
  "summary": {
+  "sens_spec_estimate": 1,
   "conflict": 2,
   "double_count": 9,
   "single_source": 3
  },
  "flags": [
+  {
+   "kind": "sens_spec_estimate",
+   "severity": "info",
+   "sign": "(all cards)",
+   "detail": "sensitivity/specificity on cards are curator teaching estimates, not pooled: the source corpus contains 1 sens/spec figure(s) total. Cards mark these 'est.'.",
+   "evidence": []
+  },
   {
    "kind": "conflict",
    "severity": "high",
