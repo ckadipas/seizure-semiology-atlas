@@ -1,0 +1,100 @@
+name: Adversarial review (Claude Code → report/PR)
+
+# The SEMANTIC half of the reviewer agent. The deterministic checks
+# (tools/adversarial_review.py) run on every PR and catch machine-checkable
+# problems — conflicts, duplicates, direction clashes, orphaned figures. This
+# workflow adds what only a reader of the actual paper can judge: whether each
+# extracted figure faithfully reflects its source (misreadings /
+# misinterpretations), and whether the pooled picture is being distorted.
+#
+# It runs on the GitHub runner, which CAN download issue PDF attachments (the
+# authoring sandbox cannot) — so this is where source papers are actually
+# re-read against the numbers on the page.
+#
+# Powered by your Claude subscription (CLAUDE_CODE_OAUTH_TOKEN) — no separate API key.
+
+on:
+  # MANUAL ONLY — the spend gate. Claude (and your subscription usage) runs only
+  # when a maintainer triggers it here. Opening the resulting report/PR is the
+  # separate publish gate.
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: "Optional issue number whose attached PDF(s) should be re-verified against the page. Leave blank to review the whole current dataset for internal consistency."
+        required: false
+      focus:
+        description: "Optional focus, e.g. a sign name or paper to scrutinize."
+        required: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  id-token: write        # required by claude-code-action to mint its GitHub token (OIDC)
+
+concurrency:
+  group: review-${{ github.event.inputs.issue_number || 'dataset' }}
+  cancel-in-progress: false
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Regenerate the analysis + deterministic review (so Claude reviews current numbers)
+        run: |
+          python3 enrichment/build_enrichment.py
+          python3 tools/meta_analysis.py
+          python3 tools/adversarial_review.py || true
+
+      - name: Resolve the target issue (if any)
+        id: ctx
+        if: ${{ github.event.inputs.issue_number != '' }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const num = Number(context.payload.inputs.issue_number);
+            const { data: issue } = await github.rest.issues.get({
+              owner: context.repo.owner, repo: context.repo.repo, issue_number: num });
+            core.setOutput('number', String(num));
+            core.setOutput('title', issue.title || '');
+            core.setOutput('body', issue.body || '');
+
+      - name: Adversarial clinical review
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: '--max-turns 40 --allowedTools "Read,Edit,Write,Bash(git:*),Bash(gh:*),Bash(curl:*),Bash(python3:*)"'
+          prompt: |
+            You are the adversarial clinical reviewer for a source-grounded, EDUCATIONAL epilepsy-semiology atlas (not a clinical tool). Your job is to find where the resource may misrepresent its sources, then report precisely and conservatively.
+
+            Optional target issue: #${{ steps.ctx.outputs.number }}
+            Title: ${{ steps.ctx.outputs.title }}
+            Body:
+            ${{ steps.ctx.outputs.body }}
+            Optional focus: ${{ github.event.inputs.focus }}
+
+            Read these first to understand the current state:
+              - enrichment/observations.json   (the structured, source-attributed numbers that feed the meta-analysis)
+              - enrichment/meta_analysis.json   (the pooled output the page shows)
+              - enrichment/review_flags.json    (what the DETERMINISTIC checker already found — do NOT just repeat these)
+              - corpus/corpus_extract_summary.md (the vetted figures already extracted from the library)
+              - data/semiology_data.json         (the curated sign cards)
+              - tools/meta_analysis.py           (the weighting method, so you can judge whether weights are defensible)
+
+            Then review for what only a careful reader can catch:
+              1. MISREADING — a value in observations.json that does not match what its cited paper/page actually reports. If (and only if) an issue with an attached PDF is given: find the https://github.com/user-attachments/... .pdf link in the issue body, `curl -L -o /tmp/p.pdf "<url>"`, Read it, and check each figure attributed to that paper against the actual text/page. Never fabricate a page or figure.
+              2. CONFLICT the deterministic pass missed — two sources that disagree in substance (not just a few percentage points), or a figure that contradicts this atlas's own curated card, that is not already in review_flags.json.
+              3. DUPLICATION / DOUBLE-COUNT — the same underlying datum entered under two studies or two signs (e.g. a review quoting a primary series both counted), beyond what the deterministic pass flags.
+              4. WEIGHTING / INTERPRETATION concerns — a pooled figure driven by a weak source, an evidence_class or ground_truth that looks mis-assigned, or a population mismatch (e.g. pooling a %-of-FLE frequency with a %-of-TLE one).
+
+            Be conservative: report only what you can substantiate against a source. Prefer few high-confidence findings over many speculative ones. Treat literature-mined meta-analyses skeptically (this is why Alim-Marvasti 2022 was excluded — see README).
+
+            Deliverables:
+              - Write a concise Markdown report to review/reports/review-${{ github.run_id }}.md: one section per finding with the sign, the exact discrepancy, the source (paper + page if known), and a recommended correction. Start with a one-paragraph summary and a bullet list of the highest-priority items.
+              - If you found concrete, defensible corrections to observations.json, apply ONLY those edits, then run `python3 enrichment/build_enrichment.py && python3 tools/meta_analysis.py && python3 tools/adversarial_review.py && python3 tools/validate_data.py && python3 generator/gen_study.py` and make them pass. Stage ONLY enrichment/observations.json, enrichment/meta_analysis.json, enrichment/review_flags.json, and review/reports/*.md — NEVER commit a PDF or long/verbatim source text (IP boundary). Commit to branch `review/run-${{ github.run_id }}` and open a PR titled "[review] Adversarial review findings" whose body lists the findings for the owner to approve. If you found no substantiated problems, do not open a PR — just post the report as an issue comment (if an issue was given) or in the workflow log, and say the dataset is internally consistent.
