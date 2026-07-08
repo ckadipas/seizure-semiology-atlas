@@ -5,6 +5,25 @@ Format loosely follows Keep a Changelog; dates are ISO-8601.
 
 ## [Unreleased]
 ### Added
+- **Full-corpus extraction (37 papers).** Every paper in the library was read in
+  full and machine-extracted into `enrichment/corpus_findings.json` (599 findings,
+  each with a short verbatim quote + locator for verification) — the auditable raw
+  material behind the meta-analysis. This multi-sourced signs that previously
+  rested on Loddenkemper alone: forced version now pools 5 studies (Loddenkemper,
+  Wyllie, Kotagal, Roh, Fakhoury; pooled ~99%), postictal dysphasia 5 (Gabr,
+  Maillard SEEG, Serafetinides, Loddenkemper, Blair; pooled 92%), and dystonic
+  posturing, tonic, clonic, and eye-blinking each gained an independent primary
+  source. Added a new contralateral sign (lower facial/mimetic weakness, Blair).
+  Alim-Marvasti 2022 was extracted for the record but remains excluded from the
+  analysis (literature-mined; see README).
+### Fixed
+- **Corrected a propagated misreading:** Roh 1996 forced version was recorded as
+  "89% contralateral"; full-text reading shows version was contralateral in 14/14
+  (100%) — the "89" was "89 seizures" (34 dystonia + 17 tonic + 24 clonic + 14
+  version, all contralateral). Also flagged (in the extraction notes) that the two
+  Bonini files and the two McGonigal "On seizure semiology" files are duplicate
+  uploads of one paper each, and three internal inconsistencies in Elwan 2018.
+### Added (earlier)
 - **Weighted meta-analysis** (top foldable plot): each semiology's lateralization
   percentage pooled across every source that reports it, weighted by evidence
   class and ground-truth directness (`tools/meta_analysis.py`, deterministic).

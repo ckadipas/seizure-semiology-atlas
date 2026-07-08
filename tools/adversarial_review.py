@@ -39,7 +39,9 @@ def _find_root(start):
         d = p
 
 ROOT = _find_root(__file__)
-CONFLICT_TOL = 15      # percentage-point spread that trips a CONFLICT flag
+CONFLICT_TOL = 25      # percentage-point spread that trips a CONFLICT flag (genuine
+                       # disagreement; smaller same-direction spread is shown as the
+                       # row's range whisker + weighted SD, not the conflict panel)
 DOUBLE_TOL = 2.0       # review vs primary within this many points -> possible double-count
 
 
