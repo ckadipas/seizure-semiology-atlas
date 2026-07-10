@@ -126,6 +126,33 @@ NEW = [
      {"p":"Meletti 2025","f":"Postictal central apnea in 24/406 (5.9%) focal seizures and 24/71 (33.8%) of seizures with ictal central apnea; never without a preceding/concurrent ictal central apnea; associated with TLE and ipsilateral amygdala enlargement.","pg":"p.e213856"},
      {"p":"Ochoa-Urrea 2025","f":"Longer postictal central apnea was a risk marker for sudden unexpected death in epilepsy (hazard ratio 1.32 per 10 s; cutoff >14 s).","pg":"pp.1497-1507"}
    ]},
+
+  {"region":"Temporal","sub":"Mesial Temporal (Amygdala / Hippocampus / Entorhinal Cortex)",
+   "sign":"Ictal drinking automatism","phase":"Ictal",
+   "lat":"Non-dominant (right) temporal","latcode":"nondominant",
+   "loc":"Non-dominant (right) temporal lobe",
+   "sens":"Uncommon","spec":"Right-temporal lateralizing when present","evid":"III",
+   "notes":"Automatic drinking (reaching for and sipping water) during or just after a focal impaired-awareness seizure, reported as more common with right (non-dominant) temporal foci. Belongs to the cluster of right-temporal autonomic automatisms alongside ictal spitting and vomiting. Corroborative rather than definitive in isolation.",
+   "cite":"Abou-Khalil (in Misulis et al. 2022)",
+   "_ev":[{"p":"Abou-Khalil (in Misulis et al. 2022)","f":"Spitting and drinking automatisms suggest right temporal localization; ictal spitting, ictal flatulence, and ictal drinking are more common with right temporal foci.","pg":"ch 3.4 pp.41-42"}]},
+
+  {"region":"Temporal","sub":"Mesial Temporal (Amygdala / Hippocampus / Entorhinal Cortex)",
+   "sign":"Postictal cough","phase":"Postictal",
+   "lat":"Non-dominant (right) temporal","latcode":"nondominant",
+   "loc":"Non-dominant (right) temporal lobe",
+   "sens":"Uncommon","spec":"Right-temporal lateralizing when present","evid":"III",
+   "notes":"Coughing shortly after seizure termination, found predominantly following right (non-dominant) temporal-lobe seizures. One of several right-temporal autonomic/postictal lateralizing signs; not sufficient in isolation but contributes when combined with other signs.",
+   "cite":"Abou-Khalil (in Misulis et al. 2022)",
+   "_ev":[{"p":"Abou-Khalil (in Misulis et al. 2022)","f":"Post-ictal cough has been found predominantly following right temporal seizures.","pg":"ch 3.4 p.42"}]},
+
+  {"region":"Temporal","sub":"Mesial Temporal (Amygdala / Hippocampus / Entorhinal Cortex)",
+   "sign":"Postictal urinary urgency","phase":"Postictal",
+   "lat":"Non-dominant (right) temporal","latcode":"nondominant",
+   "loc":"Non-dominant (right) temporal lobe",
+   "sens":"Uncommon","spec":"Right-temporal lateralizing when present","evid":"III",
+   "notes":"An urge to urinate after a seizure, suggesting a right (non-dominant) temporal localization. A right-temporal autonomic lateralizing sign; corroborative, to be weighed together with other signs rather than used alone.",
+   "cite":"Abou-Khalil (in Misulis et al. 2022)",
+   "_ev":[{"p":"Abou-Khalil (in Misulis et al. 2022)","f":"Post-ictal urinary urgency suggests a right temporal localization.","pg":"ch 3.4 p.42"}]},
 ]
 
 # ---------------- PAPER LIBRARY (deduplicated) ----------------
@@ -165,6 +192,7 @@ PAPERS = [
  ("Lacuey et al. 2024","Annals of Neurology","Ictal central apnea is predictive of mesial temporal seizure onsets","Intracranial study: ictal central apnea predicts mesial temporal onset (OR 3.8, spec 0.82)."),
  ("Meletti et al. 2025","Neurology","Persistent postictal central apnea in focal seizures: incidence, features, and imaging findings","Postictal central apnea incidence/features; TLE association and ipsilateral amygdala enlargement."),
  ("Ochoa-Urrea et al. 2025","Lancet","Risk markers for sudden unexpected death in epilepsy: an observational, prospective, multicentre cohort study","SUDEP cohort: ictal/postictal central-apnea duration as mortality risk markers."),
+ ("Abou-Khalil (in Misulis et al. 2022)","Oxford Univ. Press","Atlas of EEG, Seizure Semiology, and Management, 3rd ed. — Seizure semiology by localization (ch 3.4)","Authoritative textbook chapter corroborating the lateralizing direction of version, dystonic/tonic/clonic posturing, figure-of-4, somatosensory, spitting, vomiting, preserved-responsiveness automatisms, eye-blinking, nose-wiping and postictal aphasia."),
 ]
 
 # ---------------- LATERALIZATION RELIABILITY DATA ----------------

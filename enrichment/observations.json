@@ -1,737 +1,835 @@
 {
-  "_doc": "Structured, source-traceable observation records for the weighted meta-analysis. Every numeric value is drawn from enrichment/corpus_findings.json, where each figure carries a verbatim quote and a locator, so every pooled figure traces to the paper, page/table, and words it came from. tools/meta_analysis.py applies the weighting scheme below and writes enrichment/meta_analysis.json. Educational resource - not for clinical decision-making.",
-  "weighting": {
-    "_doc": "weight = class_base x ground_truth_mult x size_factor. Higher evidence class and more direct ground truth (SEEG / postoperative seizure-freedom) earn more weight. Transparent and tunable: change these and re-run tools/meta_analysis.py.",
-    "class_base": {
-      "I": 3.0,
-      "II": 2.0,
-      "III": 1.0
-    },
-    "ground_truth_mult": {
-      "seeg": 1.5,
-      "postop": 1.5,
-      "intracranial_eeg": 1.35,
-      "video_eeg": 1.2,
-      "scalp_eeg": 1.1,
-      "imaging_concordance": 1.15,
-      "review": 1.0,
-      "none": 0.9
-    },
-    "size_factor": "1 + log10(N)/2, capped at 2.0, when N is reported; 1.0 when N is not stated (never fabricated).",
-    "size_cap": 2.0,
-    "certainty_tiers": {
-      "well_supported": "n_studies >= 3 OR total_weight >= 6.0",
-      "moderate": "n_studies == 2 OR total_weight >= 3.0",
-      "single_source": "n_studies == 1"
-    }
+ "_doc": "Structured, source-traceable observation records for the weighted meta-analysis. Every numeric value is drawn from enrichment/corpus_findings.json, where each figure carries a verbatim quote and a locator, so every pooled figure traces to the paper, page/table, and words it came from. tools/meta_analysis.py applies the weighting scheme below and writes enrichment/meta_analysis.json. Educational resource - not for clinical decision-making.",
+ "weighting": {
+  "_doc": "weight = class_base x ground_truth_mult x size_factor. Higher evidence class and more direct ground truth (SEEG / postoperative seizure-freedom) earn more weight. Transparent and tunable: change these and re-run tools/meta_analysis.py.",
+  "class_base": {
+   "I": 3.0,
+   "II": 2.0,
+   "III": 1.0
   },
-  "studies": {
-    "Loddenkemper 2005": {
-      "cite": "Loddenkemper & Kotagal 2005",
-      "class": "III",
-      "ground_truth": "review",
-      "n": null,
-      "design": "Comprehensive lateralizing-sign narrative review (Epilepsy & Behavior), Table 1 compiling named primary series."
-    },
-    "Foldvary-Schaefer 2011": {
-      "cite": "Foldvary-Schaefer & Unnwongse 2011",
-      "class": "III",
-      "ground_truth": "review",
-      "n": null,
-      "design": "Aura/seizure localization review (Epilepsy & Behavior)."
-    },
-    "Kotagal 2000": {
-      "cite": "Kotagal et al. 2000",
-      "class": "II",
-      "ground_truth": "postop",
-      "n": 39,
-      "design": "Retrospective video-EEG series of asymmetric tonic limb posturing in secondarily-generalized seizures (Epilepsia)."
-    },
-    "Roh 1996": {
-      "cite": "Roh et al. 1996",
-      "class": "II",
-      "ground_truth": "video_eeg",
-      "n": 19,
-      "design": "Retrospective series, 19 unilateral TLE patients / 116 seizures, all seizure-free after ATL (Journal of Korean Neurology)."
-    },
-    "Wyllie 1986": {
-      "cite": "Wyllie et al. 1986",
-      "class": "II",
-      "ground_truth": "video_eeg",
-      "n": 37,
-      "design": "Foundational versive-movement series, 37 patients / 74 seizures (Neurology)."
-    },
-    "Gabr 1989": {
-      "cite": "Gabr et al. 1989",
-      "class": "II",
-      "ground_truth": "intracranial_eeg",
-      "n": 35,
-      "design": "TLE speech-lateralization series (Annals of Neurology)."
-    },
-    "Serafetinides 1963": {
-      "cite": "Serafetinides & Falconer 1963",
-      "class": "II",
-      "ground_truth": "postop",
-      "n": 100,
-      "design": "Classic n=100 anterior-temporal-lobectomy speech series (Brain)."
-    },
-    "Fakhoury 1994": {
-      "cite": "Fakhoury et al. 1994",
-      "class": "II",
-      "ground_truth": "video_eeg",
-      "n": null,
-      "design": "Right-vs-left TLE differentiating-features series (Epilepsia)."
-    },
-    "Maillard 2004": {
-      "cite": "Maillard et al. 2004",
-      "class": "II",
-      "ground_truth": "seeg",
-      "n": 26,
-      "design": "SEEG-defined mesial/lateral/mesiolateral temporal subtypes (Epilepsia)."
-    },
-    "Marashly 2015": {
-      "cite": "Marashly et al. 2015",
-      "class": "II",
-      "ground_truth": "imaging_concordance",
-      "n": null,
-      "design": "Systematic video-PPV analysis of ictal motor sequences (Epilepsia 2016)."
-    },
-    "Montavont 2005": {
-      "cite": "Montavont et al. 2005",
-      "class": "II",
-      "ground_truth": "intracranial_eeg",
-      "n": 1,
-      "design": "Intracranial-EEG localization of ictal dysprosody (Epileptic Disorders)."
-    },
-    "Blair 2012": {
-      "cite": "Blair 2012",
-      "class": "III",
-      "ground_truth": "review",
-      "n": null,
-      "design": "Temporal-lobe-epilepsy semiology review (Epilepsy Research and Treatment)."
-    },
-    "Kinney 2019": {
-      "cite": "Kinney, Kovac & Diehl 2019",
-      "class": "III",
-      "ground_truth": "review",
-      "n": null,
-      "design": "Structured ictal/postictal testing review (Seizure)."
-    },
-    "Elwan 2018": {
-      "cite": "Elwan et al. 2018",
-      "class": "II",
-      "ground_truth": "postop",
-      "n": 73,
-      "design": "Retrospective 73-patient single-lobe-resection cohort, seizure-free (Engel Ia) ground truth (Seizure)."
-    },
-    "Hwang 2019": {
-      "cite": "Hwang et al. 2019",
-      "class": "III",
-      "ground_truth": "review",
-      "n": null,
-      "design": "Ictal-pain review (Current Pain and Headache Reports)."
-    }
+  "ground_truth_mult": {
+   "seeg": 1.5,
+   "postop": 1.5,
+   "intracranial_eeg": 1.35,
+   "video_eeg": 1.2,
+   "scalp_eeg": 1.1,
+   "imaging_concordance": 1.15,
+   "review": 1.0,
+   "none": 0.9
   },
-  "signs": [
+  "size_factor": "1 + log10(N)/2, capped at 2.0, when N is reported; 1.0 when N is not stated (never fabricated).",
+  "size_cap": 2.0,
+  "certainty_tiers": {
+   "well_supported": "n_studies >= 3 OR total_weight >= 6.0",
+   "moderate": "n_studies == 2 OR total_weight >= 3.0",
+   "single_source": "n_studies == 1"
+  }
+ },
+ "studies": {
+  "Loddenkemper 2005": {
+   "cite": "Loddenkemper & Kotagal 2005",
+   "class": "III",
+   "ground_truth": "review",
+   "n": null,
+   "design": "Comprehensive lateralizing-sign narrative review (Epilepsy & Behavior), Table 1 compiling named primary series."
+  },
+  "Foldvary-Schaefer 2011": {
+   "cite": "Foldvary-Schaefer & Unnwongse 2011",
+   "class": "III",
+   "ground_truth": "review",
+   "n": null,
+   "design": "Aura/seizure localization review (Epilepsy & Behavior)."
+  },
+  "Kotagal 2000": {
+   "cite": "Kotagal et al. 2000",
+   "class": "II",
+   "ground_truth": "postop",
+   "n": 39,
+   "design": "Retrospective video-EEG series of asymmetric tonic limb posturing in secondarily-generalized seizures (Epilepsia)."
+  },
+  "Roh 1996": {
+   "cite": "Roh et al. 1996",
+   "class": "II",
+   "ground_truth": "video_eeg",
+   "n": 19,
+   "design": "Retrospective series, 19 unilateral TLE patients / 116 seizures, all seizure-free after ATL (Journal of Korean Neurology)."
+  },
+  "Wyllie 1986": {
+   "cite": "Wyllie et al. 1986",
+   "class": "II",
+   "ground_truth": "video_eeg",
+   "n": 37,
+   "design": "Foundational versive-movement series, 37 patients / 74 seizures (Neurology)."
+  },
+  "Gabr 1989": {
+   "cite": "Gabr et al. 1989",
+   "class": "II",
+   "ground_truth": "intracranial_eeg",
+   "n": 35,
+   "design": "TLE speech-lateralization series (Annals of Neurology)."
+  },
+  "Serafetinides 1963": {
+   "cite": "Serafetinides & Falconer 1963",
+   "class": "II",
+   "ground_truth": "postop",
+   "n": 100,
+   "design": "Classic n=100 anterior-temporal-lobectomy speech series (Brain)."
+  },
+  "Fakhoury 1994": {
+   "cite": "Fakhoury et al. 1994",
+   "class": "II",
+   "ground_truth": "video_eeg",
+   "n": null,
+   "design": "Right-vs-left TLE differentiating-features series (Epilepsia)."
+  },
+  "Maillard 2004": {
+   "cite": "Maillard et al. 2004",
+   "class": "II",
+   "ground_truth": "seeg",
+   "n": 26,
+   "design": "SEEG-defined mesial/lateral/mesiolateral temporal subtypes (Epilepsia)."
+  },
+  "Marashly 2015": {
+   "cite": "Marashly et al. 2015",
+   "class": "II",
+   "ground_truth": "imaging_concordance",
+   "n": null,
+   "design": "Systematic video-PPV analysis of ictal motor sequences (Epilepsia 2016)."
+  },
+  "Montavont 2005": {
+   "cite": "Montavont et al. 2005",
+   "class": "II",
+   "ground_truth": "intracranial_eeg",
+   "n": 1,
+   "design": "Intracranial-EEG localization of ictal dysprosody (Epileptic Disorders)."
+  },
+  "Blair 2012": {
+   "cite": "Blair 2012",
+   "class": "III",
+   "ground_truth": "review",
+   "n": null,
+   "design": "Temporal-lobe-epilepsy semiology review (Epilepsy Research and Treatment)."
+  },
+  "Kinney 2019": {
+   "cite": "Kinney, Kovac & Diehl 2019",
+   "class": "III",
+   "ground_truth": "review",
+   "n": null,
+   "design": "Structured ictal/postictal testing review (Seizure)."
+  },
+  "Elwan 2018": {
+   "cite": "Elwan et al. 2018",
+   "class": "II",
+   "ground_truth": "postop",
+   "n": 73,
+   "design": "Retrospective 73-patient single-lobe-resection cohort, seizure-free (Engel Ia) ground truth (Seizure)."
+  },
+  "Hwang 2019": {
+   "cite": "Hwang et al. 2019",
+   "class": "III",
+   "ground_truth": "review",
+   "n": null,
+   "design": "Ictal-pain review (Current Pain and Headache Reports)."
+  },
+  "Abou-Khalil 2022": {
+   "cite": "Abou-Khalil (in Misulis et al. 2022)",
+   "class": "III",
+   "ground_truth": "review",
+   "n": null,
+   "design": "Seizure-semiology-by-localization chapter, Atlas of EEG, Seizure Semiology & Management, 3rd ed (Oxford Univ. Press), ch 3.4."
+  }
+ },
+ "signs": [
+  {
+   "sign": "Forced head/eye version",
+   "sign_stem": "late forced",
+   "lobe": "Frontal",
+   "gyrus": "Frontal eye field / premotor cortex",
+   "ba": "BA 6 / 8",
+   "metric": "lateralization",
+   "direction": "contra",
+   "observations": [
     {
-      "sign": "Forced head/eye version",
-      "sign_stem": "late forced",
-      "lobe": "Frontal",
-      "gyrus": "Frontal eye field / premotor cortex",
-      "ba": "BA 6 / 8",
-      "metric": "lateralization",
-      "direction": "contra",
-      "observations": [
-        {
-          "study": "Loddenkemper 2005",
-          "value": 100,
-          "freq": "22.2% of FLE",
-          "note": "Forced version contralateral to the EZ in 100% (Table 1; cites Wyllie/Ebner)."
-        },
-        {
-          "study": "Wyllie 1986",
-          "value": 100,
-          "freq": null,
-          "pg": "p.609",
-          "note": "Contralateral versive in 61 seizures / 27 patients; ipsilateral versive never observed. Non-versive turning was non-localizing."
-        },
-        {
-          "study": "Kotagal 2000",
-          "value": 100,
-          "freq": null,
-          "note": "Version always contralateral to ictal onset (9/9, 8/8, 13/13 across groups)."
-        },
-        {
-          "study": "Roh 1996",
-          "value": 100,
-          "freq": null,
-          "note": "Head version occurred only in the contralateral side of the EEG focus (14/14) - the ledger's earlier '89%' was a misreading of '89 seizures' (34+17+24+14, all contralateral)."
-        },
-        {
-          "study": "Fakhoury 1994",
-          "value": 90,
-          "freq": null,
-          "note": "Tonic head deviation contralateral to seizure focus in ~90% (n=21)."
-        },
-        {
-          "study": "Foldvary-Schaefer 2011",
-          "value": null,
-          "qualitative": "contra",
-          "note": "Versive (forced) deviation is contralateral; non-versive head rotation tends to be ipsilateral."
-        }
-      ],
-      "sign_ids": [
-        12
-      ]
+     "study": "Loddenkemper 2005",
+     "value": 100,
+     "freq": "22.2% of FLE",
+     "note": "Forced version contralateral to the EZ in 100% (Table 1; cites Wyllie/Ebner)."
     },
     {
-      "sign": "Unilateral dystonic posturing",
-      "sign_stem": "contralateral dystonic",
-      "lobe": "Deep/Subcortical",
-      "gyrus": "Basal ganglia (via temporal propagation)",
-      "ba": "n/a (subcortical)",
-      "metric": "lateralization",
-      "direction": "contra",
-      "observations": [
-        {
-          "study": "Loddenkemper 2005",
-          "value": 100,
-          "freq": "43.9% of TLE",
-          "note": "Contralateral in ~100% (single exception reported by Yen)."
-        },
-        {
-          "study": "Roh 1996",
-          "value": 100,
-          "freq": null,
-          "note": "Dystonia occurred only in the contralateral side of the EEG focus (34/34)."
-        },
-        {
-          "study": "Foldvary-Schaefer 2011",
-          "value": 90,
-          "freq": null,
-          "note": "Limb dystonia contralateral to the EZ in >90%."
-        }
-      ],
-      "sign_ids": [
-        11
-      ]
+     "study": "Wyllie 1986",
+     "value": 100,
+     "freq": null,
+     "pg": "p.609",
+     "note": "Contralateral versive in 61 seizures / 27 patients; ipsilateral versive never observed. Non-versive turning was non-localizing."
     },
     {
-      "sign": "Hemifield visual aura",
-      "sign_stem": "elementary visual",
-      "lobe": "Occipital",
-      "gyrus": "Striate / extrastriate cortex",
-      "ba": "BA 17-19",
-      "metric": "lateralization",
-      "direction": "contra",
-      "observations": [
-        {
-          "study": "Loddenkemper 2005",
-          "value": 100,
-          "freq": "28.6% of OLE",
-          "note": "Contralateral hemifield in 100% (12/42 patients with lateralized visual aura)."
-        },
-        {
-          "study": "Kinney 2019",
-          "value": 100,
-          "freq": ">70%",
-          "note": "Ictal homonymous hemianopia / lateralized visual aura contralateral with 100% predictive value (Salanova series)."
-        }
-      ],
-      "sign_ids": [
-        73
-      ]
+     "study": "Kotagal 2000",
+     "value": 100,
+     "freq": null,
+     "note": "Version always contralateral to ictal onset (9/9, 8/8, 13/13 across groups)."
     },
     {
-      "sign": "Asymmetric tonic posturing (arm)",
-      "sign_stem": "bilateral asymmetric tonic",
-      "lobe": "Frontal",
-      "gyrus": "Supplementary motor area",
-      "ba": "BA 6 (SMA)",
-      "metric": "lateralization",
-      "direction": "contra",
-      "observations": [
-        {
-          "study": "Roh 1996",
-          "value": 100,
-          "freq": null,
-          "note": "Unilateral tonic posturing occurred only in the contralateral side of the EEG focus (17/17)."
-        },
-        {
-          "study": "Loddenkemper 2005",
-          "value": 89,
-          "freq": "48.1% of FLE",
-          "note": "Asymmetric (extended) side contralateral in 89%."
-        },
-        {
-          "study": "Marashly 2015",
-          "value": null,
-          "qualitative": "contra",
-          "note": "Unilateral tonic posturing is a 'reliable' sign (PPV > 80%); two reliable concordant signs approach 100% accuracy."
-        }
-      ],
-      "sign_ids": [
-        44
-      ]
+     "study": "Roh 1996",
+     "value": 100,
+     "freq": null,
+     "note": "Head version occurred only in the contralateral side of the EEG focus (14/14) - the ledger's earlier '89%' was a misreading of '89 seizures' (34+17+24+14, all contralateral)."
     },
     {
-      "sign": "Figure-of-4 (extended arm)",
-      "sign_stem": "figure-of-4",
-      "lobe": "Frontal",
-      "gyrus": "SMA / prefrontal",
-      "ba": "BA 6",
-      "metric": "lateralization",
-      "direction": "contra",
-      "observations": [
-        {
-          "study": "Kotagal 2000",
-          "value": 90,
-          "freq": "75% of TLE 2GTC",
-          "note": "Extended elbow contralateral to ictal onset in 35/39 patients (~90%); by group 83.3% (Group I TLE), 87.5% (Group I extratemporal), 94.4% (Group II)."
-        },
-        {
-          "study": "Loddenkemper 2005",
-          "value": 89,
-          "freq": "17.7% of TLE",
-          "note": "Extended arm contralateral in 89%."
-        },
-        {
-          "study": "Marashly 2015",
-          "value": null,
-          "qualitative": "caution",
-          "note": "Figure-of-4 PPV < 80% in this systematic video analysis - less reliable in isolation than version, unilateral tonic posturing, M2e, or unilateral clonic activity."
-        }
-      ],
-      "sign_ids": [
-        14
-      ]
+     "study": "Fakhoury 1994",
+     "value": 90,
+     "freq": null,
+     "note": "Tonic head deviation contralateral to seizure focus in ~90% (n=21)."
     },
     {
-      "sign": "Unilateral somatosensory aura",
-      "sign_stem": "somatosensory aura",
-      "lobe": "Parietal",
-      "gyrus": "Primary somatosensory cortex (S1)",
-      "ba": "BA 1-3",
-      "metric": "lateralization",
-      "direction": "contra",
-      "observations": [
-        {
-          "study": "Loddenkemper 2005",
-          "value": 89,
-          "freq": "6.1% of pts",
-          "note": "Unilateral sensory aura contralateral in 89%."
-        },
-        {
-          "study": "Kinney 2019",
-          "value": 89,
-          "freq": "<10% of LTM",
-          "note": "Unilateral somatosensory aura contralateral in 89% of seizures."
-        },
-        {
-          "study": "Hwang 2019",
-          "value": null,
-          "qualitative": "contra",
-          "note": "Painful somatosensory seizures typically contralateral, localizing to the parietal operculum / insula."
-        }
-      ],
-      "sign_ids": [
-        62
-      ]
+     "study": "Foldvary-Schaefer 2011",
+     "value": null,
+     "qualitative": "contra",
+     "note": "Versive (forced) deviation is contralateral; non-versive head rotation tends to be ipsilateral."
     },
     {
-      "sign": "Unilateral clonic activity",
-      "sign_stem": "focal clonic",
-      "lobe": "Frontal",
-      "gyrus": "Primary motor cortex (M1)",
-      "ba": "BA 4 / 6",
-      "metric": "lateralization",
-      "direction": "contra",
-      "observations": [
-        {
-          "study": "Roh 1996",
-          "value": 100,
-          "freq": null,
-          "note": "Clonic jerking occurred only in the contralateral side of the EEG focus (24/24)."
-        },
-        {
-          "study": "Loddenkemper 2005",
-          "value": 83,
-          "freq": "44.4% of FLE",
-          "note": "Unilateral clonic activity contralateral in 83%."
-        },
-        {
-          "study": "Marashly 2015",
-          "value": null,
-          "qualitative": "contra",
-          "note": "Unilateral clonic activity is a 'reliable' motor sign (PPV > 80%) for contralateral lateralization."
-        }
-      ],
-      "sign_ids": [
-        38
-      ]
-    },
-    {
-      "sign": "Postictal (Todd's) palsy",
-      "sign_stem": "todd",
-      "lobe": "Frontal",
-      "gyrus": "Primary motor cortex (M1)",
-      "ba": "BA 4",
-      "metric": "lateralization",
-      "direction": "contra",
-      "observations": [
-        {
-          "study": "Loddenkemper 2005",
-          "value": 93,
-          "freq": "0.6% of EMU pts",
-          "note": "Postictal (Todd's) paresis contralateral to the EZ in 93% of 44 patients."
-        },
-        {
-          "study": "Kinney 2019",
-          "value": 93,
-          "freq": null,
-          "note": "Todd's paresis contralateral in 93% (Kellinghaus series)."
-        },
-        {
-          "study": "Marashly 2015",
-          "value": null,
-          "qualitative": "contra",
-          "note": "Todd's paralysis almost 100% contralateral; a reliable localizing/lateralizing motor sign."
-        },
-        {
-          "study": "Foldvary-Schaefer 2011",
-          "value": null,
-          "qualitative": "contra",
-          "note": "Postictal limb paresis (Todd's) contralateral; reported in 0.5-13% of focal seizures."
-        }
-      ],
-      "sign_ids": [
-        40
-      ]
-    },
-    {
-      "sign": "Lower facial weakness (mimetic)",
-      "sign_stem": "",
-      "_stem_note": "Supplementary meta-sign: contralateral lower-face weakness is not one of the curated 100 cards, so it is intentionally untied rather than force-matched.",
-      "lobe": "Frontal",
-      "gyrus": "Face motor / lower precentral",
-      "ba": "BA 4 (face)",
-      "metric": "lateralization",
-      "direction": "contra",
-      "observations": [
-        {
-          "study": "Loddenkemper 2005",
-          "value": 86,
-          "freq": null,
-          "note": "Unilateral facial asymmetry in 36/50 (72%), contralateral to the focus in 31/36 (86%); and contralateral in 27/37 (73%) with a unilateral temporal focus."
-        },
-        {
-          "study": "Blair 2012",
-          "value": 75,
-          "freq": null,
-          "note": "Asymmetric lower facial weakness (emotional/mimetic) contralateral to the seizure focus in ~3/4 of 50 patients."
-        },
-        {
-          "study": "Foldvary-Schaefer 2011",
-          "value": null,
-          "qualitative": "contra",
-          "note": "Lower facial asymmetry in ~70% of TLE, usually contralateral to the EZ."
-        }
-      ],
-      "sign_ids": []
-    },
-    {
-      "sign": "Ictal dysphasia / aphasia",
-      "sign_stem": "ictal aphasia",
-      "lobe": "Temporal",
-      "gyrus": "Dominant peri-sylvian language cortex",
-      "ba": "BA 22 / 44-45 (dominant)",
-      "metric": "lateralization",
-      "direction": "dominant",
-      "observations": [
-        {
-          "study": "Gabr 1989",
-          "value": 100,
-          "freq": null,
-          "note": "Ictal dysphasia/aphasia lateralized to the dominant hemisphere in ~100%."
-        },
-        {
-          "study": "Loddenkemper 2005",
-          "value": 100,
-          "freq": "34.2% of EMU pts",
-          "note": "Ictal dysphasia is dominant in 100%."
-        }
-      ],
-      "sign_ids": [
-        25
-      ]
-    },
-    {
-      "sign": "Postictal dysphasia / aphasia",
-      "sign_stem": "postictal aphasia",
-      "lobe": "Temporal",
-      "gyrus": "Dominant temporal / peri-sylvian language cortex",
-      "ba": "BA 22 (dominant)",
-      "metric": "lateralization",
-      "direction": "dominant",
-      "observations": [
-        {
-          "study": "Gabr 1989",
-          "value": 92,
-          "freq": null,
-          "note": "Postictal dysphasia lateralized to the dominant temporal lobe in 92% (12/13, p<0.001)."
-        },
-        {
-          "study": "Maillard 2004",
-          "value": 92,
-          "freq": null,
-          "note": "Postictal dysphasia lateralizing to the left (dominant) hemisphere in 92% (n=26, SEEG-defined subtypes)."
-        },
-        {
-          "study": "Serafetinides 1963",
-          "value": 94,
-          "freq": null,
-          "note": "Dysphasia lateralized to the dominant temporal lobe in 16/17 (~94%) in the n=100 ATL series."
-        },
-        {
-          "study": "Loddenkemper 2005",
-          "value": 90,
-          "freq": null,
-          "note": "Postictal dysphasia/aphasia dominant-hemisphere in 80-100% across series (midpoint 90)."
-        },
-        {
-          "study": "Blair 2012",
-          "value": 85,
-          "freq": null,
-          "note": "Postictal aphasia a very reliable dominant-hemisphere sign, ~80-90% (midpoint 85)."
-        }
-      ],
-      "sign_ids": [
-        24
-      ]
-    },
-    {
-      "sign": "Preserved / identifiable ictal speech",
-      "sign_stem": "",
-      "_stem_note": "Deliberately untied from a single curated card: the NON-dominant counterpart of the dominant ictal-aphasia card (id 25). Preserved, identifiable ictal speech lateralizes non-dominant; dysphasic ictal speech lateralizes dominant.",
-      "lobe": "Temporal",
-      "gyrus": "Non-dominant temporal cortex",
-      "ba": "BA 22 (non-dominant)",
-      "metric": "lateralization",
-      "direction": "nondominant",
-      "observations": [
-        {
-          "study": "Gabr 1989",
-          "value": 83,
-          "freq": null,
-          "note": "Preserved (identifiable) ictal speech lateralized to the non-dominant side in 83% (n=12)."
-        },
-        {
-          "study": "Loddenkemper 2005",
-          "value": 83,
-          "freq": "34.2% of EMU pts",
-          "note": "Ictal speech that is preserved/identifiable is non-dominant in 83%."
-        },
-        {
-          "study": "Roh 1996",
-          "value": null,
-          "qualitative": "nondominant",
-          "note": "Ictal normal (identifiable) speech occurred in non-dominant-onset seizures (9 seizures/2 patients NHS vs 0 DHS, p=0.001)."
-        }
-      ],
-      "sign_ids": []
-    },
-    {
-      "sign": "Automatisms with preserved responsiveness",
-      "sign_stem": "preserved responsiveness",
-      "lobe": "Temporal",
-      "gyrus": "Non-dominant mesial temporal",
-      "ba": "BA 28 / 34-36 (non-dominant)",
-      "metric": "lateralization",
-      "direction": "nondominant",
-      "observations": [
-        {
-          "study": "Loddenkemper 2005",
-          "value": 100,
-          "freq": "5.7% of TLE",
-          "note": "Non-dominant in ~100% (one exception, Janszky)."
-        },
-        {
-          "study": "Elwan 2018",
-          "value": 62,
-          "freq": null,
-          "note": "Automatisms with preserved responsiveness non-dominant (right) in 62% (single-lobe-resection cohort) - lower than the review figure."
-        }
-      ],
-      "sign_ids": [
-        22
-      ]
-    },
-    {
-      "sign": "Ictal vomiting (ictus emeticus)",
-      "sign_stem": "ictus emeticus",
-      "lobe": "Temporal",
-      "gyrus": "Non-dominant temporal + Papez circuit",
-      "ba": "BA 28 (non-dominant)",
-      "metric": "lateralization",
-      "direction": "nondominant",
-      "observations": [
-        {
-          "study": "Loddenkemper 2005",
-          "value": 81,
-          "freq": "2% of EMU pts",
-          "note": "Non-dominant (right) in 81% (14/16 right-lateralized)."
-        },
-        {
-          "study": "Roh 1996",
-          "value": null,
-          "qualitative": "nondominant",
-          "note": "Ictal vomiting seen in right (non-dominant) TLE."
-        },
-        {
-          "study": "Blair 2012",
-          "value": null,
-          "qualitative": "nondominant",
-          "note": "Epigastric sensation with ictal vomiting strongly associated with non-dominant (right) temporal onset."
-        }
-      ],
-      "sign_ids": [
-        17
-      ]
-    },
-    {
-      "sign": "Ictal spitting",
-      "sign_stem": "ictal spitting",
-      "lobe": "Temporal",
-      "gyrus": "Non-dominant temporal / insular",
-      "ba": "BA 28 (non-dominant)",
-      "metric": "lateralization",
-      "direction": "nondominant",
-      "contested": "Genuinely contested: this atlas's curated card cites Kellinghaus 2003 for a DOMINANT (left) predominance, whereas the pooled sources here (Loddenkemper 2005 75% right; Fakhoury 1994 exclusively right TLE) lateralize NON-dominant. Surfaced as conflicting evidence, not reconciled.",
-      "observations": [
-        {
-          "study": "Loddenkemper 2005",
-          "value": 75,
-          "freq": "0.3% of EMU pts",
-          "note": "Ictal spitting non-dominant (right) in 9/12 (75%)."
-        },
-        {
-          "study": "Fakhoury 1994",
-          "value": null,
-          "qualitative": "nondominant",
-          "note": "Ictal spitting occurred exclusively in right (non-dominant) TLE - 11 (21%) of right-TLE seizures vs 0 in left TLE."
-        }
-      ],
-      "sign_ids": [
-        16
-      ]
-    },
-    {
-      "sign": "Postictal nose-wiping",
-      "sign_stem": "postictal nose",
-      "lobe": "Temporal",
-      "gyrus": "Mesial/lateral temporal (ipsilateral hand)",
-      "ba": "BA 28 / 21-22",
-      "metric": "lateralization",
-      "direction": "ipsi",
-      "observations": [
-        {
-          "study": "Loddenkemper 2005",
-          "value": 92,
-          "freq": "53.2% of TLE",
-          "note": "Wiping hand ipsilateral to the EZ in 92%."
-        },
-        {
-          "study": "Elwan 2018",
-          "value": 62,
-          "freq": null,
-          "note": "Postictal nose-wiping ipsilateral in 62% (single-lobe-resection cohort) - lower than the review figure."
-        },
-        {
-          "study": "Foldvary-Schaefer 2011",
-          "value": null,
-          "qualitative": "ipsi",
-          "note": "Nose-wiping performed with the hand ipsilateral to the seizure focus."
-        }
-      ],
-      "sign_ids": [
-        23
-      ]
-    },
-    {
-      "sign": "Unilateral eye-blinking",
-      "sign_stem": "eye blinking",
-      "lobe": "Temporal",
-      "gyrus": "Temporal (ipsilateral)",
-      "ba": "BA 21-22",
-      "metric": "lateralization",
-      "direction": "ipsi",
-      "observations": [
-        {
-          "study": "Roh 1996",
-          "value": 86,
-          "freq": null,
-          "note": "Unilateral eye-blinking ipsilateral to ictal EEG onset in 85.7% (12/14)."
-        },
-        {
-          "study": "Loddenkemper 2005",
-          "value": 83,
-          "freq": "1.5% of EMU pts",
-          "note": "Unilateral ictal eye-blinking ipsilateral to the EZ in 83%."
-        }
-      ],
-      "sign_ids": [
-        18
-      ]
-    },
-    {
-      "sign": "Unilateral (ipsilateral) automatisms",
-      "sign_stem": "unilateral manual",
-      "lobe": "Temporal",
-      "gyrus": "Mesial temporal (ipsilateral)",
-      "ba": "BA 28 / 34-36",
-      "metric": "lateralization",
-      "direction": "ipsi",
-      "observations": [
-        {
-          "study": "Roh 1996",
-          "value": 88,
-          "freq": null,
-          "note": "Unilateral limb automatism ipsilateral to ictal EEG onset in 88.5% (23/26)."
-        },
-        {
-          "study": "Loddenkemper 2005",
-          "value": null,
-          "qualitative": "ipsi",
-          "note": "Unilateral automatisms tend to be ipsilateral to the EZ; strongest paired with contralateral dystonic posturing (the classic dyad)."
-        },
-        {
-          "study": "Foldvary-Schaefer 2011",
-          "value": null,
-          "qualitative": "ipsi",
-          "note": "Ipsilateral-automatism-plus-contralateral-posturing pattern differentiates R from L TLE."
-        }
-      ],
-      "sign_ids": [
-        10
-      ]
-    },
-    {
-      "sign": "Ictal dysprosody",
-      "sign_stem": "dysprosody",
-      "lobe": "Frontal",
-      "gyrus": "Non-dominant precentral (frontal) operculum",
-      "ba": "BA 6 / 44 (non-dominant)",
-      "metric": "lateralization",
-      "direction": "nondominant",
-      "observations": [
-        {
-          "study": "Montavont 2005",
-          "value": null,
-          "qualitative": "nondominant",
-          "note": "Ictal recurrent speech with altered prosody corresponded to ictal discharge of the non-dominant precentral operculum."
-        }
-      ],
-      "sign_ids": []
+     "study": "Abou-Khalil 2022",
+     "value": null,
+     "qualitative": "contra",
+     "pg": "ch 3.4 p.40",
+     "note": "versive head turning opposite the side of seizure onset."
     }
-  ]
+   ],
+   "sign_ids": [
+    12
+   ]
+  },
+  {
+   "sign": "Unilateral dystonic posturing",
+   "sign_stem": "contralateral dystonic",
+   "lobe": "Deep/Subcortical",
+   "gyrus": "Basal ganglia (via temporal propagation)",
+   "ba": "n/a (subcortical)",
+   "metric": "lateralization",
+   "direction": "contra",
+   "observations": [
+    {
+     "study": "Loddenkemper 2005",
+     "value": 100,
+     "freq": "43.9% of TLE",
+     "note": "Contralateral in ~100% (single exception reported by Yen)."
+    },
+    {
+     "study": "Roh 1996",
+     "value": 100,
+     "freq": null,
+     "note": "Dystonia occurred only in the contralateral side of the EEG focus (34/34)."
+    },
+    {
+     "study": "Foldvary-Schaefer 2011",
+     "value": 90,
+     "freq": null,
+     "note": "Limb dystonia contralateral to the EZ in >90%."
+    },
+    {
+     "study": "Abou-Khalil 2022",
+     "value": null,
+     "qualitative": "contra",
+     "pg": "ch 3.4 p.41",
+     "note": "dystonic posturing has been associated with ictal activation in the contralateral putamen."
+    }
+   ],
+   "sign_ids": [
+    11
+   ]
+  },
+  {
+   "sign": "Hemifield visual aura",
+   "sign_stem": "elementary visual",
+   "lobe": "Occipital",
+   "gyrus": "Striate / extrastriate cortex",
+   "ba": "BA 17-19",
+   "metric": "lateralization",
+   "direction": "contra",
+   "observations": [
+    {
+     "study": "Loddenkemper 2005",
+     "value": 100,
+     "freq": "28.6% of OLE",
+     "note": "Contralateral hemifield in 100% (12/42 patients with lateralized visual aura)."
+    },
+    {
+     "study": "Kinney 2019",
+     "value": 100,
+     "freq": ">70%",
+     "note": "Ictal homonymous hemianopia / lateralized visual aura contralateral with 100% predictive value (Salanova series)."
+    }
+   ],
+   "sign_ids": [
+    73
+   ]
+  },
+  {
+   "sign": "Asymmetric tonic posturing (arm)",
+   "sign_stem": "bilateral asymmetric tonic",
+   "lobe": "Frontal",
+   "gyrus": "Supplementary motor area",
+   "ba": "BA 6 (SMA)",
+   "metric": "lateralization",
+   "direction": "contra",
+   "observations": [
+    {
+     "study": "Roh 1996",
+     "value": 100,
+     "freq": null,
+     "note": "Unilateral tonic posturing occurred only in the contralateral side of the EEG focus (17/17)."
+    },
+    {
+     "study": "Loddenkemper 2005",
+     "value": 89,
+     "freq": "48.1% of FLE",
+     "note": "Asymmetric (extended) side contralateral in 89%."
+    },
+    {
+     "study": "Marashly 2015",
+     "value": null,
+     "qualitative": "contra",
+     "note": "Unilateral tonic posturing is a 'reliable' sign (PPV > 80%); two reliable concordant signs approach 100% accuracy."
+    },
+    {
+     "study": "Abou-Khalil 2022",
+     "value": null,
+     "qualitative": "contra",
+     "pg": "ch 3.4 p.42",
+     "note": "focal tonic posturing ... most often contralateral to seizure origin."
+    }
+   ],
+   "sign_ids": [
+    44
+   ]
+  },
+  {
+   "sign": "Figure-of-4 (extended arm)",
+   "sign_stem": "figure-of-4",
+   "lobe": "Frontal",
+   "gyrus": "SMA / prefrontal",
+   "ba": "BA 6",
+   "metric": "lateralization",
+   "direction": "contra",
+   "observations": [
+    {
+     "study": "Kotagal 2000",
+     "value": 90,
+     "freq": "75% of TLE 2GTC",
+     "note": "Extended elbow contralateral to ictal onset in 35/39 patients (~90%); by group 83.3% (Group I TLE), 87.5% (Group I extratemporal), 94.4% (Group II)."
+    },
+    {
+     "study": "Loddenkemper 2005",
+     "value": 89,
+     "freq": "17.7% of TLE",
+     "note": "Extended arm contralateral in 89%."
+    },
+    {
+     "study": "Marashly 2015",
+     "value": null,
+     "qualitative": "caution",
+     "note": "Figure-of-4 PPV < 80% in this systematic video analysis - less reliable in isolation than version, unilateral tonic posturing, M2e, or unilateral clonic activity."
+    },
+    {
+     "study": "Abou-Khalil 2022",
+     "value": null,
+     "qualitative": "contra",
+     "pg": "ch 3.4 p.40",
+     "note": "arm extension contralateral and arm flexion ipsilateral to the seizure focus (figure-of-four)."
+    }
+   ],
+   "sign_ids": [
+    14
+   ]
+  },
+  {
+   "sign": "Unilateral somatosensory aura",
+   "sign_stem": "somatosensory aura",
+   "lobe": "Parietal",
+   "gyrus": "Primary somatosensory cortex (S1)",
+   "ba": "BA 1-3",
+   "metric": "lateralization",
+   "direction": "contra",
+   "observations": [
+    {
+     "study": "Loddenkemper 2005",
+     "value": 89,
+     "freq": "6.1% of pts",
+     "note": "Unilateral sensory aura contralateral in 89%."
+    },
+    {
+     "study": "Kinney 2019",
+     "value": 89,
+     "freq": "<10% of LTM",
+     "note": "Unilateral somatosensory aura contralateral in 89% of seizures."
+    },
+    {
+     "study": "Hwang 2019",
+     "value": null,
+     "qualitative": "contra",
+     "note": "Painful somatosensory seizures typically contralateral, localizing to the parietal operculum / insula."
+    },
+    {
+     "study": "Abou-Khalil 2022",
+     "value": null,
+     "qualitative": "contra",
+     "pg": "ch 3.4 p.44",
+     "note": "sensory march is strongly suggestive of a post-central, primary sensory cortex involvement, contralateral to the ictal discharge."
+    }
+   ],
+   "sign_ids": [
+    62
+   ]
+  },
+  {
+   "sign": "Unilateral clonic activity",
+   "sign_stem": "focal clonic",
+   "lobe": "Frontal",
+   "gyrus": "Primary motor cortex (M1)",
+   "ba": "BA 4 / 6",
+   "metric": "lateralization",
+   "direction": "contra",
+   "observations": [
+    {
+     "study": "Roh 1996",
+     "value": 100,
+     "freq": null,
+     "note": "Clonic jerking occurred only in the contralateral side of the EEG focus (24/24)."
+    },
+    {
+     "study": "Loddenkemper 2005",
+     "value": 83,
+     "freq": "44.4% of FLE",
+     "note": "Unilateral clonic activity contralateral in 83%."
+    },
+    {
+     "study": "Marashly 2015",
+     "value": null,
+     "qualitative": "contra",
+     "note": "Unilateral clonic activity is a 'reliable' motor sign (PPV > 80%) for contralateral lateralization."
+    },
+    {
+     "study": "Abou-Khalil 2022",
+     "value": null,
+     "qualitative": "contra",
+     "pg": "ch 3.4 p.42",
+     "note": "focal clonic activity ... most often contralateral to seizure origin."
+    }
+   ],
+   "sign_ids": [
+    38
+   ]
+  },
+  {
+   "sign": "Postictal (Todd's) palsy",
+   "sign_stem": "todd",
+   "lobe": "Frontal",
+   "gyrus": "Primary motor cortex (M1)",
+   "ba": "BA 4",
+   "metric": "lateralization",
+   "direction": "contra",
+   "observations": [
+    {
+     "study": "Loddenkemper 2005",
+     "value": 93,
+     "freq": "0.6% of EMU pts",
+     "note": "Postictal (Todd's) paresis contralateral to the EZ in 93% of 44 patients."
+    },
+    {
+     "study": "Kinney 2019",
+     "value": 93,
+     "freq": null,
+     "note": "Todd's paresis contralateral in 93% (Kellinghaus series)."
+    },
+    {
+     "study": "Marashly 2015",
+     "value": null,
+     "qualitative": "contra",
+     "note": "Todd's paralysis almost 100% contralateral; a reliable localizing/lateralizing motor sign."
+    },
+    {
+     "study": "Foldvary-Schaefer 2011",
+     "value": null,
+     "qualitative": "contra",
+     "note": "Postictal limb paresis (Todd's) contralateral; reported in 0.5-13% of focal seizures."
+    }
+   ],
+   "sign_ids": [
+    40
+   ]
+  },
+  {
+   "sign": "Lower facial weakness (mimetic)",
+   "sign_stem": "",
+   "_stem_note": "Supplementary meta-sign: contralateral lower-face weakness is not one of the curated 100 cards, so it is intentionally untied rather than force-matched.",
+   "lobe": "Frontal",
+   "gyrus": "Face motor / lower precentral",
+   "ba": "BA 4 (face)",
+   "metric": "lateralization",
+   "direction": "contra",
+   "observations": [
+    {
+     "study": "Loddenkemper 2005",
+     "value": 86,
+     "freq": null,
+     "note": "Unilateral facial asymmetry in 36/50 (72%), contralateral to the focus in 31/36 (86%); and contralateral in 27/37 (73%) with a unilateral temporal focus."
+    },
+    {
+     "study": "Blair 2012",
+     "value": 75,
+     "freq": null,
+     "note": "Asymmetric lower facial weakness (emotional/mimetic) contralateral to the seizure focus in ~3/4 of 50 patients."
+    },
+    {
+     "study": "Foldvary-Schaefer 2011",
+     "value": null,
+     "qualitative": "contra",
+     "note": "Lower facial asymmetry in ~70% of TLE, usually contralateral to the EZ."
+    }
+   ],
+   "sign_ids": []
+  },
+  {
+   "sign": "Ictal dysphasia / aphasia",
+   "sign_stem": "ictal aphasia",
+   "lobe": "Temporal",
+   "gyrus": "Dominant peri-sylvian language cortex",
+   "ba": "BA 22 / 44-45 (dominant)",
+   "metric": "lateralization",
+   "direction": "dominant",
+   "observations": [
+    {
+     "study": "Gabr 1989",
+     "value": 100,
+     "freq": null,
+     "note": "Ictal dysphasia/aphasia lateralized to the dominant hemisphere in ~100%."
+    },
+    {
+     "study": "Loddenkemper 2005",
+     "value": 100,
+     "freq": "34.2% of EMU pts",
+     "note": "Ictal dysphasia is dominant in 100%."
+    }
+   ],
+   "sign_ids": [
+    25
+   ]
+  },
+  {
+   "sign": "Postictal dysphasia / aphasia",
+   "sign_stem": "postictal aphasia",
+   "lobe": "Temporal",
+   "gyrus": "Dominant temporal / peri-sylvian language cortex",
+   "ba": "BA 22 (dominant)",
+   "metric": "lateralization",
+   "direction": "dominant",
+   "observations": [
+    {
+     "study": "Gabr 1989",
+     "value": 92,
+     "freq": null,
+     "note": "Postictal dysphasia lateralized to the dominant temporal lobe in 92% (12/13, p<0.001)."
+    },
+    {
+     "study": "Maillard 2004",
+     "value": 92,
+     "freq": null,
+     "note": "Postictal dysphasia lateralizing to the left (dominant) hemisphere in 92% (n=26, SEEG-defined subtypes)."
+    },
+    {
+     "study": "Serafetinides 1963",
+     "value": 94,
+     "freq": null,
+     "note": "Dysphasia lateralized to the dominant temporal lobe in 16/17 (~94%) in the n=100 ATL series."
+    },
+    {
+     "study": "Loddenkemper 2005",
+     "value": 90,
+     "freq": null,
+     "note": "Postictal dysphasia/aphasia dominant-hemisphere in 80-100% across series (midpoint 90)."
+    },
+    {
+     "study": "Blair 2012",
+     "value": 85,
+     "freq": null,
+     "note": "Postictal aphasia a very reliable dominant-hemisphere sign, ~80-90% (midpoint 85)."
+    },
+    {
+     "study": "Abou-Khalil 2022",
+     "value": null,
+     "qualitative": "dominant",
+     "pg": "ch 3.4 p.42",
+     "note": "post-ictal aphasia is strongly associated with a left dominant temporal localization."
+    }
+   ],
+   "sign_ids": [
+    24
+   ]
+  },
+  {
+   "sign": "Preserved / identifiable ictal speech",
+   "sign_stem": "",
+   "_stem_note": "Deliberately untied from a single curated card: the NON-dominant counterpart of the dominant ictal-aphasia card (id 25). Preserved, identifiable ictal speech lateralizes non-dominant; dysphasic ictal speech lateralizes dominant.",
+   "lobe": "Temporal",
+   "gyrus": "Non-dominant temporal cortex",
+   "ba": "BA 22 (non-dominant)",
+   "metric": "lateralization",
+   "direction": "nondominant",
+   "observations": [
+    {
+     "study": "Gabr 1989",
+     "value": 83,
+     "freq": null,
+     "note": "Preserved (identifiable) ictal speech lateralized to the non-dominant side in 83% (n=12)."
+    },
+    {
+     "study": "Loddenkemper 2005",
+     "value": 83,
+     "freq": "34.2% of EMU pts",
+     "note": "Ictal speech that is preserved/identifiable is non-dominant in 83%."
+    },
+    {
+     "study": "Roh 1996",
+     "value": null,
+     "qualitative": "nondominant",
+     "note": "Ictal normal (identifiable) speech occurred in non-dominant-onset seizures (9 seizures/2 patients NHS vs 0 DHS, p=0.001)."
+    }
+   ],
+   "sign_ids": []
+  },
+  {
+   "sign": "Automatisms with preserved responsiveness",
+   "sign_stem": "preserved responsiveness",
+   "lobe": "Temporal",
+   "gyrus": "Non-dominant mesial temporal",
+   "ba": "BA 28 / 34-36 (non-dominant)",
+   "metric": "lateralization",
+   "direction": "nondominant",
+   "observations": [
+    {
+     "study": "Loddenkemper 2005",
+     "value": 100,
+     "freq": "5.7% of TLE",
+     "note": "Non-dominant in ~100% (one exception, Janszky)."
+    },
+    {
+     "study": "Elwan 2018",
+     "value": 62,
+     "freq": null,
+     "note": "Automatisms with preserved responsiveness non-dominant (right) in 62% (single-lobe-resection cohort) - lower than the review figure."
+    },
+    {
+     "study": "Abou-Khalil 2022",
+     "value": null,
+     "qualitative": "nondominant",
+     "pg": "ch 3.4 p.41",
+     "note": "automatisms with preserved responsiveness also favor right temporal localization."
+    }
+   ],
+   "sign_ids": [
+    22
+   ]
+  },
+  {
+   "sign": "Ictal vomiting (ictus emeticus)",
+   "sign_stem": "ictus emeticus",
+   "lobe": "Temporal",
+   "gyrus": "Non-dominant temporal + Papez circuit",
+   "ba": "BA 28 (non-dominant)",
+   "metric": "lateralization",
+   "direction": "nondominant",
+   "observations": [
+    {
+     "study": "Loddenkemper 2005",
+     "value": 81,
+     "freq": "2% of EMU pts",
+     "note": "Non-dominant (right) in 81% (14/16 right-lateralized)."
+    },
+    {
+     "study": "Roh 1996",
+     "value": null,
+     "qualitative": "nondominant",
+     "note": "Ictal vomiting seen in right (non-dominant) TLE."
+    },
+    {
+     "study": "Blair 2012",
+     "value": null,
+     "qualitative": "nondominant",
+     "note": "Epigastric sensation with ictal vomiting strongly associated with non-dominant (right) temporal onset."
+    },
+    {
+     "study": "Abou-Khalil 2022",
+     "value": null,
+     "qualitative": "nondominant",
+     "pg": "ch 3.4 p.42",
+     "note": "ictal vomiting has been associated with right-sided temporal foci."
+    }
+   ],
+   "sign_ids": [
+    17
+   ]
+  },
+  {
+   "sign": "Ictal spitting",
+   "sign_stem": "ictal spitting",
+   "lobe": "Temporal",
+   "gyrus": "Non-dominant temporal / insular",
+   "ba": "BA 28 (non-dominant)",
+   "metric": "lateralization",
+   "direction": "nondominant",
+   "contested": "Genuinely contested: this atlas's curated card cites Kellinghaus 2003 for a DOMINANT (left) predominance, whereas the pooled sources here (Loddenkemper 2005 75% right; Fakhoury 1994 exclusively right TLE) lateralize NON-dominant. Surfaced as conflicting evidence, not reconciled.",
+   "observations": [
+    {
+     "study": "Loddenkemper 2005",
+     "value": 75,
+     "freq": "0.3% of EMU pts",
+     "note": "Ictal spitting non-dominant (right) in 9/12 (75%)."
+    },
+    {
+     "study": "Fakhoury 1994",
+     "value": null,
+     "qualitative": "nondominant",
+     "note": "Ictal spitting occurred exclusively in right (non-dominant) TLE - 11 (21%) of right-TLE seizures vs 0 in left TLE."
+    },
+    {
+     "study": "Abou-Khalil 2022",
+     "value": null,
+     "qualitative": "nondominant",
+     "pg": "ch 3.4 p.41",
+     "note": "spitting and drinking automatisms suggest right temporal localization."
+    }
+   ],
+   "sign_ids": [
+    16
+   ]
+  },
+  {
+   "sign": "Postictal nose-wiping",
+   "sign_stem": "postictal nose",
+   "lobe": "Temporal",
+   "gyrus": "Mesial/lateral temporal (ipsilateral hand)",
+   "ba": "BA 28 / 21-22",
+   "metric": "lateralization",
+   "direction": "ipsi",
+   "observations": [
+    {
+     "study": "Loddenkemper 2005",
+     "value": 92,
+     "freq": "53.2% of TLE",
+     "note": "Wiping hand ipsilateral to the EZ in 92%."
+    },
+    {
+     "study": "Elwan 2018",
+     "value": 62,
+     "freq": null,
+     "note": "Postictal nose-wiping ipsilateral in 62% (single-lobe-resection cohort) - lower than the review figure."
+    },
+    {
+     "study": "Foldvary-Schaefer 2011",
+     "value": null,
+     "qualitative": "ipsi",
+     "note": "Nose-wiping performed with the hand ipsilateral to the seizure focus."
+    },
+    {
+     "study": "Abou-Khalil 2022",
+     "value": null,
+     "qualitative": "ipsi",
+     "pg": "ch 3.4 p.42",
+     "note": "post-ictal nose wiping tends to be performed with the hand ipsilateral to the seizure focus."
+    }
+   ],
+   "sign_ids": [
+    23
+   ]
+  },
+  {
+   "sign": "Unilateral eye-blinking",
+   "sign_stem": "eye blinking",
+   "lobe": "Temporal",
+   "gyrus": "Temporal (ipsilateral)",
+   "ba": "BA 21-22",
+   "metric": "lateralization",
+   "direction": "ipsi",
+   "observations": [
+    {
+     "study": "Roh 1996",
+     "value": 86,
+     "freq": null,
+     "note": "Unilateral eye-blinking ipsilateral to ictal EEG onset in 85.7% (12/14)."
+    },
+    {
+     "study": "Loddenkemper 2005",
+     "value": 83,
+     "freq": "1.5% of EMU pts",
+     "note": "Unilateral ictal eye-blinking ipsilateral to the EZ in 83%."
+    },
+    {
+     "study": "Abou-Khalil 2022",
+     "value": null,
+     "qualitative": "ipsi",
+     "pg": "ch 3.4 p.42",
+     "note": "unilateral eye blinking tends to be ipsilateral to seizure origin."
+    }
+   ],
+   "sign_ids": [
+    18
+   ]
+  },
+  {
+   "sign": "Unilateral (ipsilateral) automatisms",
+   "sign_stem": "unilateral manual",
+   "lobe": "Temporal",
+   "gyrus": "Mesial temporal (ipsilateral)",
+   "ba": "BA 28 / 34-36",
+   "metric": "lateralization",
+   "direction": "ipsi",
+   "observations": [
+    {
+     "study": "Roh 1996",
+     "value": 88,
+     "freq": null,
+     "note": "Unilateral limb automatism ipsilateral to ictal EEG onset in 88.5% (23/26)."
+    },
+    {
+     "study": "Loddenkemper 2005",
+     "value": null,
+     "qualitative": "ipsi",
+     "note": "Unilateral automatisms tend to be ipsilateral to the EZ; strongest paired with contralateral dystonic posturing (the classic dyad)."
+    },
+    {
+     "study": "Foldvary-Schaefer 2011",
+     "value": null,
+     "qualitative": "ipsi",
+     "note": "Ipsilateral-automatism-plus-contralateral-posturing pattern differentiates R from L TLE."
+    },
+    {
+     "study": "Abou-Khalil 2022",
+     "value": null,
+     "qualitative": "ipsi",
+     "pg": "ch 3.4 p.41",
+     "note": "manipulative automatisms will predominate in the extremity ipsilateral to the seizure focus."
+    }
+   ],
+   "sign_ids": [
+    10
+   ]
+  },
+  {
+   "sign": "Ictal dysprosody",
+   "sign_stem": "dysprosody",
+   "lobe": "Frontal",
+   "gyrus": "Non-dominant precentral (frontal) operculum",
+   "ba": "BA 6 / 44 (non-dominant)",
+   "metric": "lateralization",
+   "direction": "nondominant",
+   "observations": [
+    {
+     "study": "Montavont 2005",
+     "value": null,
+     "qualitative": "nondominant",
+     "note": "Ictal recurrent speech with altered prosody corresponded to ictal discharge of the non-dominant precentral operculum."
+    }
+   ],
+   "sign_ids": []
+  }
+ ]
 }
