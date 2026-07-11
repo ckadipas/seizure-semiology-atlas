@@ -195,10 +195,27 @@
          "freq": null,
          "note": "Postictal aphasia a very reliable dominant-hemisphere sign, ~80-90% (midpoint 85).",
          "value": 85
+        },
+        {
+         "study": "Abou-Khalil 2022",
+         "cite": "Abou-Khalil (in Misulis et al. 2022)",
+         "eclass": "III",
+         "ground_truth": "review",
+         "n": null,
+         "weight": 1.0,
+         "weight_parts": {
+          "class_base": 1.0,
+          "ground_truth_mult": 1.0,
+          "size_factor": 1.0
+         },
+         "pg": "ch 3.4 p.42",
+         "freq": null,
+         "note": "post-ictal aphasia is strongly associated with a left dominant temporal localization.",
+         "qualitative": "dominant"
         }
        ],
        "n_studies": 5,
-       "n_qualitative": 0,
+       "n_qualitative": 1,
        "pooled": 92.2,
        "low": 85,
        "high": 94,
@@ -338,10 +355,27 @@
          "freq": null,
          "note": "Automatisms with preserved responsiveness non-dominant (right) in 62% (single-lobe-resection cohort) - lower than the review figure.",
          "value": 62
+        },
+        {
+         "study": "Abou-Khalil 2022",
+         "cite": "Abou-Khalil (in Misulis et al. 2022)",
+         "eclass": "III",
+         "ground_truth": "review",
+         "n": null,
+         "weight": 1.0,
+         "weight_parts": {
+          "class_base": 1.0,
+          "ground_truth_mult": 1.0,
+          "size_factor": 1.0
+         },
+         "pg": "ch 3.4 p.41",
+         "freq": null,
+         "note": "automatisms with preserved responsiveness also favor right temporal localization.",
+         "qualitative": "nondominant"
         }
        ],
        "n_studies": 2,
-       "n_qualitative": 0,
+       "n_qualitative": 1,
        "pooled": 67.6,
        "low": 62,
        "high": 100,
@@ -419,10 +453,27 @@
          "freq": null,
          "note": "Epigastric sensation with ictal vomiting strongly associated with non-dominant (right) temporal onset.",
          "qualitative": "nondominant"
+        },
+        {
+         "study": "Abou-Khalil 2022",
+         "cite": "Abou-Khalil (in Misulis et al. 2022)",
+         "eclass": "III",
+         "ground_truth": "review",
+         "n": null,
+         "weight": 1.0,
+         "weight_parts": {
+          "class_base": 1.0,
+          "ground_truth_mult": 1.0,
+          "size_factor": 1.0
+         },
+         "pg": "ch 3.4 p.42",
+         "freq": null,
+         "note": "ictal vomiting has been associated with right-sided temporal foci.",
+         "qualitative": "nondominant"
         }
        ],
        "n_studies": 1,
-       "n_qualitative": 2,
+       "n_qualitative": 3,
        "pooled": 81.0,
        "low": 81,
        "high": 81,
@@ -483,10 +534,27 @@
          "freq": null,
          "note": "Ictal spitting occurred exclusively in right (non-dominant) TLE - 11 (21%) of right-TLE seizures vs 0 in left TLE.",
          "qualitative": "nondominant"
+        },
+        {
+         "study": "Abou-Khalil 2022",
+         "cite": "Abou-Khalil (in Misulis et al. 2022)",
+         "eclass": "III",
+         "ground_truth": "review",
+         "n": null,
+         "weight": 1.0,
+         "weight_parts": {
+          "class_base": 1.0,
+          "ground_truth_mult": 1.0,
+          "size_factor": 1.0
+         },
+         "pg": "ch 3.4 p.41",
+         "freq": null,
+         "note": "spitting and drinking automatisms suggest right temporal localization.",
+         "qualitative": "nondominant"
         }
        ],
        "n_studies": 1,
-       "n_qualitative": 1,
+       "n_qualitative": 2,
        "pooled": 75.0,
        "low": 75,
        "high": 75,
@@ -564,10 +632,27 @@
          "freq": null,
          "note": "Nose-wiping performed with the hand ipsilateral to the seizure focus.",
          "qualitative": "ipsi"
+        },
+        {
+         "study": "Abou-Khalil 2022",
+         "cite": "Abou-Khalil (in Misulis et al. 2022)",
+         "eclass": "III",
+         "ground_truth": "review",
+         "n": null,
+         "weight": 1.0,
+         "weight_parts": {
+          "class_base": 1.0,
+          "ground_truth_mult": 1.0,
+          "size_factor": 1.0
+         },
+         "pg": "ch 3.4 p.42",
+         "freq": null,
+         "note": "post-ictal nose wiping tends to be performed with the hand ipsilateral to the seizure focus.",
+         "qualitative": "ipsi"
         }
        ],
        "n_studies": 2,
-       "n_qualitative": 1,
+       "n_qualitative": 2,
        "pooled": 66.4,
        "low": 62,
        "high": 92,
@@ -628,10 +713,27 @@
          "freq": "1.5% of EMU pts",
          "note": "Unilateral ictal eye-blinking ipsilateral to the EZ in 83%.",
          "value": 83
+        },
+        {
+         "study": "Abou-Khalil 2022",
+         "cite": "Abou-Khalil (in Misulis et al. 2022)",
+         "eclass": "III",
+         "ground_truth": "review",
+         "n": null,
+         "weight": 1.0,
+         "weight_parts": {
+          "class_base": 1.0,
+          "ground_truth_mult": 1.0,
+          "size_factor": 1.0
+         },
+         "pg": "ch 3.4 p.42",
+         "freq": null,
+         "note": "unilateral eye blinking tends to be ipsilateral to seizure origin.",
+         "qualitative": "ipsi"
         }
        ],
        "n_studies": 2,
-       "n_qualitative": 0,
+       "n_qualitative": 1,
        "pooled": 85.4,
        "low": 83,
        "high": 86,
@@ -709,10 +811,27 @@
          "freq": null,
          "note": "Ipsilateral-automatism-plus-contralateral-posturing pattern differentiates R from L TLE.",
          "qualitative": "ipsi"
+        },
+        {
+         "study": "Abou-Khalil 2022",
+         "cite": "Abou-Khalil (in Misulis et al. 2022)",
+         "eclass": "III",
+         "ground_truth": "review",
+         "n": null,
+         "weight": 1.0,
+         "weight_parts": {
+          "class_base": 1.0,
+          "ground_truth_mult": 1.0,
+          "size_factor": 1.0
+         },
+         "pg": "ch 3.4 p.41",
+         "freq": null,
+         "note": "manipulative automatisms will predominate in the extremity ipsilateral to the seizure focus.",
+         "qualitative": "ipsi"
         }
        ],
        "n_studies": 1,
-       "n_qualitative": 2,
+       "n_qualitative": 3,
        "pooled": 88.0,
        "low": 88,
        "high": 88,
@@ -846,10 +965,27 @@
          "freq": null,
          "note": "Versive (forced) deviation is contralateral; non-versive head rotation tends to be ipsilateral.",
          "qualitative": "contra"
+        },
+        {
+         "study": "Abou-Khalil 2022",
+         "cite": "Abou-Khalil (in Misulis et al. 2022)",
+         "eclass": "III",
+         "ground_truth": "review",
+         "n": null,
+         "weight": 1.0,
+         "weight_parts": {
+          "class_base": 1.0,
+          "ground_truth_mult": 1.0,
+          "size_factor": 1.0
+         },
+         "pg": "ch 3.4 p.40",
+         "freq": null,
+         "note": "versive head turning opposite the side of seizure onset.",
+         "qualitative": "contra"
         }
        ],
        "n_studies": 5,
-       "n_qualitative": 1,
+       "n_qualitative": 2,
        "pooled": 98.6,
        "low": 90,
        "high": 100,
@@ -927,10 +1063,27 @@
          "freq": null,
          "note": "Unilateral tonic posturing is a 'reliable' sign (PPV > 80%); two reliable concordant signs approach 100% accuracy.",
          "qualitative": "contra"
+        },
+        {
+         "study": "Abou-Khalil 2022",
+         "cite": "Abou-Khalil (in Misulis et al. 2022)",
+         "eclass": "III",
+         "ground_truth": "review",
+         "n": null,
+         "weight": 1.0,
+         "weight_parts": {
+          "class_base": 1.0,
+          "ground_truth_mult": 1.0,
+          "size_factor": 1.0
+         },
+         "pg": "ch 3.4 p.42",
+         "freq": null,
+         "note": "focal tonic posturing ... most often contralateral to seizure origin.",
+         "qualitative": "contra"
         }
        ],
        "n_studies": 2,
-       "n_qualitative": 1,
+       "n_qualitative": 2,
        "pooled": 97.8,
        "low": 89,
        "high": 100,
@@ -1008,10 +1161,27 @@
          "freq": null,
          "note": "Figure-of-4 PPV < 80% in this systematic video analysis - less reliable in isolation than version, unilateral tonic posturing, M2e, or unilateral clonic activity.",
          "qualitative": "caution"
+        },
+        {
+         "study": "Abou-Khalil 2022",
+         "cite": "Abou-Khalil (in Misulis et al. 2022)",
+         "eclass": "III",
+         "ground_truth": "review",
+         "n": null,
+         "weight": 1.0,
+         "weight_parts": {
+          "class_base": 1.0,
+          "ground_truth_mult": 1.0,
+          "size_factor": 1.0
+         },
+         "pg": "ch 3.4 p.40",
+         "freq": null,
+         "note": "arm extension contralateral and arm flexion ipsilateral to the seizure focus (figure-of-four).",
+         "qualitative": "contra"
         }
        ],
        "n_studies": 2,
-       "n_qualitative": 1,
+       "n_qualitative": 2,
        "pooled": 89.8,
        "low": 89,
        "high": 90,
@@ -1089,10 +1259,27 @@
          "freq": null,
          "note": "Unilateral clonic activity is a 'reliable' motor sign (PPV > 80%) for contralateral lateralization.",
          "qualitative": "contra"
+        },
+        {
+         "study": "Abou-Khalil 2022",
+         "cite": "Abou-Khalil (in Misulis et al. 2022)",
+         "eclass": "III",
+         "ground_truth": "review",
+         "n": null,
+         "weight": 1.0,
+         "weight_parts": {
+          "class_base": 1.0,
+          "ground_truth_mult": 1.0,
+          "size_factor": 1.0
+         },
+         "pg": "ch 3.4 p.42",
+         "freq": null,
+         "note": "focal clonic activity ... most often contralateral to seizure origin.",
+         "qualitative": "contra"
         }
        ],
        "n_studies": 2,
-       "n_qualitative": 1,
+       "n_qualitative": 2,
        "pooled": 96.6,
        "low": 83,
        "high": 100,
@@ -1397,10 +1584,27 @@
          "freq": null,
          "note": "Painful somatosensory seizures typically contralateral, localizing to the parietal operculum / insula.",
          "qualitative": "contra"
+        },
+        {
+         "study": "Abou-Khalil 2022",
+         "cite": "Abou-Khalil (in Misulis et al. 2022)",
+         "eclass": "III",
+         "ground_truth": "review",
+         "n": null,
+         "weight": 1.0,
+         "weight_parts": {
+          "class_base": 1.0,
+          "ground_truth_mult": 1.0,
+          "size_factor": 1.0
+         },
+         "pg": "ch 3.4 p.44",
+         "freq": null,
+         "note": "sensory march is strongly suggestive of a post-central, primary sensory cortex involvement, contralateral to the ictal discharge.",
+         "qualitative": "contra"
         }
        ],
        "n_studies": 2,
-       "n_qualitative": 1,
+       "n_qualitative": 2,
        "pooled": 89.0,
        "low": 89,
        "high": 89,
@@ -1552,10 +1756,27 @@
          "freq": null,
          "note": "Limb dystonia contralateral to the EZ in >90%.",
          "value": 90
+        },
+        {
+         "study": "Abou-Khalil 2022",
+         "cite": "Abou-Khalil (in Misulis et al. 2022)",
+         "eclass": "III",
+         "ground_truth": "review",
+         "n": null,
+         "weight": 1.0,
+         "weight_parts": {
+          "class_base": 1.0,
+          "ground_truth_mult": 1.0,
+          "size_factor": 1.0
+         },
+         "pg": "ch 3.4 p.41",
+         "freq": null,
+         "note": "dystonic posturing has been associated with ictal activation in the contralateral putamen.",
+         "qualitative": "contra"
         }
        ],
        "n_studies": 3,
-       "n_qualitative": 0,
+       "n_qualitative": 1,
        "pooled": 98.3,
        "low": 90,
        "high": 100,
@@ -1633,10 +1854,27 @@
      "freq": null,
      "note": "Unilateral tonic posturing is a 'reliable' sign (PPV > 80%); two reliable concordant signs approach 100% accuracy.",
      "qualitative": "contra"
+    },
+    {
+     "study": "Abou-Khalil 2022",
+     "cite": "Abou-Khalil (in Misulis et al. 2022)",
+     "eclass": "III",
+     "ground_truth": "review",
+     "n": null,
+     "weight": 1.0,
+     "weight_parts": {
+      "class_base": 1.0,
+      "ground_truth_mult": 1.0,
+      "size_factor": 1.0
+     },
+     "pg": "ch 3.4 p.42",
+     "freq": null,
+     "note": "focal tonic posturing ... most often contralateral to seizure origin.",
+     "qualitative": "contra"
     }
    ],
    "n_studies": 2,
-   "n_qualitative": 1,
+   "n_qualitative": 2,
    "pooled": 97.8,
    "low": 89,
    "high": 100,
@@ -1691,10 +1929,27 @@
      "freq": null,
      "note": "Automatisms with preserved responsiveness non-dominant (right) in 62% (single-lobe-resection cohort) - lower than the review figure.",
      "value": 62
+    },
+    {
+     "study": "Abou-Khalil 2022",
+     "cite": "Abou-Khalil (in Misulis et al. 2022)",
+     "eclass": "III",
+     "ground_truth": "review",
+     "n": null,
+     "weight": 1.0,
+     "weight_parts": {
+      "class_base": 1.0,
+      "ground_truth_mult": 1.0,
+      "size_factor": 1.0
+     },
+     "pg": "ch 3.4 p.41",
+     "freq": null,
+     "note": "automatisms with preserved responsiveness also favor right temporal localization.",
+     "qualitative": "nondominant"
     }
    ],
    "n_studies": 2,
-   "n_qualitative": 0,
+   "n_qualitative": 1,
    "pooled": 67.6,
    "low": 62,
    "high": 100,
@@ -1766,10 +2021,27 @@
      "freq": null,
      "note": "Figure-of-4 PPV < 80% in this systematic video analysis - less reliable in isolation than version, unilateral tonic posturing, M2e, or unilateral clonic activity.",
      "qualitative": "caution"
+    },
+    {
+     "study": "Abou-Khalil 2022",
+     "cite": "Abou-Khalil (in Misulis et al. 2022)",
+     "eclass": "III",
+     "ground_truth": "review",
+     "n": null,
+     "weight": 1.0,
+     "weight_parts": {
+      "class_base": 1.0,
+      "ground_truth_mult": 1.0,
+      "size_factor": 1.0
+     },
+     "pg": "ch 3.4 p.40",
+     "freq": null,
+     "note": "arm extension contralateral and arm flexion ipsilateral to the seizure focus (figure-of-four).",
+     "qualitative": "contra"
     }
    ],
    "n_studies": 2,
-   "n_qualitative": 1,
+   "n_qualitative": 2,
    "pooled": 89.8,
    "low": 89,
    "high": 90,
@@ -1892,10 +2164,27 @@
      "freq": null,
      "note": "Versive (forced) deviation is contralateral; non-versive head rotation tends to be ipsilateral.",
      "qualitative": "contra"
+    },
+    {
+     "study": "Abou-Khalil 2022",
+     "cite": "Abou-Khalil (in Misulis et al. 2022)",
+     "eclass": "III",
+     "ground_truth": "review",
+     "n": null,
+     "weight": 1.0,
+     "weight_parts": {
+      "class_base": 1.0,
+      "ground_truth_mult": 1.0,
+      "size_factor": 1.0
+     },
+     "pg": "ch 3.4 p.40",
+     "freq": null,
+     "note": "versive head turning opposite the side of seizure onset.",
+     "qualitative": "contra"
     }
    ],
    "n_studies": 5,
-   "n_qualitative": 1,
+   "n_qualitative": 2,
    "pooled": 98.6,
    "low": 90,
    "high": 100,
@@ -2105,10 +2394,27 @@
      "freq": null,
      "note": "Ictal spitting occurred exclusively in right (non-dominant) TLE - 11 (21%) of right-TLE seizures vs 0 in left TLE.",
      "qualitative": "nondominant"
+    },
+    {
+     "study": "Abou-Khalil 2022",
+     "cite": "Abou-Khalil (in Misulis et al. 2022)",
+     "eclass": "III",
+     "ground_truth": "review",
+     "n": null,
+     "weight": 1.0,
+     "weight_parts": {
+      "class_base": 1.0,
+      "ground_truth_mult": 1.0,
+      "size_factor": 1.0
+     },
+     "pg": "ch 3.4 p.41",
+     "freq": null,
+     "note": "spitting and drinking automatisms suggest right temporal localization.",
+     "qualitative": "nondominant"
     }
    ],
    "n_studies": 1,
-   "n_qualitative": 1,
+   "n_qualitative": 2,
    "pooled": 75.0,
    "low": 75,
    "high": 75,
@@ -2180,10 +2486,27 @@
      "freq": null,
      "note": "Epigastric sensation with ictal vomiting strongly associated with non-dominant (right) temporal onset.",
      "qualitative": "nondominant"
+    },
+    {
+     "study": "Abou-Khalil 2022",
+     "cite": "Abou-Khalil (in Misulis et al. 2022)",
+     "eclass": "III",
+     "ground_truth": "review",
+     "n": null,
+     "weight": 1.0,
+     "weight_parts": {
+      "class_base": 1.0,
+      "ground_truth_mult": 1.0,
+      "size_factor": 1.0
+     },
+     "pg": "ch 3.4 p.42",
+     "freq": null,
+     "note": "ictal vomiting has been associated with right-sided temporal foci.",
+     "qualitative": "nondominant"
     }
    ],
    "n_studies": 1,
-   "n_qualitative": 2,
+   "n_qualitative": 3,
    "pooled": 81.0,
    "low": 81,
    "high": 81,
@@ -2454,10 +2777,27 @@
      "freq": null,
      "note": "Postictal aphasia a very reliable dominant-hemisphere sign, ~80-90% (midpoint 85).",
      "value": 85
+    },
+    {
+     "study": "Abou-Khalil 2022",
+     "cite": "Abou-Khalil (in Misulis et al. 2022)",
+     "eclass": "III",
+     "ground_truth": "review",
+     "n": null,
+     "weight": 1.0,
+     "weight_parts": {
+      "class_base": 1.0,
+      "ground_truth_mult": 1.0,
+      "size_factor": 1.0
+     },
+     "pg": "ch 3.4 p.42",
+     "freq": null,
+     "note": "post-ictal aphasia is strongly associated with a left dominant temporal localization.",
+     "qualitative": "dominant"
     }
    ],
    "n_studies": 5,
-   "n_qualitative": 0,
+   "n_qualitative": 1,
    "pooled": 92.2,
    "low": 85,
    "high": 94,
@@ -2529,10 +2869,27 @@
      "freq": null,
      "note": "Nose-wiping performed with the hand ipsilateral to the seizure focus.",
      "qualitative": "ipsi"
+    },
+    {
+     "study": "Abou-Khalil 2022",
+     "cite": "Abou-Khalil (in Misulis et al. 2022)",
+     "eclass": "III",
+     "ground_truth": "review",
+     "n": null,
+     "weight": 1.0,
+     "weight_parts": {
+      "class_base": 1.0,
+      "ground_truth_mult": 1.0,
+      "size_factor": 1.0
+     },
+     "pg": "ch 3.4 p.42",
+     "freq": null,
+     "note": "post-ictal nose wiping tends to be performed with the hand ipsilateral to the seizure focus.",
+     "qualitative": "ipsi"
     }
    ],
    "n_studies": 2,
-   "n_qualitative": 1,
+   "n_qualitative": 2,
    "pooled": 66.4,
    "low": 62,
    "high": 92,
@@ -2677,10 +3034,27 @@
      "freq": null,
      "note": "Ipsilateral-automatism-plus-contralateral-posturing pattern differentiates R from L TLE.",
      "qualitative": "ipsi"
+    },
+    {
+     "study": "Abou-Khalil 2022",
+     "cite": "Abou-Khalil (in Misulis et al. 2022)",
+     "eclass": "III",
+     "ground_truth": "review",
+     "n": null,
+     "weight": 1.0,
+     "weight_parts": {
+      "class_base": 1.0,
+      "ground_truth_mult": 1.0,
+      "size_factor": 1.0
+     },
+     "pg": "ch 3.4 p.41",
+     "freq": null,
+     "note": "manipulative automatisms will predominate in the extremity ipsilateral to the seizure focus.",
+     "qualitative": "ipsi"
     }
    ],
    "n_studies": 1,
-   "n_qualitative": 2,
+   "n_qualitative": 3,
    "pooled": 88.0,
    "low": 88,
    "high": 88,
@@ -2752,10 +3126,27 @@
      "freq": null,
      "note": "Unilateral clonic activity is a 'reliable' motor sign (PPV > 80%) for contralateral lateralization.",
      "qualitative": "contra"
+    },
+    {
+     "study": "Abou-Khalil 2022",
+     "cite": "Abou-Khalil (in Misulis et al. 2022)",
+     "eclass": "III",
+     "ground_truth": "review",
+     "n": null,
+     "weight": 1.0,
+     "weight_parts": {
+      "class_base": 1.0,
+      "ground_truth_mult": 1.0,
+      "size_factor": 1.0
+     },
+     "pg": "ch 3.4 p.42",
+     "freq": null,
+     "note": "focal clonic activity ... most often contralateral to seizure origin.",
+     "qualitative": "contra"
     }
    ],
    "n_studies": 2,
-   "n_qualitative": 1,
+   "n_qualitative": 2,
    "pooled": 96.6,
    "low": 83,
    "high": 100,
@@ -2827,10 +3218,27 @@
      "freq": null,
      "note": "Limb dystonia contralateral to the EZ in >90%.",
      "value": 90
+    },
+    {
+     "study": "Abou-Khalil 2022",
+     "cite": "Abou-Khalil (in Misulis et al. 2022)",
+     "eclass": "III",
+     "ground_truth": "review",
+     "n": null,
+     "weight": 1.0,
+     "weight_parts": {
+      "class_base": 1.0,
+      "ground_truth_mult": 1.0,
+      "size_factor": 1.0
+     },
+     "pg": "ch 3.4 p.41",
+     "freq": null,
+     "note": "dystonic posturing has been associated with ictal activation in the contralateral putamen.",
+     "qualitative": "contra"
     }
    ],
    "n_studies": 3,
-   "n_qualitative": 0,
+   "n_qualitative": 1,
    "pooled": 98.3,
    "low": 90,
    "high": 100,
@@ -2885,10 +3293,27 @@
      "freq": "1.5% of EMU pts",
      "note": "Unilateral ictal eye-blinking ipsilateral to the EZ in 83%.",
      "value": 83
+    },
+    {
+     "study": "Abou-Khalil 2022",
+     "cite": "Abou-Khalil (in Misulis et al. 2022)",
+     "eclass": "III",
+     "ground_truth": "review",
+     "n": null,
+     "weight": 1.0,
+     "weight_parts": {
+      "class_base": 1.0,
+      "ground_truth_mult": 1.0,
+      "size_factor": 1.0
+     },
+     "pg": "ch 3.4 p.42",
+     "freq": null,
+     "note": "unilateral eye blinking tends to be ipsilateral to seizure origin.",
+     "qualitative": "ipsi"
     }
    ],
    "n_studies": 2,
-   "n_qualitative": 0,
+   "n_qualitative": 1,
    "pooled": 85.4,
    "low": 83,
    "high": 86,
@@ -2960,10 +3385,27 @@
      "freq": null,
      "note": "Painful somatosensory seizures typically contralateral, localizing to the parietal operculum / insula.",
      "qualitative": "contra"
+    },
+    {
+     "study": "Abou-Khalil 2022",
+     "cite": "Abou-Khalil (in Misulis et al. 2022)",
+     "eclass": "III",
+     "ground_truth": "review",
+     "n": null,
+     "weight": 1.0,
+     "weight_parts": {
+      "class_base": 1.0,
+      "ground_truth_mult": 1.0,
+      "size_factor": 1.0
+     },
+     "pg": "ch 3.4 p.44",
+     "freq": null,
+     "note": "sensory march is strongly suggestive of a post-central, primary sensory cortex involvement, contralateral to the ictal discharge.",
+     "qualitative": "contra"
     }
    ],
    "n_studies": 2,
-   "n_qualitative": 1,
+   "n_qualitative": 2,
    "pooled": 89.0,
    "low": 89,
    "high": 89,

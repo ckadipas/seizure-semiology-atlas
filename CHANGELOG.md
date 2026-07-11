@@ -4,6 +4,23 @@ All notable changes to the dataset and resource are recorded here.
 Format loosely follows Keep a Changelog; dates are ISO-8601.
 
 ## [Unreleased]
+### Added
+- **Integrated Abou-Khalil's seizure-semiology chapter** (in Misulis et al., *Atlas of
+  EEG, Seizure Semiology, and Management*, 3rd ed., Oxford Univ. Press 2022, §3.4). This
+  authoritative textbook is added to the source library and now **corroborates the
+  lateralizing direction of 13 existing signs** — forced version, dystonic/tonic/clonic
+  posturing, figure-of-4, somatosensory aura, ictal spitting, ictal vomiting,
+  preserved-responsiveness automatisms, ipsilateral automatisms, unilateral eye-blinking,
+  postictal nose-wiping and postictal aphasia — as a qualitative (directional) source in
+  the meta-analysis ledger. Each carries a short attributed quote and page locator; being
+  directional, they add a corroborating citation without altering any pooled percentage.
+  This retires several signs that had rested on a single citation (e.g. ictal spitting and
+  ictal vomiting now show three concordant sources).
+- **Three new right-temporal lateralizing signs** the chapter describes and the atlas
+  lacked: **ictal drinking automatism**, **postictal cough**, and **postictal urinary
+  urgency** (all non-dominant/right temporal, evidence level III, cited to the chapter).
+  Every added quote was mechanically checked against the source text; no full text or PDF
+  is committed (short attributed extractions only).
 ### Changed
 - **Single source of truth.** Each curated sign card is now linked (by explicit id,
   not fragile substring) to its meta-analysis ledger entry, and renders the SAME
