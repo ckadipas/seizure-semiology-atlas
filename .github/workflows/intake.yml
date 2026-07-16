@@ -1,9 +1,9 @@
 name: Paper intake
 
 # Manual-only intake. A maintainer triggers this on a submitted issue (its attached
-# document is read on the runner); short, page-cited figures are extracted and a
-# pull request is opened for review. Only the derived figures are committed — the
-# document/full text stays on the runner.
+# document(s) OR photographed pages are read on the runner); short, page-cited figures
+# are extracted and a pull request is opened for review. Only the derived figures are
+# committed — the document/images/full text stay on the runner.
 #
 # Setup: add a repository secret named INTAKE_TOKEN (Settings -> Secrets and
 # variables -> Actions) holding the extraction token.
@@ -13,7 +13,7 @@ on:
   workflow_dispatch:
     inputs:
       issue_number:
-        description: Issue number to process (its attached document is read)
+        description: Issue number to process (its attached document(s) or photographed pages are read)
         required: true
 
 permissions:
@@ -67,8 +67,14 @@ jobs:
             ${{ steps.ctx.outputs.body }}
 
             Do this:
-            1. Find EVERY document URL in the issue body — each is a https://github.com/user-attachments/... link ending in .pdf. An issue may attach several papers; collect them ALL. If there are none, write "NO_DOCUMENT" to /tmp/intake_summary.txt and stop.
-            2. For EACH url, download it to a distinct path (e.g. `curl -L -o /tmp/paper1.pdf "<url1>"`, `/tmp/paper2.pdf`, ...) and Read it in full. Process every attached document, not only the first.
+            1. Find EVERY attachment in the issue body and collect them ALL. There are two kinds, and a submission may use either or both:
+               - PDF documents: links to https://github.com/user-attachments/... ending in .pdf
+               - Images (photographed or screenshotted pages of a book/handbook/paper): HTML `<img src="https://github.com/user-attachments/assets/...">` tags and markdown `![...](https://github.com/user-attachments/...)` images.
+               Collect every PDF URL and every image URL. If there are none of either, write "NO_DOCUMENT" to /tmp/intake_summary.txt and stop.
+            2. Download EACH attachment to a distinct path with `curl -L` and read it in full. Process EVERY attachment, not only the first:
+               - PDFs: save as `/tmp/doc1.pdf`, `/tmp/doc2.pdf`, ... and Read each.
+               - Images: the asset URL usually has no file extension, so download to a temp path then use python3 to sniff the magic bytes (PNG starts with bytes 89 50 4E 47; JPEG with FF D8 FF) and copy it to `/tmp/img1.png` or `/tmp/img1.jpg`, then Read the image — you can read images directly, so transcribe the localizing/lateralizing text, tables, and figures visible on each page.
+               If a download returns a small JSON/HTML error page instead of a real document or image (e.g. a 403), that attachment is not publicly fetchable from the runner; record that in the summary and skip it rather than guessing its contents.
             3. Read enrichment/intake_findings.json (schema: "papers", "new_signs", "findings"), data/semiology_data.json (existing sign names), and enrichment/enrichment.json (the "papers" list, so you don't duplicate a paper).
             4. From EACH paper, extract ONLY short, attributed, PAGE-CITED findings bearing on LOCALIZING or LATERALIZING semiology. For each finding: a one- or two-sentence paraphrase in your own words (never a long verbatim quote) including the reported figure/percentage/N; a "pg" source page (e.g. "p.608"); a "paper" citation; and a "sign_stem" that is a lowercase substring of the sign it attaches to. Add each new paper under "papers" (cite, journal, title, contribution). Follow any specific instruction in the issue body. Never fabricate a figure; omit anything a paper does not support. Prefer disciplined primary series; treat literature-mined meta-analyses skeptically.
             4b. IMPORTANT — a paper may describe a well-evidenced localizing/lateralizing sign that is NOT yet in data/semiology_data.json. Do NOT decline it and do NOT mis-attach it to an unrelated existing sign. Instead ADD it under "new_signs" as a full record: {region, sub, sign, phase, lat, latcode (one of contra/ipsi/dominant/nondominant/right/nonlat/variable), loc, sens, spec, evid (I/II/III), notes, cite, "_ev":[{p,f,pg}]}. Match the region/sub wording used in data/semiology_data.json. Then attach that paper's findings to it via a sign_stem that is a substring of the new sign's name. The maintainer approves by merging the PR — your job is to propose it, not to gatekeep. Only skip a paper if it genuinely has no localizing/lateralizing content (e.g. a pure mortality/outcome study).
