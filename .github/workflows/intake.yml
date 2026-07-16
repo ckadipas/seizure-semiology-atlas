@@ -50,6 +50,46 @@ jobs:
             core.setOutput('title', issue.title || '');
             core.setOutput('body', issue.body || '');
 
+      # Deterministic download of the submission's attachments (PDFs and pasted
+      # page photos alike), done in plain bash so the extraction agent never has to
+      # curl / rename / sniff file types itself (that thrash previously burned its
+      # whole turn budget on denied shell commands). The agent just Reads the files.
+      - name: Fetch submitted attachments
+        env:
+          ISSUE_BODY: ${{ steps.ctx.outputs.body }}
+        run: |
+          set -e
+          mkdir -p /tmp/intake
+          python3 - <<'PY'
+          import os, re, subprocess
+          body = os.environ.get("ISSUE_BODY", "")
+          # every GitHub user-attachments URL: file uploads (.../files/...) and pasted
+          # images (.../assets/...), whether in markdown or an <img src="..."> tag.
+          urls = re.findall(r'https://github\.com/user-attachments/(?:files|assets)/[^\s"\')>]+', body)
+          seen = set(); urls = [u for u in urls if not (u in seen or seen.add(u))]
+          manifest = []
+          for i, u in enumerate(urls, 1):
+              raw = f"/tmp/intake/att{i}.bin"
+              # plain curl, no auth header: these assets are public, and sending an
+              # Authorization header would break the signed CDN redirect.
+              subprocess.run(["curl", "-sSL", "--retry", "3", "-o", raw, u], check=False)
+              head = open(raw, "rb").read(16) if os.path.exists(raw) else b""
+              ext = ("pdf" if head[:4] == b"%PDF" else
+                     "png" if head[:4] == b"\x89PNG" else
+                     "jpg" if head[:3] == b"\xff\xd8\xff" else
+                     "gif" if head[:6] in (b"GIF87a", b"GIF89a") else
+                     "webp" if head[:4] == b"RIFF" else None)
+              if not ext:
+                  snippet = (open(raw, "rb").read(120) if os.path.exists(raw) else b"")
+                  manifest.append(f"SKIP  {u}  (not a document/image; got {snippet[:80]!r})")
+                  continue
+              dest = f"/tmp/intake/att{i}.{ext}"
+              os.replace(raw, dest)
+              manifest.append(f"OK    {dest}   <- {u}")
+          open("/tmp/intake/manifest.txt", "w").write("\n".join(manifest) if manifest else "NONE")
+          print("\n".join(manifest) if manifest else "no user-attachments URLs found in the issue body")
+          PY
+
       # Extraction step. Restricted to file editing only — no git, no gh — so it
       # never commits or opens anything itself. It just leaves the findings file
       # changed for the next step to publish under a neutral identity.
@@ -57,7 +97,7 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.INTAKE_TOKEN }}
-          claude_args: '--max-turns 60 --allowedTools "Read,Edit,Write,Bash(curl:*),Bash(python3:*)"'
+          claude_args: '--max-turns 120 --allowedTools "Read,Edit,Write,Bash(python3:*),Bash(cat:*),Bash(ls:*)"'
           prompt: |
             You are extracting quantitative figures from one or more papers for a source-grounded, educational epilepsy-semiology atlas.
 
@@ -67,14 +107,8 @@ jobs:
             ${{ steps.ctx.outputs.body }}
 
             Do this:
-            1. Find EVERY attachment in the issue body and collect them ALL. There are two kinds, and a submission may use either or both:
-               - PDF documents: links to https://github.com/user-attachments/... ending in .pdf
-               - Images (photographed or screenshotted pages of a book/handbook/paper): HTML `<img src="https://github.com/user-attachments/assets/...">` tags and markdown `![...](https://github.com/user-attachments/...)` images.
-               Collect every PDF URL and every image URL. If there are none of either, write "NO_DOCUMENT" to /tmp/intake_summary.txt and stop.
-            2. Download EACH attachment to a distinct path with `curl -L` and read it in full. Process EVERY attachment, not only the first:
-               - PDFs: save as `/tmp/doc1.pdf`, `/tmp/doc2.pdf`, ... and Read each.
-               - Images: the asset URL usually has no file extension, so download to a temp path then use python3 to sniff the magic bytes (PNG starts with bytes 89 50 4E 47; JPEG with FF D8 FF) and copy it to `/tmp/img1.png` or `/tmp/img1.jpg`, then Read the image — you can read images directly, so transcribe the localizing/lateralizing text, tables, and figures visible on each page.
-               If a download returns a small JSON/HTML error page instead of a real document or image (e.g. a 403), that attachment is not publicly fetchable from the runner; record that in the summary and skip it rather than guessing its contents.
+            1. The submission's attachments have ALREADY been downloaded for you to /tmp/intake/. Run `cat /tmp/intake/manifest.txt` to see them: each line beginning `OK` is a ready-to-read file (a `.pdf` document, or a `.png`/`.jpg` page photo). Lines beginning `SKIP` were not fetchable — ignore them. If the manifest is `NONE` or has no `OK` lines, write "NO_DOCUMENT" to /tmp/intake_summary.txt and stop.
+            2. Read EVERY `OK` file — all of them, not just the first. Read PDFs in full; Read image files directly (you can see images — transcribe the localizing/lateralizing text, tables, and figures on each page). Several page photos may together make up one source (e.g. a handbook); treat them as one document when they clearly belong together.
             3. Read enrichment/intake_findings.json (schema: "papers", "new_signs", "findings"), data/semiology_data.json (existing sign names), and enrichment/enrichment.json (the "papers" list, so you don't duplicate a paper).
             4. From EACH paper, extract ONLY short, attributed, PAGE-CITED findings bearing on LOCALIZING or LATERALIZING semiology. For each finding: a one- or two-sentence paraphrase in your own words (never a long verbatim quote) including the reported figure/percentage/N; a "pg" source page (e.g. "p.608"); a "paper" citation; and a "sign_stem" that is a lowercase substring of the sign it attaches to. Add each new paper under "papers" (cite, journal, title, contribution). Follow any specific instruction in the issue body. Never fabricate a figure; omit anything a paper does not support. Prefer disciplined primary series; treat literature-mined meta-analyses skeptically.
             4b. IMPORTANT — a paper may describe a well-evidenced localizing/lateralizing sign that is NOT yet in data/semiology_data.json. Do NOT decline it and do NOT mis-attach it to an unrelated existing sign. Instead ADD it under "new_signs" as a full record: {region, sub, sign, phase, lat, latcode (one of contra/ipsi/dominant/nondominant/right/nonlat/variable), loc, sens, spec, evid (I/II/III), notes, cite, "_ev":[{p,f,pg}]}. Match the region/sub wording used in data/semiology_data.json. Then attach that paper's findings to it via a sign_stem that is a substring of the new sign's name. The maintainer approves by merging the PR — your job is to propose it, not to gatekeep. Only skip a paper if it genuinely has no localizing/lateralizing content (e.g. a pure mortality/outcome study).
