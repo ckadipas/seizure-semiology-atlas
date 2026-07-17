@@ -4,6 +4,11 @@
    {
     "p": "Foldvary-Schaefer 2011",
     "f": "Abdominal auras associated with TLE in 74%; rising to 98% when the seizure evolves into an automotor component."
+   },
+   {
+    "p": "Barba 2007",
+    "f": "In an SEEG-defined series (n=80: 58 pure temporal, 22 temporal-'plus'), digestive/abdominal auras were significantly more frequent in pure temporal than temporal-'plus' seizures (54.2% vs 30.4%, p=0.05); coexistence of abdominal plus pharyngeal auras clustered together as a marker of the pure-temporal group.",
+    "pg": "p.1963"
    }
   ],
   "oral automatisms": [
@@ -30,6 +35,11 @@
    {
     "p": "Foldvary-Schaefer 2011",
     "f": "Limb dystonia is contralateral to the EZ in >90% of cases."
+   },
+   {
+    "p": "Tufenkjian 2012",
+    "f": "Sustained (>10 sec) forced dystonic posturing of one upper extremity with a rotational component is a reliable lateralizing sign to the contralateral hemisphere in TLE (also seen in extratemporal epilepsy); ictal SPECT confirms basal-ganglia involvement.",
+    "pg": "pp.247-248"
    }
   ],
   "figure-of-4": [
@@ -87,6 +97,16 @@
     "p": "Wyllie 1986",
     "f": "Interictal EEG foci among the 27 patients with versive seizures were exclusively contralateral to the versive direction in 81% (22/27) and never exclusively ipsilateral (5/27 bilateral), corroborating the ictal contralateral-version finding.",
     "pg": "p.607"
+   },
+   {
+    "p": "Tufenkjian 2012",
+    "f": "Versive seizures (forced, involuntary head/eye turning) have high lateralizing value to the contralateral hemisphere, especially when occurring within 10 seconds before secondary generalization; reliability requires clearly differentiating them from non-versive head turning.",
+    "pg": "p.246"
+   },
+   {
+    "p": "Barba 2007",
+    "f": "Contralateral version of the eyes and/or head was significantly more frequent in temporal-'plus' than pure temporal lobe seizures (60.9% vs 35.6% overall, p=0.04; contralateral subtype specifically p=0.001); when contralateral version occurs in an apparently temporal seizure, especially with accompanying anxiety, it should raise suspicion of temporal-'plus' rather than pure TLE.",
+    "pg": "p.1961"
    }
   ],
   "early non-forced": [
@@ -119,6 +139,11 @@
     "p": "UTHealth Epilepsy Fellow Handbook",
     "f": "Lateralizing-signs table lists automatism with preserved awareness ('automotor without dialepsis') as localizing to the non-dominant hemisphere, and automatism with impaired awareness ('automotor with dialepsis') as localizing to the dominant hemisphere.",
     "pg": "p.5"
+   },
+   {
+    "p": "Tufenkjian 2012",
+    "f": "95% of automotor seizures are associated with altered consciousness; preserved consciousness during automotor seizures has been observed almost exclusively in patients with non-dominant mesial temporal epilepsy.",
+    "pg": "p.247"
    }
   ],
   "ictal spitting": [
@@ -160,12 +185,22 @@
     "p": "UTHealth Epilepsy Fellow Handbook",
     "f": "Unilateral ictal eye blinking is listed as ipsilateral to the seizure focus; the table lists it twice, once as a standard entry and again flagged 'not highly reliable.'",
     "pg": "p.5"
+   },
+   {
+    "p": "Tufenkjian 2012",
+    "f": "Unilateral eye blinking is infrequent but has been reported as a good lateralizing sign to the ipsilateral hemisphere; it has no localizing value and its mechanism is unclear.",
+    "pg": "p.248"
    }
   ],
   "postictal nose": [
    {
     "p": "Loddenkemper 2005",
     "f": "Postictal nose-wiping in 53.2% of TLE; the wiping hand is ipsilateral to the EZ in 92%."
+   },
+   {
+    "p": "Tufenkjian 2012",
+    "f": "Post-ictal nose wiping lateralizes to the ipsilateral hemisphere in TLE, attributed to post-ictal neglect of the space contralateral to the wiping hand (i.e., contralateral to the seizure-onset hemisphere).",
+    "pg": "p.248"
    }
   ],
   "postictal aphasia": [
@@ -189,6 +224,11 @@
     "p": "UTHealth Epilepsy Fellow Handbook",
     "f": "Postictal aphasia is listed as localizing to the dominant hemisphere in the lateralizing-signs table.",
     "pg": "p.5"
+   },
+   {
+    "p": "Tufenkjian 2012",
+    "f": "Postictal aphasia lateralizes to the language-dominant hemisphere in TLE; recovery of language function is significantly more delayed with left (dominant) temporal onset, and should progress slowly (10-20 min) but continuously in a cooperative, testable patient.",
+    "pg": "p.248"
    }
   ],
   "ictal aphasia": [
@@ -204,6 +244,11 @@
     "p": "UTHealth Epilepsy Fellow Handbook",
     "f": "In an alternate copy of the lateralizing-signs table (p.7), 'ictal speech' (i.e. preserved/intelligible speech during a seizure) is listed as localizing to the non-dominant hemisphere; the more complete copy of the table (p.5) omits this row, listing 'immediate postictal speech' instead.",
     "pg": "p.7"
+   },
+   {
+    "p": "Tufenkjian 2012",
+    "f": "Ictal verbalization (clearly intelligible speech during unresponsiveness/automatisms) tends to lateralize to the non-dominant hemisphere in TLE, but exceptions are frequent, making it a poorly reliable lateralizing sign; pure vocalization has no lateralizing value.",
+    "pg": "p.248"
    }
   ],
   "ictal aphasia / speech arrest": [
@@ -230,6 +275,11 @@
    {
     "p": "Marashly 2015",
     "f": "Unilateral clonic activity is a 'reliable' motor sign (PPV >80%) for contralateral lateralization."
+   },
+   {
+    "p": "Tufenkjian 2012",
+    "f": "Unilateral clonic seizures have a highly lateralizing value to the contralateral hemisphere; the epileptogenic zone is usually at or near the primary motor strip when clonus without impaired consciousness is the first ictal sign.",
+    "pg": "p.246"
    }
   ],
   "focal hand/finger clonic": [
@@ -258,6 +308,11 @@
    {
     "p": "Marashly 2015",
     "f": "Unilateral tonic posturing is a 'reliable' sign (PPV >80%); two reliable signs pointing the same way give ~100% lateralization accuracy."
+   },
+   {
+    "p": "Tufenkjian 2012",
+    "f": "Tonic seizures occur far more often in frontal lobe epilepsy (62.2%) than temporal lobe epilepsy (1.7%); only unilateral tonic seizures occur in TLE, whereas 32% of FLE tonic seizures are bilateral. Clearly unilateral tonic seizures carry high lateralizing significance, contralateral to seizure onset.",
+    "pg": "p.245"
    }
   ],
   "somatosensory aura": [
@@ -372,6 +427,79 @@
     "p": "UTHealth Epilepsy Fellow Handbook",
     "f": "Peri-ictal urinary urge is listed as localizing to the non-dominant hemisphere, flagged 'not highly reliable.'",
     "pg": "p.5"
+   }
+  ],
+  "asymmetric terminal": [
+   {
+    "p": "Tufenkjian 2012",
+    "f": "In secondarily generalized tonic-clonic seizures, clonic activity may persist longer on the side ipsilateral to the epileptogenic focus ('end-of-seizure paradoxical clonus'), attributed to earlier exhaustion of the seizure-onset hemisphere; described as a highly reliable lateralizing sign.",
+    "pg": "p.246"
+   }
+  ],
+  "drinking automatism": [
+   {
+    "p": "Tufenkjian 2012",
+    "f": "Peri-ictal water drinking has been reported as a lateralizing sign to the non-dominant temporal lobe, though its validity has been contested in later work.",
+    "pg": "p.248"
+   }
+  ],
+  "gustatory aura": [
+   {
+    "p": "Barba 2007",
+    "f": "Gustatory hallucinations were significantly more frequent in temporal-'plus' than pure temporal lobe seizures (21.7% vs 5.1%, p=0.02), and specifically associated with the temporo-sylvian (insulo-opercular) temporal-'plus' subgroup (p=0.009).",
+    "pg": "p.1961"
+   }
+  ],
+  "vertiginous aura": [
+   {
+    "p": "Barba 2007",
+    "f": "Vestibular illusions, particularly rotatory vertigo, were significantly more frequent in temporal-'plus' than pure temporal lobe seizures (13% vs 1.7% overall, p=0.03; rotatory subtype p=0.02), and specifically associated with the temporo-parieto-occipital (TPO) temporal-'plus' subgroup (p=0.02).",
+    "pg": "p.1961"
+   }
+  ],
+  "auditory illusions": [
+   {
+    "p": "Barba 2007",
+    "f": "Auditory illusions (but not auditory hallucinations) were significantly more frequent in temporal-'plus' than pure temporal lobe seizures (p=0.02), consistent with the hypothesis that illusions reflect more widely extended superior-temporal-gyrus discharge while hallucinations reflect more spatially limited discharge.",
+    "pg": "p.1964"
+   },
+   {
+    "p": "Cossette-Roberge 2023",
+    "f": "Unlike other auditory-seizure subtypes, illusions (sound distortions) showed no lateralizing tendency \u2014 cases arose about equally from left- and right-hemisphere onset zones \u2014 and, when reported individually, illusions were uniformly perceived bilaterally rather than in one ear.",
+    "pg": "p.6"
+   }
+  ],
+  "ictal piloerection": [
+   {
+    "p": "Barba 2007",
+    "f": "Piloerection was significantly more frequent in temporal-'plus' than pure temporal lobe seizures (13% vs 1.7%, p=0.03), suggesting more extended involvement of the central autonomic network at seizure onset.",
+    "pg": "p.1961"
+   }
+  ],
+  "simple auditory aura": [
+   {
+    "p": "Cossette-Roberge 2023",
+    "f": "In a compiled review of 174 cases/200 auditory seizures, simple auditory hallucinations (meaningless noises, e.g. buzzing/ringing) were mostly unilateral and, when heard in one ear, most often contralateral to the seizure-onset zone; only 9% of their temporal SOZs were in Heschl's gyrus, with the superior temporal gyrus (38%) more often implicated.",
+    "pg": "p.7"
+   },
+   {
+    "p": "Cossette-Roberge 2023",
+    "f": "Across 174 compiled cases (200 auditory seizures), about 70% had a temporal seizure-onset zone (most often superior temporal gyrus or mesiotemporal structures), but roughly 30% arose from extratemporal structures \u2014 chiefly the inferior frontal gyrus (frontal lobe), inferior parietal lobule/postcentral gyrus (parietal lobe), and insula \u2014 so an auditory aura should not be assumed to localize strictly to the temporal lobe.",
+    "pg": "p.9"
+   }
+  ],
+  "auditory verbal hallucinations": [
+   {
+    "p": "Cossette-Roberge 2023",
+    "f": "Auditory verbal hallucinations (voices) lateralized inconsistently across the reviewed literature, with only a slight left-hemisphere predominance (60% of cases); when heard unilaterally they were more often contralateral to the seizure-onset zone, and nearly half of their temporal-lobe onsets localized to mesiotemporal structures rather than lateral temporal cortex.",
+    "pg": "p.6"
+   }
+  ],
+  "complex auditory hallucinations": [
+   {
+    "p": "Cossette-Roberge 2023",
+    "f": "Complex auditory hallucinations (formed sounds, e.g. tram/engine noise) tended to be contralateral to the seizure-onset zone, though the number of reported cases was small; their seizure-onset zones localized mainly to the superior temporal gyrus and mesiotemporal structures.",
+    "pg": "p.7"
    }
   ]
  },
@@ -592,6 +720,48 @@
      "p": "UTHealth Epilepsy Fellow Handbook",
      "f": "Peri-ictal urinary urge is listed as localizing to the non-dominant hemisphere, and explicitly flagged 'not highly reliable', in the lateralizing-signs table.",
      "pg": "p.5"
+    }
+   ]
+  },
+  {
+   "region": "Multiregional/Propagation",
+   "sub": "Multiregional / Propagation / EEG Correlates",
+   "sign": "Postictal dysphoria (temporal-plus network marker)",
+   "phase": "Postictal",
+   "lat": "Non-lateralizing (marks network extension beyond the temporal lobe)",
+   "latcode": "nonlat",
+   "loc": "Marks epileptogenic-network extension beyond mesial/lateral temporal lobe into orbitofrontal, insular, opercular, or temporo-parieto-occipital cortex ('temporal-plus' epilepsy), rather than pure temporal lobe epilepsy",
+   "sens": "39.1% of temporal-plus seizures",
+   "spec": "vs 6.8% of pure TLE seizures (p=0.0001)",
+   "evid": "II",
+   "notes": "SEEG-defined series (n=80: 58 pure temporal, 22 temporal-'plus'). Post-ictal dysphoric mood change (depression or euphoria) was far more common after temporal-'plus' seizures than after pure temporal lobe seizures \u2014 the single strongest discriminator between the two groups in this series. Not itself a lateralizing sign, but a localizing marker that the epileptogenic network extends beyond the temporal lobe proper, relevant to deciding whether invasive (SEEG) evaluation is needed before temporal lobe surgery.",
+   "cite": "Barba et al., Brain 2007",
+   "_ev": [
+    {
+     "p": "Barba 2007",
+     "f": "Post-ictal dysphoric state occurred in 39.1% of temporal-'plus' seizures vs 6.8% of pure temporal lobe seizures (p=0.0001), the single strongest discriminator between the two groups.",
+     "pg": "p.1962"
+    }
+   ]
+  },
+  {
+   "region": "Multiregional/Propagation",
+   "sub": "Multiregional / Propagation / EEG Correlates",
+   "sign": "Ability to warn at seizure onset (preserved aura reporting)",
+   "phase": "Aura",
+   "lat": "Non-lateralizing (marks a more restricted, purely temporal onset)",
+   "latcode": "nonlat",
+   "loc": "Preserved speech/consciousness during the aura reflects a more restricted (purely temporal, often mesial) ictal onset; earlier loss of this ability suggests a larger, temporal-'plus' network activated from seizure onset",
+   "sens": "78% of pure TLE seizures",
+   "spec": "vs 43.5% of temporal-plus seizures (p=0.003)",
+   "evid": "II",
+   "notes": "SEEG-defined series (n=80). Patients with pure temporal lobe epilepsy were far more able to signal/report their seizure onset (aura) than those with temporal-'plus' epilepsy, despite auras occurring at similar overall frequency in both groups (88.7% overall) \u2014 consistent with temporal-plus seizures activating a larger cortical network and impairing consciousness earlier.",
+   "cite": "Barba et al., Brain 2007",
+   "_ev": [
+    {
+     "p": "Barba 2007",
+     "f": "Ability to warn at seizure onset was present in 78% of pure temporal lobe seizures vs 43.5% of temporal-'plus' seizures (p=0.003), despite similar overall aura frequency in both groups.",
+     "pg": "p.1962"
     }
    ]
   }
@@ -818,6 +988,24 @@
    "Institutional teaching handbook (unpublished)",
    "Epilepsy Fellow Handbook \u2014 localizing/lateralizing seizure semiology reference tables",
    "UTHealth McGovern Medical School epilepsy fellowship teaching handbook; bedside quick-reference tables of aura/semiology subtypes and a lateralizing-signs summary (ipsilateral/contralateral/dominant/nondominant), each entry flagged for reliability. Treated as a secondary/teaching synthesis, not a primary series with its own cohort."
+  ],
+  [
+   "Tufenkjian 2012",
+   "Journal of Clinical Neurology",
+   "Seizure Semiology: Its Value and Limitations in Localizing the Epileptogenic Zone",
+   "Review by Tufenkjian & L\u00fcders synthesizing localizing/lateralizing seizure signs by symptomatogenic zone \u2014 tonic/clonic/versive/dystonic motor signs, ictal vs postictal speech, nose-wiping, eye-blinking, peri-ictal drinking, and end-of-seizure paradoxical clonus."
+  ],
+  [
+   "Barba 2007",
+   "Brain",
+   "Ictal clinical and scalp-EEG findings differentiating temporal lobe epilepsies from temporal 'plus' epilepsies",
+   "SEEG-defined series (n=80: 58 pure temporal, 22 temporal-'plus') identifying ictal signs \u2014 gustatory/vestibular/auditory-illusion auras, piloerection, ipsilateral tonic signs, contralateral version, postictal dysphoria \u2014 that mark temporal-'plus' network extension (orbitofrontal/insula/operculum/TPO) vs pure temporal lobe epilepsy."
+  ],
+  [
+   "Cossette-Roberge 2023",
+   "Epilepsy & Behavior",
+   "Localizing and lateralizing value of auditory phenomena in seizures",
+   "Narrative review compiling 174 cases / 200 auditory seizures from 70 articles, classified by auditory-phenomenon subtype (simple/complex hallucination, illusion, verbal/musical hallucination); most auditory seizures have a temporal SOZ (70%) but ~30% are extratemporal (frontal/parietal/insular)."
   ]
  ],
  "lateral": [
