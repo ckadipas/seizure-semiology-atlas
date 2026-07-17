@@ -1,15 +1,26 @@
 name: Paper intake
 
-# Manual-only intake. A maintainer triggers this on a submitted issue (its attached
-# document(s) OR photographed pages are read on the runner); short, page-cited figures
-# are extracted and a pull request is opened for review. Only the derived figures are
-# committed — the document/images/full text stay on the runner.
+# Approval-gated intake. A submission issue does nothing on its own; a maintainer
+# reviews it and APPROVES by adding the "approved" label (only users with write
+# access can label), which runs this workflow: the attached document(s) or
+# photographed pages are read on the runner, short page-cited figures are extracted,
+# and a pull request is opened for the maintainer to review and merge. Only the
+# derived figures are committed — the document/images/full text stay on the runner.
+# (Manual workflow_dispatch with an issue number also works, as a fallback.)
 #
 # Setup: add a repository secret named INTAKE_TOKEN (Settings -> Secrets and
 # variables -> Actions) holding the extraction token.
 
 on:
-  # Manual only — nothing runs until a maintainer triggers it with the issue number.
+  # Approval-gated. Two ways to start extraction, both maintainer-only:
+  #   1. Add the "approved" label to a submission issue (only users with write
+  #      access can label, so this is the human approval step), OR
+  #   2. Manually dispatch with the issue number.
+  # A plain issue submission does NOT run anything — the maintainer is notified,
+  # reviews, and approves. This keeps the extraction token off anything a random
+  # issue-opener can trigger.
+  issues:
+    types: [labeled]
   workflow_dispatch:
     inputs:
       issue_number:
@@ -23,12 +34,16 @@ permissions:
   id-token: write
 
 concurrency:
-  group: intake-${{ github.event.inputs.issue_number }}
+  group: intake-${{ github.event.inputs.issue_number || github.event.issue.number }}
   cancel-in-progress: false
 
 jobs:
   intake:
     runs-on: ubuntu-latest
+    # Run only on a manual dispatch, or when the label just added is exactly "approved".
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'issues' && github.event.label.name == 'approved')
     steps:
       - uses: actions/checkout@v4
         with:
@@ -43,7 +58,10 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const num = Number(context.payload.inputs.issue_number);
+            // issue number comes from the manual input, or from the labeled issue.
+            const num = context.eventName === 'workflow_dispatch'
+              ? Number(context.payload.inputs.issue_number)
+              : context.payload.issue.number;
             const { data: issue } = await github.rest.issues.get({
               owner: context.repo.owner, repo: context.repo.repo, issue_number: num });
             core.setOutput('number', String(num));
@@ -147,7 +165,18 @@ jobs:
           git add enrichment/intake_findings.json enrichment/enrichment.json
           git commit -m "Intake: page-cited findings from issue #${{ steps.ctx.outputs.number }}"
           git push -u origin "$BR"
-          gh pr create --base main --head "$BR" \
-            --title "Intake: findings from issue #${{ steps.ctx.outputs.number }}" \
-            --body "Page-cited findings extracted from the submitted document. Only short attributed figures with their source pages were added; the document and full text were not committed. Review each finding against its cited page, then merge. ${SUM} Closes #${{ steps.ctx.outputs.number }}"
-          gh issue comment "${{ steps.ctx.outputs.number }}" --body "Opened a pull request with the extracted findings for review. ${SUM}"
+          # Try to open the PR automatically. If the repo has "Allow GitHub Actions to
+          # create and approve pull requests" enabled, this succeeds and the run is fully
+          # automatic. If that setting is OFF, gh fails with "GitHub Actions is not
+          # permitted to create ... pull requests" — don't fail the run; the branch is
+          # already pushed, so hand the maintainer a one-click compare link instead.
+          PRBODY="Page-cited findings extracted from the submitted document. Only short attributed figures with their source pages were added; the document and full text were not committed. Review each finding against its cited page, then merge. ${SUM} Closes #${{ steps.ctx.outputs.number }}"
+          if PRURL="$(gh pr create --base main --head "$BR" \
+                --title "Intake: findings from issue #${{ steps.ctx.outputs.number }}" \
+                --body "$PRBODY" 2>/tmp/pr_err)"; then
+            gh issue comment "${{ steps.ctx.outputs.number }}" --body "Opened a pull request with the extracted findings for review: ${PRURL} ${SUM}"
+          else
+            CMP="${GITHUB_SERVER_URL:-https://github.com}/${GITHUB_REPOSITORY}/compare/main...${BR}?expand=1"
+            echo "gh pr create failed (see below); posting a one-click link instead:"; cat /tmp/pr_err || true
+            gh issue comment "${{ steps.ctx.outputs.number }}" --body "The extracted findings are pushed to branch \`${BR}\`, but GitHub Actions could not open the pull request automatically. This is a one-time repo setting: **Settings -> Actions -> General -> Workflow permissions -> enable \"Allow GitHub Actions to create and approve pull requests\"**, after which future intakes open their PR on their own. For now, open this one in a click: ${CMP} ${SUM}"
+          fi

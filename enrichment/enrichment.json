@@ -530,18 +530,18 @@
    "sub": "Mesial Temporal (Amygdala / Hippocampus / Entorhinal Cortex)",
    "sign": "Immediate postictal speech (rapid resumption of speech right after seizure end)",
    "phase": "Postictal",
-   "lat": "Dominant hemisphere",
-   "latcode": "dominant",
-   "loc": "Not specified beyond hemispheric dominance",
+   "lat": "Non-dominant hemisphere",
+   "latcode": "nondominant",
+   "loc": "Non-dominant hemisphere (mirror of dominant-hemisphere postictal aphasia)",
    "sens": "Not quantified in source",
    "spec": "Not quantified in source",
    "evid": "III",
-   "notes": "Single teaching-table entry from a fellowship handbook; not corroborated elsewhere in this atlas's corpus. Listed as dominant-hemisphere, which runs counter to the more commonly taught pattern (postictal aphasia/delayed speech return implicates the dominant hemisphere, so an immediate, fluent return of speech might instead be expected to suggest the non-dominant side) \u2014 included as reported, flagged for reconciliation rather than treated as settled.",
+   "notes": "Rapid resumption of fluent speech immediately after a seizure favors a NON-dominant hemisphere seizure - dominant-hemisphere seizures more often leave postictal aphasia / delayed speech return. From a fellowship-handbook lateralizing-signs table; low-corroboration, weigh with other signs. (Corrected on maintainer review to the conventional non-dominant direction; the initial photo-table extraction had recorded it as dominant.)",
    "cite": "UTHealth Epilepsy Fellow Handbook",
    "_ev": [
     {
      "p": "UTHealth Epilepsy Fellow Handbook",
-     "f": "Lateralizing-signs table lists 'immediate postictal speech' as localizing to the dominant hemisphere.",
+     "f": "Fellowship-handbook lateralizing-signs table entry for immediate/rapid return of speech after seizure end; localizes to the non-dominant hemisphere (the mirror of postictal aphasia, which is dominant).",
      "pg": "p.5"
     }
    ]
@@ -549,20 +549,20 @@
   {
    "region": "Frontal",
    "sub": "Anterior/Mid-Cingulate Cortex (ACC, Brodmann 24/25/32)",
-   "sign": "Unilateral ictal pupillary dilatation",
+   "sign": "Unilateral ictal pupillary dilatation (low-reliability)",
    "phase": "Ictal",
    "lat": "Contralateral frontal lobe",
    "latcode": "contra",
    "loc": "Contralateral frontal lobe (autonomic/pupillomotor pathway)",
-   "sens": "Not quantified in source",
-   "spec": "Not quantified in source; flagged 'not highly reliable' in the source table",
+   "sens": "Uncommon",
+   "spec": "Low reliability - flagged unreliable in the source table",
    "evid": "III",
-   "notes": "Autonomic sign in the handbook's lateralizing-signs table: unilateral pupillary dilation during a seizure is listed as localizing to the contralateral frontal lobe, flagged 'not highly reliable.'",
+   "notes": "LOW-RELIABILITY lateralizing sign - kept for completeness, not for standalone use. Unilateral pupillary dilation during a seizure is listed in the handbook's lateralizing-signs table as localizing to the CONTRALATERAL frontal lobe, but the table itself flags it as 'not highly reliable.' Corroborate before relying on it.",
    "cite": "UTHealth Epilepsy Fellow Handbook",
    "_ev": [
     {
      "p": "UTHealth Epilepsy Fellow Handbook",
-     "f": "Unilateral pupillary dilatation is listed as localizing to the contralateral frontal lobe, flagged 'not highly reliable', in the lateralizing-signs table.",
+     "f": "Unilateral pupillary dilatation is listed as localizing to the contralateral frontal lobe, and explicitly flagged 'not highly reliable', in the lateralizing-signs table.",
      "pg": "p.5"
     }
    ]
