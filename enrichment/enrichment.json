@@ -366,6 +366,13 @@
     "f": "Postictal nose wiping is listed as ipsilateral to the seizure focus, flagged 'not highly reliable.'",
     "pg": "p.5"
    }
+  ],
+  "urinary urge": [
+   {
+    "p": "UTHealth Epilepsy Fellow Handbook",
+    "f": "Peri-ictal urinary urge is listed as localizing to the non-dominant hemisphere, flagged 'not highly reliable.'",
+    "pg": "p.5"
+   }
   ]
  },
  "new_signs": [
@@ -563,6 +570,27 @@
     {
      "p": "UTHealth Epilepsy Fellow Handbook",
      "f": "Unilateral pupillary dilatation is listed as localizing to the contralateral frontal lobe, and explicitly flagged 'not highly reliable', in the lateralizing-signs table.",
+     "pg": "p.5"
+    }
+   ]
+  },
+  {
+   "region": "Multiregional/Propagation",
+   "sub": "Multiregional / Propagation / EEG Correlates",
+   "sign": "Peri-ictal urinary urge (low-reliability)",
+   "phase": "Peri-ictal",
+   "lat": "Non-dominant hemisphere",
+   "latcode": "nondominant",
+   "loc": "Non-dominant hemisphere (autonomic/urge sensation); no lobar localization given in source",
+   "sens": "Not quantified in source",
+   "spec": "Low reliability - flagged unreliable in the source table",
+   "evid": "III",
+   "notes": "LOW-RELIABILITY lateralizing sign - kept for completeness, not for standalone use. A peri-ictal urge to urinate is listed in the handbook's lateralizing-signs table as localizing to the non-dominant hemisphere, but the table flags it 'not highly reliable.' Corroborate before relying on it.",
+   "cite": "UTHealth Epilepsy Fellow Handbook",
+   "_ev": [
+    {
+     "p": "UTHealth Epilepsy Fellow Handbook",
+     "f": "Peri-ictal urinary urge is listed as localizing to the non-dominant hemisphere, and explicitly flagged 'not highly reliable', in the lateralizing-signs table.",
      "pg": "p.5"
     }
    ]
