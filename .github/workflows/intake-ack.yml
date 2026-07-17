@@ -1,0 +1,27 @@
+name: Intake acknowledgement
+
+# When a submission issue is opened (any issue that attaches a document or photos),
+# post a short receipt so the maintainer and submitter know the next step: a
+# maintainer approves by adding the "approved" label, which starts the extraction
+# (see intake.yml). Comment-only — no extraction, no INTAKE_TOKEN — so it is safe to
+# run on every opened issue regardless of who opened it.
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  issues: write
+
+jobs:
+  ack:
+    # Only acknowledge issues that actually carry an attachment (a submission).
+    if: contains(github.event.issue.body, 'user-attachments')
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue comment "${{ github.event.issue.number }}" \
+            --repo "${{ github.repository }}" \
+            --body "Thanks — your submission has been received and is queued for review. Once a maintainer approves it, the relevant page-cited figures will be prepared as a pull request for review. Nothing is added until that review is complete."
