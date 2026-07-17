@@ -1,8 +1,169 @@
 {
  "_comment": "Page-cited intake findings. Each is a short, attributed factual extraction carrying a source PAGE reference for provenance. tools/check_provenance.py gates every entry. 'new_signs' holds signs a paper introduces that are not yet in data/semiology_data.json (full sign records, merged into the atlas at build time); 'findings' can attach to them by sign_stem.",
- "papers": [],
- "new_signs": [],
+ "papers": [
+  {
+   "cite": "UTHealth Epilepsy Fellow Handbook",
+   "journal": "Institutional teaching handbook (unpublished)",
+   "title": "Epilepsy Fellow Handbook — localizing/lateralizing seizure semiology reference tables",
+   "contribution": "UTHealth McGovern Medical School epilepsy fellowship teaching handbook; bedside quick-reference tables of aura/semiology subtypes and a lateralizing-signs summary (ipsilateral/contralateral/dominant/nondominant), each entry flagged for reliability. Treated as a secondary/teaching synthesis, not a primary series with its own cohort."
+  }
+ ],
+ "new_signs": [
+  {
+   "region": "Multiregional/Propagation",
+   "sub": "Multiregional / Propagation / EEG Correlates",
+   "sign": "Asymmetric terminal seizure activity (ending clonus/version ipsilateral to focus)",
+   "phase": "Ictal",
+   "lat": "Ipsilateral",
+   "latcode": "ipsi",
+   "loc": "Reflects the seizure-onset hemisphere at the moment the seizure is ending, distinct from the earlier forced-version phase",
+   "sens": "Not quantified in source",
+   "spec": "Not quantified in source; listed among the table's standard (non-starred, i.e. not flagged unreliable) entries",
+   "evid": "III",
+   "notes": "Teaching-table entry distinguishing the terminal (ending) asymmetric motor activity of a seizure — including terminal clonic jerking and any late versive movement — from the earlier, contralateral forced version seen during the tonic/versive phase. Listed as ipsilateral to the seizure focus, the mirror image of early forced version's contralateral value.",
+   "cite": "UTHealth Epilepsy Fellow Handbook",
+   "_ev": [{"p": "UTHealth Epilepsy Fellow Handbook", "f": "Lateralizing-signs table lists 'asymmetric ending seizure' (including terminal clonus and version) as ipsilateral to the seizure focus.", "pg": "p.5"}]
+  },
+  {
+   "region": "Temporal",
+   "sub": "Mesial Temporal (Amygdala / Hippocampus / Entorhinal Cortex)",
+   "sign": "Immediate postictal speech (rapid resumption of speech right after seizure end)",
+   "phase": "Postictal",
+   "lat": "Dominant hemisphere",
+   "latcode": "dominant",
+   "loc": "Not specified beyond hemispheric dominance",
+   "sens": "Not quantified in source",
+   "spec": "Not quantified in source",
+   "evid": "III",
+   "notes": "Single teaching-table entry from a fellowship handbook; not corroborated elsewhere in this atlas's corpus. Listed as dominant-hemisphere, which runs counter to the more commonly taught pattern (postictal aphasia/delayed speech return implicates the dominant hemisphere, so an immediate, fluent return of speech might instead be expected to suggest the non-dominant side) — included as reported, flagged for reconciliation rather than treated as settled.",
+   "cite": "UTHealth Epilepsy Fellow Handbook",
+   "_ev": [{"p": "UTHealth Epilepsy Fellow Handbook", "f": "Lateralizing-signs table lists 'immediate postictal speech' as localizing to the dominant hemisphere.", "pg": "p.5"}]
+  },
+  {
+   "region": "Frontal",
+   "sub": "Anterior/Mid-Cingulate Cortex (ACC, Brodmann 24/25/32)",
+   "sign": "Unilateral ictal pupillary dilatation",
+   "phase": "Ictal",
+   "lat": "Contralateral frontal lobe",
+   "latcode": "contra",
+   "loc": "Contralateral frontal lobe (autonomic/pupillomotor pathway)",
+   "sens": "Not quantified in source",
+   "spec": "Not quantified in source; flagged 'not highly reliable' in the source table",
+   "evid": "III",
+   "notes": "Autonomic sign in the handbook's lateralizing-signs table: unilateral pupillary dilation during a seizure is listed as localizing to the contralateral frontal lobe, flagged 'not highly reliable.'",
+   "cite": "UTHealth Epilepsy Fellow Handbook",
+   "_ev": [{"p": "UTHealth Epilepsy Fellow Handbook", "f": "Unilateral pupillary dilatation is listed as localizing to the contralateral frontal lobe, flagged 'not highly reliable', in the lateralizing-signs table.", "pg": "p.5"}]
+  }
+ ],
  "findings": [
+  {
+   "sign_stem": "preserved responsiveness",
+   "paper": "UTHealth Epilepsy Fellow Handbook",
+   "finding": "Lateralizing-signs table lists automatism with preserved awareness ('automotor without dialepsis') as localizing to the non-dominant hemisphere, and automatism with impaired awareness ('automotor with dialepsis') as localizing to the dominant hemisphere.",
+   "pg": "p.5"
+  },
+  {
+   "sign_stem": "head turning",
+   "paper": "UTHealth Epilepsy Fellow Handbook",
+   "finding": "Early (exploratory, non-forced) head deviation is listed as ipsilateral to the seizure focus, flagged 'not highly reliable.'",
+   "pg": "p.5"
+  },
+  {
+   "sign_stem": "figure-of-4",
+   "paper": "UTHealth Epilepsy Fellow Handbook",
+   "finding": "The figure-of-4 sign is listed as contralateral to the seizure focus in the lateralizing-signs summary table.",
+   "pg": "p.5"
+  },
+  {
+   "sign_stem": "eye deviation",
+   "paper": "UTHealth Epilepsy Fellow Handbook",
+   "finding": "Forced eye version is listed as contralateral to the seizure focus in the lateralizing-signs table.",
+   "pg": "p.5"
+  },
+  {
+   "sign_stem": "head version",
+   "paper": "UTHealth Epilepsy Fellow Handbook",
+   "finding": "Forced head version is listed as contralateral to the seizure focus in the lateralizing-signs table.",
+   "pg": "p.5"
+  },
+  {
+   "sign_stem": "ictus emeticus",
+   "paper": "UTHealth Epilepsy Fellow Handbook",
+   "finding": "Ictal emesis is listed as localizing to the non-dominant hemisphere, flagged 'not highly reliable.'",
+   "pg": "p.5"
+  },
+  {
+   "sign_stem": "dystonic",
+   "paper": "UTHealth Epilepsy Fellow Handbook",
+   "finding": "Ictal dystonia is listed as contralateral to the seizure focus in the lateralizing-signs table.",
+   "pg": "p.5"
+  },
+  {
+   "sign_stem": "vocalization",
+   "paper": "UTHealth Epilepsy Fellow Handbook",
+   "finding": "Ictal vocalization is listed as localizing to the dominant hemisphere, flagged 'not highly reliable.'",
+   "pg": "p.5"
+  },
+  {
+   "sign_stem": "ictal spitting",
+   "paper": "UTHealth Epilepsy Fellow Handbook",
+   "finding": "Ictal spitting is listed as localizing to the non-dominant hemisphere, flagged 'not highly reliable.'",
+   "pg": "p.5"
+  },
+  {
+   "sign_stem": "unilateral manual automatisms",
+   "paper": "UTHealth Epilepsy Fellow Handbook",
+   "finding": "Unilateral ictal automatisms are listed as ipsilateral to the seizure focus, flagged 'not highly reliable.'",
+   "pg": "p.5"
+  },
+  {
+   "sign_stem": "eye blinking",
+   "paper": "UTHealth Epilepsy Fellow Handbook",
+   "finding": "Unilateral ictal eye blinking is listed as ipsilateral to the seizure focus; the table lists it twice, once as a standard entry and again flagged 'not highly reliable.'",
+   "pg": "p.5"
+  },
+  {
+   "sign_stem": "tongue biting",
+   "paper": "UTHealth Epilepsy Fellow Handbook",
+   "finding": "Lateral tongue biting is listed as ipsilateral to the seizure focus — the opposite direction from this atlas's current contralateral label on the matching sign, worth reconciling against other sources.",
+   "pg": "p.5"
+  },
+  {
+   "sign_stem": "m2e automatism",
+   "paper": "UTHealth Epilepsy Fellow Handbook",
+   "finding": "The M2e sign is listed as contralateral to the seizure focus (the hand moving to the mouth is contralateral) in the lateralizing-signs table.",
+   "pg": "p.5"
+  },
+  {
+   "sign_stem": "peri-ictal headache",
+   "paper": "UTHealth Epilepsy Fellow Handbook",
+   "finding": "Peri-ictal headache is listed as ipsilateral to the seizure focus, flagged 'not highly reliable.'",
+   "pg": "p.5"
+  },
+  {
+   "sign_stem": "postictal aphasia",
+   "paper": "UTHealth Epilepsy Fellow Handbook",
+   "finding": "Postictal aphasia is listed as localizing to the dominant hemisphere in the lateralizing-signs table.",
+   "pg": "p.5"
+  },
+  {
+   "sign_stem": "postictal paralysis",
+   "paper": "UTHealth Epilepsy Fellow Handbook",
+   "finding": "Postictal hemiparesis is listed as contralateral to the seizure focus in the lateralizing-signs table.",
+   "pg": "p.5"
+  },
+  {
+   "sign_stem": "postictal nose wiping",
+   "paper": "UTHealth Epilepsy Fellow Handbook",
+   "finding": "Postictal nose wiping is listed as ipsilateral to the seizure focus, flagged 'not highly reliable.'",
+   "pg": "p.5"
+  },
+  {
+   "sign_stem": "ictal aphasia",
+   "paper": "UTHealth Epilepsy Fellow Handbook",
+   "finding": "In an alternate copy of the lateralizing-signs table (p.7), 'ictal speech' (i.e. preserved/intelligible speech during a seizure) is listed as localizing to the non-dominant hemisphere; the more complete copy of the table (p.5) omits this row, listing 'immediate postictal speech' instead.",
+   "pg": "p.7"
+  },
   {
    "sign_stem": "late forced",
    "paper": "Wyllie 1986",
