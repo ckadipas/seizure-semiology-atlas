@@ -1,4 +1,4 @@
-import json, re, os
+import json, re, os, sys
 def _find_root(start):
     d = os.path.dirname(os.path.abspath(start))
     while True:
@@ -9,6 +9,8 @@ def _find_root(start):
 ROOT = _find_root(__file__)
 DOCS = os.path.join(ROOT, "docs"); os.makedirs(DOCS, exist_ok=True)
 from collections import OrderedDict
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import brain_atlas as BA
 
 with open(os.path.join(ROOT,"data","semiology_data.json")) as f:
     data = json.load(f)
@@ -230,7 +232,7 @@ for r in region_order:
                                f'<span class="metric-val">{esc(d["sens"])}</span>')
             spec_metric = (f'<span class="d-label">Specificity <span class="est-tag" title="Curator teaching estimate. Specificity needs the sign\'s rate in the other localization groups, which the source corpus does not report; this is for orientation only, not computed.">est.</span></span>'
                            f'<span class="metric-val">{esc(d["spec"])}</span>')
-            rows.append(f'''<div class="sign" data-region="{esc(d['region'])}" data-phase="{esc(d['phase'])}" data-latcode="{lc}" data-evid="{ec}" data-search="{esc(search_str)}" style="--accent:{accent}">
+            rows.append(f'''<div class="sign" id="sign-{d['id']}" data-id="{d['id']}" data-region="{esc(d['region'])}" data-phase="{esc(d['phase'])}" data-latcode="{lc}" data-evid="{ec}" data-search="{esc(search_str)}" style="--accent:{accent}">
   <button class="sign-head" aria-expanded="false">
     <span class="chevron">&#8250;</span>
     <span class="sign-name">{esc(d['sign'])}</span>
@@ -611,6 +613,162 @@ def build_sensitivity_report(meta):
 </details>'''
 sens_report_fold = build_sensitivity_report(META)
 
+# ---------- Interactive Brodmann map (lateral / dorsal / ventral) ----------
+def build_brain(signs):
+    """Three schematic hemisphere views tiled by Brodmann area, each area
+    clickable to reveal the semiology the dataset localizes there."""
+    # --- payload: tile -> the signs that localize to it ---
+    tiles = {}
+    for tid, info in BA.TILE_INFO.items():
+        tiles[tid] = {"label": info["label"], "name": info["name"], "lobe": info["lobe"],
+                      "bas": info["bas"], "buried": bool(info.get("buried")), "signs": []}
+    _evrank = {"I": 0, "II": 1, "III": 2}
+    unplaced = []
+    for d in signs:
+        tl = BA.tiles_for_sign(d)
+        if not tl:
+            unplaced.append(d["sign"]); continue
+        for t in tl:
+            tiles[t]["signs"].append({
+                "id": d["id"], "n": d["sign"], "ph": d["phase"], "lc": d.get("latcode", "nonlat"),
+                "lat": d.get("lat", ""), "ev": d.get("evid", "III"), "rg": d["region"],
+                "loc": d.get("loc", "")})
+    for t in tiles.values():
+        t["signs"].sort(key=lambda s: (_evrank.get(s["ev"], 3), s["n"]))
+
+    def poly(pts, closed=True, s=0.17):
+        return BA.smooth_path(pts, closed=closed, s=s)
+
+    def tile_paths(view, items, mirror_w=None, grow=7.0):
+        """<path> for each tile; label positions returned separately."""
+        out, labels = [], []
+        for tid, pts, lab in items:
+            key = re.sub(r'b$', '', tid) if tid.endswith("b") else tid   # 36b -> 36
+            n = len(tiles.get(key, {}).get("signs", []))
+            out.append(f'<path class="ba" data-tile="{key}" data-n="{n}" tabindex="0" '
+                       f'role="button" aria-label="Brodmann area {BA.TILE_INFO[key]["label"]}" '
+                       f'd="{poly(BA.inflate(pts, grow), s=0.07)}"><title>{esc(BA.TILE_INFO[key]["name"])}</title></path>')
+            if lab:
+                lx, ly = lab[0], lab[1]
+                cls = "ba-num ba-num-sm" if len(lab) > 2 else "ba-num"
+                mx = (mirror_w - lx) if mirror_w else lx
+                labels.append(f'<text class="{cls}" data-tile="{key}" x="{lx:.0f}" y="{ly:.0f}" '
+                              f'data-mx="{mx:.0f}">{BA.TILE_INFO[key]["label"]}</text>')
+        return "\n".join(out), "\n".join(labels)
+
+    # ---------------- lateral ----------------
+    lat_items = [(tid, pts, lab) for tid, pts, lab in BA.LATERAL_TILES]
+    lat_tiles, lat_labels = tile_paths("lateral", lat_items, mirror_w=1000)
+    lat_out = BA.smooth_path(BA.LAT_OUTLINE, closed=True, s=0.11)
+    lateral_svg = f'''<svg class="brain-svg" data-view="lateral" viewBox="0 0 1000 620" role="group" aria-label="Lateral surface, Brodmann areas">
+<defs><clipPath id="clip-lat"><path d="{lat_out}"/></clipPath></defs>
+<g class="hemi" clip-path="url(#clip-lat)">{lat_tiles}</g>
+<path class="brain-edge" d="{lat_out}"/>
+<path class="syl-line" d="{poly(BA.LAT_SYLVIAN, closed=False)}"/>
+<g class="ba-labels">{lat_labels}</g>
+<text class="brain-orient" x="150" y="596" data-mx="850" text-anchor="middle">anterior</text>
+</svg>'''
+
+    # ---------------- dorsal / ventral (banded, mirrored) ----------------
+    def banded(view, margin, bands, edges, vb_w, vb_h, cx, cy):
+        items = []
+        def place(y0, y1, f0, f1):
+            ly = y0 + (y1 - y0) * 0.48
+            half = BA.DOR_MID - BA._margin_x(margin, ly)
+            return (BA.DOR_MID - (f0 + f1) / 2.0 * half, ly)
+        for tid, y0, y1, f0, f1 in bands:
+            pts = BA.band(margin, y0, y1, f0, f1)
+            cont = tid.endswith("b")          # continuation strip: no second label
+            lab = None if cont else place(y0, y1, f0, f1)
+            if lab and (y1 - y0) < 50:
+                lab = (lab[0], lab[1], "sm")
+            items.append((tid[:-1] if cont else tid, pts, lab))
+        for tid, y0, y1, f0, f1 in edges:
+            items.append((tid, BA.band(margin, y0, y1, f0, f1), place(y0, y1, f0, f1)))
+        full = margin + [(vb_w - x, y) for x, y in reversed(margin)]
+        outline = poly(full)
+        body, labels = tile_paths(view, items, mirror_w=vb_w)
+        # mirrored labels for the right hemisphere
+        rlabels = []
+        for tid, pts, lab in items:
+            if not lab: continue
+            cls = "ba-num ba-num-sm" if len(lab) > 2 else "ba-num"
+            rlabels.append(f'<text class="{cls}" data-tile="{tid}" x="{vb_w - lab[0]:.0f}" '
+                           f'y="{lab[1]:.0f}" data-mx="{lab[0]:.0f}">{BA.TILE_INFO[tid]["label"]}</text>')
+        return f'''<svg class="brain-svg" data-view="{view}" viewBox="0 0 {vb_w} {vb_h}" role="group" aria-label="{view} surface, Brodmann areas">
+<defs><clipPath id="clip-{view}"><path d="{outline}"/></clipPath></defs>
+<g clip-path="url(#clip-{view})">
+  <g class="hemi hemi-L">{body}</g>
+  <g class="hemi hemi-R" transform="translate({vb_w},0) scale(-1,1)">{body}</g>
+</g>
+<path class="brain-edge" d="{outline}"/>
+<line class="midline-mask" x1="{vb_w/2}" y1="{margin[0][1]-2}" x2="{vb_w/2}" y2="{margin[-1][1]+2}"/>
+<line class="midline" x1="{vb_w/2}" y1="{margin[0][1]-2}" x2="{vb_w/2}" y2="{margin[-1][1]+2}"/>
+<g class="ba-labels lab-L">{labels}</g>
+<g class="ba-labels lab-R">{"".join(rlabels)}</g>
+<text class="brain-orient" x="{vb_w/2}" y="{margin[0][1]-24}" text-anchor="middle">anterior</text>
+</svg>'''
+
+    dorsal_svg = banded("dorsal", BA.DOR_MARGIN, BA.DORSAL_BANDS, BA.DORSAL_EDGE, 700, 880, 350, 426)
+    ventral_svg = banded("ventral", BA.VEN_MARGIN, BA.VENTRAL_BANDS, [], 700, 830, 350, 410)
+
+    buried_chips = "".join(
+        f'<button class="deep-chip" data-tile="{t}"><span class="dc-lab">{BA.TILE_INFO[t]["label"]}</span>'
+        f'<span class="dc-name">{esc(BA.TILE_INFO[t]["name"].split("(")[0].strip())}</span>'
+        f'<span class="dc-n">{len(tiles[t]["signs"])}</span></button>'
+        for t in ("insula", "cing", "subcort"))
+
+    note = ""
+    if unplaced:
+        note = (f'<span class="brain-note">{len(unplaced)} sign'
+                f'{"s" if len(unplaced) != 1 else ""} without a surface localization '
+                f'{"are" if len(unplaced) != 1 else "is"} not placed on the map.</span>')
+
+    payload = "<script>const BRAIN_TILES=" + json.dumps(tiles, separators=(",", ":")) + ";</script>"
+
+    return payload + f'''<details class="frontpage-fold brain-fold" open>
+<summary>Brodmann map &mdash; where each semiology localizes</summary>
+<div class="brain-card">
+  <div class="brain-bar">
+    <div class="seg" role="tablist" aria-label="Surface view">
+      <button class="seg-b active" data-view="lateral" role="tab" aria-selected="true">Lateral</button>
+      <button class="seg-b" data-view="dorsal" role="tab" aria-selected="false">Dorsal</button>
+      <button class="seg-b" data-view="ventral" role="tab" aria-selected="false">Ventral</button>
+    </div>
+    <div class="seg seg-hemi" role="group" aria-label="Hemisphere">
+      <button class="seg-b active" data-hemi="L">Left</button>
+      <button class="seg-b" data-hemi="R">Right</button>
+    </div>
+    <label class="brain-shade"><input type="checkbox" id="brain-density"> Shade by density</label>
+  </div>
+  <div class="brain-grid">
+    <div class="brain-stage">
+      <div class="brain-views">{lateral_svg}{dorsal_svg}{ventral_svg}</div>
+      <div class="brain-caption"><span id="brain-hover">Select a numbered area</span>{note}</div>
+      <div class="deep-row"><span class="deep-lab">Not on a surface &mdash;</span>{buried_chips}</div>
+    </div>
+    <aside class="brain-panel" id="brain-panel" aria-live="polite">
+      <div class="bp-empty">
+        <div class="bp-empty-mark">BA</div>
+        <p>Tap any Brodmann number to see the semiology this atlas localizes there &mdash; with its phase, lateralizing value and evidence tier.</p>
+        <p class="bp-hint">Areas with no shading carry no sign in the current dataset.</p>
+      </div>
+      <div class="bp-body" hidden>
+        <div class="bp-head">
+          <div class="bp-num" id="bp-num">4</div>
+          <div class="bp-id"><h3 id="bp-name">Primary motor cortex</h3>
+            <div class="bp-meta"><span class="bp-lobe" id="bp-lobe"></span><span id="bp-count"></span></div></div>
+          <button class="bp-close" id="bp-close" aria-label="Close">&times;</button>
+        </div>
+        <div class="bp-list" id="bp-list"></div>
+      </div>
+    </aside>
+  </div>
+</div>
+</details>'''
+
+brain_fold = build_brain(data)
+
 forest_html = f'''<div class="forest-wrap">
   <div class="forest-card">
     <div class="forest-head">
@@ -650,6 +808,115 @@ CSS = r"""
 :root{
   --navy:#12234a; --navy2:#1a2f5e; --teal:#0e9db0; --teal-d:#0a7a8a;
   --bg:#f5f7fb; --panel:#ffffff; --ink:#1a1d2e; --muted:#6b7280; --line:#e3e8f0; --line2:#eef1f6;
+}
+
+/* ---------- BRODMANN MAP ---------- */
+.brain-fold>summary{background:#e9eef6;border-color:#d8e0ec}
+.brain-card{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:14px 16px 12px}
+.brain-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.seg{display:inline-flex;background:#f1f4f9;border:1px solid var(--line);border-radius:8px;padding:2px;gap:2px}
+.seg-b{border:none;background:none;font-family:inherit;font-size:.76rem;font-weight:700;color:#6d7789;
+  padding:5px 13px;border-radius:6px;cursor:pointer;transition:all .13s}
+.seg-b:hover{color:var(--navy)}
+.seg-b.active{background:#fff;color:var(--navy);box-shadow:0 1px 3px rgba(15,30,61,.13)}
+.seg-hemi .seg-b.active{color:var(--teal-d)}
+.brain-shade{display:inline-flex;align-items:center;gap:6px;font-size:.72rem;font-weight:600;color:var(--muted);
+  cursor:pointer;margin-left:auto;user-select:none}
+.brain-shade input{accent-color:var(--teal);width:14px;height:14px}
+
+.brain-grid{display:grid;grid-template-columns:1fr;gap:14px}
+@media(min-width:900px){.brain-grid{grid-template-columns:minmax(0,1.55fr) minmax(290px,1fr);gap:20px}}
+.brain-stage{min-width:0}
+.brain-views{position:relative;display:flex;justify-content:center;align-items:center;min-height:270px}
+.brain-svg{display:none;width:100%;height:auto;max-height:400px;overflow:visible}
+.brain-svg.show{display:block}
+.brain-svg[data-view="dorsal"],.brain-svg[data-view="ventral"]{max-height:430px}
+.brain-svg.flip .hemi{transform:translateX(1000px) scale(-1,1)}
+.brain-svg[data-view="lateral"].flip .ins-g{transform:translateX(1000px) scale(-1,1)}
+.brain-svg[data-view="lateral"].flip .syl-line{transform:translateX(1000px) scale(-1,1)}
+
+.ba{fill:#f4f6fa;stroke:#fff;stroke-width:2.4;cursor:pointer;transition:fill .14s}
+.ba[data-n="0"]{fill:#fafbfc}
+.ba:hover{fill:#d3ecf2}
+.ba:focus{outline:none;fill:#d3ecf2}
+.ba.has{fill:#e7eef7}
+.ba.sel{fill:var(--teal)}
+.brain-card.dens .ba.d1{fill:#e8f1f8}.brain-card.dens .ba.d2{fill:#cfe4f0}
+.brain-card.dens .ba.d3{fill:#a9d3e6}.brain-card.dens .ba.d4{fill:#7cbcd8}
+.brain-card.dens .ba.sel{fill:var(--teal)}
+.ba-buried{fill:rgba(14,157,176,.10);stroke:var(--teal-d);stroke-width:1.6;stroke-dasharray:5 4}
+.ba-buried:hover{fill:rgba(14,157,176,.24)}
+.ba-buried.sel{fill:var(--teal);stroke:var(--teal-d);stroke-dasharray:none}
+.brain-edge{fill:none;stroke:#b9c4d4;stroke-width:2}
+.syl-line{fill:none;stroke:#c3cedd;stroke-width:2;stroke-linecap:round}
+.midline-mask{stroke:#fff;stroke-width:7}
+.midline{stroke:#c3cedd;stroke-width:1.6}
+.ba-num{font-family:'Segoe UI',Arial,sans-serif;font-size:19px;font-weight:700;fill:#9aa5b6;
+  text-anchor:middle;dominant-baseline:central;pointer-events:none;user-select:none}
+.ba-num.has{fill:#54627a}
+.ba-num.sel{fill:#fff}
+.ba-num-sm{font-size:15px}
+.ba-num-ins{font-size:13px;letter-spacing:.08em;fill:var(--teal-d)}
+.ba-num-ins.sel{fill:#fff}
+.brain-orient{font-size:12px;fill:#aab3c2;letter-spacing:.1em;text-transform:uppercase;pointer-events:none}
+.brain-svg .lab-R{display:none}
+.brain-svg.show-R .lab-R{display:block}
+.brain-svg.show-R .lab-L{display:none}
+.brain-svg.show-R .hemi-L,.brain-svg:not(.show-R) .hemi-R{opacity:.3;pointer-events:none}
+.brain-svg:not(.show-R) .hemi-R .ba,.brain-svg.show-R .hemi-L .ba{cursor:default;
+  fill:#eef1f6;stroke:#eef1f6}
+
+.brain-caption{text-align:center;font-size:.76rem;color:var(--muted);margin-top:6px;min-height:19px}
+#brain-hover{font-weight:600;color:#54627a}
+.brain-note{display:block;font-size:.68rem;font-style:italic;opacity:.8;margin-top:2px}
+.deep-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:9px;
+  padding-top:9px;border-top:1px dashed var(--line)}
+.deep-lab{font-size:.66rem;font-weight:700;color:#9aa3b2;text-transform:uppercase;letter-spacing:.05em}
+.deep-chip{display:inline-flex;align-items:center;gap:6px;border:1px dashed #b9cfd8;background:#f7fcfd;
+  border-radius:20px;padding:3px 10px;font-family:inherit;font-size:.72rem;cursor:pointer;transition:all .12s}
+.deep-chip:hover{border-color:var(--teal);background:#eef9fc}
+.deep-chip.sel{background:var(--teal);border-style:solid;border-color:var(--teal-d)}
+.deep-chip.sel .dc-lab,.deep-chip.sel .dc-name{color:#fff}
+.deep-chip.sel .dc-n{background:rgba(255,255,255,.28);color:#fff}
+.dc-lab{font-weight:800;color:var(--teal-d)}
+.dc-name{color:#5a6478}
+.dc-n{background:#e6eef2;color:#6b7280;border-radius:9px;padding:0 6px;font-size:.64rem;font-weight:700}
+
+.brain-panel{border:1px solid var(--line);border-radius:10px;background:#fbfcfe;min-height:200px;
+  display:flex;flex-direction:column;overflow:hidden}
+.bp-empty{padding:26px 20px;text-align:center;color:var(--muted);font-size:.8rem;line-height:1.55;margin:auto}
+.bp-empty-mark{font-size:1.6rem;font-weight:800;color:#dbe3ec;letter-spacing:.08em;margin-bottom:6px}
+.bp-hint{font-size:.7rem;font-style:italic;opacity:.75;margin-top:7px}
+.bp-head{display:flex;align-items:flex-start;gap:11px;padding:12px 13px 10px;border-bottom:1px solid var(--line2);background:#fff}
+.bp-num{flex:0 0 auto;min-width:44px;height:44px;padding:0 8px;border-radius:9px;background:var(--teal);color:#fff;
+  font-size:1.15rem;font-weight:800;display:flex;align-items:center;justify-content:center}
+.bp-id{flex:1;min-width:0}
+.bp-id h3{font-size:.88rem;font-weight:700;color:var(--navy);line-height:1.3}
+.bp-meta{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-top:3px;font-size:.68rem;color:var(--muted)}
+.bp-lobe{background:#eef2f7;border-radius:4px;padding:1px 7px;font-weight:700;color:#5a6478}
+.bp-close{margin-left:auto;border:none;background:none;font-size:1.3rem;line-height:1;color:#b6bfcd;cursor:pointer;padding:0 2px}
+.bp-close:hover{color:var(--navy)}
+.bp-list{overflow-y:auto;max-height:330px;padding:5px 0}
+.bp-row{width:100%;display:flex;align-items:flex-start;gap:8px;background:none;border:none;border-bottom:1px solid var(--line2);
+  padding:8px 13px;text-align:left;font-family:inherit;cursor:pointer;transition:background .11s}
+.bp-row:hover{background:#f0f8fa}
+.bp-row:last-child{border-bottom:none}
+.bp-row.off{opacity:.42}
+.bp-rname{flex:1;font-size:.79rem;font-weight:600;color:var(--navy);line-height:1.35}
+.bp-chips{display:flex;gap:4px;align-items:center;flex-wrap:wrap;margin-top:3px}
+.bp-chip{font-size:.6rem;font-weight:800;padding:1px 5px;border-radius:3px;letter-spacing:.02em}
+.bp-side{font-size:.65rem;color:var(--muted);font-style:italic;margin-top:2px;display:block}
+.bp-ev{flex:0 0 auto;width:19px;height:19px;border-radius:5px;color:#fff;font-size:.62rem;font-weight:800;
+  display:flex;align-items:center;justify-content:center;margin-top:1px}
+@media(max-width:760px){
+  .brain-card{padding:11px 10px}
+  .brain-svg{max-height:320px}
+  /* numerals are in SVG user units, so scale them up for the small canvas */
+  .ba-num{font-size:26px}
+  .ba-num-sm{font-size:21px}
+  .bp-list{max-height:430px}
+  .brain-bar{gap:7px}
+  .brain-shade{margin-left:0;width:100%}
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
@@ -1022,6 +1289,153 @@ body.quiz .lib-chip{display:none}
 """
 
 JS = r"""
+/* ---------- Brodmann map ---------- */
+(function(){
+  const card=document.querySelector('.brain-card');
+  if(!card||typeof BRAIN_TILES==='undefined') return;
+  const svgs=[...card.querySelectorAll('.brain-svg')];
+  const panel=document.getElementById('brain-panel');
+  const empty=panel.querySelector('.bp-empty'), body=panel.querySelector('.bp-body');
+  const hover=document.getElementById('brain-hover');
+  const latColor={contra:'#c0392b',ipsi:'#2471a3',dominant:'#8e44ad',nondominant:'#1a7a4a',
+                  right:'#d35400',nonlat:'#6b7280',variable:'#95691a'};
+  const latBg={contra:'#fdf2f2',ipsi:'#eaf4fb',dominant:'#f5f0fb',nondominant:'#eafaf1',
+               right:'#fef5ee',nonlat:'#f3f4f6',variable:'#fdf8ee'};
+  const latLab={contra:'CONTRA',ipsi:'IPSI',dominant:'DOM',nondominant:'NON-DOM',
+                right:'RIGHT',nonlat:'NON-LAT',variable:'VARIABLE'};
+  const evColor={I:'#1a7a4a',II:'#c47a00',III:'#c0392b'};
+  let hemi='L', sel=null;
+
+  /* density buckets + "has data" styling */
+  const counts=Object.values(BRAIN_TILES).map(t=>t.signs.length).filter(n=>n>0);
+  const maxN=Math.max(1,...counts);
+  card.querySelectorAll('.ba').forEach(p=>{
+    const n=+p.dataset.n||0;
+    if(n>0){p.classList.add('has');
+      const q=n/maxN; p.classList.add(q>0.66?'d4':q>0.4?'d3':q>0.18?'d2':'d1');}
+  });
+  card.querySelectorAll('.ba-num').forEach(t=>{
+    const tile=BRAIN_TILES[t.dataset.tile];
+    if(tile&&tile.signs.length) t.classList.add('has');
+  });
+
+  /* which signs actually apply to the hemisphere on screen */
+  function applies(lc){
+    if(hemi==='L') return lc!=='nondominant'&&lc!=='right';
+    return lc!=='dominant';
+  }
+  function sideNote(s){
+    const lc=s.lc;
+    if(lc==='contra') return 'contralateral to the focus \u2014 expressed on the '+(hemi==='L'?'right':'left')+' side';
+    if(lc==='ipsi')   return 'ipsilateral to the focus \u2014 expressed on the '+(hemi==='L'?'left':'right')+' side';
+    if(lc==='dominant')    return hemi==='L'?'dominant hemisphere (left assumed)':'expected from the left/dominant side';
+    if(lc==='nondominant') return hemi==='L'?'expected from the right/non-dominant side':'non-dominant hemisphere';
+    if(lc==='right')  return hemi==='L'?'reported from the right hemisphere':'right hemisphere';
+    return s.lat||'';
+  }
+
+  function render(tid){
+    const t=BRAIN_TILES[tid]; if(!t) return;
+    sel=tid;
+    card.querySelectorAll('.ba,.ba-num,.deep-chip').forEach(el=>
+      el.classList.toggle('sel', el.dataset.tile===tid));
+    empty.hidden=true; body.hidden=false;
+    document.getElementById('bp-num').textContent=t.label;
+    document.getElementById('bp-name').textContent=t.name;
+    document.getElementById('bp-lobe').textContent=t.lobe;
+    const n=t.signs.length;
+    document.getElementById('bp-count').textContent=n?(n+(n===1?' sign':' signs')):'no signs in this dataset';
+    hover.textContent=(t.bas.length?'BA '+t.label+' \u2014 ':'')+t.name;
+    const list=document.getElementById('bp-list');
+    if(!n){list.innerHTML='<div class="bp-empty" style="padding:18px">No sign in the current dataset is'+
+      ' localized to this area. That is a gap in the evidence collected here, not proof the area is silent.</div>';return;}
+    list.innerHTML=t.signs.map(s=>{
+      const on=applies(s.lc);
+      return '<button class="bp-row'+(on?'':' off')+'" data-sign="'+s.id+'">'+
+        '<span class="bp-rname">'+esc(s.n)+
+          '<span class="bp-chips">'+
+            '<span class="bp-chip" style="background:'+(latBg[s.lc]||'#f3f4f6')+';color:'+(latColor[s.lc]||'#333')+
+              ';border:1px solid '+(latColor[s.lc]||'#333')+'">'+(latLab[s.lc]||'?')+'</span>'+
+            '<span class="bp-chip" style="background:#eef2f7;color:#5a6478">'+esc(s.ph)+'</span>'+
+          '</span>'+
+          '<span class="bp-side">'+esc(sideNote(s))+'</span>'+
+        '</span>'+
+        '<span class="bp-ev" style="background:'+(evColor[s.ev]||'#888')+'" title="Evidence '+s.ev+'">'+s.ev+'</span>'+
+      '</button>';}).join('');
+    list.scrollTop=0;
+  }
+  function esc(x){return String(x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+  function clear(){
+    sel=null; empty.hidden=false; body.hidden=true;
+    hover.textContent='Select a numbered area';
+    card.querySelectorAll('.sel').forEach(el=>el.classList.remove('sel'));
+  }
+
+  /* clicking an area */
+  card.addEventListener('click',e=>{
+    const hit=e.target.closest('.ba,.deep-chip');
+    if(!hit) return;
+    const g=hit.closest('.hemi-L,.hemi-R');
+    if(g&&((hemi==='R'&&g.classList.contains('hemi-L'))||(hemi==='L'&&g.classList.contains('hemi-R')))) return;
+    render(hit.dataset.tile);
+  });
+  card.addEventListener('keydown',e=>{
+    if((e.key==='Enter'||e.key===' ')&&e.target.classList.contains('ba')){
+      e.preventDefault(); render(e.target.dataset.tile);}
+    if(e.key==='Escape') clear();
+  });
+  card.addEventListener('mouseover',e=>{
+    const hit=e.target.closest('.ba');
+    if(!hit) return;
+    const t=BRAIN_TILES[hit.dataset.tile]; if(!t) return;
+    const n=t.signs.length;
+    hover.textContent=(t.bas.length?'BA '+t.label+' — ':'')+t.name+(n?'  ·  '+n+(n===1?' sign':' signs'):'  ·  no signs');
+  });
+  card.addEventListener('mouseleave',()=>{hover.textContent=sel?BRAIN_TILES[sel].name:'Select a numbered area';});
+
+  /* jump from the panel to the full sign card */
+  panel.addEventListener('click',e=>{
+    const row=e.target.closest('.bp-row'); if(!row) return;
+    const el=document.getElementById('sign-'+row.dataset.sign); if(!el) return;
+    const sec=el.closest('.region-section'), sub=el.closest('.sub-block');
+    if(sec) sec.classList.remove('collapsed');
+    if(sub) sub.classList.remove('collapsed');
+    if(!el.classList.contains('open')){const h=el.querySelector('.sign-head'); if(h) h.click();}
+    el.scrollIntoView({behavior:'smooth',block:'center'});
+    el.classList.add('match'); setTimeout(()=>el.classList.remove('match'),2200);
+  });
+  document.getElementById('bp-close').addEventListener('click',clear);
+
+  /* view + hemisphere switches */
+  card.querySelectorAll('.seg-b[data-view]').forEach(b=>b.addEventListener('click',()=>{
+    card.querySelectorAll('.seg-b[data-view]').forEach(x=>{
+      const on=x===b; x.classList.toggle('active',on); x.setAttribute('aria-selected',on);});
+    svgs.forEach(s=>s.classList.toggle('show',s.dataset.view===b.dataset.view));
+  }));
+  function applyHemi(){
+    svgs.forEach(s=>{
+      if(s.dataset.view==='lateral') s.classList.toggle('flip',hemi==='R');
+      else s.classList.toggle('show-R',hemi==='R');
+      s.querySelectorAll('.ba-num,.brain-orient').forEach(t=>{
+        if(s.dataset.view!=='lateral') return;
+        const mx=t.getAttribute('data-mx'), x=t.getAttribute('x');
+        if(mx!==null&&hemi==='R'){t.setAttribute('x',mx);t.setAttribute('data-mx',x);}
+        else if(mx!==null&&hemi==='L'&&t.dataset.swapped){t.setAttribute('x',mx);t.setAttribute('data-mx',x);}
+      });
+    });
+    if(sel) render(sel);
+  }
+  card.querySelectorAll('.seg-b[data-hemi]').forEach(b=>b.addEventListener('click',()=>{
+    if(hemi===b.dataset.hemi) return;
+    card.querySelectorAll('.seg-b[data-hemi]').forEach(x=>x.classList.toggle('active',x===b));
+    hemi=b.dataset.hemi; applyHemi();
+  }));
+  document.getElementById('brain-density').addEventListener('change',e=>
+    card.classList.toggle('dens',e.target.checked));
+  svgs[0].classList.add('show');
+})();
+
 const searchInput=document.getElementById('search-input');
 const fRegion=document.getElementById('filter-region');
 const fPhase=document.getElementById('filter-phase');
@@ -1337,7 +1751,7 @@ HEAD = """<!DOCTYPE html>
 </div>
 
 <main>
-""" + meta_fold + sens_report_fold + figures_fold + forest_fold + callout_fold + """
+""" + brain_fold + meta_fold + sens_report_fold + figures_fold + forest_fold + callout_fold + """
   <div class="quiz-hint"><strong>Quiz mode on:</strong> lateralization &amp; evidence cues are hidden. Read each sign, predict its localization/lateralization, then expand to check yourself.</div>
 """ + sections_html + """
   <div id="no-results">No signs match the current search or filters. Try clearing them.</div>
