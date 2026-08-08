@@ -645,7 +645,8 @@ def build_brain(signs):
         for tid, pts, lab in items:
             key = re.sub(r'b$', '', tid) if tid.endswith("b") else tid   # 36b -> 36
             n = len(tiles.get(key, {}).get("signs", []))
-            out.append(f'<path class="ba" data-tile="{key}" data-n="{n}" tabindex="0" '
+            out.append(f'<path class="ba" data-tile="{key}" data-n="{n}" '
+                       f'data-lobe="{BA.TILE_INFO[key]["lobe"]}" tabindex="0" '
                        f'role="button" aria-label="Brodmann area {BA.TILE_INFO[key]["label"]}" '
                        f'd="{poly(BA.inflate(pts, grow), s=0.07)}"><title>{esc(BA.TILE_INFO[key]["name"])}</title></path>')
             if lab:
@@ -656,17 +657,33 @@ def build_brain(signs):
                               f'data-mx="{mx:.0f}">{BA.TILE_INFO[key]["label"]}</text>')
         return "\n".join(out), "\n".join(labels)
 
+    def solid_lines(seams):
+        return "".join(f'<path class="lobe-line" d="{poly(sm, closed=False, s=0.12)}"/>' for sm in seams)
+
     # ---------------- lateral ----------------
-    lat_items = [(tid, pts, lab) for tid, pts, lab in BA.LATERAL_TILES]
-    lat_tiles, lat_labels = tile_paths("lateral", lat_items, mirror_w=1000)
+    lat_tiles, lat_labels = tile_paths("lateral", BA.LATERAL_TILES, mirror_w=1000)
     lat_out = BA.smooth_path(BA.LAT_OUTLINE, closed=True, s=0.11)
     lateral_svg = f'''<svg class="brain-svg" data-view="lateral" viewBox="0 0 1000 620" role="group" aria-label="Lateral surface, Brodmann areas">
 <defs><clipPath id="clip-lat"><path d="{lat_out}"/></clipPath></defs>
-<g class="hemi" clip-path="url(#clip-lat)">{lat_tiles}</g>
+<g class="hemi" clip-path="url(#clip-lat)">{lat_tiles}
+{solid_lines(BA.LAT_SOLID)}</g>
 <path class="brain-edge" d="{lat_out}"/>
-<path class="syl-line" d="{poly(BA.LAT_SYLVIAN, closed=False)}"/>
 <g class="ba-labels">{lat_labels}</g>
-<text class="brain-orient" x="150" y="596" data-mx="850" text-anchor="middle">anterior</text>
+<text class="brain-orient" x="150" y="596" text-anchor="middle" data-mx="850">anterior</text>
+</svg>'''
+
+    # ---------------- medial ----------------
+    med_tiles, med_labels = tile_paths("medial", BA.MEDIAL_TILES, mirror_w=1000)
+    med_out = BA.smooth_path(BA.MED_OUTLINE, closed=True, s=0.11)
+    med_core = BA.smooth_path(BA.MED_CORE, closed=True, s=0.16)
+    medial_svg = f'''<svg class="brain-svg" data-view="medial" viewBox="0 0 1000 620" role="group" aria-label="Medial surface, Brodmann areas">
+<defs><clipPath id="clip-med"><path d="{med_out}"/></clipPath></defs>
+<g class="hemi" clip-path="url(#clip-med)">{med_tiles}
+<path class="brain-core" d="{med_core}"><title>Corpus callosum &amp; diencephalon (not cortex)</title></path>
+{solid_lines(BA.MED_SOLID)}</g>
+<path class="brain-edge" d="{med_out}"/>
+<g class="ba-labels">{med_labels}</g>
+<text class="brain-orient" x="150" y="596" text-anchor="middle" data-mx="850">anterior</text>
 </svg>'''
 
     # ---------------- dorsal / ventral (banded, mirrored) ----------------
@@ -716,7 +733,7 @@ def build_brain(signs):
         f'<button class="deep-chip" data-tile="{t}"><span class="dc-lab">{BA.TILE_INFO[t]["label"]}</span>'
         f'<span class="dc-name">{esc(BA.TILE_INFO[t]["name"].split("(")[0].strip())}</span>'
         f'<span class="dc-n">{len(tiles[t]["signs"])}</span></button>'
-        for t in ("insula", "cing", "subcort"))
+        for t in ("insula", "subcort"))
 
     note = ""
     if unplaced:
@@ -732,6 +749,7 @@ def build_brain(signs):
   <div class="brain-bar">
     <div class="seg" role="tablist" aria-label="Surface view">
       <button class="seg-b active" data-view="lateral" role="tab" aria-selected="true">Lateral</button>
+      <button class="seg-b" data-view="medial" role="tab" aria-selected="false">Medial</button>
       <button class="seg-b" data-view="dorsal" role="tab" aria-selected="false">Dorsal</button>
       <button class="seg-b" data-view="ventral" role="tab" aria-selected="false">Ventral</button>
     </div>
@@ -743,7 +761,7 @@ def build_brain(signs):
   </div>
   <div class="brain-grid">
     <div class="brain-stage">
-      <div class="brain-views">{lateral_svg}{dorsal_svg}{ventral_svg}</div>
+      <div class="brain-views">{lateral_svg}{medial_svg}{dorsal_svg}{ventral_svg}</div>
       <div class="brain-caption"><span id="brain-hover">Select a numbered area</span>{note}</div>
       <div class="deep-row"><span class="deep-lab">Not on a surface &mdash;</span>{buried_chips}</div>
     </div>
@@ -832,28 +850,40 @@ CSS = r"""
 .brain-svg.show{display:block}
 .brain-svg[data-view="dorsal"],.brain-svg[data-view="ventral"]{max-height:430px}
 .brain-svg.flip .hemi{transform:translateX(1000px) scale(-1,1)}
+.brain-svg[data-view="medial"].flip .hemi{transform:translateX(1000px) scale(-1,1)}
 .brain-svg[data-view="lateral"].flip .ins-g{transform:translateX(1000px) scale(-1,1)}
 .brain-svg[data-view="lateral"].flip .syl-line{transform:translateX(1000px) scale(-1,1)}
 
-.ba{fill:#f4f6fa;stroke:#fff;stroke-width:2.4;cursor:pointer;transition:fill .14s}
+/* classic Brodmann-plate convention: dashed boundaries inside a lobe,
+   solid boundaries between lobes, every area carrying its number */
+.ba{fill:#f2f5f9;stroke:#8a97ab;stroke-width:1.1;stroke-dasharray:5 3.5;
+  cursor:pointer;transition:fill .14s}
 .ba[data-n="0"]{fill:#fafbfc}
-.ba:hover{fill:#d3ecf2}
-.ba:focus{outline:none;fill:#d3ecf2}
-.ba.has{fill:#e7eef7}
-.ba.sel{fill:var(--teal)}
+.ba.has{fill:#e9eff7}
+.ba[data-lobe="Frontal"].has{fill:#e9eef7}
+.ba[data-lobe="Parietal"].has{fill:#e6f0ee}
+.ba[data-lobe="Temporal"].has{fill:#f2ecf1}
+.ba[data-lobe="Occipital"].has{fill:#e8eef4}
+.ba[data-lobe="Limbic"].has{fill:#f3eee7}
+.ba:hover{fill:#cfe8ef}
+.ba:focus{outline:none;fill:#cfe8ef}
+.ba.sel{fill:var(--teal);stroke:var(--teal-d);stroke-dasharray:none}
 .brain-card.dens .ba.d1{fill:#e8f1f8}.brain-card.dens .ba.d2{fill:#cfe4f0}
 .brain-card.dens .ba.d3{fill:#a9d3e6}.brain-card.dens .ba.d4{fill:#7cbcd8}
 .brain-card.dens .ba.sel{fill:var(--teal)}
+.lobe-line{fill:none;stroke:#5d6b80;stroke-width:2;stroke-linecap:round;
+  stroke-linejoin:round;pointer-events:none}
+.brain-core{fill:#e3e6ea;stroke:#b9c4d4;stroke-width:1.4;pointer-events:none}
 .ba-buried{fill:rgba(14,157,176,.10);stroke:var(--teal-d);stroke-width:1.6;stroke-dasharray:5 4}
 .ba-buried:hover{fill:rgba(14,157,176,.24)}
 .ba-buried.sel{fill:var(--teal);stroke:var(--teal-d);stroke-dasharray:none}
-.brain-edge{fill:none;stroke:#b9c4d4;stroke-width:2}
-.syl-line{fill:none;stroke:#c3cedd;stroke-width:2;stroke-linecap:round}
+.brain-edge{fill:none;stroke:#48566b;stroke-width:2.4;stroke-linejoin:round}
+.syl-line{fill:none;stroke:#5d6b80;stroke-width:2;stroke-linecap:round}
 .midline-mask{stroke:#fff;stroke-width:7}
-.midline{stroke:#c3cedd;stroke-width:1.6}
-.ba-num{font-family:'Segoe UI',Arial,sans-serif;font-size:19px;font-weight:700;fill:#9aa5b6;
+.midline{stroke:#8a97ab;stroke-width:1.4}
+.ba-num{font-family:'Segoe UI',Arial,sans-serif;font-size:20px;font-weight:600;fill:#3f4a5e;
   text-anchor:middle;dominant-baseline:central;pointer-events:none;user-select:none}
-.ba-num.has{fill:#54627a}
+.ba-num.has{fill:#1e2a3d;font-weight:700}
 .ba-num.sel{fill:#fff}
 .ba-num-sm{font-size:15px}
 .ba-num-ins{font-size:13px;letter-spacing:.08em;fill:var(--teal-d)}
@@ -862,10 +892,9 @@ CSS = r"""
 .brain-svg .lab-R{display:none}
 .brain-svg.show-R .lab-R{display:block}
 .brain-svg.show-R .lab-L{display:none}
-.brain-svg.show-R .hemi-L,.brain-svg:not(.show-R) .hemi-R{opacity:.3;pointer-events:none}
+.brain-svg.show-R .hemi-L,.brain-svg:not(.show-R) .hemi-R{opacity:.32;pointer-events:none}
 .brain-svg:not(.show-R) .hemi-R .ba,.brain-svg.show-R .hemi-L .ba{cursor:default;
-  fill:#eef1f6;stroke:#eef1f6}
-
+  fill:#eef1f6;stroke:#dfe5ee}
 .brain-caption{text-align:center;font-size:.76rem;color:var(--muted);margin-top:6px;min-height:19px}
 #brain-hover{font-weight:600;color:#54627a}
 .brain-note{display:block;font-size:.68rem;font-style:italic;opacity:.8;margin-top:2px}
@@ -1415,7 +1444,7 @@ JS = r"""
   }));
   function applyHemi(){
     svgs.forEach(s=>{
-      if(s.dataset.view==='lateral') s.classList.toggle('flip',hemi==='R');
+      if(s.dataset.view==='lateral'||s.dataset.view==='medial') s.classList.toggle('flip',hemi==='R');
       else s.classList.toggle('show-R',hemi==='R');
       s.querySelectorAll('.ba-num,.brain-orient').forEach(t=>{
         if(s.dataset.view!=='lateral') return;
