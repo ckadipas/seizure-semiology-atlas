@@ -882,6 +882,21 @@ CSS = r"""
 /* classic Brodmann-plate convention: dashed boundaries inside a lobe,
    solid boundaries between lobes, every area carrying its number */
 .brain-photo{pointer-events:none}
+/* label editor (opt-in via #edit-labels) */
+body.lbledit .ba-num{pointer-events:auto;cursor:grab}
+body.lbledit .ba-num:hover{fill:var(--teal-d)}
+body.lbledit .ba-num.drag{cursor:grabbing;fill:var(--teal-d)}
+.lbl-editor{position:fixed;right:14px;bottom:14px;z-index:400;background:#fff;
+  border:1px solid var(--line);border-radius:10px;padding:11px 13px;
+  box-shadow:0 8px 28px rgba(15,30,61,.20);font-size:.76rem;max-width:290px;line-height:1.45}
+.lbl-editor h4{font-size:.8rem;color:var(--navy);margin-bottom:4px}
+.lbl-editor p{color:var(--muted);margin-bottom:7px}
+.lbl-editor code{background:#eef2f7;border-radius:3px;padding:0 4px;font-size:.72rem}
+.lbl-editor .row{display:flex;gap:6px;margin-top:7px}
+.lbl-editor button{flex:1;border:1px solid var(--line);background:#fff;border-radius:6px;
+  padding:5px 8px;font-family:inherit;font-size:.74rem;font-weight:700;color:var(--navy);cursor:pointer}
+.lbl-editor button:hover{border-color:var(--teal);color:var(--teal-d);background:#f0fbfd}
+#lbl-read{font-family:'SF Mono',Consolas,monospace;font-size:.72rem;color:var(--teal-d)}
 .ba{fill:transparent;stroke:transparent;stroke-width:1.1;cursor:pointer;transition:fill .14s}
 .ba[data-n="0"]{fill:transparent}
 .ba.has{fill:transparent}
@@ -1482,6 +1497,91 @@ JS = r"""
   document.getElementById('brain-density').addEventListener('change',e=>
     card.classList.toggle('dens',e.target.checked));
   svgs[0].classList.add('show');
+
+  /* ---------- label position editor ----------
+     Add #edit-labels to the URL to drag the numerals onto the anatomy. Positions
+     persist in localStorage and "Copy" yields the LABEL_POS block for
+     generator/brain_atlas.py, so a session of nudging can be baked in. */
+  const LS='atlasLabelPos';
+  let saved={}; try{saved=JSON.parse(localStorage.getItem(LS)||'{}');}catch(e){saved={};}
+  function vbWidth(svg){return (svg.getAttribute('viewBox')||'0 0 1000 620').split(/\s+/)[2]*1;}
+  function place(svg,tile,x,y){
+    const w=vbWidth(svg);
+    svg.querySelectorAll('.lab-L .ba-num,.ba-labels:not(.lab-R) .ba-num').forEach(t=>{
+      if(t.dataset.tile===tile){t.setAttribute('x',x);t.setAttribute('y',y);}});
+    svg.querySelectorAll('.lab-R .ba-num').forEach(t=>{
+      if(t.dataset.tile===tile){t.setAttribute('x',w-x);t.setAttribute('y',y);}});
+  }
+  function applySaved(){
+    svgs.forEach(s=>{const o=saved[s.dataset.view]||{};
+      Object.keys(o).forEach(k=>place(s,k,o[k][0],o[k][1]));});
+  }
+  applySaved();
+
+  if(location.hash.toLowerCase().indexOf('edit')<0) return;
+  document.body.classList.add('lbledit');
+  const ed=document.createElement('div');
+  ed.className='lbl-editor';
+  ed.innerHTML='<h4>Label editor</h4><p>Drag any number onto its area. '+
+    'Click one then use <code>arrows</code> to nudge (<code>shift</code> = 10).</p>'+
+    '<div id="lbl-read">\u2014</div>'+
+    '<div class="row"><button id="lbl-copy">Copy positions</button>'+
+    '<button id="lbl-reset">Reset</button></div>';
+  document.body.appendChild(ed);
+  const read=ed.querySelector('#lbl-read');
+  let drag=null, pick=null;
+
+  function toSvg(svg,e){
+    const p=svg.createSVGPoint(); p.x=e.clientX; p.y=e.clientY;
+    return p.matrixTransform(svg.getScreenCTM().inverse());
+  }
+  function store(svg,tile,x,y){
+    const v=svg.dataset.view; (saved[v]=saved[v]||{})[tile]=[Math.round(x),Math.round(y)];
+    localStorage.setItem(LS,JSON.stringify(saved));
+    read.textContent=v+' '+tile+'  \u2192  ('+Math.round(x)+', '+Math.round(y)+')';
+  }
+  card.addEventListener('pointerdown',e=>{
+    const t=e.target.closest('.ba-num'); if(!t) return;
+    e.preventDefault(); e.stopPropagation();
+    const svg=t.closest('.brain-svg');
+    drag={t:t,svg:svg,tile:t.dataset.tile}; pick=drag;
+    t.classList.add('drag'); t.setPointerCapture&&t.setPointerCapture(e.pointerId);
+  },true);
+  window.addEventListener('pointermove',e=>{
+    if(!drag) return;
+    const p=toSvg(drag.svg,e);
+    place(drag.svg,drag.tile,p.x,p.y); store(drag.svg,drag.tile,p.x,p.y);
+  });
+  window.addEventListener('pointerup',()=>{
+    if(drag){drag.t.classList.remove('drag'); drag=null;}
+  });
+  window.addEventListener('keydown',e=>{
+    if(!pick||['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].indexOf(e.key)<0) return;
+    e.preventDefault();
+    const step=e.shiftKey?10:1;
+    let x=+pick.t.getAttribute('x'), y=+pick.t.getAttribute('y');
+    if(e.key==='ArrowLeft')x-=step; if(e.key==='ArrowRight')x+=step;
+    if(e.key==='ArrowUp')y-=step;  if(e.key==='ArrowDown')y+=step;
+    place(pick.svg,pick.tile,x,y); store(pick.svg,pick.tile,x,y);
+  });
+  ed.querySelector('#lbl-copy').addEventListener('click',()=>{
+    let out='LABEL_POS = {\n';
+    svgs.forEach(s=>{
+      const v=s.dataset.view; const seen={}; const parts=[];
+      s.querySelectorAll('.ba-labels:not(.lab-R) .ba-num').forEach(t=>{
+        const k=t.dataset.tile; if(seen[k])return; seen[k]=1;
+        parts.push('"'+k+'": ('+Math.round(t.getAttribute('x'))+', '+Math.round(t.getAttribute('y'))+')');
+      });
+      if(parts.length) out+=' "'+v+'": {\n   '+parts.join(', ')+',\n },\n';
+    });
+    out+='}\n';
+    navigator.clipboard.writeText(out).then(
+      ()=>{read.textContent='Copied '+out.length+' chars to the clipboard';},
+      ()=>{console.log(out); read.textContent='Clipboard blocked \u2014 printed to console';});
+  });
+  ed.querySelector('#lbl-reset').addEventListener('click',()=>{
+    localStorage.removeItem(LS); location.reload();
+  });
 })();
 
 const searchInput=document.getElementById('search-input');
