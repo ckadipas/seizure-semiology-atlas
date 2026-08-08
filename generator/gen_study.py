@@ -663,6 +663,9 @@ def build_brain(signs):
         out, labels = [], []
         for tid, pts, lab in items:
             key = re.sub(r'b$', '', tid) if tid.endswith("b") else tid   # 36b -> 36
+            over = BA.LABEL_POS.get(view, {}).get(key)
+            if over and lab:
+                lab = (over[0], over[1]) + tuple(lab[2:])
             n = len(tiles.get(key, {}).get("signs", []))
             out.append(f'<path class="ba" data-tile="{key}" data-n="{n}" '
                        f'data-lobe="{BA.TILE_INFO[key]["lobe"]}" tabindex="0" '
