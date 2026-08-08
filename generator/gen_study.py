@@ -613,7 +613,26 @@ def build_sensitivity_report(meta):
 </details>'''
 sens_report_fold = build_sensitivity_report(META)
 
-# ---------- Interactive Brodmann map (lateral / dorsal / ventral) ----------
+
+import base64
+_ASSETS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
+# (width, height, x, y) placing each photo so its brain aligns with the areas
+_PLACE = {"lateral": (793.4, 530.3, 92.6, 36.9),
+          "medial":  (789.4, 517.9, 94.0, 40.0),
+          "ventral": (715.7, 748.4, -8.9, 47.5)}
+
+def brain_image(view):
+    """<image> layer: the reference photograph, registered to the area geometry."""
+    f = os.path.join(_ASSETS, f"brain_{view}.jpg")
+    if not os.path.exists(f) or view not in _PLACE:
+        return ""
+    b64 = base64.b64encode(open(f, "rb").read()).decode()
+    w, h, x, y = _PLACE[view]
+    return (f'<image class="brain-photo" x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" '
+            f'height="{h:.1f}" preserveAspectRatio="none" '
+            f'href="data:image/jpeg;base64,{b64}"/>')
+
+# ---------- Interactive Brodmann map ----------
 def build_brain(signs):
     """Three schematic hemisphere views tiled by Brodmann area, each area
     clickable to reveal the semiology the dataset localizes there."""
@@ -665,6 +684,7 @@ def build_brain(signs):
     lat_out = BA.smooth_path(BA.LAT_OUTLINE, closed=True, s=0.11)
     lateral_svg = f'''<svg class="brain-svg" data-view="lateral" viewBox="0 0 1000 620" role="group" aria-label="Lateral surface, Brodmann areas">
 <defs><clipPath id="clip-lat"><path d="{lat_out}"/></clipPath></defs>
+{brain_image("lateral")}
 <g class="hemi" clip-path="url(#clip-lat)">{lat_tiles}
 {solid_lines(BA.LAT_SOLID)}</g>
 <path class="brain-edge" d="{lat_out}"/>
@@ -678,6 +698,7 @@ def build_brain(signs):
     med_core = BA.smooth_path(BA.MED_CORE, closed=True, s=0.16)
     medial_svg = f'''<svg class="brain-svg" data-view="medial" viewBox="0 0 1000 620" role="group" aria-label="Medial surface, Brodmann areas">
 <defs><clipPath id="clip-med"><path d="{med_out}"/></clipPath></defs>
+{brain_image("medial")}
 <g class="hemi" clip-path="url(#clip-med)">{med_tiles}
 <path class="brain-core" d="{med_core}"><title>Corpus callosum &amp; diencephalon (not cortex)</title></path>
 {solid_lines(BA.MED_SOLID)}</g>
@@ -714,6 +735,7 @@ def build_brain(signs):
                            f'y="{lab[1]:.0f}" data-mx="{lab[0]:.0f}">{BA.TILE_INFO[tid]["label"]}</text>')
         return f'''<svg class="brain-svg" data-view="{view}" viewBox="0 0 {vb_w} {vb_h}" role="group" aria-label="{view} surface, Brodmann areas">
 <defs><clipPath id="clip-{view}"><path d="{outline}"/></clipPath></defs>
+{brain_image(view)}
 <g clip-path="url(#clip-{view})">
   <g class="hemi hemi-L">{body}</g>
   <g class="hemi hemi-R" transform="translate({vb_w},0) scale(-1,1)">{body}</g>
@@ -856,35 +878,30 @@ CSS = r"""
 
 /* classic Brodmann-plate convention: dashed boundaries inside a lobe,
    solid boundaries between lobes, every area carrying its number */
-.ba{fill:#f2f5f9;stroke:#8a97ab;stroke-width:1.1;stroke-dasharray:5 3.5;
-  cursor:pointer;transition:fill .14s}
-.ba[data-n="0"]{fill:#fafbfc}
-.ba.has{fill:#e9eff7}
-.ba[data-lobe="Frontal"].has{fill:#e9eef7}
-.ba[data-lobe="Parietal"].has{fill:#e6f0ee}
-.ba[data-lobe="Temporal"].has{fill:#f2ecf1}
-.ba[data-lobe="Occipital"].has{fill:#e8eef4}
-.ba[data-lobe="Limbic"].has{fill:#f3eee7}
-.ba:hover{fill:#cfe8ef}
-.ba:focus{outline:none;fill:#cfe8ef}
-.ba.sel{fill:var(--teal);stroke:var(--teal-d);stroke-dasharray:none}
+.brain-photo{pointer-events:none}
+.ba{fill:transparent;stroke:transparent;stroke-width:1.1;cursor:pointer;transition:fill .14s}
+.ba[data-n="0"]{fill:transparent}
+.ba.has{fill:transparent}
+.ba:hover{fill:rgba(14,157,176,.30)}
+.ba:focus{outline:none;fill:rgba(14,157,176,.30)}
+.ba.sel{fill:rgba(14,157,176,.42);stroke:var(--teal-d);stroke-width:2}
 .brain-card.dens .ba.d1{fill:#e8f1f8}.brain-card.dens .ba.d2{fill:#cfe4f0}
 .brain-card.dens .ba.d3{fill:#a9d3e6}.brain-card.dens .ba.d4{fill:#7cbcd8}
 .brain-card.dens .ba.sel{fill:var(--teal)}
-.lobe-line{fill:none;stroke:#5d6b80;stroke-width:2;stroke-linecap:round;
-  stroke-linejoin:round;pointer-events:none}
-.brain-core{fill:#e3e6ea;stroke:#b9c4d4;stroke-width:1.4;pointer-events:none}
+.lobe-line{display:none}
+.brain-core{display:none}
 .ba-buried{fill:rgba(14,157,176,.10);stroke:var(--teal-d);stroke-width:1.6;stroke-dasharray:5 4}
 .ba-buried:hover{fill:rgba(14,157,176,.24)}
 .ba-buried.sel{fill:var(--teal);stroke:var(--teal-d);stroke-dasharray:none}
-.brain-edge{fill:none;stroke:#48566b;stroke-width:2.4;stroke-linejoin:round}
-.syl-line{fill:none;stroke:#5d6b80;stroke-width:2;stroke-linecap:round}
-.midline-mask{stroke:#fff;stroke-width:7}
-.midline{stroke:#8a97ab;stroke-width:1.4}
-.ba-num{font-family:'Segoe UI',Arial,sans-serif;font-size:20px;font-weight:600;fill:#3f4a5e;
-  text-anchor:middle;dominant-baseline:central;pointer-events:none;user-select:none}
-.ba-num.has{fill:#1e2a3d;font-weight:700}
-.ba-num.sel{fill:#fff}
+.brain-edge{display:none}
+.syl-line{display:none}
+.midline-mask{display:none}
+.midline{display:none}
+.ba-num{font-family:'Segoe UI',Arial,sans-serif;font-size:19px;font-weight:800;fill:#1e2a3d;
+  text-anchor:middle;dominant-baseline:central;pointer-events:none;user-select:none;
+  paint-order:stroke;stroke:#fff;stroke-width:3.5;stroke-linejoin:round}
+.ba-num.has{fill:#0d1626}
+.ba-num.sel{fill:#08343c;stroke:#fff;stroke-width:4}
 .ba-num-sm{font-size:15px}
 .ba-num-ins{font-size:13px;letter-spacing:.08em;fill:var(--teal-d)}
 .ba-num-ins.sel{fill:#fff}
@@ -892,9 +909,8 @@ CSS = r"""
 .brain-svg .lab-R{display:none}
 .brain-svg.show-R .lab-R{display:block}
 .brain-svg.show-R .lab-L{display:none}
-.brain-svg.show-R .hemi-L,.brain-svg:not(.show-R) .hemi-R{opacity:.32;pointer-events:none}
-.brain-svg:not(.show-R) .hemi-R .ba,.brain-svg.show-R .hemi-L .ba{cursor:default;
-  fill:#eef1f6;stroke:#dfe5ee}
+.brain-svg.show-R .hemi-L,.brain-svg:not(.show-R) .hemi-R{opacity:.3;pointer-events:none}
+.brain-svg:not(.show-R) .hemi-R .ba,.brain-svg.show-R .hemi-L .ba{cursor:default}
 .brain-caption{text-align:center;font-size:.76rem;color:var(--muted);margin-top:6px;min-height:19px}
 #brain-hover{font-weight:600;color:#54627a}
 .brain-note{display:block;font-size:.68rem;font-style:italic;opacity:.8;margin-top:2px}
