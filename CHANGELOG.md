@@ -4,6 +4,26 @@ All notable changes to the dataset and resource are recorded here.
 Format loosely follows Keep a Changelog; dates are ISO-8601.
 
 ## [Unreleased]
+### Changed
+- **Every summary panel starts closed.** The weighted meta-analysis and the Brodmann map
+  opened by default, which read as the page's main structure and pushed the sign index —
+  the thing the atlas is for — most of a phone screen down. All six panels now start
+  folded; opening one is a tap.
+- **The page holds its text off the edge.** On a landscape tablet the region banners ran
+  under the overlay scrollbar and the collapsed-toolbar puck. Side padding now honours the
+  safe-area inset, and widens to clear the puck whenever the toolbar is folded.
+### Fixed
+- **"Collapse all" collapsed almost nothing.** It closed the cards and the sub-region
+  banners but left the summary panels and all seven region banners open, so on a phone it
+  barely shortened the page. Both buttons now reach every level that folds — panels,
+  regions, sub-regions and cards. Measured on a tablet viewport: collapse all takes the
+  page from 77,666px to 1,123px.
+### Added
+- **The atlas can be installed to the Home Screen**, where it runs with no address bar and
+  no tab strip — a page cannot hide browser chrome any other way, and in landscape that
+  chrome is most of what is left. A web manifest, the Apple standalone meta tags, a
+  translucent status bar and an app icon are emitted by the build; the icon is the lateral
+  plate's own silhouette, so it is drawn from the atlas rather than bolted on.
 ### Added
 - **The search toolbar collapses.** On a phone held sideways the sticky header — region
   pills, search, filters, actions and count — took **40% of the screen** before a single

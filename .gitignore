@@ -1,5 +1,8 @@
 # --- generated build artifact (built by CI, deployed to Pages) ---
+# sources live in generator/assets/; the build copies them into docs/
 docs/*.html
+docs/*.png
+docs/manifest.webmanifest
 
 # --- working corpus: copyrighted source material stays LOCAL, never committed ---
 corpus/pdfs/*
