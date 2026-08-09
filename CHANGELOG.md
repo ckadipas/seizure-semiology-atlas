@@ -12,10 +12,15 @@ Format loosely follows Keep a Changelog; dates are ISO-8601.
   page: a view is now the plate and its numerals, and the numeral is the whole of the
   interface — it is what is drawn, what highlights, and what is clicked. The disc behind
   each numeral carries the state (plain, has-signs, hover, selected, traced, density),
-  which is also how the published Brodmann plates label themselves. The traced outlines
-  stay in `data/brodmann_map.json` and `tools/brodmann_plate.py regions` still rebuilds
-  them, but nothing reads them, so `tools/validate_data.py` no longer demands one of a
-  newly added area — a numeral position is what makes an area usable.
+  which is also how the published Brodmann plates label themselves. With nothing drawing
+  them, the outlines are gone from the source too: `data/brodmann_map.json` drops from
+  103 KB to 26 KB (no `points`, `outline`, `core`, `solid`, `margin` or `mid` — a view is
+  a `viewBox`, a plate and a list of numerals), `generator/brain_atlas.py` loses the
+  smoothing and polygon maths and is now a 67-line loader, and `tools/brodmann_plate.py`
+  loses its `trace` and `regions` commands, keeping only the `clean` step that made the
+  plate images. `tools/validate_data.py` asks an area for a numeral position, not an
+  outline. The rendered page is byte-identical, which is the proof the outlines were
+  already reaching no one.
 ### Fixed
 - **The right hemisphere really flips now.** The plate was mirrored with a CSS transform
   on SVG content, which is not honoured consistently — on iOS the numerals moved and the
