@@ -527,7 +527,7 @@ meta_fold = build_meta(META, FLAGS)
 def build_figures(corpus):
     if not corpus or not corpus.get("papers"):
         return ""
-    mlabel = {"lateralization_pct":"Lateralization","frequency_pct":"Frequency",
+    mlabel = {"lateralization_pct":"Lateralization","frequency_pct":"Observed frequency",
               "localization_pct":"Localization","ppv":"PPV","sensitivity":"Sensitivity",
               "specificity":"Specificity","odds_ratio":"Odds ratio","other":"Other"}
     mcolor = {"lateralization_pct":"#c0392b","frequency_pct":"#2471a3","localization_pct":"#8e44ad",
@@ -577,9 +577,9 @@ def build_figures(corpus):
         if counts.get(m):
             btns.append(f'<button class="fxb" data-f="{m}">{esc(mlabel[m])} <i>{counts[m]}</i></button>')
     return f'''<details class="frontpage-fold figures-fold">
-<summary>Source figures &mdash; every extracted data point ({total} from {len(corpus["papers"])} papers)</summary>
+<summary>Source statistics &mdash; each extracted statistic per publication ({total} from {len(corpus["papers"])} papers)</summary>
 <div class="fx-wrap">
-  <div class="fx-intro">Every extracted figure, each shown with the verbatim quote it came from. The pooled plot above uses the lateralization rows; frequency, localization, and PPV figures are population-specific and are listed here rather than pooled.</div>
+  <div class="fx-intro">Every extracted statistic per publication (% Lateralization / % Localization / Observed Frequency / PPV / Specificity / Other Metrics), each displayed with its accompanying source text.</div>
   <div class="fx-tools">
     <input type="text" id="fx-search" placeholder="Search signs, values, papers, quotes&hellip;">
     <div class="fx-btns">{"".join(btns)}</div>

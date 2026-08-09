@@ -5,6 +5,16 @@ Format loosely follows Keep a Changelog; dates are ISO-8601.
 
 ## [Unreleased]
 ### Changed
+- **"Source figures" is now "Source statistics".** The word meant extracted numbers, not
+  images, and read as neither. The section is headed *each extracted statistic per
+  publication (487 from 33 papers)* and introduced as *every extracted statistic per
+  publication (% Lateralization / % Localization / Observed Frequency / PPV / Specificity /
+  Other Metrics), each displayed with its accompanying source text* — which also names the
+  metric types up front instead of leaving them to be discovered in the filter row. The
+  filter for `frequency_pct` reads **Observed frequency** to match. The sentence about the
+  pooled plot is gone: it was trying to say that only the lateralization rows have a pooled
+  counterpart above, and said it in a way that suggested duplication.
+### Changed
 - **The sensitivity section says what it actually does.** It was headed "sensitivity by
   localization (32 figures, 15 signs)" and explained itself as "population-specific, so
   reported per (sign, localization) rather than pooled across groups; mean shown when a
