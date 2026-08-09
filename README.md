@@ -23,7 +23,7 @@ HTML page that is published to GitHub Pages.
 | `generator/brain_atlas.py` | Renders the Brodmann map from its data file (geometry maths only — no curation). |
 | `tools/validate_data.py` | Schema + integrity gate for the dataset **and** the Brodmann map (runs in CI). |
 | `tools/intake_paper.py` | Screens, de-dups, extracts & queues a new paper. |
-| `tools/brodmann_plate.py` | Authoring aid: cleans a reference plate into a base image, or traces its silhouette. |
+| `tools/brodmann_plate.py` | Authoring aid: cleans a reference plate into a base image, traces its silhouette, or derives each area's outline from the boundaries the plate draws. |
 | `schema/sign.schema.json` | JSON Schema for a sign record. |
 | `schema/brodmann.schema.json` | JSON Schema for a Brodmann-area record. |
 | `corpus/manifest.csv` | Bibliographic metadata for the source library. |

@@ -194,6 +194,21 @@ else:
     for aid, rec in areas.items():
         if aid not in drawn_any and not rec.get("buried"):
             err(f"brodmann_map: area {aid!r} is defined but drawn in no view and not marked buried")
+    # one area, one outline, one numeral per view — a repeat means two shapes and
+    # two hit targets claiming the same area, and no way to say which is the area
+    for view, spec in bmap.get("views", {}).items():
+        seen = set()
+        for a in spec.get("areas", []):
+            if a["id"] in seen:
+                err(f"brodmann_map: view {view!r} draws area {a['id']!r} more than once")
+            seen.add(a["id"])
+        for a in spec.get("areas", []):
+            if not a.get("points"):
+                err(f"brodmann_map: view {view!r} area {a['id']!r} has no outline — "
+                    f"run `python3 tools/brodmann_plate.py regions {view}`")
+            if not a.get("label"):
+                err(f"brodmann_map: view {view!r} area {a['id']!r} has no numeral position, "
+                    f"so it would be drawn with nothing to click")
 
 # ---- report ----
 n = len(data)

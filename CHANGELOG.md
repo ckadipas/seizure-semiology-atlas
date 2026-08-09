@@ -4,7 +4,66 @@ All notable changes to the dataset and resource are recorded here.
 Format loosely follows Keep a Changelog; dates are ISO-8601.
 
 ## [Unreleased]
+### Fixed
+- **Three pairs of Brodmann areas were named as if they were the same region.**
+  BA 9 and BA 46 both read "dorsolateral prefrontal cortex"; BA 5 and BA 7 both read
+  "superior parietal lobule"; BA 23 and BA 31 both read as posterior cingulate. Each
+  pair is now named for what distinguishes it: **BA 9** is *dorsomedial & dorsolateral
+  prefrontal cortex (superior frontal gyrus)* — it occupies the superior frontal gyrus
+  and wraps over the convexity onto the medial surface, which is why the map draws it
+  on the lateral, medial *and* dorsal views, so calling it dorsolateral alone was
+  misleading — leaving **BA 46** (middle frontal gyrus) as the dorsolateral prefrontal
+  cortex proper. **BA 5** is the anterior somatosensory association strip and **BA 7**
+  the posterior lobule that becomes the precuneus medially; **BA 23** is the ventral
+  posterior cingulate against **BA 31**'s dorsal. Separately, **BA 8** was named
+  "frontal eye field" for the whole area when the field is only its posterior part.
+- **The map's shading follows the anatomy, and the numerals are individually clickable.**
+  Two faults, one cause: every area was a hand-drawn polygon, grown 7px along each
+  vertex normal so neighbours would overlap and never show a gap. The result read as
+  blocks laid over the plate rather than regions of it, and because those inflated
+  polygons *were* the click targets, a large one covered its smaller neighbours —
+  BA 9 could not be clicked at all, and the temporal areas took a huge swathe of the
+  figure. Now **`tools/brodmann_plate.py regions`** derives each outline from the plate
+  itself: it rebuilds the graticule and crosshairs out of the picture, separates the
+  drawn boundary lines from the finer sulcal shading, and lets each numeral claim
+  outward until it meets a drawn boundary or a change of tint. The plate does not draw
+  one patch per Brodmann area — the frontal band alone carries 8, 10 and 11 — so where
+  a patch holds several numerals it is subdivided between them, each keeping the drawn
+  edge as its outer border; all 82 outlines across the four views come from this.
+  Clicking is now a separate thing from shading: the shading takes no pointer events at
+  all, and the target is a disc the size of the numeral, centred on it. Verified in a
+  browser that every one of the 82 numerals selects its own area, that no two targets
+  overlap, and that dragging a numeral in the label editor carries its target with it.
+  `generator/brain_atlas.py` loses the polygon-inflation, band and margin maths this
+  made redundant (130 → 98 lines).
+- **The hemisphere switch flipped the outlines but not the plate underneath**, so the
+  right-hemisphere lateral and medial views put every area on the wrong gyrus. The
+  photograph now mirrors with them.
+- **Lateral BA 17's numeral sat outside the brain**, drawn in the white margin.
+- **The ventral view drew BA 36 and BA 37 twice each.** Each was listed as two adjacent
+  bands making up one region — a way to describe a shape the old band geometry could not
+  state in one go. Under plate-derived outlines a single numeral grows into the whole
+  drawn region, so the second entries are gone; without that, each of those areas would
+  have carried two outlines and two competing hit targets. `tools/validate_data.py` now
+  fails the build if a view draws an area more than once, or draws one with no outline or
+  no numeral position — unlike a name, this is exactly the kind of defect a mechanical
+  check does catch.
 ### Added
+- **The Brodmann map now reads both ways.** It answered "which signs localize here?"; it
+  now also answers "where does *this* sign localize?" Every sign card carries a **Brodmann
+  areas** row — the area chips plus **Show on map** — and pressing it lights up every area
+  that sign localizes to, across whichever views draw them, landing on the view that shows
+  most of the set and flagging the others with a dot. Non-traced numerals fade so the set
+  reads at a glance; a single chip traces the set *and* opens that one area; each area in
+  the panel drills through to its own sign list with a one-tap way back.
+  The panel states **why** those areas: either the sign's own entry in
+  `data/brodmann_map.json` (quoting the name it was recorded against) or the sub-region rule
+  it inherits — the same provenance `tools/validate_data.py` gates, so the map explains its
+  reasoning rather than asserting it. Card and figure read the one mapping through one
+  accessor (`brain_atlas.mapping_for_sign`), so they cannot disagree: verified in-browser
+  that all 111 cards' chips equal the figure's own index, 110 mapped and 1 declared
+  unmapped. Areas with no surface (insula, cingulate, deep) trace as their chips; a sign not
+  expected from the displayed hemisphere says so.
 - **The Brodmann map follows the repo's own structure.** It was first written as a
   feature bolted onto the generator: 39 areas, 17 sub-region rules, 79 per-sign
   overrides, 80 label positions and 231 outline points all lived as Python literals

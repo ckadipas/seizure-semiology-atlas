@@ -193,6 +193,22 @@ for r in region_order:
         for d in signs:
             lc, ec = d["latcode"], d["evid"]
             accent = latcolor.get(lc,"#999")
+            # the Brodmann mapping, read from the same gated source the map renders
+            # from, so the card and the figure can never disagree about a sign
+            _bmap = BA.mapping_for_sign(d)
+            map_row = ""
+            if _bmap["areas"]:
+                _why = ("Recorded for this sign in the map's per-sign table."
+                        if _bmap["via"] == "sign" else
+                        f'Inherited from the sub-region rule “{_bmap["rule"]}”.')
+                _chips = "".join(
+                    f'<button class="ba-chip{" bc-deep" if BA.AREAS[a].get("buried") else ""}" '
+                    f'data-ba="{a}" title="{esc(BA.AREAS[a]["name"])}">{BA.AREAS[a]["label"]}</button>'
+                    for a in _bmap["areas"])
+                map_row = (f'<div class="d-row d-map"><span class="d-label">Brodmann areas</span>'
+                           f'<span class="d-value"><span class="ba-chips">{_chips}</span>'
+                           f'<button class="map-jump" data-sign="{d["id"]}" '
+                           f'title="{esc(_why)}">Show on map &#8599;</button></span></div>')
             _ms = meta_by_cardid.get(d.get("id"))
             ev_text = " ".join(e["p"]+" "+e["f"] for e in d.get("_ev",[]))
             ppv_text = " ".join((r["value_text"]+" "+r["cite"]+" ppv predictive value") for r in ppv_by_cardid.get(d.get("id"), []))
@@ -253,6 +269,7 @@ for r in region_order:
         <span class="d-label">Anatomical localization</span>
         <span class="d-value">{esc(d['loc'])}</span>
       </div>
+      {map_row}
       <div class="d-metrics">
         <div class="metric">{sens_metric}</div>
         <div class="metric">{spec_metric}</div>
@@ -627,11 +644,17 @@ def build_brain(signs):
     tiles = {}
     for aid, info in BA.AREAS.items():
         tiles[aid] = {"label": info["label"], "name": info["name"], "lobe": info["lobe"],
-                      "bas": info["bas"], "buried": bool(info.get("buried")), "signs": []}
+                      "bas": info["bas"], "buried": bool(info.get("buried")),
+                      "views": BA.views_with(aid), "signs": []}
     _evrank = {"I": 0, "II": 1, "III": 2}
     unplaced = []
+    index = {}          # the same mapping read backwards: sign -> its areas + why
     for d in signs:
-        al = BA.areas_for_sign(d)
+        m = BA.mapping_for_sign(d)
+        index[str(d["id"])] = {"n": d["sign"], "areas": m["areas"], "via": m["via"],
+                               "rule": m["rule"], "lc": d.get("latcode", "nonlat"),
+                               "loc": d.get("loc", "")}
+        al = m["areas"]
         if not al:
             unplaced.append(d["sign"]); continue
         for a in al:
@@ -659,28 +682,36 @@ def build_brain(signs):
                        f'height="{i["h"]}" preserveAspectRatio="none" '
                        f'href="data:image/jpeg;base64,{_b64(f)}"/>')
 
+        # The shading and the hit target are separate things. The shading is the
+        # area's traced outline and takes no pointer events, so a large area can
+        # never swallow the numeral of a small one sitting inside it; what you
+        # click is a disc the size of the numeral, over the numeral.
         shapes, labels, rlabels = [], [], []
         for area in v["areas"]:
             aid = area["id"]
             n = len(tiles.get(aid, {}).get("signs", []))
-            poly = BA.inflate(BA.area_polygon(v, area))
             shapes.append(
                 f'<path class="ba" data-tile="{aid}" data-n="{n}" '
-                f'data-lobe="{BA.AREAS[aid]["lobe"]}" tabindex="0" role="button" '
-                f'aria-label="Brodmann area {BA.AREAS[aid]["label"]}" '
-                f'd="{BA.smooth_path(poly, s=0.07)}">'
-                f'<title>{esc(BA.AREAS[aid]["name"])}</title></path>')
+                f'data-lobe="{BA.AREAS[aid]["lobe"]}" '
+                f'd="{BA.smooth_path(BA.area_polygon(area), s=0.06)}"/>')
             lab = area.get("label")
             if not lab:
                 continue
             lx, ly = lab
-            cls = "ba-num ba-num-sm" if area.get("small") or (
-                "band" in area and area["band"][1] - area["band"][0] < 50) else "ba-num"
-            labels.append(f'<text class="{cls}" data-tile="{aid}" x="{lx}" y="{ly}" '
-                          f'data-mx="{vw - lx}">{BA.AREAS[aid]["label"]}</text>')
+            txt = BA.AREAS[aid]["label"]
+            cls = "ba-num ba-num-sm" if len(txt) > 2 else "ba-num"
+
+            def marks(x, mx):
+                return (f'<text class="{cls}" data-tile="{aid}" x="{x}" y="{ly}" '
+                        f'data-mx="{mx}">{txt}</text>'
+                        f'<circle class="ba-hit" data-tile="{aid}" cx="{x}" cy="{ly}" '
+                        f'r="{13 if len(txt) <= 2 else 15}" data-mx="{mx}" tabindex="0" '
+                        f'role="button" aria-label="Brodmann area {txt}">'
+                        f'<title>{esc(BA.AREAS[aid]["name"])}</title></circle>')
+
+            labels.append(marks(lx, vw - lx))
             if mirrored:
-                rlabels.append(f'<text class="{cls}" data-tile="{aid}" x="{vw - lx}" y="{ly}" '
-                               f'data-mx="{lx}">{BA.AREAS[aid]["label"]}</text>')
+                rlabels.append(marks(vw - lx, lx))
 
         body = "\n".join(shapes)
         extra = ""
@@ -734,7 +765,8 @@ def build_brain(signs):
                 f'{"s" if len(unplaced) != 1 else ""} without a surface localization '
                 f'{"are" if len(unplaced) != 1 else "is"} not placed on the map.</span>')
 
-    payload = "<script>const BRAIN_TILES=" + json.dumps(tiles, separators=(",", ":")) + ";</script>"
+    payload = ("<script>const BRAIN_TILES=" + json.dumps(tiles, separators=(",", ":")) +
+               ";const BRAIN_SIGNS=" + json.dumps(index, separators=(",", ":")) + ";</script>")
     return payload + f'''<details class="frontpage-fold brain-fold" open>
 <summary>Brodmann map &mdash; where each semiology localizes</summary>
 <div class="brain-card">
@@ -756,16 +788,27 @@ def build_brain(signs):
       <div class="bp-empty">
         <div class="bp-empty-mark">BA</div>
         <p>Tap any Brodmann number to see the semiology this atlas localizes there &mdash; with its phase, lateralizing value and evidence tier.</p>
-        <p class="bp-hint">Areas with no shading carry no sign in the current dataset.</p>
+        <p class="bp-hint">Or go the other way: open any sign below and press <strong>Show on map</strong> to light up every area it localizes to. Areas with no shading carry no sign in the current dataset.</p>
       </div>
       <div class="bp-body" hidden>
         <div class="bp-head">
           <div class="bp-num" id="bp-num">4</div>
           <div class="bp-id"><h3 id="bp-name">Primary motor cortex</h3>
-            <div class="bp-meta"><span class="bp-lobe" id="bp-lobe"></span><span id="bp-count"></span></div></div>
+            <div class="bp-meta"><span class="bp-lobe" id="bp-lobe"></span><span id="bp-count"></span>
+              <button class="bp-back" id="bp-back" hidden></button></div></div>
           <button class="bp-close" id="bp-close" aria-label="Close">&times;</button>
         </div>
         <div class="bp-list" id="bp-list"></div>
+      </div>
+      <div class="bp-trace" hidden>
+        <div class="bp-head">
+          <div class="bp-num bp-tnum" aria-hidden="true">&#9678;</div>
+          <div class="bp-id"><h3 id="bt-name">Sign</h3>
+            <div class="bp-meta"><span id="bt-count"></span></div></div>
+          <button class="bp-close" id="bt-close" aria-label="Close">&times;</button>
+        </div>
+        <div class="bp-list" id="bt-list"></div>
+        <p class="bp-why" id="bt-why"></p>
       </div>
     </aside>
   </div>
@@ -836,7 +879,7 @@ CSS = r"""
 .brain-svg{display:none;width:100%;height:auto;max-height:400px;overflow:visible}
 .brain-svg.show{display:block}
 .brain-svg[data-view="dorsal"],.brain-svg[data-view="ventral"]{max-height:430px}
-.brain-svg.flip .hemi{transform:translateX(1000px) scale(-1,1)}
+.brain-svg.flip .hemi,.brain-svg.flip .brain-photo{transform:translateX(1000px) scale(-1,1)}
 .brain-svg[data-view="medial"].flip .hemi{transform:translateX(1000px) scale(-1,1)}
 .brain-svg[data-view="lateral"].flip .ins-g{transform:translateX(1000px) scale(-1,1)}
 .brain-svg[data-view="lateral"].flip .syl-line{transform:translateX(1000px) scale(-1,1)}
@@ -885,6 +928,7 @@ body.lbledit .ba-num.drag{cursor:grabbing;fill:var(--teal-d);stroke:rgba(14,157,
 body.lbledit.focusing .ba-num{opacity:.12;pointer-events:none;transition:opacity .15s}
 body.lbledit.focusing .ba-num.edit-sel{opacity:1;pointer-events:auto}
 body.lbledit .ba-num{transition:opacity .15s}
+body.lbledit .ba-hit{pointer-events:none}   /* dragging a numeral must not hit its disc */
 #le-done{background:var(--teal)!important;border-color:var(--teal-d)!important;color:#fff!important}
 body.lbl-place .brain-svg{cursor:crosshair}
 /* D-pad: thumb-reachable, translucent, never covers the middle of the figure */
@@ -915,12 +959,14 @@ body.lbl-place .brain-svg{cursor:crosshair}
   padding:5px 8px;font-family:inherit;font-size:.74rem;font-weight:700;color:var(--navy);cursor:pointer}
 .lbl-editor button:hover{border-color:var(--teal);color:var(--teal-d);background:#f0fbfd}
 #lbl-read{font-family:'SF Mono',Consolas,monospace;font-size:.72rem;color:var(--teal-d)}
-.ba{fill:transparent;stroke:transparent;stroke-width:1.1;cursor:pointer;transition:fill .14s}
-.ba[data-n="0"]{fill:transparent}
-.ba.has{fill:transparent}
-.ba:hover{fill:rgba(14,157,176,.30)}
-.ba:focus{outline:none;fill:rgba(14,157,176,.30)}
+/* the shading never takes a click: it only ever colours the anatomy */
+.ba{fill:transparent;stroke:transparent;stroke-width:1.1;pointer-events:none;transition:fill .14s}
+.ba.hot{fill:rgba(14,157,176,.30)}
 .ba.sel{fill:rgba(14,157,176,.42);stroke:var(--teal-d);stroke-width:2}
+/* what you click: a disc the size of the numeral, centred on it */
+.ba-hit{fill:transparent;stroke:transparent;stroke-width:9;pointer-events:all;cursor:pointer}
+.ba-hit:focus{outline:none}
+.ba-hit:focus-visible{stroke:var(--teal-d);stroke-width:2.5;stroke-dasharray:3 3}
 .brain-card.dens .ba.d1{fill:#e8f1f8}.brain-card.dens .ba.d2{fill:#cfe4f0}
 .brain-card.dens .ba.d3{fill:#a9d3e6}.brain-card.dens .ba.d4{fill:#7cbcd8}
 .brain-card.dens .ba.sel{fill:var(--teal)}
@@ -946,7 +992,7 @@ body.lbl-place .brain-svg{cursor:crosshair}
 .brain-svg.show-R .lab-R{display:block}
 .brain-svg.show-R .lab-L{display:none}
 .brain-svg.show-R .hemi-L,.brain-svg:not(.show-R) .hemi-R{opacity:.3;pointer-events:none}
-.brain-svg:not(.show-R) .hemi-R .ba,.brain-svg.show-R .hemi-L .ba{cursor:default}
+
 .brain-caption{text-align:center;font-size:.76rem;color:var(--muted);margin-top:6px;min-height:19px}
 #brain-hover{font-weight:600;color:#54627a}
 .brain-note{display:block;font-size:.68rem;font-style:italic;opacity:.8;margin-top:2px}
@@ -975,6 +1021,10 @@ body.lbl-place .brain-svg{cursor:crosshair}
 .bp-id h3{font-size:.88rem;font-weight:700;color:var(--navy);line-height:1.3}
 .bp-meta{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-top:3px;font-size:.68rem;color:var(--muted)}
 .bp-lobe{background:#eef2f7;border-radius:4px;padding:1px 7px;font-weight:700;color:#5a6478}
+.bp-back{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border:none;
+  background:#fdf3e4;color:#8a5209;border-radius:4px;padding:1px 7px;font-family:inherit;
+  font-size:.65rem;font-weight:700;cursor:pointer}
+.bp-back:hover{background:#f6e2c4}
 .bp-close{margin-left:auto;border:none;background:none;font-size:1.3rem;line-height:1;color:#b6bfcd;cursor:pointer;padding:0 2px}
 .bp-close:hover{color:var(--navy)}
 .bp-list{overflow-y:auto;max-height:330px;padding:5px 0}
@@ -989,6 +1039,46 @@ body.lbl-place .brain-svg{cursor:crosshair}
 .bp-side{font-size:.65rem;color:var(--muted);font-style:italic;margin-top:2px;display:block}
 .bp-ev{flex:0 0 auto;width:19px;height:19px;border-radius:5px;color:#fff;font-size:.62rem;font-weight:800;
   display:flex;align-items:center;justify-content:center;margin-top:1px}
+
+/* ---- the map read backwards: one sign, every area it localizes to ----
+   amber, so a traced set never reads as the teal "selected area" state */
+.ba.trace{fill:rgba(224,138,30,.34);stroke:#b56a08;stroke-width:2}
+.brain-card.dens .ba.trace{fill:#e8a23e}
+.ba-buried.trace{fill:rgba(224,138,30,.30);stroke:#b56a08;stroke-dasharray:none}
+.ba-num.trace{fill:#7a4405;stroke:#fff;stroke-width:4}
+.deep-chip.trace{background:#fdf3e4;border-style:solid;border-color:#e0a75a}
+.deep-chip.trace .dc-lab{color:#8a5209}
+.brain-card.tracing .ba:not(.trace){fill:transparent}
+.brain-card.dens.tracing .ba:not(.trace){fill:#eef3f7}
+.brain-card.tracing .ba-num:not(.trace){opacity:.24}
+.ba-num{transition:opacity .15s}
+.seg-b.has-trace::after{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;
+  background:#e08a1e;margin-left:5px;vertical-align:middle}
+.bp-tnum{background:#e08a1e}
+.bp-why{padding:9px 13px 11px;border-top:1px solid var(--line2);font-size:.67rem;color:var(--muted);line-height:1.5}
+.bp-why b{color:#5a6478;font-weight:700}
+.bt-row{width:100%;display:flex;align-items:center;gap:9px;background:none;border:none;
+  border-bottom:1px solid var(--line2);padding:8px 13px;text-align:left;font-family:inherit;
+  cursor:pointer;transition:background .11s}
+.bt-row:hover{background:#fdf6ec}
+.bt-row:last-child{border-bottom:none}
+.bt-num{flex:0 0 auto;min-width:30px;height:26px;padding:0 6px;border-radius:6px;background:#fdf3e4;
+  color:#8a5209;border:1px solid #e8c79a;font-size:.76rem;font-weight:800;
+  display:flex;align-items:center;justify-content:center}
+.bt-name{flex:1;font-size:.76rem;color:var(--navy);line-height:1.35}
+.bt-where{display:block;font-size:.63rem;color:var(--muted);font-style:italic;margin-top:1px}
+.bt-n{flex:0 0 auto;background:#eef2f7;color:#6b7280;border-radius:9px;padding:1px 7px;font-size:.63rem;font-weight:700}
+
+/* the same mapping, surfaced on the sign card itself */
+.d-map .d-value{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ba-chips{display:flex;gap:4px;flex-wrap:wrap}
+.ba-chip{border:1px solid #e8c79a;background:#fdf3e4;color:#8a5209;border-radius:5px;padding:1px 7px;
+  font-family:inherit;font-size:.72rem;font-weight:800;cursor:pointer;transition:all .12s}
+.ba-chip:hover{background:#f6e2c4;border-color:#cf9a4d}
+.ba-chip.bc-deep{border-style:dashed}
+.map-jump{border:1px solid var(--line);background:#fff;color:var(--navy);border-radius:6px;padding:2px 9px;
+  font-family:inherit;font-size:.7rem;font-weight:700;cursor:pointer;transition:all .12s}
+.map-jump:hover{border-color:#e0a75a;color:#8a5209;background:#fdf8f1}
 @media(max-width:760px){
   .brain-card{padding:11px 10px}
   .brain-svg{max-height:320px}
@@ -996,6 +1086,7 @@ body.lbl-place .brain-svg{cursor:crosshair}
   .ba-num{font-size:20px}
   .ba-num-sm{font-size:16px}
   body.lbledit .ba-num{stroke-width:34}
+  .ba-hit{stroke-width:17}
   .bp-list{max-height:430px}
   .brain-bar{gap:7px}
   .brain-shade{margin-left:0;width:100%}
@@ -1111,9 +1202,10 @@ main{padding:16px 16px 48px;max-width:1180px;margin:0 auto}
 .cite{color:var(--teal-d);font-style:italic;font-size:.82rem}
 
 @media (min-width:760px){
-  .detail-inner{display:grid;grid-template-columns:1.5fr 1fr;grid-template-areas:"lat lat" "loc metrics" "notes notes" "cite cite" "ev ev";gap:0 20px;column-gap:24px}
+  .detail-inner{display:grid;grid-template-columns:1.5fr 1fr;grid-template-areas:"lat lat" "loc metrics" "map map" "notes notes" "cite cite" "ev ev";gap:0 20px;column-gap:24px}
   .d-lat{grid-area:lat}
   .d-loc{grid-area:loc}
+  .d-map{grid-area:map}
   .d-metrics{grid-area:metrics;flex-direction:column;border-bottom:1px solid var(--line2)}
   .metric{min-width:0}
   .d-notes{grid-area:notes}
@@ -1386,7 +1478,8 @@ JS = r"""
   const latLab={contra:'CONTRA',ipsi:'IPSI',dominant:'DOM',nondominant:'NON-DOM',
                 right:'RIGHT',nonlat:'NON-LAT',variable:'VARIABLE'};
   const evColor={I:'#1a7a4a',II:'#c47a00',III:'#c0392b'};
-  let hemi='L', sel=null;
+  const traceBody=panel.querySelector('.bp-trace');
+  let hemi='L', sel=null, traced=null;
 
   /* density buckets + "has data" styling */
   const counts=Object.values(BRAIN_TILES).map(t=>t.signs.length).filter(n=>n>0);
@@ -1400,6 +1493,7 @@ JS = r"""
     const tile=BRAIN_TILES[t.dataset.tile];
     if(tile&&tile.signs.length) t.classList.add('has');
   });
+  const MARKS='.ba,.ba-num,.deep-chip';
 
   /* which signs actually apply to the hemisphere on screen */
   function applies(lc){
@@ -1419,9 +1513,14 @@ JS = r"""
   function render(tid){
     const t=BRAIN_TILES[tid]; if(!t) return;
     sel=tid;
-    card.querySelectorAll('.ba,.ba-num,.deep-chip').forEach(el=>
+    card.querySelectorAll(MARKS+',.ba-hit').forEach(el=>
       el.classList.toggle('sel', el.dataset.tile===tid));
-    empty.hidden=true; body.hidden=false;
+    /* land on a view that actually draws it (a traced set can span views) */
+    if(!t.buried&&t.views&&t.views.length&&t.views.indexOf(curView())<0) showView(t.views[0]);
+    const back=document.getElementById('bp-back');
+    if(traced&&BRAIN_SIGNS[traced]){back.hidden=false; back.textContent='← '+BRAIN_SIGNS[traced].n;}
+    else back.hidden=true;
+    empty.hidden=true; traceBody.hidden=true; body.hidden=false;
     document.getElementById('bp-num').textContent=t.label;
     document.getElementById('bp-name').textContent=t.name;
     document.getElementById('bp-lobe').textContent=t.lobe;
@@ -1452,32 +1551,112 @@ JS = r"""
     sel=null; empty.hidden=false; body.hidden=true;
     hover.textContent='Select a numbered area';
     card.querySelectorAll('.sel').forEach(el=>el.classList.remove('sel'));
+    clearTrace();
+  }
+
+  /* ---------- the mapping read backwards: one sign -> all of its areas ----------
+     Same source as the figure itself (data/brodmann_map.json, gated by
+     tools/validate_data.py), so a sign can never light up areas its card does not
+     claim — and the panel states which rule put it there. */
+  function clearTrace(){
+    traced=null;
+    card.classList.remove('tracing');
+    card.querySelectorAll('.trace').forEach(el=>el.classList.remove('trace'));
+    card.querySelectorAll('.seg-b[data-view]').forEach(b=>b.classList.remove('has-trace'));
+    traceBody.hidden=true;
+    document.getElementById('bp-back').hidden=true;
+  }
+
+  function traceSign(sid,scroll){
+    const s=BRAIN_SIGNS[String(sid)];
+    if(!s||!s.areas.length) return false;
+    traced=String(sid); sel=null;
+    const set=s.areas;
+    card.classList.add('tracing');
+    card.querySelectorAll('.sel').forEach(el=>el.classList.remove('sel'));
+    card.querySelectorAll(MARKS+',.ba-hit').forEach(el=>
+      el.classList.toggle('trace', set.indexOf(el.dataset.tile)>=0));
+
+    /* flag every view that carries part of the set, and land on one that does */
+    const per={};
+    svgs.forEach(v=>{per[v.dataset.view]=0;});
+    set.forEach(a=>{const t=BRAIN_TILES[a]; if(t)(t.views||[]).forEach(v=>{per[v]=(per[v]||0)+1;});});
+    card.querySelectorAll('.seg-b[data-view]').forEach(b=>
+      b.classList.toggle('has-trace',(per[b.dataset.view]||0)>0));
+    /* land on the view showing most of the set, staying put on a tie */
+    let best=null;
+    Object.keys(per).forEach(v=>{if(best===null||per[v]>per[best]) best=v;});
+    if(best&&per[best]&&per[curView()]<per[best]) showView(best);
+
+    empty.hidden=true; body.hidden=true; traceBody.hidden=false;
+    document.getElementById('bt-name').textContent=s.n;
+    const nb=set.filter(a=>BRAIN_TILES[a]&&BRAIN_TILES[a].buried).length;
+    document.getElementById('bt-count').textContent=
+      set.length+(set.length===1?' Brodmann area':' Brodmann areas')+
+      (nb?'  ·  '+nb+' with no surface':'');
+    document.getElementById('bt-list').innerHTML=set.map(a=>{
+      const t=BRAIN_TILES[a]; if(!t) return '';
+      const where=t.buried?'no surface representation — chip below the figure'
+        :(t.views||[]).map(v=>v.charAt(0).toUpperCase()+v.slice(1)).join(' · ');
+      return '<button class="bt-row" data-tile="'+a+'"><span class="bt-num">'+esc(t.label)+'</span>'+
+        '<span class="bt-name">'+esc(t.name)+'<span class="bt-where">'+esc(where)+'</span></span>'+
+        '<span class="bt-n" title="signs this atlas localizes here">'+t.signs.length+'</span></button>';
+    }).join('');
+    let why = s.via==='sign'
+      ? 'Mapped by this sign’s own entry in <b>data/brodmann_map.json</b>, recorded against the name '+
+        '“'+esc(s.rule)+'” — the build fails if the entry and the sign drift apart.'
+      : 'Inherited from the sub-region rule <b>“'+esc(s.rule)+'”</b> in <b>data/brodmann_map.json</b>; '+
+        'every sign filed there maps to the same areas. The build fails if that rule goes missing.';
+    if(!applies(s.lc)) why+=' <b>Note:</b> this sign is not expected from the hemisphere on screen.';
+    document.getElementById('bt-why').innerHTML=why;
+    hover.textContent=s.n+' — '+set.length+(set.length===1?' area':' areas')+' highlighted';
+    if(scroll){
+      const f=card.closest('.brain-fold'); if(f&&!f.open) f.open=true;
+      card.scrollIntoView({behavior:'smooth',block:'center'});
+    }
+    return true;
   }
 
   /* clicking an area */
   card.addEventListener('click',e=>{
-    const hit=e.target.closest('.ba,.deep-chip');
+    const hit=e.target.closest('.ba-hit,.deep-chip');
     if(!hit) return;
-    const g=hit.closest('.hemi-L,.hemi-R');
-    if(g&&((hemi==='R'&&g.classList.contains('hemi-L'))||(hemi==='L'&&g.classList.contains('hemi-R')))) return;
+    const g=hit.closest('.lab-L,.lab-R');
+    if(g&&((hemi==='R'&&g.classList.contains('lab-L'))||(hemi==='L'&&g.classList.contains('lab-R')))) return;
+    /* stepping outside a traced set means the user has moved on */
+    if(traced&&!hit.classList.contains('trace')) clearTrace();
     render(hit.dataset.tile);
   });
   card.addEventListener('keydown',e=>{
-    if((e.key==='Enter'||e.key===' ')&&e.target.classList.contains('ba')){
+    if((e.key==='Enter'||e.key===' ')&&e.target.classList.contains('ba-hit')){
       e.preventDefault(); render(e.target.dataset.tile);}
     if(e.key==='Escape') clear();
   });
+  card.addEventListener('mouseout',e=>{
+    const h=e.target.closest('.ba-hit');
+    if(h) card.querySelectorAll('.ba.hot').forEach(p=>p.classList.remove('hot'));
+  });
   card.addEventListener('mouseover',e=>{
-    const hit=e.target.closest('.ba');
+    const hit=e.target.closest('.ba-hit');
     if(!hit) return;
+    card.querySelectorAll('.ba.hot').forEach(p=>p.classList.remove('hot'));
+    card.querySelectorAll('.ba[data-tile="'+hit.dataset.tile+'"]').forEach(p=>p.classList.add('hot'));
+    /* a traced set owns the caption; hovering past it must not steal the line */
+    if(traced&&!hit.classList.contains('trace')) return;
     const t=BRAIN_TILES[hit.dataset.tile]; if(!t) return;
     const n=t.signs.length;
     hover.textContent=(t.bas.length?'BA '+t.label+' — ':'')+t.name+(n?'  ·  '+n+(n===1?' sign':' signs'):'  ·  no signs');
   });
-  card.addEventListener('mouseleave',()=>{hover.textContent=sel?BRAIN_TILES[sel].name:'Select a numbered area';});
+  card.addEventListener('mouseleave',()=>{
+    const t=traced&&BRAIN_SIGNS[traced];
+    hover.textContent = t ? t.n+' — '+t.areas.length+(t.areas.length===1?' area':' areas')+' highlighted'
+                          : (sel?BRAIN_TILES[sel].name:'Select a numbered area');});
 
   /* jump from the panel to the full sign card */
   panel.addEventListener('click',e=>{
+    if(e.target.closest('#bp-back')){ if(traced) traceSign(traced); return; }
+    const trow=e.target.closest('.bt-row');
+    if(trow){ render(trow.dataset.tile); return; }
     const row=e.target.closest('.bp-row'); if(!row) return;
     const el=document.getElementById('sign-'+row.dataset.sign); if(!el) return;
     const sec=el.closest('.region-section'), sub=el.closest('.sub-block');
@@ -1488,25 +1667,46 @@ JS = r"""
     el.classList.add('match'); setTimeout(()=>el.classList.remove('match'),2200);
   });
   document.getElementById('bp-close').addEventListener('click',clear);
+  document.getElementById('bt-close').addEventListener('click',clear);
+
+  /* entry from a sign card: "Show on map" traces the whole set, a single
+     Brodmann chip traces the set and opens that one area */
+  document.addEventListener('click',e=>{
+    const jump=e.target.closest('.map-jump');
+    if(jump){ traceSign(jump.dataset.sign,true); return; }
+    const chip=e.target.closest('.ba-chip');
+    if(chip){
+      const s=chip.closest('.sign');
+      if(s&&traceSign(s.dataset.id,true)) render(chip.dataset.ba);
+    }
+  });
 
   /* view + hemisphere switches */
-  card.querySelectorAll('.seg-b[data-view]').forEach(b=>b.addEventListener('click',()=>{
+  function showView(name){
     card.querySelectorAll('.seg-b[data-view]').forEach(x=>{
-      const on=x===b; x.classList.toggle('active',on); x.setAttribute('aria-selected',on);});
-    svgs.forEach(s=>s.classList.toggle('show',s.dataset.view===b.dataset.view));
-  }));
+      const on=x.dataset.view===name; x.classList.toggle('active',on); x.setAttribute('aria-selected',on);});
+    svgs.forEach(s=>s.classList.toggle('show',s.dataset.view===name));
+  }
+  function curView(){return (svgs.find(v=>v.classList.contains('show'))||svgs[0]).dataset.view;}
+  card.querySelectorAll('.seg-b[data-view]').forEach(b=>
+    b.addEventListener('click',()=>showView(b.dataset.view)));
   function applyHemi(){
     svgs.forEach(s=>{
       if(s.dataset.view==='lateral'||s.dataset.view==='medial') s.classList.toggle('flip',hemi==='R');
       else s.classList.toggle('show-R',hemi==='R');
-      s.querySelectorAll('.ba-num,.brain-orient').forEach(t=>{
-        if(s.dataset.view!=='lateral') return;
-        const mx=t.getAttribute('data-mx'), x=t.getAttribute('x');
-        if(mx!==null&&hemi==='R'){t.setAttribute('x',mx);t.setAttribute('data-mx',x);}
-        else if(mx!==null&&hemi==='L'&&t.dataset.swapped){t.setAttribute('x',mx);t.setAttribute('data-mx',x);}
-      });
+      if(s.dataset.view==='lateral'||s.dataset.view==='medial')
+        s.querySelectorAll('.ba-num,.ba-hit,.brain-orient').forEach(t=>{
+          const a=t.tagName==='circle'?'cx':'x';
+          const mx=t.getAttribute('data-mx');
+          if(mx===null) return;
+          const want=hemi==='R'?'1':'';
+          if((t.dataset.swapped||'')===want) return;
+          t.setAttribute('data-mx',t.getAttribute(a)); t.setAttribute(a,mx);
+          t.dataset.swapped=want;
+        });
     });
-    if(sel) render(sel);
+    if(traced&&!traceBody.hidden) traceSign(traced);
+    else if(sel) render(sel);
   }
   card.querySelectorAll('.seg-b[data-hemi]').forEach(b=>b.addEventListener('click',()=>{
     if(hemi===b.dataset.hemi) return;
@@ -1527,10 +1727,16 @@ JS = r"""
   function vb0(svg){ return svg.dataset.vb0.split(/\s+/).map(Number); }
   function place(svg,tile,x,y){
     const w=vb0(svg)[2];
-    svg.querySelectorAll('.ba-labels:not(.lab-R) .ba-num').forEach(t=>{
-      if(t.dataset.tile===tile){t.setAttribute('x',x);t.setAttribute('y',y);}});
-    svg.querySelectorAll('.lab-R .ba-num').forEach(t=>{
-      if(t.dataset.tile===tile){t.setAttribute('x',w-x);t.setAttribute('y',y);}});
+    /* the hit disc rides with its numeral, so what you click stays where you put it */
+    const move=(el,nx)=>{
+      if(el.tagName==='circle'){el.setAttribute('cx',nx);el.setAttribute('cy',y);}
+      else {el.setAttribute('x',nx);el.setAttribute('y',y);}
+      el.setAttribute('data-mx',w-nx);
+    };
+    svg.querySelectorAll('.ba-labels:not(.lab-R) .ba-num,.ba-labels:not(.lab-R) .ba-hit')
+       .forEach(t=>{if(t.dataset.tile===tile) move(t,x);});
+    svg.querySelectorAll('.lab-R .ba-num,.lab-R .ba-hit')
+       .forEach(t=>{if(t.dataset.tile===tile) move(t,w-x);});
   }
   function applySaved(){
     svgs.forEach(s=>{const o=saved[s.dataset.view]||{};
