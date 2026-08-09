@@ -345,7 +345,11 @@ def build_lateral(rows):
     # vertical gridlines 0..100
     for t in [0,25,50,75,100]:
         x=X(t)
-        s.append(f'<line x1="{x:.1f}" y1="{padT-4}" x2="{x:.1f}" y2="{H-padB}" stroke="#e7ebf2" stroke-width="1" {"" if t==0 else "stroke-dasharray=\"3 3\""}/>')
+        # dash attribute built outside the f-string: a backslash inside an f-string
+        # expression is a syntax error before Python 3.12, and the build is documented
+        # as needing nothing but Python 3 and the standard library.
+        dash = '' if t==0 else 'stroke-dasharray="3 3"'
+        s.append(f'<line x1="{x:.1f}" y1="{padT-4}" x2="{x:.1f}" y2="{H-padB}" stroke="#e7ebf2" stroke-width="1" {dash}/>')
         s.append(f'<text x="{x:.1f}" y="{padT-8}" font-size="9" fill="#9aa3b2" text-anchor="middle">{t}%</text>')
     y=padT
     for dc,dname in dirs:

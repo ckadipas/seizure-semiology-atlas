@@ -1,5 +1,5 @@
 {
- "_doc": "Structured, source-traceable observation records for the weighted meta-analysis. Every numeric value is drawn from enrichment/corpus_findings.json, where each figure carries a verbatim quote and a locator, so every pooled figure traces to the paper, page/table, and words it came from. tools/meta_analysis.py applies the weighting scheme below and writes enrichment/meta_analysis.json. Educational resource - not for clinical decision-making. Provenance: an observation marked secondary_citation is a review restating a primary series already in this file. It is shown as a corroborating citation and is never averaged, because counting it would report one measurement as two.",
+ "_doc": "Structured, source-traceable observation records for the weighted meta-analysis. Every numeric value is drawn from enrichment/corpus_findings.json, where each figure carries a verbatim quote and a locator, so every pooled figure traces to the paper, page/table, and words it came from. tools/meta_analysis.py applies the weighting scheme below and writes enrichment/meta_analysis.json. Educational resource - not for clinical decision-making. Provenance: an observation marked secondary_citation is a review reporting a figure that another study in this file already contributes - either the primary series itself, or a second review of the same series. It names that study in `restates`, is shown as a corroborating citation, and is never averaged, because counting it would report one measurement as two.",
  "weighting": {
   "_doc": "weight = class_base x ground_truth_mult x size_factor. Higher evidence class and more direct ground truth (SEEG / postoperative seizure-freedom) earn more weight. Transparent and tunable: change these and re-run tools/meta_analysis.py.",
   "class_base": {
@@ -20,10 +20,11 @@
   "size_factor": "1 + log10(N)/2, capped at 2.0, when N is reported; 1.0 when N is not stated (never fabricated).",
   "size_cap": 2.0,
   "certainty_tiers": {
-   "single_source": "k == 1 (one study carries a percentage)",
-   "moderate": "k == 2, or k >= 3 where the studies disagree by 25 points or more",
+   "_order": "Tested in this order; the first that matches wins.",
+   "single_source": "k <= 1 (at most one study carries a percentage)",
+   "contested": "the studies disagree by 25 points or more, at any k >= 2",
    "well_supported": "k >= 3 and the studies agree within 25 points",
-   "contested": "the studies disagree by 25 points or more, at any k",
+   "moderate": "k == 2 and the studies agree within 25 points",
    "_note": "k counts studies contributing a percentage. Restatements of another study in this file are excluded. Total weight never sets the tier: a single heavy study is still a single study."
   }
  },
@@ -262,7 +263,9 @@
      "study": "Kinney 2019",
      "value": 100,
      "freq": ">70%",
-     "note": "Ictal homonymous hemianopia / lateralized visual aura contralateral with 100% predictive value (Salanova series)."
+     "note": "Ictal homonymous hemianopia / lateralized visual aura contralateral with 100% predictive value (Salanova series).",
+     "provenance": "secondary_citation",
+     "restates": "Loddenkemper 2005"
     }
    ],
    "sign_ids": [
@@ -368,7 +371,9 @@
      "study": "Kinney 2019",
      "value": 89,
      "freq": "<10% of LTM",
-     "note": "Unilateral somatosensory aura contralateral in 89% of seizures."
+     "note": "Unilateral somatosensory aura contralateral in 89% of seizures.",
+     "provenance": "secondary_citation",
+     "restates": "Loddenkemper 2005"
     },
     {
      "study": "Hwang 2019",
@@ -446,7 +451,9 @@
      "study": "Kinney 2019",
      "value": 93,
      "freq": null,
-     "note": "Todd's paresis contralateral in 93% (Kellinghaus series)."
+     "note": "Todd's paresis contralateral in 93% (Kellinghaus series).",
+     "provenance": "secondary_citation",
+     "restates": "Loddenkemper 2005"
     },
     {
      "study": "Marashly 2015",

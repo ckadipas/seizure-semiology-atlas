@@ -5,6 +5,52 @@ Format loosely follows Keep a Changelog; dates are ISO-8601.
 
 ## [Unreleased]
 ### Fixed
+- **The restatement check could not see the commonest restatement.** It compared each
+  review against the *primary series* in the same pool, so two reviews citing one series
+  neither of them ran never formed a pair — and that is exactly what was in the data.
+  Loddenkemper & Kotagal 2005 and Kinney, Kovac & Diehl 2019 report the identical figure
+  for three signs, and Kinney's own note names the series both are quoting: *hemifield
+  visual aura* 100% (*Salanova series*), *postictal Todd's palsy* 93% (*Kellinghaus
+  series*), *unilateral somatosensory aura* 89%. All three were published as **2 studies ·
+  moderate** while the review printed zero flags. Each is one measurement: the three now
+  read **1 study with a percentage · 1 restatement excluded · single source**. The
+  percentages themselves do not move — 100, 93 and 89% — only the claim about how well
+  attested they are. Any unmarked pair within 2 points with a review on either side is now
+  flagged and blocks CI; two *primary* series agreeing is left alone, since separate
+  cohorts landing on the same figure is replication, the one thing here that earns k = 2.
+- **`restates` pointed wherever it was typed.** Nine hand-entered targets, rendered
+  straight onto the card as *"restates X — not averaged"*, and nothing checked that X was
+  a study in the file. A typo would have printed an attribution tracing to nothing. A
+  target that names no study is now a blocking flag.
+- **The ledger's tier rule contradicted its own next line.** `observations.json` said
+  *moderate* covered "k >= 3 where the studies disagree by 25 points or more" directly
+  above *contested* claiming the same signs at any k. The code has only ever returned one
+  of them. The rule is now published in the order it is tested, and `METHODS.md` states it
+  too — the third round of this same defect, which kept recurring because the tiers were
+  documented in one file and implemented in another.
+- **A restatement could be quoted as a study that disagrees.** The reviewer's notion of
+  "the values behind this figure" still included rows the engine had excluded, so a
+  conflict flag could have listed a restatement among the disagreeing percentages, and a
+  single-source flag could have named it as the source. No sign currently has both, so
+  nothing was visibly wrong — it was waiting on the next paper.
+- **`duplicate_card` was raised to high severity and left out of the blocking list** — the
+  same "check that only looks like one" the previous change fixed for
+  `unmarked_restatement`, one flag over. Every high-severity kind blocks now.
+- **The build required Python 3.12.** One gridline in the forest plot put a backslash
+  inside an f-string expression, which is a syntax error before 3.12 — so `make build`
+  died on Ubuntu 22.04 and Debian 12 while CI, pinned to 3.12, stayed green and
+  `CONTRIBUTING.md` promised nothing but "Python 3, standard library only". Verified
+  building on 3.10, 3.11, 3.12 and 3.13.
+### Changed
+- **`METHODS.md` documents the rules the code actually runs.** It claimed the review
+  checks "are advisory" while CI has been failing builds on them, and never mentioned
+  `unmarked_restatement` — the flag most likely to stop a change — at all; it now names
+  what blocks and what is only surfaced. It promised a weighted SD on every pooled figure,
+  which the engine has stopped emitting below four studies. And the restatement rule, the
+  one thing a reader needs to reproduce an average that visibly skips some of the rows
+  beneath it, was undocumented; it and the certainty tiers are now written down where the
+  method is described.
+### Fixed
 - **The page showed a value it had just refused to average.** Marking a review as a
   restatement kept it out of the average but left it rendering as an ordinary row with a
   weight bar, so figure-of-4 read *"range 90–90%, 1 study with a percentage"* above a table

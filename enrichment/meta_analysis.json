@@ -20,10 +20,11 @@
   "size_factor": "1 + log10(N)/2, capped at 2.0, when N is reported; 1.0 when N is not stated (never fabricated).",
   "size_cap": 2.0,
   "certainty_tiers": {
-   "single_source": "k == 1 (one study carries a percentage)",
-   "moderate": "k == 2, or k >= 3 where the studies disagree by 25 points or more",
+   "_order": "Tested in this order; the first that matches wins.",
+   "single_source": "k <= 1 (at most one study carries a percentage)",
+   "contested": "the studies disagree by 25 points or more, at any k >= 2",
    "well_supported": "k >= 3 and the studies agree within 25 points",
-   "contested": "the studies disagree by 25 points or more, at any k",
+   "moderate": "k == 2 and the studies agree within 25 points",
    "_note": "k counts studies contributing a percentage. Restatements of another study in this file are excluded. Total weight never sets the tier: a single heavy study is still a single study."
   }
  },
@@ -1351,7 +1352,9 @@
          "pg": null,
          "freq": null,
          "note": "Todd's paresis contralateral in 93% (Kellinghaus series).",
-         "value": 93
+         "value": 93,
+         "restates": "Loddenkemper 2005",
+         "qualitative": "restates Loddenkemper 2005"
         },
         {
          "study": "Marashly 2015",
@@ -1388,15 +1391,15 @@
          "qualitative": "contra"
         }
        ],
-       "n_studies": 2,
-       "n_qualitative": 2,
+       "n_studies": 1,
+       "n_qualitative": 3,
        "pooled": 93.0,
        "low": 93,
        "high": 93,
        "spread": 0,
        "wsd": null,
-       "total_weight": 2.0,
-       "certainty": "moderate"
+       "total_weight": 1.0,
+       "certainty": "single_source"
       }
      ]
     },
@@ -1578,7 +1581,9 @@
          "pg": null,
          "freq": "<10% of LTM",
          "note": "Unilateral somatosensory aura contralateral in 89% of seizures.",
-         "value": 89
+         "value": 89,
+         "restates": "Loddenkemper 2005",
+         "qualitative": "restates Loddenkemper 2005"
         },
         {
          "study": "Hwang 2019",
@@ -1615,15 +1620,15 @@
          "qualitative": "contra"
         }
        ],
-       "n_studies": 2,
-       "n_qualitative": 2,
+       "n_studies": 1,
+       "n_qualitative": 3,
        "pooled": 89.0,
        "low": 89,
        "high": 89,
        "spread": 0,
        "wsd": null,
-       "total_weight": 2.0,
-       "certainty": "moderate"
+       "total_weight": 1.0,
+       "certainty": "single_source"
       }
      ]
     }
@@ -1681,18 +1686,20 @@
          "pg": null,
          "freq": ">70%",
          "note": "Ictal homonymous hemianopia / lateralized visual aura contralateral with 100% predictive value (Salanova series).",
-         "value": 100
+         "value": 100,
+         "restates": "Loddenkemper 2005",
+         "qualitative": "restates Loddenkemper 2005"
         }
        ],
-       "n_studies": 2,
-       "n_qualitative": 0,
+       "n_studies": 1,
+       "n_qualitative": 1,
        "pooled": 100.0,
        "low": 100,
        "high": 100,
        "spread": 0,
        "wsd": null,
-       "total_weight": 2.0,
-       "certainty": "moderate"
+       "total_weight": 1.0,
+       "certainty": "single_source"
       }
      ]
     }
@@ -2256,18 +2263,20 @@
      "pg": null,
      "freq": ">70%",
      "note": "Ictal homonymous hemianopia / lateralized visual aura contralateral with 100% predictive value (Salanova series).",
-     "value": 100
+     "value": 100,
+     "restates": "Loddenkemper 2005",
+     "qualitative": "restates Loddenkemper 2005"
     }
    ],
-   "n_studies": 2,
-   "n_qualitative": 0,
+   "n_studies": 1,
+   "n_qualitative": 1,
    "pooled": 100.0,
    "low": 100,
    "high": 100,
    "spread": 0,
    "wsd": null,
-   "total_weight": 2.0,
-   "certainty": "moderate"
+   "total_weight": 1.0,
+   "certainty": "single_source"
   },
   {
    "sign": "Ictal dysphasia / aphasia",
@@ -2653,7 +2662,9 @@
      "pg": null,
      "freq": null,
      "note": "Todd's paresis contralateral in 93% (Kellinghaus series).",
-     "value": 93
+     "value": 93,
+     "restates": "Loddenkemper 2005",
+     "qualitative": "restates Loddenkemper 2005"
     },
     {
      "study": "Marashly 2015",
@@ -2690,15 +2701,15 @@
      "qualitative": "contra"
     }
    ],
-   "n_studies": 2,
-   "n_qualitative": 2,
+   "n_studies": 1,
+   "n_qualitative": 3,
    "pooled": 93.0,
    "low": 93,
    "high": 93,
    "spread": 0,
    "wsd": null,
-   "total_weight": 2.0,
-   "certainty": "moderate"
+   "total_weight": 1.0,
+   "certainty": "single_source"
   },
   {
    "sign": "Postictal dysphasia / aphasia",
@@ -3393,7 +3404,9 @@
      "pg": null,
      "freq": "<10% of LTM",
      "note": "Unilateral somatosensory aura contralateral in 89% of seizures.",
-     "value": 89
+     "value": 89,
+     "restates": "Loddenkemper 2005",
+     "qualitative": "restates Loddenkemper 2005"
     },
     {
      "study": "Hwang 2019",
@@ -3430,15 +3443,15 @@
      "qualitative": "contra"
     }
    ],
-   "n_studies": 2,
-   "n_qualitative": 2,
+   "n_studies": 1,
+   "n_qualitative": 3,
    "pooled": 89.0,
    "low": 89,
    "high": 89,
    "spread": 0,
    "wsd": null,
-   "total_weight": 2.0,
-   "certainty": "moderate"
+   "total_weight": 1.0,
+   "certainty": "single_source"
   }
  ],
  "sensitivity": {

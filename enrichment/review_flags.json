@@ -7,7 +7,7 @@
  "summary": {
   "sens_spec_provenance": 1,
   "conflict": 2,
-  "single_source": 6
+  "single_source": 9
  },
  "flags": [
   {
@@ -36,6 +36,13 @@
   {
    "kind": "single_source",
    "severity": "low",
+   "sign": "Hemifield visual aura",
+   "detail": "pooled figure rests on a single study (Loddenkemper & Kotagal 2005); treat as provisional until corroborated.",
+   "evidence": []
+  },
+  {
+   "kind": "single_source",
+   "severity": "low",
    "sign": "Ictal dysphasia / aphasia",
    "detail": "pooled figure rests on a single study (Gabr et al. 1989); treat as provisional until corroborated.",
    "evidence": []
@@ -51,6 +58,13 @@
    "kind": "single_source",
    "severity": "low",
    "sign": "Ictal vomiting (ictus emeticus)",
+   "detail": "pooled figure rests on a single study (Loddenkemper & Kotagal 2005); treat as provisional until corroborated.",
+   "evidence": []
+  },
+  {
+   "kind": "single_source",
+   "severity": "low",
+   "sign": "Postictal (Todd's) palsy",
    "detail": "pooled figure rests on a single study (Loddenkemper & Kotagal 2005); treat as provisional until corroborated.",
    "evidence": []
   },
@@ -75,6 +89,13 @@
    "severity": "low",
    "sign": "Unilateral (ipsilateral) automatisms",
    "detail": "pooled figure rests on a single study (Roh et al. 1996); treat as provisional until corroborated.",
+   "evidence": []
+  },
+  {
+   "kind": "single_source",
+   "severity": "low",
+   "sign": "Unilateral somatosensory aura",
+   "detail": "pooled figure rests on a single study (Loddenkemper & Kotagal 2005); treat as provisional until corroborated.",
    "evidence": []
   }
  ]

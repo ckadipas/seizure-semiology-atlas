@@ -7,9 +7,14 @@ evidence is added:
   * CONFLICT        - studies for one semiology disagree on the lateralization figure
                       beyond a tolerance (heterogeneity -> "conflicting evidence").
   * DIRECTION_CLASH - the pooled direction contradicts the curated sign's latcode.
-  * DOUBLE_COUNT    - a narrative review and a primary series report near-identical
-                      figures for the same sign; the review may simply be citing the
-                      primary study, so pooling both risks counting one datum twice.
+  * UNMARKED_RESTATEMENT - two averaged sources report near-identical figures for one
+                      sign and at least one is a review, which usually means the review
+                      is citing the other rather than measuring anything; pooling both
+                      counts one datum twice. Two primary series agreeing is replication
+                      and is not flagged.
+  * ORPHAN_RESTATEMENT - an observation's `restates` names a study that is not in
+                      observations.json, so the card would cite a source that does not
+                      exist.
   * DUPLICATE       - the exact same finding text is attributed to two different
                       papers, or one paper is listed twice for a single sign
                       (repeated-upload / merge artifact).
@@ -26,8 +31,11 @@ evidence is added:
                       curator estimate, and that specificity is always an estimate.
 
 Emits enrichment/review_flags.json and prints a summary in CI. Advisory by default;
-pass --strict to exit non-zero when any CONFLICT / DIRECTION_CLASH / DUPLICATE /
-ORPHAN_STEM flag is present.
+pass --strict (which CI does) to exit non-zero on the flags that mark a defect a
+curator must fix: UNMARKED_RESTATEMENT, ORPHAN_RESTATEMENT, DIRECTION_CLASH,
+DUPLICATE, DUPLICATE_CARD, ORPHAN_STEM and the PPV / sensitivity link checks. A
+CONFLICT is a fact about the literature rather than a defect, so it is surfaced on
+the page and never blocks; SINGLE_SOURCE likewise.
 
 Checking whether a figure faithfully reflects its paper needs the source text and
 is done during intake review, not here.
@@ -130,7 +138,11 @@ def review():
 
     for s in meta["by_sign"]:
         contribs = s["contributions"]
+        # every row carrying a percentage, vs. only the rows that were averaged.
+        # A marked restatement carries a value but is not part of the figure, so it
+        # must not be quoted as a disagreeing study or named as the single source.
         numeric = [c for c in contribs if "value" in c]
+        pooled_rows = [c for c in numeric if not c.get("restates")]
 
         # ORPHAN_STEM - the figure attaches to no curated sign
         stem = (s.get("sign_stem") or "").lower()
@@ -140,7 +152,7 @@ def review():
 
         # CONFLICT - studies disagree beyond tolerance
         if s.get("spread") is not None and s["spread"] >= CONFLICT_TOL:
-            vals = ", ".join(f"{c['cite']} {c['value']}%" for c in numeric)
+            vals = ", ".join(f"{c['cite']} {c['value']}%" for c in pooled_rows)
             flag("conflict", "high", s["sign"],
                  f"studies disagree by {s['spread']} points on the {s['direction']} figure "
                  f"(pooled {s['pooled']}%, range {s['low']}-{s['high']}%).",
@@ -170,24 +182,47 @@ def review():
                 flag("duplicate", "medium", s["sign"],
                      f"study '{study}' contributes {cnt} observations to one sign (possible repeated upload).")
 
-        # UNMARKED_RESTATEMENT - a review reporting a primary's number without being
-        # marked as restating it. Once marked, the pooling engine drops it from the
-        # average, so a flag here means a real one is still being counted twice.
-        reviews = [c for c in numeric if c.get("ground_truth") == "review"
-                   and not c.get("restates")]
-        primaries = [c for c in numeric if c.get("ground_truth") != "review"]
-        for r in reviews:
-            for p in primaries:
-                if abs(r["value"] - p["value"]) <= DOUBLE_TOL:
-                    flag("unmarked_restatement", "high", s["sign"],
-                         f"review {r['cite']} ({r['value']}%) and primary {p['cite']} ({p['value']}%) "
-                         f"agree within {DOUBLE_TOL} points - the review may be citing the primary series; "
-                         f"pooling both slightly double-weights this datum.")
+        # UNMARKED_RESTATEMENT - a review reporting a figure another averaged source
+        # already reports, without being marked as restating it. Once marked, the
+        # pooling engine drops it, so a flag here means one measurement is still
+        # being averaged as two.
+        #
+        # Any pair with a review on at least one side qualifies. Restricting this to
+        # review-vs-primary missed the commoner case entirely: two reviews citing the
+        # same series neither of them ran. Three signs sat in the pool that way -
+        # Loddenkemper 2005 and Kinney 2019 at 100 / 93 / 89% - while this check
+        # reported nothing, because it never paired two reviews with each other.
+        #
+        # Primary-vs-primary is left alone: separate cohorts landing on the same
+        # figure is replication, which is the one thing here that earns k = 2.
+        for i, a in enumerate(pooled_rows):
+            for b in pooled_rows[i + 1:]:
+                if abs(a["value"] - b["value"]) > DOUBLE_TOL:
+                    continue
+                a_rev, b_rev = a.get("ground_truth") == "review", b.get("ground_truth") == "review"
+                if not (a_rev or b_rev):
+                    continue
+                kind = ("two reviews report the same figure - they may be citing one series"
+                        if a_rev and b_rev else
+                        "the review may be citing the primary series")
+                flag("unmarked_restatement", "high", s["sign"],
+                     f"{'review' if a_rev else 'primary'} {a['cite']} ({a['value']}%) and "
+                     f"{'review' if b_rev else 'primary'} {b['cite']} ({b['value']}%) agree within "
+                     f"{DOUBLE_TOL} points - {kind}; pooling both counts one measurement twice. "
+                     f"Mark the restating observation `provenance: secondary_citation`.")
+
+        # ORPHAN_RESTATEMENT - `restates` must name a study in observations.json, or the
+        # page prints an attribution that traces to nothing.
+        for c in numeric:
+            if c.get("restates") and c["restates"] not in obs.get("studies", {}):
+                flag("orphan_restatement", "high", s["sign"],
+                     f"{c['cite']} is marked as restating '{c['restates']}', which is not a study "
+                     f"in observations.json; the card would cite a source that does not exist.")
 
         # SINGLE_SOURCE - low robustness
         if s.get("pooled") is not None and s["n_studies"] == 1:
             flag("single_source", "low", s["sign"],
-                 f"pooled figure rests on a single study ({numeric[0]['cite'] if numeric else '?'}); "
+                 f"pooled figure rests on a single study ({pooled_rows[0]['cite'] if pooled_rows else '?'}); "
                  f"treat as provisional until corroborated.")
 
     # cross-sign: identical finding text attributed to two different papers
@@ -224,7 +259,10 @@ def review():
         # A conflict is a fact about the literature, not a defect a build can fix -
         # it is surfaced, not blocked. An unmarked restatement IS a defect: it means
         # one measurement is being averaged as two, and a curator must mark it.
-        blocking = [f for f in flags if f["kind"] in ("unmarked_restatement", "direction_clash", "duplicate",
+        # Every other high-severity kind blocks too: a flag raised to high and then
+        # left out of this list is a check that only looks like one.
+        blocking = [f for f in flags if f["kind"] in ("unmarked_restatement", "orphan_restatement",
+                                                       "direction_clash", "duplicate", "duplicate_card",
                                                        "orphan_stem", "ppv_orphan_link", "ppv_direction_clash",
                                                        "sens_orphan_link", "sens_no_condition", "sens_bad_metric")]
         if blocking:

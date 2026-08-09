@@ -40,10 +40,42 @@ weight = class_base × ground_truth_mult × size_factor
 
 The scheme lives in `observations.json` and is tunable — change the numbers and
 re-run. For each sign the lateralization percentage is a weighted mean,
-`Σ(wᵢ·vᵢ)/Σwᵢ`, reported with its across-study range, a weighted SD, the summed
-weight, and a certainty tier. **Frequencies are not pooled** — they are
-population-specific (% of FLE vs % of TLE vs % of EMU patients), so pooling them
-would be invalid; they are listed in the source-figures table instead.
+`Σ(wᵢ·vᵢ)/Σwᵢ`, reported with its across-study range, the summed weight, and a
+certainty tier. A weighted SD is shown only from four contributing studies up:
+below that it is a spread statistic over two or three points, which is noise
+dressed as precision. **Frequencies are not pooled** — they are population-specific
+(% of FLE vs % of TLE vs % of EMU patients), so pooling them would be invalid; they
+are listed in the source-statistics table instead.
+
+### Restatements are not averaged
+
+A narrative review reporting a figure it took from a series is not a second
+measurement of that figure. Such an observation is marked
+`provenance: secondary_citation` and names the study it restates; it stays visible
+on the sign as a corroborating citation, labelled *restates X — not averaged*, and
+is excluded from both the mean and `k`. This applies whether the study it restates
+is the primary series itself or a second review of that same series — two reviews
+citing one cohort are still one cohort. `tools/adversarial_review.py` flags any
+unmarked pair that looks like this, and the check blocks CI, so the count beside a
+pooled percentage cannot quietly drift back to counting citations instead of
+studies.
+
+### Certainty tiers
+
+`k` is the number of studies contributing a percentage — restatements excluded, and
+direction-only sources never counted, since they measured nothing. The first
+matching rule wins:
+
+| Tier | Rule |
+|---|---|
+| single source | `k ≤ 1` |
+| contested | the studies disagree by ≥ 25 points, at any `k ≥ 2` |
+| well supported | `k ≥ 3` and they agree within 25 points |
+| moderate | `k = 2` and they agree within 25 points |
+
+Summed weight never sets the tier: a single heavy study is still a single study,
+and disagreement outranks count — two studies 38 points apart are not better
+evidence than two that agree.
 
 The plot offers two views of the same output: region → gyrus / Brodmann area →
 sign, and semiology A–Z → region. Each sign's per-study values and weights are one
@@ -83,15 +115,25 @@ page can never disagree:
 ## Review checks — `tools/adversarial_review.py`
 
 Runs on every pull request and writes `enrichment/review_flags.json`. It flags
-studies that disagree on a sign's figure, a pooled direction that contradicts the
-curated card, the same figure entered under two studies or two signs, a figure
-that attaches to no sign, figures resting on a single study, a PPV figure whose
-`card_ids` point at a card that does not exist, a PPV direction that contradicts
-the card it is surfaced on, and a sensitivity-tagged finding that links to a
-missing card, names no localization group, or sits on a non-frequency figure. It
-also records which signs have a computed sensitivity vs a curator estimate. These
-are advisory — a genuine, disclosed disagreement (e.g. ictal spitting) is surfaced
-on the relevant sign, not silently reconciled.
+studies that disagree on a sign's figure, an unmarked restatement, a `restates`
+target that names no study, a pooled direction that contradicts the curated card,
+the same figure entered under two studies or two signs, a figure that attaches to
+no sign, figures resting on a single study, a PPV figure whose `card_ids` point at
+a card that does not exist, a PPV direction that contradicts the card it is
+surfaced on, and a sensitivity-tagged finding that links to a missing card, names
+no localization group, or sits on a non-frequency figure. It also records which
+signs have a computed sensitivity vs a curator estimate.
+
+CI runs it with `--strict`, and the split matters:
+
+- **Blocking** — everything that means the data is wrong about itself: an unmarked
+  restatement, a `restates` naming a study that does not exist, a direction clash,
+  a duplicate study or duplicate card, an orphaned sign stem, and the PPV /
+  sensitivity link checks. A curator has to fix these before the change lands.
+- **Advisory** — `conflict` and `single_source`. A genuine, disclosed disagreement
+  (e.g. ictal spitting) is a fact about the literature, not a defect a build can
+  repair; it is surfaced on the relevant sign, not silently reconciled, and never
+  fails the build.
 
 ## Source-figures table — `generator/gen_study.py`
 
