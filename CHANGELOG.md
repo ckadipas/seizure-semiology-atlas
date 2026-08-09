@@ -5,6 +5,19 @@ Format loosely follows Keep a Changelog; dates are ISO-8601.
 
 ## [Unreleased]
 ### Added
+- **The Brodmann map is now under the same sync oversight as the rest of the atlas.**
+  The map carries its own curation layer — which cortical areas each sign localizes
+  to — keyed by sign id and by sub-region string, so it could drift out of step with
+  the dataset silently: an intake that added a sign, renamed a sub-region or
+  renumbered an id would have quietly left signs off the map with nothing failing.
+  `tools/check_brain_map.py` now runs in `make validate` and in CI ahead of the
+  build, and fails the deploy if: any rendered sign maps to no area (unless declared
+  unmapped with a reason); a per-sign override points at an id that no longer exists;
+  a sub-region rule is orphaned by a rename; a dataset sub-region has no rule; a rule
+  names an area that isn't defined; a defined area is drawn in no view and isn't
+  marked buried; or a label position refers to an area absent from that view. It
+  reports coverage on every run (currently 110/111 signs across 37 areas and 4 views,
+  with one sign declared unmapped because its record states no lobar localization).
 - **Interactive Brodmann map — "where each semiology localizes".** A new figure at the
   top of the page maps every sign in the dataset onto the Brodmann areas it localizes to,
   across three schematic surface views of one hemisphere: **lateral, dorsal and ventral**.

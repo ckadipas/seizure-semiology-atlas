@@ -35,6 +35,9 @@ jobs:
       - name: Validate dataset (integrity gate)
         run: python3 tools/validate_data.py
 
+      - name: Verify the Brodmann map is in sync with the dataset
+        run: python3 tools/check_brain_map.py
+
       - name: Verify generated data is in sync with its sources
         run: |
           python3 enrichment/build_enrichment.py

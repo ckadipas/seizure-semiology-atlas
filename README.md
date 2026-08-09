@@ -20,6 +20,7 @@ HTML page that is published to GitHub Pages.
 | `generator/gen_study.py` | Renders the self-contained HTML into `docs/`. |
 | `generator/brain_atlas.py` | Brodmann-map geometry (lateral/dorsal/ventral views) + the sign→area mapping. |
 | `tools/validate_data.py` | Schema + integrity gate (runs in CI). |
+| `tools/check_brain_map.py` | Keeps the Brodmann map in sync with the dataset (runs in CI). |
 | `tools/intake_paper.py` | Screens, de-dups, extracts & queues a new paper. |
 | `schema/sign.schema.json` | JSON Schema for a sign record. |
 | `corpus/manifest.csv` | Bibliographic metadata for the source library. |
