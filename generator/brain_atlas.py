@@ -116,15 +116,40 @@ def area_polygon(view, area):
 # --------------------------------------------------------------------------
 # semiology -> areas
 # --------------------------------------------------------------------------
-def areas_for_sign(sign):
+def mapping_for_sign(sign):
     """
-    Areas a sign localizes to: its per-sign entry if the map records one,
-    otherwise the rule for its sub-region.
+    Areas a sign localizes to, *and why the map gives it those areas*.
+
+    `via="sign"` — the map records an entry for this sign id, and `rule` is the
+    sign name that entry was written against (the same string the gate checks for
+    drift). `via="sub"` — the sign inherits the rule for its sub-region, and
+    `rule` is that sub-region. `via="none"` — no areas; `rule` carries the reason
+    if one is declared under `mapping.unmapped`.
+
+    Returning the provenance beside the ids is what lets the page state why a
+    sign highlights where it does, rather than asserting it.
     """
-    entry = MAPPING["by_sign"].get(str(sign.get("id")))
-    names = entry["areas"] if entry else MAPPING["by_sub"].get(sign.get("sub"), [])
+    sid = str(sign.get("id"))
+    entry = MAPPING["by_sign"].get(sid)
+    if entry:
+        names, via, rule = entry["areas"], "sign", entry.get("sign", "")
+    else:
+        rule = sign.get("sub", "")
+        names, via = MAPPING["by_sub"].get(rule, []), "sub"
     out, seen = [], set()
     for a in names:
         if a in AREAS and a not in seen:
             out.append(a); seen.add(a)
-    return out
+    if not out:
+        return {"areas": [], "via": "none", "rule": MAPPING["unmapped"].get(sid, "")}
+    return {"areas": out, "via": via, "rule": rule}
+
+
+def areas_for_sign(sign):
+    """Areas a sign localizes to (see `mapping_for_sign` for the provenance)."""
+    return mapping_for_sign(sign)["areas"]
+
+
+def views_with(aid):
+    """The views that draw an area — so the page can say where to look for it."""
+    return [v for v, spec in VIEWS.items() if any(a["id"] == aid for a in spec["areas"])]

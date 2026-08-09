@@ -5,6 +5,21 @@ Format loosely follows Keep a Changelog; dates are ISO-8601.
 
 ## [Unreleased]
 ### Added
+- **The Brodmann map now reads both ways.** It answered "which signs localize here?"; it
+  now also answers "where does *this* sign localize?" Every sign card carries a **Brodmann
+  areas** row — the area chips plus **Show on map** — and pressing it lights up every area
+  that sign localizes to, across whichever views draw them, landing on the view that shows
+  most of the set and flagging the others with a dot. Non-traced numerals fade so the set
+  reads at a glance; a single chip traces the set *and* opens that one area; each area in
+  the panel drills through to its own sign list with a one-tap way back.
+  The panel states **why** those areas: either the sign's own entry in
+  `data/brodmann_map.json` (quoting the name it was recorded against) or the sub-region rule
+  it inherits — the same provenance `tools/validate_data.py` gates, so the map explains its
+  reasoning rather than asserting it. Card and figure read the one mapping through one
+  accessor (`brain_atlas.mapping_for_sign`), so they cannot disagree: verified in-browser
+  that all 111 cards' chips equal the figure's own index, 110 mapped and 1 declared
+  unmapped. Areas with no surface (insula, cingulate, deep) trace as their chips; a sign not
+  expected from the displayed hemisphere says so.
 - **The Brodmann map follows the repo's own structure.** It was first written as a
   feature bolted onto the generator: 39 areas, 17 sub-region rules, 79 per-sign
   overrides, 80 label positions and 231 outline points all lived as Python literals
