@@ -716,7 +716,7 @@ def build_brain(signs):
         if mirrored:
             lab_g = (f'<g class="ba-labels lab-L">{"".join(labels)}</g>'
                      f'<g class="ba-labels lab-R">{"".join(rlabels)}</g>')
-            orient = (f'<text class="brain-orient" x="{vw/2}" y="{v["margin"][0][1]-24}" '
+            orient = (f'<text class="brain-orient" x="{vw/2}" y="{v["image"]["y"]-14:.0f}" '
                       f'text-anchor="middle">anterior</text>')
         else:
             lab_g = f'<g class="ba-labels">{"".join(labels)}</g>'

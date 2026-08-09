@@ -9,8 +9,9 @@ validated by `tools/validate_data.py`, rendered here. That keeps the map's
 knowledge reviewable as data and under the same gate as the rest of the atlas,
 instead of buried in generator code.
 
-What lives here is only geometry maths: smoothing a traced point list into a
-path, and reading an area's outline out of its record.
+A view is a reference plate and the numerals placed on it, so there is no
+geometry left to compute here: this loads the map and answers which areas a sign
+localizes to, and why.
 """
 import json
 import os
@@ -22,37 +23,6 @@ AREAS = MAP["areas"]
 VIEWS = MAP["views"]
 MAPPING = MAP["mapping"]
 ASSETS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
-
-
-# --------------------------------------------------------------------------
-# geometry
-# --------------------------------------------------------------------------
-def smooth_path(pts, closed=True, s=0.17):
-    """Catmull-Rom through the points, emitted as cubic beziers."""
-    n = len(pts)
-    if n < 3:
-        return "M " + " L ".join(f"{x:.1f},{y:.1f}" for x, y in pts)
-    d = [f"M {pts[0][0]:.1f},{pts[0][1]:.1f}"]
-    last = n if closed else n - 1
-    for i in range(last):
-        p0 = pts[(i - 1) % n] if closed else pts[max(i - 1, 0)]
-        p1, p2 = pts[i % n], pts[(i + 1) % n]
-        p3 = pts[(i + 2) % n] if closed else pts[min(i + 2, n - 1)]
-        c1 = (p1[0] + (p2[0] - p0[0]) * s, p1[1] + (p2[1] - p0[1]) * s)
-        c2 = (p2[0] - (p3[0] - p1[0]) * s, p2[1] - (p3[1] - p1[1]) * s)
-        d.append(f"C {c1[0]:.1f},{c1[1]:.1f} {c2[0]:.1f},{c2[1]:.1f} {p2[0]:.1f},{p2[1]:.1f}")
-    if closed:
-        d.append("Z")
-    return " ".join(d)
-
-
-def area_polygon(area):
-    """
-    An area's outline, traced off the reference plate by tools/brodmann_plate.py:
-    it follows the boundary the plate itself draws, so the shading on screen sits
-    on the anatomy rather than over it.
-    """
-    return [tuple(p) for p in area["points"]]
 
 
 # --------------------------------------------------------------------------
