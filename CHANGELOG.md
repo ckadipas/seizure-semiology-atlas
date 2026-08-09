@@ -5,6 +5,59 @@ Format loosely follows Keep a Changelog; dates are ISO-8601.
 
 ## [Unreleased]
 ### Fixed
+- **Six pooled figures had no study behind them at all.** Excluding a review that
+  restates another source still leaves a review standing in for a series, and after the
+  last fix six signs were in exactly that position: every percentage behind them is
+  Loddenkemper 2005 or Blair 2012 quoting a cohort this library has never read. Three of
+  them were the signs that fix had just relabelled **1 study with a percentage · single
+  source** — which describes who repeated the number, not who measured it. There is now
+  a **`review only`** tier, tested before every other, and those figures read *"1 review
+  with a percentage · review only — no primary series here"* with a panel saying the
+  figure is a pointer to the original paper rather than evidence this atlas has checked.
+  Affected: *hemifield visual aura* 100%, *postictal (Todd's) palsy* 93%, *unilateral
+  somatosensory aura* 89%, *ictal vomiting* 81%, *ictal spitting* 75%, and *lower facial
+  weakness* 80.5%. No percentage changes; what changes is the claim about who measured it.
+- **`lower facial weakness` was published as two agreeing studies.** It was **moderate ·
+  k = 2** on Loddenkemper 86% and Blair 75% — both narrative reviews, and both notes name
+  a 50-patient series. The near-identical-value check could never catch it: it needs
+  agreement within 2 points, and these differ by 11 precisely because two reviews can
+  disagree about what one cohort said. Two reviews on a sign with no primary series
+  between them is now flagged on that shape alone, regardless of the values.
+- **A review's figure was pooled as a second measurement whenever nobody had traced it.**
+  Fourteen review percentages were being averaged as independent measurements; nine
+  others, traced, had already dropped out. The seven that sit beside a primary series are
+  now flagged (`untraced_review_figure`) with the study count they are inflating, so the
+  backlog is visible on every run instead of resting on the absence of a note.
+- **The weighting scheme decided three figures, silently.** On most signs the weighted
+  and unweighted means agree within a point; on three they do not, because a light review
+  and a heavy series disagree and the weights pick the winner — *automatisms with
+  preserved responsiveness* 67.6% against a plain mean of 81%, *postictal nose-wiping*
+  66.4% against 77%, *unilateral clonic activity* 96.6% against 91.5%. Each now prints
+  the plain mean beside the weighted one, so the reader can see how much of the number is
+  the scheme's doing rather than the data's.
+- **A sensitivity figure could count one publication twice.** `k` was the number of
+  tagged rows while the caption called it publications, and the mean was taken over rows
+  — so a paper reporting the same sign-in-group frequency in two places would have got
+  double the influence and an inflated `k`. Nothing in the corpus triggers it yet; the
+  engine now collapses within a publication before averaging across publications, which
+  is the rule restatements already get upstream.
+- **Unweighted rows still drew a sliver of weight bar.** The previous change replaced the
+  weight *number* with a dash on rows that were never averaged, but `.mc-bar` carries
+  `min-width:3px`, so a zero-width bar still painted a 3px block beside the dash. The
+  element is now omitted entirely on those rows.
+- **"range 93–93%"** was printed wherever a figure rested on one value — the arithmetic
+  of a single number dressed up as a spread. The range is shown only when there is one.
+### Changed
+- **`METHODS.md` says what `N` actually is.** It is the study's cohort size, not the
+  number of patients the lateralization percentage was computed over — usually different,
+  often by a lot (Wyllie 1986 is a 37-patient study whose version figure rests on 27).
+  The per-sign denominator is not in the ledger; where a source states it, it appears in
+  the observation's note and nowhere else. `size_factor` is therefore a proxy for how
+  substantial a study is, not for how precisely it estimated that percentage, and ten of
+  the sixteen studies report no N at all, where it is 1.0 and does nothing. Also recorded:
+  sensitivity means are unweighted while lateralization means are weighted, so the two
+  kinds of figure are not comparable.
+### Fixed
 - **The restatement check could not see the commonest restatement.** It compared each
   review against the *primary series* in the same pool, so two reviews citing one series
   neither of them ran never formed a pair — and that is exactly what was in the data.

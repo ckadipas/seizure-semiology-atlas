@@ -38,6 +38,23 @@ weight = class_base × ground_truth_mult × size_factor
 | `ground_truth_mult` | SEEG / post-op = 1.5; intracranial EEG = 1.35; imaging concordance = 1.15; video-EEG = 1.2; scalp EEG = 1.1; review = 1.0 |
 | `size_factor` | `1 + log10(N)/2`, capped at 2.0, when N is reported; 1.0 otherwise (N is never assumed) |
 
+**What `N` is, and what it is not.** `N` is the size of the study's *cohort*, not the
+number of patients the lateralization percentage was actually computed over. Those are
+usually different, often by a lot: Wyllie 1986 is a 37-patient study whose version
+figure rests on 27, and a 500-patient series reporting a sign seen in 12 would carry the
+weight of 500. The per-sign denominator is not recorded in the ledger — where a source
+states it, it appears verbatim in the observation's note and nowhere else. So
+`size_factor` is a rough proxy for how substantial the study is, **not** a measure of
+how precisely that percentage was estimated, and it must not be read as one. Ten of the
+sixteen studies report no N at all, where the factor is 1.0 and does nothing.
+
+**Where the weighting decides the answer, the answer says so.** On most signs the
+weighted and unweighted means agree to within a point. On three they do not — because
+a light review and a heavy series disagree, and the weights, not the data, pick the
+winner. Those figures publish the plain mean beside the weighted one (*"unweighted mean
+77%"*), so a reader can see how much of the number is the scheme's doing. The threshold
+is 5 points; below it the second figure would be noise.
+
 The scheme lives in `observations.json` and is tunable — change the numbers and
 re-run. For each sign the lateralization percentage is a weighted mean,
 `Σ(wᵢ·vᵢ)/Σwᵢ`, reported with its across-study range, the summed weight, and a
@@ -68,6 +85,7 @@ matching rule wins:
 
 | Tier | Rule |
 |---|---|
+| review only | every value in the pool came from a narrative review |
 | single source | `k ≤ 1` |
 | contested | the studies disagree by ≥ 25 points, at any `k ≥ 2` |
 | well supported | `k ≥ 3` and they agree within 25 points |
@@ -76,6 +94,19 @@ matching rule wins:
 Summed weight never sets the tier: a single heavy study is still a single study,
 and disagreement outranks count — two studies 38 points apart are not better
 evidence than two that agree.
+
+**`review only` is the restatement rule one level up.** Excluding a review that restates
+another source still leaves a review standing in for a series, and six signs here are in
+exactly that position: every percentage behind them is Loddenkemper 2005 or Blair 2012
+quoting a cohort this library has never read. Calling that *"1 study with a percentage"*
+describes who repeated the number, not who measured it, so those figures now read *"1
+review with a percentage · review only — no primary series here"* and carry the lowest
+certainty. Two reviews on one sign with no series between them is worse still — it is
+the shape of a single cohort quoted twice, and unlike the unmarked-restatement check it
+cannot be caught by comparing values, because the two reviews may disagree about what
+the cohort said. *Lower facial weakness* is that case: 86% and 75%, both traceable in
+their own notes to a 50-patient series. Such a figure is a pointer to the original
+paper, not evidence this atlas has checked.
 
 The plot offers two views of the same output: region → gyrus / Brodmann area →
 sign, and semiology A–Z → region. Each sign's per-study values and weights are one
@@ -106,7 +137,12 @@ page can never disagree:
   one of them updates on the next build. Coverage is sparse and uneven — the corpus
   reports these frequencies inconsistently — so each figure shows its source count `k`;
   a card with no localization-conditioned frequency keeps a curator estimate tagged
-  `est.`.
+  `est.`. `k` counts **publications**, not tagged rows: a paper reporting the same
+  sign-in-group frequency in two places is collapsed to its own mean first, so it cannot
+  contribute twice or inflate `k` — the same rule restatements get upstream. These means
+  are unweighted, unlike the lateralization figures, because the group denominators are
+  not recorded; the two kinds of number are not comparable and should not be read
+  side by side as if they were.
 - **Specificity** is **not computed**: it needs the sign's rate in the *other*
   localization groups (the false-positive side), which this corpus reports for
   essentially no sign. Card specificity therefore stays a curator teaching estimate,
@@ -130,10 +166,17 @@ CI runs it with `--strict`, and the split matters:
   restatement, a `restates` naming a study that does not exist, a direction clash,
   a duplicate study or duplicate card, an orphaned sign stem, and the PPV /
   sensitivity link checks. A curator has to fix these before the change lands.
-- **Advisory** — `conflict` and `single_source`. A genuine, disclosed disagreement
-  (e.g. ictal spitting) is a fact about the literature, not a defect a build can
-  repair; it is surfaced on the relevant sign, not silently reconciled, and never
-  fails the build.
+- **Advisory** — `conflict`, `single_source`, `review_only_figure` and
+  `untraced_review_figure`. A genuine, disclosed disagreement (e.g. ictal spitting) is a
+  fact about the literature, not a defect a build can repair; it is surfaced on the
+  relevant sign, not silently reconciled, and never fails the build. The two review
+  flags describe how thin the evidence is: the fix is a curator tracing a citation, or
+  the library gaining the paper the review was quoting. Neither is something a build can
+  do, so neither blocks — but both are counted and printed on every run.
+  `untraced_review_figure` currently stands at seven: review percentages pooled beside a
+  primary series as though they were independent second measurements, on the strength of
+  nobody having traced them yet. Nine others have been traced and dropped out of their
+  averages; these are the ones still waiting.
 
 ## Source-figures table — `generator/gen_study.py`
 

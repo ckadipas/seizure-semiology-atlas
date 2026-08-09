@@ -93,7 +93,20 @@ _gtname = {"seeg":"SEEG","postop":"post-op sz-freedom","intracranial_eeg":"intra
            "review":"review","none":"none"}
 _dirword = {"contra":"Contralateral","ipsi":"Ipsilateral","dominant":"Dominant hemisphere","nondominant":"Non-dominant hemisphere"}
 _certword = {"well_supported":"well supported","moderate":"moderate",
-             "contested":"contested \u2014 sources disagree","single_source":"single source"}
+             "contested":"contested \u2014 sources disagree","single_source":"single source",
+             "review_only":"review only \u2014 no primary series here"}
+# Where the weighting scheme moves the answer by more than this many points, the
+# printed figure is as much the scheme's doing as the data's, and the plain mean is
+# shown beside it. Below it, the two agree to within rounding and the extra number
+# would be noise.
+SWING_POINTS = 5.0
+
+def swing_note(ms):
+    sw = ms.get("weight_swing")
+    if sw is None or abs(sw) < SWING_POINTS:
+        return ""
+    return (f' &middot; <span class="pooled-swing" title="The weighting scheme, not the data, '
+            f'accounts for this difference">unweighted mean {ms["unweighted"]:g}%</span>')
 
 def pooled_block_for(ms):
     """The card's lateralization evidence, rendered from the shared meta ledger."""
@@ -119,15 +132,24 @@ def pooled_block_for(ms):
     nnum = ms.get("n_studies", 0)
     nrest = sum(1 for c in ms.get("contributions", []) if c.get("restates"))
     nqual = ms.get("n_qualitative", 0) - nrest
-    kword = f'{nnum} stud{"y" if nnum == 1 else "ies"} with a percentage'
+    # "1 study with a percentage" reads as though a study measured it. Where every
+    # value came from a narrative review, none did - the number is quoted from a
+    # cohort this library has not read, and the count must say so.
+    if nnum and ms.get("n_primary") == 0:
+        kword = f'{nnum} review{"" if nnum == 1 else "s"} with a percentage'
+    else:
+        kword = f'{nnum} stud{"y" if nnum == 1 else "ies"} with a percentage'
     if nqual > 0:
         kword += f' &middot; {nqual} direction-only source{"" if nqual == 1 else "s"}'
     if nrest:
         kword += f' &middot; {nrest} restatement{"" if nrest == 1 else "s"} excluded'
     if ms.get("pooled") is not None:
+        # one value has no range; "range 93-93%" is the arithmetic of a single number
+        # dressed up as a spread
+        rng = (f'&middot; range {ms["low"]:g}&#8211;{ms["high"]:g}% ' if ms["high"] > ms["low"] else '')
         head = (f'<span class="pooled-hd"><strong>{ms["pooled"]:g}% {esc(_dirword.get(ms["direction"], ms["direction"]))}</strong> '
-                f'&middot; range {ms["low"]:g}&#8211;{ms["high"]:g}% &middot; {kword}'
-                f' &middot; {_certword.get(ms.get("certainty"),"?")}</span>')
+                f'{rng}&middot; {kword}'
+                f' &middot; {_certword.get(ms.get("certainty"),"?")}{swing_note(ms)}</span>')
     else:
         head = f'<span class="pooled-hd"><strong>{esc(_dirword.get(ms["direction"], ms["direction"]))}</strong> &middot; direction-only (no pooled %)</span>'
     contested = ('<div class="pooled-warn">&#9888;&#65039; '+esc(ms["contested"])+'</div>') if ms.get("contested") else ''
@@ -381,9 +403,11 @@ def build_meta(meta, flags):
     if not meta or not meta.get("by_sign"):
         return ""
     dirlabel = {"contra":"CONTRA","ipsi":"IPSI","dominant":"DOMINANT","nondominant":"NON-DOM"}
-    certpips = {"well_supported":3, "moderate":2, "contested":1, "single_source":1}
+    certpips = {"well_supported":3, "moderate":2, "contested":1, "single_source":1,
+                "review_only":1}
     certname = {"well_supported":"well supported", "moderate":"moderate",
-                "contested":"contested &mdash; sources disagree", "single_source":"single source"}
+                "contested":"contested &mdash; sources disagree", "single_source":"single source",
+                "review_only":"review only &mdash; no primary series in this library"}
     gtname = {"seeg":"SEEG","postop":"post-op sz-freedom","intracranial_eeg":"intracranial EEG",
               "video_eeg":"video-EEG","scalp_eeg":"scalp EEG","imaging_concordance":"imaging concordance",
               "review":"review","none":"none"}
@@ -421,8 +445,12 @@ def build_meta(meta, flags):
                 g.append(f'<line x1="{X(v):.1f}" y1="{y-4}" x2="{X(v):.1f}" y2="{y+4}" stroke="{col}" stroke-width="1" stroke-opacity="0.55"/>')
         # pooled marker (native hover tooltip via <title>)
         r = 3.2 + certpips.get(s.get("certainty"),1)*0.7
-        tip = (f'{s["sign"]} — weighted average {pooled:g}% {s["direction"]}; range {lo:g}-{hi:g}%; '
-               f'{s["n_studies"]} stud{"y" if s["n_studies"]==1 else "ies"} with a percentage')
+        k = s["n_studies"]
+        src = (f'{k} review{"" if k==1 else "s"} with a percentage, no primary series here'
+               if s.get("n_primary") == 0 else
+               f'{k} stud{"y" if k==1 else "ies"} with a percentage')
+        tip = (f'{s["sign"]} — weighted average {pooled:g}% {s["direction"]}; '
+               + (f'range {lo:g}-{hi:g}%; ' if hi > lo else '') + src)
         g.append(f'<circle cx="{X(pooled):.1f}" cy="{y}" r="{r:.1f}" fill="{col}" stroke="#fff" stroke-width="1.4"><title>{esc(tip)}</title></circle>')
         g.append('</svg>')
         return "".join(g)
@@ -436,7 +464,11 @@ def build_meta(meta, flags):
             # direction-only source has one on paper, but it multiplied nothing - so
             # the column says so instead of printing a number that had no effect.
             averaged = "value" in c and not c.get("restates")
-            barw = max(3, round(w/maxw*100)) if averaged else 0
+            # .mc-bar has min-width:3px, so a zero-width bar still paints a stub - the
+            # row has to omit the element entirely, or an unweighted source keeps a
+            # visible sliver of weight next to the dash that says it carries none
+            bar = ('<span class="mc-bar" style="width:' + str(max(3, round(w/maxw*100)))
+                   + '%;background:' + latcolor.get(s["direction"], "#888") + '"></span>') if averaged else ''
             if c.get("restates"):
                 val = ('<span class="mc-qual mc-restate">' + (str(c["value"])+'% ' if c.get("value") is not None else '')
                        + 'restates ' + esc(c["restates"]) + ' &mdash; not averaged</span>')
@@ -449,7 +481,7 @@ def build_meta(meta, flags):
                 '<div class="mc-row">'
                 + '<span class="mc-cite">'+esc(c.get("cite",c["study"]))+'</span>'
                 + '<span class="mc-val">'+val+'</span>'
-                + '<span class="mc-wt" title="'+esc(wtitle)+'"><span class="mc-bar" style="width:'+str(barw)+'%;background:'+latcolor.get(s["direction"],"#888")+'"></span><span class="mc-wn">'+(f'{w:.2f}' if averaged else '&#8212;')+'</span></span>'
+                + '<span class="mc-wt" title="'+esc(wtitle)+'">'+bar+'<span class="mc-wn">'+(f'{w:.2f}' if averaged else '&#8212;')+'</span></span>'
                 + '<span class="mc-cl">'+esc(c.get("eclass") or "?")+'</span>'
                 + '<span class="mc-gt">'+esc(gtname.get(c.get("ground_truth"),c.get("ground_truth") or "-"))+'</span>'
                 + '<span class="mc-n">'+(str(c["n"]) if c.get("n") else "&#8212;")+'</span>'
@@ -460,9 +492,22 @@ def build_meta(meta, flags):
         return "".join(rows)
 
     def caveats(s):
+        out = ""
+        if s.get("certainty") == "review_only":
+            n = s.get("n_reviews_pooled", 0)
+            out += ('<div class="mcav mcav-warn"><strong>Review only.</strong> '
+                    + ('The figure below comes' if n <= 1 else
+                       'Both figures below come' if n == 2 else
+                       f'All {n} figures below come')
+                    + ' from a narrative review quoting a series this library has not read, so no '
+                      'study here measured it. '
+                    + ('Two reviews with no primary series between them may be quoting one cohort. '
+                       if n > 1 else '')
+                    + 'Treat it as a pointer to the original paper, not as evidence this atlas has '
+                      'checked.</div>')
         if s.get("contested"):
-            return '<div class="mcav mcav-warn"><strong>Contested.</strong> '+esc(s["contested"])+'</div>'
-        return ""
+            out += '<div class="mcav mcav-warn"><strong>Contested.</strong> '+esc(s["contested"])+'</div>'
+        return out
 
     _rid = [0]
     def row(s, view):
@@ -481,12 +526,17 @@ def build_meta(meta, flags):
         summ = ''
         if s.get("pooled") is not None:
             sd = (f'&middot; weighted SD {s["wsd"]:g} ' if s.get("wsd") is not None else '')
-            summ = (f'weighted average <strong>{s["pooled"]:g}%</strong> &middot; range {s["low"]:g}&#8211;{s["high"]:g}% '
+            kw = (f'{nnum} review{"" if nnum==1 else "s"} with a percentage'
+                  if s.get("n_primary") == 0 else
+                  f'{nnum} stud{"y" if nnum==1 else "ies"} with a percentage')
+            rspan = (f'&middot; range {s["low"]:g}&#8211;{s["high"]:g}% ' if s["high"] > s["low"] else '')
+            summ = (f'weighted average <strong>{s["pooled"]:g}%</strong> {rspan}'
                     f'{sd}&middot; &Sigma;weight {s.get("total_weight",0):g} '
-                    f'&middot; {nnum} stud{"y" if nnum==1 else "ies"} with a percentage'
+                    f'&middot; {kw}'
                     + (f' &middot; {nqual} direction-only' if nqual > 0 else '')
                     + (f' &middot; {nrest} restatement{"" if nrest==1 else "s"} excluded' if nrest else '')
-                    + f' &middot; {certname.get(s.get("certainty"),"?")}')
+                    + f' &middot; {certname.get(s.get("certainty"),"?")}'
+                    + swing_note(s))
         else:
             summ = f'direction-only ({nqual} source{"s" if nqual!=1 else ""}); no percentage to average'
         sortp = s["pooled"] if s.get("pooled") is not None else -1
@@ -547,7 +597,7 @@ def build_meta(meta, flags):
     <span><span class="ml-dot" style="background:{latcolor['ipsi']}"></span>Ipsilateral</span>
     <span><span class="ml-dot" style="background:{latcolor['dominant']}"></span>Dominant</span>
     <span><span class="ml-dot" style="background:{latcolor['nondominant']}"></span>Non-dominant</span>
-    <span class="ml-cert"><i class="on"></i><i class="on"></i><i class="on"></i> certainty (number of studies; contested if they disagree)</span>
+    <span class="ml-cert"><i class="on"></i><i class="on"></i><i class="on"></i> certainty (number of studies; contested if they disagree, review only if no series here measured it)</span>
   </div>
   <div class="meta-view" id="meta-view-region">{view_region}</div>
   <div class="meta-view" id="meta-view-sign" hidden>{view_sign}</div>
@@ -1287,6 +1337,7 @@ body.quiz .lib-chip{display:none}
 .ev-pop{font-size:.72rem;color:#5a6472;font-style:italic;margin-left:3px}
 .ev-restate{color:#8a5209;background:#fdf3e4;border:1px solid #e8c79a;border-radius:4px;padding:0 5px;font-weight:600}
 .mc-restate{color:#8a5209;font-style:normal}
+.pooled-swing{color:#8a5209;border-bottom:1px dotted #c69a5c;cursor:help}
 .ev-quote{color:#0a6472;cursor:help;font-weight:800}
 
 /* framework callout */

@@ -15,6 +15,12 @@ evidence is added:
   * ORPHAN_RESTATEMENT - an observation's `restates` names a study that is not in
                       observations.json, so the card would cite a source that does not
                       exist.
+  * REVIEW_ONLY_FIGURE - every value behind a pooled percentage is a narrative review
+                      quoting a cohort this library has not read, so no series here
+                      measured the figure and k counts reviews rather than measurements.
+  * UNTRACED_REVIEW_FIGURE - a review's percentage is averaged beside a primary series
+                      as an independent second measurement, without the series it took
+                      the figure from having been identified.
   * DUPLICATE       - the exact same finding text is attributed to two different
                       papers, or one paper is listed twice for a single sign
                       (repeated-upload / merge artifact).
@@ -35,7 +41,10 @@ pass --strict (which CI does) to exit non-zero on the flags that mark a defect a
 curator must fix: UNMARKED_RESTATEMENT, ORPHAN_RESTATEMENT, DIRECTION_CLASH,
 DUPLICATE, DUPLICATE_CARD, ORPHAN_STEM and the PPV / sensitivity link checks. A
 CONFLICT is a fact about the literature rather than a defect, so it is surfaced on
-the page and never blocks; SINGLE_SOURCE likewise.
+the page and never blocks; SINGLE_SOURCE, REVIEW_ONLY_FIGURE and
+UNTRACED_REVIEW_FIGURE likewise — they describe how thin the evidence is, and the
+fix is a curator tracing a citation or the library gaining a paper, neither of
+which a build can do.
 
 Checking whether a figure faithfully reflects its paper needs the source text and
 is done during intake review, not here.
@@ -219,11 +228,41 @@ def review():
                      f"{c['cite']} is marked as restating '{c['restates']}', which is not a study "
                      f"in observations.json; the card would cite a source that does not exist.")
 
-        # SINGLE_SOURCE - low robustness
-        if s.get("pooled") is not None and s["n_studies"] == 1:
+        # SINGLE_SOURCE - low robustness. Only where that one source is a series: a
+        # lone review is the weaker review_only case below, and calling it "a single
+        # study" here would reintroduce the very wording that flag exists to correct.
+        if s.get("pooled") is not None and s["n_studies"] == 1 and s.get("n_primary") == 1:
             flag("single_source", "low", s["sign"],
                  f"pooled figure rests on a single study ({pooled_rows[0]['cite'] if pooled_rows else '?'}); "
                  f"treat as provisional until corroborated.")
+
+        # REVIEW_ONLY_FIGURE - no series in this library measured this. Every value in
+        # the pool is a narrative review quoting a cohort that was never read here, so
+        # "1 study with a percentage" describes who repeated the number, not who
+        # measured it. This is the restatement problem one level up: excluding a review
+        # that restates another review still leaves a review standing in for a series.
+        revs = [c for c in pooled_rows if c.get("ground_truth") == "review"]
+        if s.get("pooled") is not None and s.get("n_primary") == 0:
+            vals = ", ".join(f"{c['cite']} {c['value']}%" for c in revs)
+            extra = ("" if len(revs) < 2 else
+                     " Two reviews on one sign with no primary series between them is the shape of a "
+                     "single cohort quoted twice; differing figures do not rule that out, so the "
+                     "near-identical-value check will not catch it.")
+            flag("review_only_figure", "medium", s["sign"],
+                 f"every averaged value is a narrative review quoting a series this library has not "
+                 f"read ({vals}); k counts reviews, not measurements.{extra}")
+
+        # UNTRACED_REVIEW_FIGURE - a review's percentage averaged beside a primary series
+        # as though it were a second, independent measurement of the same thing. It
+        # usually is not: it is a figure the review took from somewhere. Where the source
+        # is identified the observation becomes `secondary_citation` and drops out of the
+        # average; until then it is being pooled on the strength of not having been traced.
+        if s.get("n_primary") and revs:
+            vals = ", ".join(f"{c['cite']} {c['value']}%" for c in revs)
+            flag("untraced_review_figure", "medium", s["sign"],
+                 f"{len(revs)} review figure(s) pooled beside {s['n_primary']} primary series as "
+                 f"independent measurement(s) ({vals}); if the series behind them is one already in "
+                 f"this pool, mark `provenance: secondary_citation` and it drops out of the average.")
 
     # cross-sign: identical finding text attributed to two different papers
     finding_index = {}

@@ -21,6 +21,7 @@
   "size_cap": 2.0,
   "certainty_tiers": {
    "_order": "Tested in this order; the first that matches wins.",
+   "review_only": "every value in the pool comes from a narrative review quoting a series this library has not read, so no study here measured the figure (k counts reviews, not measurements)",
    "single_source": "k <= 1 (at most one study carries a percentage)",
    "contested": "the studies disagree by 25 points or more, at any k >= 2",
    "well_supported": "k >= 3 and the studies agree within 25 points",
@@ -55,6 +56,7 @@
          "cite": "Gabr et al. 1989",
          "eclass": "II",
          "ground_truth": "intracranial_eeg",
+         "is_review": false,
          "n": 35,
          "weight": 4.784,
          "weight_parts": {
@@ -72,6 +74,7 @@
          "cite": "Loddenkemper & Kotagal 2005",
          "eclass": "III",
          "ground_truth": "review",
+         "is_review": true,
          "n": null,
          "weight": 1.0,
          "weight_parts": {
@@ -89,7 +92,11 @@
        ],
        "n_studies": 1,
        "n_qualitative": 1,
+       "n_primary": 1,
+       "n_reviews_pooled": 0,
        "pooled": 100.0,
+       "unweighted": 100.0,
+       "weight_swing": 0.0,
        "low": 100,
        "high": 100,
        "spread": 0,
@@ -121,6 +128,7 @@
          "cite": "Gabr et al. 1989",
          "eclass": "II",
          "ground_truth": "intracranial_eeg",
+         "is_review": false,
          "n": 35,
          "weight": 4.784,
          "weight_parts": {
@@ -138,6 +146,7 @@
          "cite": "Maillard et al. 2004",
          "eclass": "II",
          "ground_truth": "seeg",
+         "is_review": false,
          "n": 26,
          "weight": 5.122,
          "weight_parts": {
@@ -155,6 +164,7 @@
          "cite": "Serafetinides & Falconer 1963",
          "eclass": "II",
          "ground_truth": "postop",
+         "is_review": false,
          "n": 100,
          "weight": 6.0,
          "weight_parts": {
@@ -172,6 +182,7 @@
          "cite": "Blair 2012",
          "eclass": "III",
          "ground_truth": "review",
+         "is_review": true,
          "n": null,
          "weight": 1.0,
          "weight_parts": {
@@ -189,6 +200,7 @@
          "cite": "Loddenkemper & Kotagal 2005",
          "eclass": "III",
          "ground_truth": "review",
+         "is_review": true,
          "n": null,
          "weight": 1.0,
          "weight_parts": {
@@ -208,6 +220,7 @@
          "cite": "Abou-Khalil (in Misulis et al. 2022)",
          "eclass": "III",
          "ground_truth": "review",
+         "is_review": true,
          "n": null,
          "weight": 1.0,
          "weight_parts": {
@@ -223,7 +236,11 @@
        ],
        "n_studies": 4,
        "n_qualitative": 2,
+       "n_primary": 3,
+       "n_reviews_pooled": 1,
        "pooled": 92.3,
+       "unweighted": 90.8,
+       "weight_swing": 1.5,
        "low": 85,
        "high": 94,
        "spread": 9,
@@ -253,6 +270,7 @@
          "cite": "Gabr et al. 1989",
          "eclass": "II",
          "ground_truth": "intracranial_eeg",
+         "is_review": false,
          "n": 35,
          "weight": 4.784,
          "weight_parts": {
@@ -270,6 +288,7 @@
          "cite": "Loddenkemper & Kotagal 2005",
          "eclass": "III",
          "ground_truth": "review",
+         "is_review": true,
          "n": null,
          "weight": 1.0,
          "weight_parts": {
@@ -289,6 +308,7 @@
          "cite": "Roh et al. 1996",
          "eclass": "II",
          "ground_truth": "video_eeg",
+         "is_review": false,
          "n": 19,
          "weight": 3.935,
          "weight_parts": {
@@ -304,7 +324,11 @@
        ],
        "n_studies": 1,
        "n_qualitative": 2,
+       "n_primary": 1,
+       "n_reviews_pooled": 0,
        "pooled": 83.0,
+       "unweighted": 83.0,
+       "weight_swing": 0.0,
        "low": 83,
        "high": 83,
        "spread": 0,
@@ -336,6 +360,7 @@
          "cite": "Loddenkemper & Kotagal 2005",
          "eclass": "III",
          "ground_truth": "review",
+         "is_review": true,
          "n": null,
          "weight": 1.0,
          "weight_parts": {
@@ -353,6 +378,7 @@
          "cite": "Elwan et al. 2018",
          "eclass": "II",
          "ground_truth": "postop",
+         "is_review": false,
          "n": 73,
          "weight": 5.795,
          "weight_parts": {
@@ -370,6 +396,7 @@
          "cite": "Abou-Khalil (in Misulis et al. 2022)",
          "eclass": "III",
          "ground_truth": "review",
+         "is_review": true,
          "n": null,
          "weight": 1.0,
          "weight_parts": {
@@ -385,7 +412,11 @@
        ],
        "n_studies": 2,
        "n_qualitative": 1,
+       "n_primary": 1,
+       "n_reviews_pooled": 1,
        "pooled": 67.6,
+       "unweighted": 81.0,
+       "weight_swing": -13.4,
        "low": 62,
        "high": 100,
        "spread": 38,
@@ -417,6 +448,7 @@
          "cite": "Loddenkemper & Kotagal 2005",
          "eclass": "III",
          "ground_truth": "review",
+         "is_review": true,
          "n": null,
          "weight": 1.0,
          "weight_parts": {
@@ -434,6 +466,7 @@
          "cite": "Roh et al. 1996",
          "eclass": "II",
          "ground_truth": "video_eeg",
+         "is_review": false,
          "n": 19,
          "weight": 3.935,
          "weight_parts": {
@@ -451,6 +484,7 @@
          "cite": "Blair 2012",
          "eclass": "III",
          "ground_truth": "review",
+         "is_review": true,
          "n": null,
          "weight": 1.0,
          "weight_parts": {
@@ -468,6 +502,7 @@
          "cite": "Abou-Khalil (in Misulis et al. 2022)",
          "eclass": "III",
          "ground_truth": "review",
+         "is_review": true,
          "n": null,
          "weight": 1.0,
          "weight_parts": {
@@ -483,13 +518,17 @@
        ],
        "n_studies": 1,
        "n_qualitative": 3,
+       "n_primary": 0,
+       "n_reviews_pooled": 1,
        "pooled": 81.0,
+       "unweighted": 81.0,
+       "weight_swing": 0.0,
        "low": 81,
        "high": 81,
        "spread": 0,
        "wsd": null,
        "total_weight": 1.0,
-       "certainty": "single_source"
+       "certainty": "review_only"
       }
      ]
     },
@@ -515,6 +554,7 @@
          "cite": "Loddenkemper & Kotagal 2005",
          "eclass": "III",
          "ground_truth": "review",
+         "is_review": true,
          "n": null,
          "weight": 1.0,
          "weight_parts": {
@@ -532,6 +572,7 @@
          "cite": "Fakhoury et al. 1994",
          "eclass": "II",
          "ground_truth": "video_eeg",
+         "is_review": false,
          "n": null,
          "weight": 2.4,
          "weight_parts": {
@@ -549,6 +590,7 @@
          "cite": "Abou-Khalil (in Misulis et al. 2022)",
          "eclass": "III",
          "ground_truth": "review",
+         "is_review": true,
          "n": null,
          "weight": 1.0,
          "weight_parts": {
@@ -564,13 +606,17 @@
        ],
        "n_studies": 1,
        "n_qualitative": 2,
+       "n_primary": 0,
+       "n_reviews_pooled": 1,
        "pooled": 75.0,
+       "unweighted": 75.0,
+       "weight_swing": 0.0,
        "low": 75,
        "high": 75,
        "spread": 0,
        "wsd": null,
        "total_weight": 1.0,
-       "certainty": "single_source"
+       "certainty": "review_only"
       }
      ]
     },
@@ -596,6 +642,7 @@
          "cite": "Loddenkemper & Kotagal 2005",
          "eclass": "III",
          "ground_truth": "review",
+         "is_review": true,
          "n": null,
          "weight": 1.0,
          "weight_parts": {
@@ -613,6 +660,7 @@
          "cite": "Elwan et al. 2018",
          "eclass": "II",
          "ground_truth": "postop",
+         "is_review": false,
          "n": 73,
          "weight": 5.795,
          "weight_parts": {
@@ -630,6 +678,7 @@
          "cite": "Foldvary-Schaefer & Unnwongse 2011",
          "eclass": "III",
          "ground_truth": "review",
+         "is_review": true,
          "n": null,
          "weight": 1.0,
          "weight_parts": {
@@ -647,6 +696,7 @@
          "cite": "Abou-Khalil (in Misulis et al. 2022)",
          "eclass": "III",
          "ground_truth": "review",
+         "is_review": true,
          "n": null,
          "weight": 1.0,
          "weight_parts": {
@@ -662,7 +712,11 @@
        ],
        "n_studies": 2,
        "n_qualitative": 2,
+       "n_primary": 1,
+       "n_reviews_pooled": 1,
        "pooled": 66.4,
+       "unweighted": 77.0,
+       "weight_swing": -10.6,
        "low": 62,
        "high": 92,
        "spread": 30,
@@ -694,6 +748,7 @@
          "cite": "Roh et al. 1996",
          "eclass": "II",
          "ground_truth": "video_eeg",
+         "is_review": false,
          "n": 19,
          "weight": 3.935,
          "weight_parts": {
@@ -711,6 +766,7 @@
          "cite": "Loddenkemper & Kotagal 2005",
          "eclass": "III",
          "ground_truth": "review",
+         "is_review": true,
          "n": null,
          "weight": 1.0,
          "weight_parts": {
@@ -728,6 +784,7 @@
          "cite": "Abou-Khalil (in Misulis et al. 2022)",
          "eclass": "III",
          "ground_truth": "review",
+         "is_review": true,
          "n": null,
          "weight": 1.0,
          "weight_parts": {
@@ -743,7 +800,11 @@
        ],
        "n_studies": 2,
        "n_qualitative": 1,
+       "n_primary": 1,
+       "n_reviews_pooled": 1,
        "pooled": 85.4,
+       "unweighted": 84.5,
+       "weight_swing": 0.9,
        "low": 83,
        "high": 86,
        "spread": 3,
@@ -775,6 +836,7 @@
          "cite": "Roh et al. 1996",
          "eclass": "II",
          "ground_truth": "video_eeg",
+         "is_review": false,
          "n": 19,
          "weight": 3.935,
          "weight_parts": {
@@ -792,6 +854,7 @@
          "cite": "Loddenkemper & Kotagal 2005",
          "eclass": "III",
          "ground_truth": "review",
+         "is_review": true,
          "n": null,
          "weight": 1.0,
          "weight_parts": {
@@ -809,6 +872,7 @@
          "cite": "Foldvary-Schaefer & Unnwongse 2011",
          "eclass": "III",
          "ground_truth": "review",
+         "is_review": true,
          "n": null,
          "weight": 1.0,
          "weight_parts": {
@@ -826,6 +890,7 @@
          "cite": "Abou-Khalil (in Misulis et al. 2022)",
          "eclass": "III",
          "ground_truth": "review",
+         "is_review": true,
          "n": null,
          "weight": 1.0,
          "weight_parts": {
@@ -841,7 +906,11 @@
        ],
        "n_studies": 1,
        "n_qualitative": 3,
+       "n_primary": 1,
+       "n_reviews_pooled": 0,
        "pooled": 88.0,
+       "unweighted": 88.0,
+       "weight_swing": 0.0,
        "low": 88,
        "high": 88,
        "spread": 0,
@@ -878,6 +947,7 @@
          "cite": "Wyllie et al. 1986",
          "eclass": "II",
          "ground_truth": "video_eeg",
+         "is_review": false,
          "n": 37,
          "weight": 4.282,
          "weight_parts": {
@@ -895,6 +965,7 @@
          "cite": "Kotagal et al. 2000",
          "eclass": "II",
          "ground_truth": "postop",
+         "is_review": false,
          "n": 39,
          "weight": 5.387,
          "weight_parts": {
@@ -912,6 +983,7 @@
          "cite": "Roh et al. 1996",
          "eclass": "II",
          "ground_truth": "video_eeg",
+         "is_review": false,
          "n": 19,
          "weight": 3.935,
          "weight_parts": {
@@ -929,6 +1001,7 @@
          "cite": "Fakhoury et al. 1994",
          "eclass": "II",
          "ground_truth": "video_eeg",
+         "is_review": false,
          "n": null,
          "weight": 2.4,
          "weight_parts": {
@@ -946,6 +1019,7 @@
          "cite": "Loddenkemper & Kotagal 2005",
          "eclass": "III",
          "ground_truth": "review",
+         "is_review": true,
          "n": null,
          "weight": 1.0,
          "weight_parts": {
@@ -965,6 +1039,7 @@
          "cite": "Foldvary-Schaefer & Unnwongse 2011",
          "eclass": "III",
          "ground_truth": "review",
+         "is_review": true,
          "n": null,
          "weight": 1.0,
          "weight_parts": {
@@ -982,6 +1057,7 @@
          "cite": "Abou-Khalil (in Misulis et al. 2022)",
          "eclass": "III",
          "ground_truth": "review",
+         "is_review": true,
          "n": null,
          "weight": 1.0,
          "weight_parts": {
@@ -997,7 +1073,11 @@
        ],
        "n_studies": 4,
        "n_qualitative": 3,
+       "n_primary": 4,
+       "n_reviews_pooled": 0,
        "pooled": 98.5,
+       "unweighted": 97.5,
+       "weight_swing": 1.0,
        "low": 90,
        "high": 100,
        "spread": 10,
@@ -1029,6 +1109,7 @@
          "cite": "Roh et al. 1996",
          "eclass": "II",
          "ground_truth": "video_eeg",
+         "is_review": false,
          "n": 19,
          "weight": 3.935,
          "weight_parts": {
@@ -1046,6 +1127,7 @@
          "cite": "Loddenkemper & Kotagal 2005",
          "eclass": "III",
          "ground_truth": "review",
+         "is_review": true,
          "n": null,
          "weight": 1.0,
          "weight_parts": {
@@ -1063,6 +1145,7 @@
          "cite": "Marashly et al. 2015",
          "eclass": "II",
          "ground_truth": "imaging_concordance",
+         "is_review": false,
          "n": null,
          "weight": 2.3,
          "weight_parts": {
@@ -1080,6 +1163,7 @@
          "cite": "Abou-Khalil (in Misulis et al. 2022)",
          "eclass": "III",
          "ground_truth": "review",
+         "is_review": true,
          "n": null,
          "weight": 1.0,
          "weight_parts": {
@@ -1095,7 +1179,11 @@
        ],
        "n_studies": 2,
        "n_qualitative": 2,
+       "n_primary": 1,
+       "n_reviews_pooled": 1,
        "pooled": 97.8,
+       "unweighted": 94.5,
+       "weight_swing": 3.3,
        "low": 89,
        "high": 100,
        "spread": 11,
@@ -1127,6 +1215,7 @@
          "cite": "Kotagal et al. 2000",
          "eclass": "II",
          "ground_truth": "postop",
+         "is_review": false,
          "n": 39,
          "weight": 5.387,
          "weight_parts": {
@@ -1144,6 +1233,7 @@
          "cite": "Loddenkemper & Kotagal 2005",
          "eclass": "III",
          "ground_truth": "review",
+         "is_review": true,
          "n": null,
          "weight": 1.0,
          "weight_parts": {
@@ -1163,6 +1253,7 @@
          "cite": "Marashly et al. 2015",
          "eclass": "II",
          "ground_truth": "imaging_concordance",
+         "is_review": false,
          "n": null,
          "weight": 2.3,
          "weight_parts": {
@@ -1180,6 +1271,7 @@
          "cite": "Abou-Khalil (in Misulis et al. 2022)",
          "eclass": "III",
          "ground_truth": "review",
+         "is_review": true,
          "n": null,
          "weight": 1.0,
          "weight_parts": {
@@ -1195,7 +1287,11 @@
        ],
        "n_studies": 1,
        "n_qualitative": 3,
+       "n_primary": 1,
+       "n_reviews_pooled": 0,
        "pooled": 90.0,
+       "unweighted": 90.0,
+       "weight_swing": 0.0,
        "low": 90,
        "high": 90,
        "spread": 0,
@@ -1227,6 +1323,7 @@
          "cite": "Roh et al. 1996",
          "eclass": "II",
          "ground_truth": "video_eeg",
+         "is_review": false,
          "n": 19,
          "weight": 3.935,
          "weight_parts": {
@@ -1244,6 +1341,7 @@
          "cite": "Loddenkemper & Kotagal 2005",
          "eclass": "III",
          "ground_truth": "review",
+         "is_review": true,
          "n": null,
          "weight": 1.0,
          "weight_parts": {
@@ -1261,6 +1359,7 @@
          "cite": "Marashly et al. 2015",
          "eclass": "II",
          "ground_truth": "imaging_concordance",
+         "is_review": false,
          "n": null,
          "weight": 2.3,
          "weight_parts": {
@@ -1278,6 +1377,7 @@
          "cite": "Abou-Khalil (in Misulis et al. 2022)",
          "eclass": "III",
          "ground_truth": "review",
+         "is_review": true,
          "n": null,
          "weight": 1.0,
          "weight_parts": {
@@ -1293,7 +1393,11 @@
        ],
        "n_studies": 2,
        "n_qualitative": 2,
+       "n_primary": 1,
+       "n_reviews_pooled": 1,
        "pooled": 96.6,
+       "unweighted": 91.5,
+       "weight_swing": 5.1,
        "low": 83,
        "high": 100,
        "spread": 17,
@@ -1325,6 +1429,7 @@
          "cite": "Loddenkemper & Kotagal 2005",
          "eclass": "III",
          "ground_truth": "review",
+         "is_review": true,
          "n": null,
          "weight": 1.0,
          "weight_parts": {
@@ -1342,6 +1447,7 @@
          "cite": "Kinney, Kovac & Diehl 2019",
          "eclass": "III",
          "ground_truth": "review",
+         "is_review": true,
          "n": null,
          "weight": 1.0,
          "weight_parts": {
@@ -1361,6 +1467,7 @@
          "cite": "Marashly et al. 2015",
          "eclass": "II",
          "ground_truth": "imaging_concordance",
+         "is_review": false,
          "n": null,
          "weight": 2.3,
          "weight_parts": {
@@ -1378,6 +1485,7 @@
          "cite": "Foldvary-Schaefer & Unnwongse 2011",
          "eclass": "III",
          "ground_truth": "review",
+         "is_review": true,
          "n": null,
          "weight": 1.0,
          "weight_parts": {
@@ -1393,13 +1501,17 @@
        ],
        "n_studies": 1,
        "n_qualitative": 3,
+       "n_primary": 0,
+       "n_reviews_pooled": 1,
        "pooled": 93.0,
+       "unweighted": 93.0,
+       "weight_swing": 0.0,
        "low": 93,
        "high": 93,
        "spread": 0,
        "wsd": null,
        "total_weight": 1.0,
-       "certainty": "single_source"
+       "certainty": "review_only"
       }
      ]
     },
@@ -1423,6 +1535,7 @@
          "cite": "Loddenkemper & Kotagal 2005",
          "eclass": "III",
          "ground_truth": "review",
+         "is_review": true,
          "n": null,
          "weight": 1.0,
          "weight_parts": {
@@ -1440,6 +1553,7 @@
          "cite": "Blair 2012",
          "eclass": "III",
          "ground_truth": "review",
+         "is_review": true,
          "n": null,
          "weight": 1.0,
          "weight_parts": {
@@ -1457,6 +1571,7 @@
          "cite": "Foldvary-Schaefer & Unnwongse 2011",
          "eclass": "III",
          "ground_truth": "review",
+         "is_review": true,
          "n": null,
          "weight": 1.0,
          "weight_parts": {
@@ -1472,13 +1587,17 @@
        ],
        "n_studies": 2,
        "n_qualitative": 1,
+       "n_primary": 0,
+       "n_reviews_pooled": 2,
        "pooled": 80.5,
+       "unweighted": 80.5,
+       "weight_swing": 0.0,
        "low": 75,
        "high": 86,
        "spread": 11,
        "wsd": null,
        "total_weight": 2.0,
-       "certainty": "moderate"
+       "certainty": "review_only"
       }
      ]
     },
@@ -1502,6 +1621,7 @@
          "cite": "Montavont et al. 2005",
          "eclass": "II",
          "ground_truth": "intracranial_eeg",
+         "is_review": false,
          "n": 1,
          "weight": 2.7,
          "weight_parts": {
@@ -1517,7 +1637,11 @@
        ],
        "n_studies": 0,
        "n_qualitative": 1,
+       "n_primary": 0,
+       "n_reviews_pooled": 0,
        "pooled": null,
+       "unweighted": null,
+       "weight_swing": null,
        "low": null,
        "high": null,
        "spread": null,
@@ -1554,6 +1678,7 @@
          "cite": "Loddenkemper & Kotagal 2005",
          "eclass": "III",
          "ground_truth": "review",
+         "is_review": true,
          "n": null,
          "weight": 1.0,
          "weight_parts": {
@@ -1571,6 +1696,7 @@
          "cite": "Kinney, Kovac & Diehl 2019",
          "eclass": "III",
          "ground_truth": "review",
+         "is_review": true,
          "n": null,
          "weight": 1.0,
          "weight_parts": {
@@ -1590,6 +1716,7 @@
          "cite": "Hwang et al. 2019",
          "eclass": "III",
          "ground_truth": "review",
+         "is_review": true,
          "n": null,
          "weight": 1.0,
          "weight_parts": {
@@ -1607,6 +1734,7 @@
          "cite": "Abou-Khalil (in Misulis et al. 2022)",
          "eclass": "III",
          "ground_truth": "review",
+         "is_review": true,
          "n": null,
          "weight": 1.0,
          "weight_parts": {
@@ -1622,13 +1750,17 @@
        ],
        "n_studies": 1,
        "n_qualitative": 3,
+       "n_primary": 0,
+       "n_reviews_pooled": 1,
        "pooled": 89.0,
+       "unweighted": 89.0,
+       "weight_swing": 0.0,
        "low": 89,
        "high": 89,
        "spread": 0,
        "wsd": null,
        "total_weight": 1.0,
-       "certainty": "single_source"
+       "certainty": "review_only"
       }
      ]
     }
@@ -1659,6 +1791,7 @@
          "cite": "Loddenkemper & Kotagal 2005",
          "eclass": "III",
          "ground_truth": "review",
+         "is_review": true,
          "n": null,
          "weight": 1.0,
          "weight_parts": {
@@ -1676,6 +1809,7 @@
          "cite": "Kinney, Kovac & Diehl 2019",
          "eclass": "III",
          "ground_truth": "review",
+         "is_review": true,
          "n": null,
          "weight": 1.0,
          "weight_parts": {
@@ -1693,13 +1827,17 @@
        ],
        "n_studies": 1,
        "n_qualitative": 1,
+       "n_primary": 0,
+       "n_reviews_pooled": 1,
        "pooled": 100.0,
+       "unweighted": 100.0,
+       "weight_swing": 0.0,
        "low": 100,
        "high": 100,
        "spread": 0,
        "wsd": null,
        "total_weight": 1.0,
-       "certainty": "single_source"
+       "certainty": "review_only"
       }
      ]
     }
@@ -1730,6 +1868,7 @@
          "cite": "Roh et al. 1996",
          "eclass": "II",
          "ground_truth": "video_eeg",
+         "is_review": false,
          "n": 19,
          "weight": 3.935,
          "weight_parts": {
@@ -1747,6 +1886,7 @@
          "cite": "Foldvary-Schaefer & Unnwongse 2011",
          "eclass": "III",
          "ground_truth": "review",
+         "is_review": true,
          "n": null,
          "weight": 1.0,
          "weight_parts": {
@@ -1764,6 +1904,7 @@
          "cite": "Loddenkemper & Kotagal 2005",
          "eclass": "III",
          "ground_truth": "review",
+         "is_review": true,
          "n": null,
          "weight": 1.0,
          "weight_parts": {
@@ -1783,6 +1924,7 @@
          "cite": "Abou-Khalil (in Misulis et al. 2022)",
          "eclass": "III",
          "ground_truth": "review",
+         "is_review": true,
          "n": null,
          "weight": 1.0,
          "weight_parts": {
@@ -1798,7 +1940,11 @@
        ],
        "n_studies": 2,
        "n_qualitative": 2,
+       "n_primary": 1,
+       "n_reviews_pooled": 1,
        "pooled": 98.0,
+       "unweighted": 95.0,
+       "weight_swing": 3.0,
        "low": 90,
        "high": 100,
        "spread": 10,
@@ -1830,6 +1976,7 @@
      "cite": "Roh et al. 1996",
      "eclass": "II",
      "ground_truth": "video_eeg",
+     "is_review": false,
      "n": 19,
      "weight": 3.935,
      "weight_parts": {
@@ -1847,6 +1994,7 @@
      "cite": "Loddenkemper & Kotagal 2005",
      "eclass": "III",
      "ground_truth": "review",
+     "is_review": true,
      "n": null,
      "weight": 1.0,
      "weight_parts": {
@@ -1864,6 +2012,7 @@
      "cite": "Marashly et al. 2015",
      "eclass": "II",
      "ground_truth": "imaging_concordance",
+     "is_review": false,
      "n": null,
      "weight": 2.3,
      "weight_parts": {
@@ -1881,6 +2030,7 @@
      "cite": "Abou-Khalil (in Misulis et al. 2022)",
      "eclass": "III",
      "ground_truth": "review",
+     "is_review": true,
      "n": null,
      "weight": 1.0,
      "weight_parts": {
@@ -1896,7 +2046,11 @@
    ],
    "n_studies": 2,
    "n_qualitative": 2,
+   "n_primary": 1,
+   "n_reviews_pooled": 1,
    "pooled": 97.8,
+   "unweighted": 94.5,
+   "weight_swing": 3.3,
    "low": 89,
    "high": 100,
    "spread": 11,
@@ -1922,6 +2076,7 @@
      "cite": "Loddenkemper & Kotagal 2005",
      "eclass": "III",
      "ground_truth": "review",
+     "is_review": true,
      "n": null,
      "weight": 1.0,
      "weight_parts": {
@@ -1939,6 +2094,7 @@
      "cite": "Elwan et al. 2018",
      "eclass": "II",
      "ground_truth": "postop",
+     "is_review": false,
      "n": 73,
      "weight": 5.795,
      "weight_parts": {
@@ -1956,6 +2112,7 @@
      "cite": "Abou-Khalil (in Misulis et al. 2022)",
      "eclass": "III",
      "ground_truth": "review",
+     "is_review": true,
      "n": null,
      "weight": 1.0,
      "weight_parts": {
@@ -1971,7 +2128,11 @@
    ],
    "n_studies": 2,
    "n_qualitative": 1,
+   "n_primary": 1,
+   "n_reviews_pooled": 1,
    "pooled": 67.6,
+   "unweighted": 81.0,
+   "weight_swing": -13.4,
    "low": 62,
    "high": 100,
    "spread": 38,
@@ -1997,6 +2158,7 @@
      "cite": "Kotagal et al. 2000",
      "eclass": "II",
      "ground_truth": "postop",
+     "is_review": false,
      "n": 39,
      "weight": 5.387,
      "weight_parts": {
@@ -2014,6 +2176,7 @@
      "cite": "Loddenkemper & Kotagal 2005",
      "eclass": "III",
      "ground_truth": "review",
+     "is_review": true,
      "n": null,
      "weight": 1.0,
      "weight_parts": {
@@ -2033,6 +2196,7 @@
      "cite": "Marashly et al. 2015",
      "eclass": "II",
      "ground_truth": "imaging_concordance",
+     "is_review": false,
      "n": null,
      "weight": 2.3,
      "weight_parts": {
@@ -2050,6 +2214,7 @@
      "cite": "Abou-Khalil (in Misulis et al. 2022)",
      "eclass": "III",
      "ground_truth": "review",
+     "is_review": true,
      "n": null,
      "weight": 1.0,
      "weight_parts": {
@@ -2065,7 +2230,11 @@
    ],
    "n_studies": 1,
    "n_qualitative": 3,
+   "n_primary": 1,
+   "n_reviews_pooled": 0,
    "pooled": 90.0,
+   "unweighted": 90.0,
+   "weight_swing": 0.0,
    "low": 90,
    "high": 90,
    "spread": 0,
@@ -2091,6 +2260,7 @@
      "cite": "Wyllie et al. 1986",
      "eclass": "II",
      "ground_truth": "video_eeg",
+     "is_review": false,
      "n": 37,
      "weight": 4.282,
      "weight_parts": {
@@ -2108,6 +2278,7 @@
      "cite": "Kotagal et al. 2000",
      "eclass": "II",
      "ground_truth": "postop",
+     "is_review": false,
      "n": 39,
      "weight": 5.387,
      "weight_parts": {
@@ -2125,6 +2296,7 @@
      "cite": "Roh et al. 1996",
      "eclass": "II",
      "ground_truth": "video_eeg",
+     "is_review": false,
      "n": 19,
      "weight": 3.935,
      "weight_parts": {
@@ -2142,6 +2314,7 @@
      "cite": "Fakhoury et al. 1994",
      "eclass": "II",
      "ground_truth": "video_eeg",
+     "is_review": false,
      "n": null,
      "weight": 2.4,
      "weight_parts": {
@@ -2159,6 +2332,7 @@
      "cite": "Loddenkemper & Kotagal 2005",
      "eclass": "III",
      "ground_truth": "review",
+     "is_review": true,
      "n": null,
      "weight": 1.0,
      "weight_parts": {
@@ -2178,6 +2352,7 @@
      "cite": "Foldvary-Schaefer & Unnwongse 2011",
      "eclass": "III",
      "ground_truth": "review",
+     "is_review": true,
      "n": null,
      "weight": 1.0,
      "weight_parts": {
@@ -2195,6 +2370,7 @@
      "cite": "Abou-Khalil (in Misulis et al. 2022)",
      "eclass": "III",
      "ground_truth": "review",
+     "is_review": true,
      "n": null,
      "weight": 1.0,
      "weight_parts": {
@@ -2210,7 +2386,11 @@
    ],
    "n_studies": 4,
    "n_qualitative": 3,
+   "n_primary": 4,
+   "n_reviews_pooled": 0,
    "pooled": 98.5,
+   "unweighted": 97.5,
+   "weight_swing": 1.0,
    "low": 90,
    "high": 100,
    "spread": 10,
@@ -2236,6 +2416,7 @@
      "cite": "Loddenkemper & Kotagal 2005",
      "eclass": "III",
      "ground_truth": "review",
+     "is_review": true,
      "n": null,
      "weight": 1.0,
      "weight_parts": {
@@ -2253,6 +2434,7 @@
      "cite": "Kinney, Kovac & Diehl 2019",
      "eclass": "III",
      "ground_truth": "review",
+     "is_review": true,
      "n": null,
      "weight": 1.0,
      "weight_parts": {
@@ -2270,13 +2452,17 @@
    ],
    "n_studies": 1,
    "n_qualitative": 1,
+   "n_primary": 0,
+   "n_reviews_pooled": 1,
    "pooled": 100.0,
+   "unweighted": 100.0,
+   "weight_swing": 0.0,
    "low": 100,
    "high": 100,
    "spread": 0,
    "wsd": null,
    "total_weight": 1.0,
-   "certainty": "single_source"
+   "certainty": "review_only"
   },
   {
    "sign": "Ictal dysphasia / aphasia",
@@ -2296,6 +2482,7 @@
      "cite": "Gabr et al. 1989",
      "eclass": "II",
      "ground_truth": "intracranial_eeg",
+     "is_review": false,
      "n": 35,
      "weight": 4.784,
      "weight_parts": {
@@ -2313,6 +2500,7 @@
      "cite": "Loddenkemper & Kotagal 2005",
      "eclass": "III",
      "ground_truth": "review",
+     "is_review": true,
      "n": null,
      "weight": 1.0,
      "weight_parts": {
@@ -2330,7 +2518,11 @@
    ],
    "n_studies": 1,
    "n_qualitative": 1,
+   "n_primary": 1,
+   "n_reviews_pooled": 0,
    "pooled": 100.0,
+   "unweighted": 100.0,
+   "weight_swing": 0.0,
    "low": 100,
    "high": 100,
    "spread": 0,
@@ -2354,6 +2546,7 @@
      "cite": "Montavont et al. 2005",
      "eclass": "II",
      "ground_truth": "intracranial_eeg",
+     "is_review": false,
      "n": 1,
      "weight": 2.7,
      "weight_parts": {
@@ -2369,7 +2562,11 @@
    ],
    "n_studies": 0,
    "n_qualitative": 1,
+   "n_primary": 0,
+   "n_reviews_pooled": 0,
    "pooled": null,
+   "unweighted": null,
+   "weight_swing": null,
    "low": null,
    "high": null,
    "spread": null,
@@ -2395,6 +2592,7 @@
      "cite": "Loddenkemper & Kotagal 2005",
      "eclass": "III",
      "ground_truth": "review",
+     "is_review": true,
      "n": null,
      "weight": 1.0,
      "weight_parts": {
@@ -2412,6 +2610,7 @@
      "cite": "Fakhoury et al. 1994",
      "eclass": "II",
      "ground_truth": "video_eeg",
+     "is_review": false,
      "n": null,
      "weight": 2.4,
      "weight_parts": {
@@ -2429,6 +2628,7 @@
      "cite": "Abou-Khalil (in Misulis et al. 2022)",
      "eclass": "III",
      "ground_truth": "review",
+     "is_review": true,
      "n": null,
      "weight": 1.0,
      "weight_parts": {
@@ -2444,13 +2644,17 @@
    ],
    "n_studies": 1,
    "n_qualitative": 2,
+   "n_primary": 0,
+   "n_reviews_pooled": 1,
    "pooled": 75.0,
+   "unweighted": 75.0,
+   "weight_swing": 0.0,
    "low": 75,
    "high": 75,
    "spread": 0,
    "wsd": null,
    "total_weight": 1.0,
-   "certainty": "single_source"
+   "certainty": "review_only"
   },
   {
    "sign": "Ictal vomiting (ictus emeticus)",
@@ -2470,6 +2674,7 @@
      "cite": "Loddenkemper & Kotagal 2005",
      "eclass": "III",
      "ground_truth": "review",
+     "is_review": true,
      "n": null,
      "weight": 1.0,
      "weight_parts": {
@@ -2487,6 +2692,7 @@
      "cite": "Roh et al. 1996",
      "eclass": "II",
      "ground_truth": "video_eeg",
+     "is_review": false,
      "n": 19,
      "weight": 3.935,
      "weight_parts": {
@@ -2504,6 +2710,7 @@
      "cite": "Blair 2012",
      "eclass": "III",
      "ground_truth": "review",
+     "is_review": true,
      "n": null,
      "weight": 1.0,
      "weight_parts": {
@@ -2521,6 +2728,7 @@
      "cite": "Abou-Khalil (in Misulis et al. 2022)",
      "eclass": "III",
      "ground_truth": "review",
+     "is_review": true,
      "n": null,
      "weight": 1.0,
      "weight_parts": {
@@ -2536,13 +2744,17 @@
    ],
    "n_studies": 1,
    "n_qualitative": 3,
+   "n_primary": 0,
+   "n_reviews_pooled": 1,
    "pooled": 81.0,
+   "unweighted": 81.0,
+   "weight_swing": 0.0,
    "low": 81,
    "high": 81,
    "spread": 0,
    "wsd": null,
    "total_weight": 1.0,
-   "certainty": "single_source"
+   "certainty": "review_only"
   },
   {
    "sign": "Lower facial weakness (mimetic)",
@@ -2560,6 +2772,7 @@
      "cite": "Loddenkemper & Kotagal 2005",
      "eclass": "III",
      "ground_truth": "review",
+     "is_review": true,
      "n": null,
      "weight": 1.0,
      "weight_parts": {
@@ -2577,6 +2790,7 @@
      "cite": "Blair 2012",
      "eclass": "III",
      "ground_truth": "review",
+     "is_review": true,
      "n": null,
      "weight": 1.0,
      "weight_parts": {
@@ -2594,6 +2808,7 @@
      "cite": "Foldvary-Schaefer & Unnwongse 2011",
      "eclass": "III",
      "ground_truth": "review",
+     "is_review": true,
      "n": null,
      "weight": 1.0,
      "weight_parts": {
@@ -2609,13 +2824,17 @@
    ],
    "n_studies": 2,
    "n_qualitative": 1,
+   "n_primary": 0,
+   "n_reviews_pooled": 2,
    "pooled": 80.5,
+   "unweighted": 80.5,
+   "weight_swing": 0.0,
    "low": 75,
    "high": 86,
    "spread": 11,
    "wsd": null,
    "total_weight": 2.0,
-   "certainty": "moderate"
+   "certainty": "review_only"
   },
   {
    "sign": "Postictal (Todd's) palsy",
@@ -2635,6 +2854,7 @@
      "cite": "Loddenkemper & Kotagal 2005",
      "eclass": "III",
      "ground_truth": "review",
+     "is_review": true,
      "n": null,
      "weight": 1.0,
      "weight_parts": {
@@ -2652,6 +2872,7 @@
      "cite": "Kinney, Kovac & Diehl 2019",
      "eclass": "III",
      "ground_truth": "review",
+     "is_review": true,
      "n": null,
      "weight": 1.0,
      "weight_parts": {
@@ -2671,6 +2892,7 @@
      "cite": "Marashly et al. 2015",
      "eclass": "II",
      "ground_truth": "imaging_concordance",
+     "is_review": false,
      "n": null,
      "weight": 2.3,
      "weight_parts": {
@@ -2688,6 +2910,7 @@
      "cite": "Foldvary-Schaefer & Unnwongse 2011",
      "eclass": "III",
      "ground_truth": "review",
+     "is_review": true,
      "n": null,
      "weight": 1.0,
      "weight_parts": {
@@ -2703,13 +2926,17 @@
    ],
    "n_studies": 1,
    "n_qualitative": 3,
+   "n_primary": 0,
+   "n_reviews_pooled": 1,
    "pooled": 93.0,
+   "unweighted": 93.0,
+   "weight_swing": 0.0,
    "low": 93,
    "high": 93,
    "spread": 0,
    "wsd": null,
    "total_weight": 1.0,
-   "certainty": "single_source"
+   "certainty": "review_only"
   },
   {
    "sign": "Postictal dysphasia / aphasia",
@@ -2729,6 +2956,7 @@
      "cite": "Gabr et al. 1989",
      "eclass": "II",
      "ground_truth": "intracranial_eeg",
+     "is_review": false,
      "n": 35,
      "weight": 4.784,
      "weight_parts": {
@@ -2746,6 +2974,7 @@
      "cite": "Maillard et al. 2004",
      "eclass": "II",
      "ground_truth": "seeg",
+     "is_review": false,
      "n": 26,
      "weight": 5.122,
      "weight_parts": {
@@ -2763,6 +2992,7 @@
      "cite": "Serafetinides & Falconer 1963",
      "eclass": "II",
      "ground_truth": "postop",
+     "is_review": false,
      "n": 100,
      "weight": 6.0,
      "weight_parts": {
@@ -2780,6 +3010,7 @@
      "cite": "Blair 2012",
      "eclass": "III",
      "ground_truth": "review",
+     "is_review": true,
      "n": null,
      "weight": 1.0,
      "weight_parts": {
@@ -2797,6 +3028,7 @@
      "cite": "Loddenkemper & Kotagal 2005",
      "eclass": "III",
      "ground_truth": "review",
+     "is_review": true,
      "n": null,
      "weight": 1.0,
      "weight_parts": {
@@ -2816,6 +3048,7 @@
      "cite": "Abou-Khalil (in Misulis et al. 2022)",
      "eclass": "III",
      "ground_truth": "review",
+     "is_review": true,
      "n": null,
      "weight": 1.0,
      "weight_parts": {
@@ -2831,7 +3064,11 @@
    ],
    "n_studies": 4,
    "n_qualitative": 2,
+   "n_primary": 3,
+   "n_reviews_pooled": 1,
    "pooled": 92.3,
+   "unweighted": 90.8,
+   "weight_swing": 1.5,
    "low": 85,
    "high": 94,
    "spread": 9,
@@ -2857,6 +3094,7 @@
      "cite": "Loddenkemper & Kotagal 2005",
      "eclass": "III",
      "ground_truth": "review",
+     "is_review": true,
      "n": null,
      "weight": 1.0,
      "weight_parts": {
@@ -2874,6 +3112,7 @@
      "cite": "Elwan et al. 2018",
      "eclass": "II",
      "ground_truth": "postop",
+     "is_review": false,
      "n": 73,
      "weight": 5.795,
      "weight_parts": {
@@ -2891,6 +3130,7 @@
      "cite": "Foldvary-Schaefer & Unnwongse 2011",
      "eclass": "III",
      "ground_truth": "review",
+     "is_review": true,
      "n": null,
      "weight": 1.0,
      "weight_parts": {
@@ -2908,6 +3148,7 @@
      "cite": "Abou-Khalil (in Misulis et al. 2022)",
      "eclass": "III",
      "ground_truth": "review",
+     "is_review": true,
      "n": null,
      "weight": 1.0,
      "weight_parts": {
@@ -2923,7 +3164,11 @@
    ],
    "n_studies": 2,
    "n_qualitative": 2,
+   "n_primary": 1,
+   "n_reviews_pooled": 1,
    "pooled": 66.4,
+   "unweighted": 77.0,
+   "weight_swing": -10.6,
    "low": 62,
    "high": 92,
    "spread": 30,
@@ -2947,6 +3192,7 @@
      "cite": "Gabr et al. 1989",
      "eclass": "II",
      "ground_truth": "intracranial_eeg",
+     "is_review": false,
      "n": 35,
      "weight": 4.784,
      "weight_parts": {
@@ -2964,6 +3210,7 @@
      "cite": "Loddenkemper & Kotagal 2005",
      "eclass": "III",
      "ground_truth": "review",
+     "is_review": true,
      "n": null,
      "weight": 1.0,
      "weight_parts": {
@@ -2983,6 +3230,7 @@
      "cite": "Roh et al. 1996",
      "eclass": "II",
      "ground_truth": "video_eeg",
+     "is_review": false,
      "n": 19,
      "weight": 3.935,
      "weight_parts": {
@@ -2998,7 +3246,11 @@
    ],
    "n_studies": 1,
    "n_qualitative": 2,
+   "n_primary": 1,
+   "n_reviews_pooled": 0,
    "pooled": 83.0,
+   "unweighted": 83.0,
+   "weight_swing": 0.0,
    "low": 83,
    "high": 83,
    "spread": 0,
@@ -3024,6 +3276,7 @@
      "cite": "Roh et al. 1996",
      "eclass": "II",
      "ground_truth": "video_eeg",
+     "is_review": false,
      "n": 19,
      "weight": 3.935,
      "weight_parts": {
@@ -3041,6 +3294,7 @@
      "cite": "Loddenkemper & Kotagal 2005",
      "eclass": "III",
      "ground_truth": "review",
+     "is_review": true,
      "n": null,
      "weight": 1.0,
      "weight_parts": {
@@ -3058,6 +3312,7 @@
      "cite": "Foldvary-Schaefer & Unnwongse 2011",
      "eclass": "III",
      "ground_truth": "review",
+     "is_review": true,
      "n": null,
      "weight": 1.0,
      "weight_parts": {
@@ -3075,6 +3330,7 @@
      "cite": "Abou-Khalil (in Misulis et al. 2022)",
      "eclass": "III",
      "ground_truth": "review",
+     "is_review": true,
      "n": null,
      "weight": 1.0,
      "weight_parts": {
@@ -3090,7 +3346,11 @@
    ],
    "n_studies": 1,
    "n_qualitative": 3,
+   "n_primary": 1,
+   "n_reviews_pooled": 0,
    "pooled": 88.0,
+   "unweighted": 88.0,
+   "weight_swing": 0.0,
    "low": 88,
    "high": 88,
    "spread": 0,
@@ -3116,6 +3376,7 @@
      "cite": "Roh et al. 1996",
      "eclass": "II",
      "ground_truth": "video_eeg",
+     "is_review": false,
      "n": 19,
      "weight": 3.935,
      "weight_parts": {
@@ -3133,6 +3394,7 @@
      "cite": "Loddenkemper & Kotagal 2005",
      "eclass": "III",
      "ground_truth": "review",
+     "is_review": true,
      "n": null,
      "weight": 1.0,
      "weight_parts": {
@@ -3150,6 +3412,7 @@
      "cite": "Marashly et al. 2015",
      "eclass": "II",
      "ground_truth": "imaging_concordance",
+     "is_review": false,
      "n": null,
      "weight": 2.3,
      "weight_parts": {
@@ -3167,6 +3430,7 @@
      "cite": "Abou-Khalil (in Misulis et al. 2022)",
      "eclass": "III",
      "ground_truth": "review",
+     "is_review": true,
      "n": null,
      "weight": 1.0,
      "weight_parts": {
@@ -3182,7 +3446,11 @@
    ],
    "n_studies": 2,
    "n_qualitative": 2,
+   "n_primary": 1,
+   "n_reviews_pooled": 1,
    "pooled": 96.6,
+   "unweighted": 91.5,
+   "weight_swing": 5.1,
    "low": 83,
    "high": 100,
    "spread": 17,
@@ -3208,6 +3476,7 @@
      "cite": "Roh et al. 1996",
      "eclass": "II",
      "ground_truth": "video_eeg",
+     "is_review": false,
      "n": 19,
      "weight": 3.935,
      "weight_parts": {
@@ -3225,6 +3494,7 @@
      "cite": "Foldvary-Schaefer & Unnwongse 2011",
      "eclass": "III",
      "ground_truth": "review",
+     "is_review": true,
      "n": null,
      "weight": 1.0,
      "weight_parts": {
@@ -3242,6 +3512,7 @@
      "cite": "Loddenkemper & Kotagal 2005",
      "eclass": "III",
      "ground_truth": "review",
+     "is_review": true,
      "n": null,
      "weight": 1.0,
      "weight_parts": {
@@ -3261,6 +3532,7 @@
      "cite": "Abou-Khalil (in Misulis et al. 2022)",
      "eclass": "III",
      "ground_truth": "review",
+     "is_review": true,
      "n": null,
      "weight": 1.0,
      "weight_parts": {
@@ -3276,7 +3548,11 @@
    ],
    "n_studies": 2,
    "n_qualitative": 2,
+   "n_primary": 1,
+   "n_reviews_pooled": 1,
    "pooled": 98.0,
+   "unweighted": 95.0,
+   "weight_swing": 3.0,
    "low": 90,
    "high": 100,
    "spread": 10,
@@ -3302,6 +3578,7 @@
      "cite": "Roh et al. 1996",
      "eclass": "II",
      "ground_truth": "video_eeg",
+     "is_review": false,
      "n": 19,
      "weight": 3.935,
      "weight_parts": {
@@ -3319,6 +3596,7 @@
      "cite": "Loddenkemper & Kotagal 2005",
      "eclass": "III",
      "ground_truth": "review",
+     "is_review": true,
      "n": null,
      "weight": 1.0,
      "weight_parts": {
@@ -3336,6 +3614,7 @@
      "cite": "Abou-Khalil (in Misulis et al. 2022)",
      "eclass": "III",
      "ground_truth": "review",
+     "is_review": true,
      "n": null,
      "weight": 1.0,
      "weight_parts": {
@@ -3351,7 +3630,11 @@
    ],
    "n_studies": 2,
    "n_qualitative": 1,
+   "n_primary": 1,
+   "n_reviews_pooled": 1,
    "pooled": 85.4,
+   "unweighted": 84.5,
+   "weight_swing": 0.9,
    "low": 83,
    "high": 86,
    "spread": 3,
@@ -3377,6 +3660,7 @@
      "cite": "Loddenkemper & Kotagal 2005",
      "eclass": "III",
      "ground_truth": "review",
+     "is_review": true,
      "n": null,
      "weight": 1.0,
      "weight_parts": {
@@ -3394,6 +3678,7 @@
      "cite": "Kinney, Kovac & Diehl 2019",
      "eclass": "III",
      "ground_truth": "review",
+     "is_review": true,
      "n": null,
      "weight": 1.0,
      "weight_parts": {
@@ -3413,6 +3698,7 @@
      "cite": "Hwang et al. 2019",
      "eclass": "III",
      "ground_truth": "review",
+     "is_review": true,
      "n": null,
      "weight": 1.0,
      "weight_parts": {
@@ -3430,6 +3716,7 @@
      "cite": "Abou-Khalil (in Misulis et al. 2022)",
      "eclass": "III",
      "ground_truth": "review",
+     "is_review": true,
      "n": null,
      "weight": 1.0,
      "weight_parts": {
@@ -3445,17 +3732,21 @@
    ],
    "n_studies": 1,
    "n_qualitative": 3,
+   "n_primary": 0,
+   "n_reviews_pooled": 1,
    "pooled": 89.0,
+   "unweighted": 89.0,
+   "weight_swing": 0.0,
    "low": 89,
    "high": 89,
    "spread": 0,
    "wsd": null,
    "total_weight": 1.0,
-   "certainty": "single_source"
+   "certainty": "review_only"
   }
  ],
  "sensitivity": {
-  "method": "Sensitivity is how often a sign shows up among patients whose seizures start in one particular place. Each percentage below is the frequency a source publication reported for that sign within one of its patient groups \u2014 for example, epigastric aura in 46% of the patients whose onset was mesial temporal. The groups are the source's own categories (mesial / mesiolateral / lateral temporal, frontal, occipital, and so on), not this atlas's own regions. Percentages are kept separate per group instead of being averaged together, because a sign can be common where seizures start in one place and rare where they start in another. k is the number of publications behind a percentage; where more than one reports the same sign in the same group, the mean and the range across them are shown. Every percentage here currently rests on a single publication; they come from 2 sources in the library.",
+  "method": "Sensitivity is how often a sign shows up among patients whose seizures start in one particular place. Each percentage below is the frequency a source publication reported for that sign within one of its patient groups \u2014 for example, epigastric aura in 46% of the patients whose onset was mesial temporal. The groups are the source's own categories (mesial / mesiolateral / lateral temporal, frontal, occipital, and so on), not this atlas's own regions. Percentages are kept separate per group instead of being averaged together, because a sign can be common where seizures start in one place and rare where they start in another. k is the number of publications behind a percentage; where more than one reports the same sign in the same group, the plain mean and the range across them are shown \u2014 unweighted, unlike the lateralization figures, because the group denominators behind these percentages are not recorded here and a weight would imply a precision the data does not carry. The two kinds of figure are not comparable. Every percentage here currently rests on a single publication; they come from 2 sources in the library.",
   "note_specificity": "Specificity would need the sign's rate in the other onset groups \u2014 the false-positive side \u2014 and the source library reports that for essentially no sign (1 across the whole corpus). Specificity on a sign card is therefore a curator teaching estimate, marked 'est.', and is not computed.",
   "coverage": {
    "cards_with_sensitivity": 15,
@@ -3472,6 +3763,7 @@
       "low": 44.4,
       "high": 44.4,
       "k": 1,
+      "n_findings": 1,
       "sources": [
        {
         "cite": "Loddenkemper & Kotagal 2005",
@@ -3486,9 +3778,10 @@
      {
       "cond": "FLE (post-op sz-free)",
       "mean": 33.0,
-      "low": 33,
-      "high": 33,
+      "low": 33.0,
+      "high": 33.0,
       "k": 1,
+      "n_findings": 1,
       "sources": [
        {
         "cite": "Loddenkemper & Kotagal 2005",
@@ -3510,6 +3803,7 @@
       "low": 5.7,
       "high": 5.7,
       "k": 1,
+      "n_findings": 1,
       "sources": [
        {
         "cite": "Loddenkemper & Kotagal 2005",
@@ -3531,6 +3825,7 @@
       "low": 28.6,
       "high": 28.6,
       "k": 1,
+      "n_findings": 1,
       "sources": [
        {
         "cite": "Loddenkemper & Kotagal 2005",
@@ -3552,6 +3847,7 @@
       "low": 22.2,
       "high": 22.2,
       "k": 1,
+      "n_findings": 1,
       "sources": [
        {
         "cite": "Loddenkemper & Kotagal 2005",
@@ -3573,6 +3869,7 @@
       "low": 48.1,
       "high": 48.1,
       "k": 1,
+      "n_findings": 1,
       "sources": [
        {
         "cite": "Loddenkemper & Kotagal 2005",
@@ -3594,6 +3891,7 @@
       "low": 17.7,
       "high": 17.7,
       "k": 1,
+      "n_findings": 1,
       "sources": [
        {
         "cite": "Loddenkemper & Kotagal 2005",
@@ -3608,9 +3906,10 @@
      {
       "cond": "ETLE",
       "mean": 15.0,
-      "low": 15,
-      "high": 15,
+      "low": 15.0,
+      "high": 15.0,
       "k": 1,
+      "n_findings": 1,
       "sources": [
        {
         "cite": "Loddenkemper & Kotagal 2005",
@@ -3632,6 +3931,7 @@
       "low": 43.9,
       "high": 43.9,
       "k": 1,
+      "n_findings": 1,
       "sources": [
        {
         "cite": "Loddenkemper & Kotagal 2005",
@@ -3653,6 +3953,7 @@
       "low": 53.2,
       "high": 53.2,
       "k": 1,
+      "n_findings": 1,
       "sources": [
        {
         "cite": "Loddenkemper & Kotagal 2005",
@@ -3674,6 +3975,7 @@
       "low": 45.8,
       "high": 45.8,
       "k": 1,
+      "n_findings": 1,
       "sources": [
        {
         "cite": "Maillard L, Vignal JP, Gavaret M, Guye M, Bira",
@@ -3691,6 +3993,7 @@
       "low": 38.9,
       "high": 38.9,
       "k": 1,
+      "n_findings": 1,
       "sources": [
        {
         "cite": "Maillard L, Vignal JP, Gavaret M, Guye M, Bira",
@@ -3708,6 +4011,7 @@
       "low": 7.7,
       "high": 7.7,
       "k": 1,
+      "n_findings": 1,
       "sources": [
        {
         "cite": "Maillard L, Vignal JP, Gavaret M, Guye M, Bira",
@@ -3729,6 +4033,7 @@
       "low": 37.5,
       "high": 37.5,
       "k": 1,
+      "n_findings": 1,
       "sources": [
        {
         "cite": "Maillard L, Vignal JP, Gavaret M, Guye M, Bira",
@@ -3746,6 +4051,7 @@
       "low": 22.2,
       "high": 22.2,
       "k": 1,
+      "n_findings": 1,
       "sources": [
        {
         "cite": "Maillard L, Vignal JP, Gavaret M, Guye M, Bira",
@@ -3763,6 +4069,7 @@
       "low": 0.0,
       "high": 0.0,
       "k": 1,
+      "n_findings": 1,
       "sources": [
        {
         "cite": "Maillard L, Vignal JP, Gavaret M, Guye M, Bira",
@@ -3784,6 +4091,7 @@
       "low": 29.2,
       "high": 29.2,
       "k": 1,
+      "n_findings": 1,
       "sources": [
        {
         "cite": "Maillard L, Vignal JP, Gavaret M, Guye M, Bira",
@@ -3801,6 +4109,7 @@
       "low": 27.8,
       "high": 27.8,
       "k": 1,
+      "n_findings": 1,
       "sources": [
        {
         "cite": "Maillard L, Vignal JP, Gavaret M, Guye M, Bira",
@@ -3818,6 +4127,7 @@
       "low": 0.0,
       "high": 0.0,
       "k": 1,
+      "n_findings": 1,
       "sources": [
        {
         "cite": "Maillard L, Vignal JP, Gavaret M, Guye M, Bira",
@@ -3839,6 +4149,7 @@
       "low": 15.4,
       "high": 15.4,
       "k": 1,
+      "n_findings": 1,
       "sources": [
        {
         "cite": "Maillard L, Vignal JP, Gavaret M, Guye M, Bira",
@@ -3856,6 +4167,7 @@
       "low": 11.1,
       "high": 11.1,
       "k": 1,
+      "n_findings": 1,
       "sources": [
        {
         "cite": "Maillard L, Vignal JP, Gavaret M, Guye M, Bira",
@@ -3873,6 +4185,7 @@
       "low": 8.3,
       "high": 8.3,
       "k": 1,
+      "n_findings": 1,
       "sources": [
        {
         "cite": "Maillard L, Vignal JP, Gavaret M, Guye M, Bira",
@@ -3894,6 +4207,7 @@
       "low": 8.3,
       "high": 8.3,
       "k": 1,
+      "n_findings": 1,
       "sources": [
        {
         "cite": "Maillard L, Vignal JP, Gavaret M, Guye M, Bira",
@@ -3911,6 +4225,7 @@
       "low": 5.6,
       "high": 5.6,
       "k": 1,
+      "n_findings": 1,
       "sources": [
        {
         "cite": "Maillard L, Vignal JP, Gavaret M, Guye M, Bira",
@@ -3928,6 +4243,7 @@
       "low": 0.0,
       "high": 0.0,
       "k": 1,
+      "n_findings": 1,
       "sources": [
        {
         "cite": "Maillard L, Vignal JP, Gavaret M, Guye M, Bira",
@@ -3949,6 +4265,7 @@
       "low": 62.5,
       "high": 62.5,
       "k": 1,
+      "n_findings": 1,
       "sources": [
        {
         "cite": "Maillard L, Vignal JP, Gavaret M, Guye M, Bira",
@@ -3966,6 +4283,7 @@
       "low": 61.1,
       "high": 61.1,
       "k": 1,
+      "n_findings": 1,
       "sources": [
        {
         "cite": "Maillard L, Vignal JP, Gavaret M, Guye M, Bira",
@@ -3983,6 +4301,7 @@
       "low": 15.4,
       "high": 15.4,
       "k": 1,
+      "n_findings": 1,
       "sources": [
        {
         "cite": "Maillard L, Vignal JP, Gavaret M, Guye M, Bira",
@@ -4004,6 +4323,7 @@
       "low": 61.5,
       "high": 61.5,
       "k": 1,
+      "n_findings": 1,
       "sources": [
        {
         "cite": "Maillard L, Vignal JP, Gavaret M, Guye M, Bira",
@@ -4021,6 +4341,7 @@
       "low": 61.1,
       "high": 61.1,
       "k": 1,
+      "n_findings": 1,
       "sources": [
        {
         "cite": "Maillard L, Vignal JP, Gavaret M, Guye M, Bira",
@@ -4038,6 +4359,7 @@
       "low": 50.0,
       "high": 50.0,
       "k": 1,
+      "n_findings": 1,
       "sources": [
        {
         "cite": "Maillard L, Vignal JP, Gavaret M, Guye M, Bira",
@@ -4055,6 +4377,7 @@
       "low": 23.1,
       "high": 23.1,
       "k": 1,
+      "n_findings": 1,
       "sources": [
        {
         "cite": "Maillard L, Vignal JP, Gavaret M, Guye M, Bira",

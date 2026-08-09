@@ -59,17 +59,26 @@ def study_weight(study, scheme):
 CONTESTED_POINTS = 25          # the one place this threshold is defined
 
 
-def certainty(n_studies, spread=None):
+def certainty(n_studies, spread=None, n_primary=None):
     """
     How well supported an averaged figure is: a function of how many studies
     carry a percentage, never of the weight they add up to, because a single
     heavy study is still a single study.
 
-    Disagreement outranks count. Two studies 38 points apart are not better
+    Provenance outranks everything. If every value in the pool came from a
+    narrative review, no series in this library measured the figure at all -
+    each review is quoting a cohort that was never read here. Counting those as
+    studies is the same error as counting one series twice, one level up: k
+    would report how many people repeated the number, not how many measured it.
+    `review_only` is therefore tested first and sits below `single_source`.
+
+    Then disagreement outranks count. Two studies 38 points apart are not better
     evidence than two that agree, so `contested` sits below `moderate` and can
     be reached at any k - the previous cap could only demote a k>=3 sign to
     `moderate`, which no sign in this corpus ever triggered.
     """
+    if n_studies >= 1 and n_primary == 0:
+        return "review_only"
     if n_studies <= 1:
         return "single_source"
     if spread is not None and spread >= CONTESTED_POINTS:
@@ -87,6 +96,8 @@ def pool_sign(sign, studies, scheme):
             "cite": st.get("cite", obs["study"]),
             "eclass": st.get("class"),
             "ground_truth": st.get("ground_truth"),
+            # a narrative review is not a series: it reports someone else's patients
+            "is_review": st.get("ground_truth") == "review",
             "n": st.get("n"),
             "weight": w,
             "weight_parts": {"class_base": base, "ground_truth_mult": gt, "size_factor": round(sz, 3)},
@@ -124,27 +135,40 @@ def pool_sign(sign, studies, scheme):
         "n_qualitative": len(qualitative),
     }
 
+    n_primary = sum(1 for r in numeric if not r["is_review"])
+    result["n_primary"] = n_primary
+    result["n_reviews_pooled"] = len(numeric) - n_primary
+
     if numeric:
         wsum = sum(r["weight"] for r in numeric)
         vals = [r["value"] for r in numeric]
         pooled = sum(r["weight"] * r["value"] for r in numeric) / wsum if wsum else 0.0
         # weighted standard deviation (population form, weights as frequencies)
         var = sum(r["weight"] * (r["value"] - pooled) ** 2 for r in numeric) / wsum if wsum else 0.0
+        # The unweighted mean is published beside the weighted one so the reader can
+        # see how much of the answer is the weighting scheme's doing rather than the
+        # data's. On most signs the two agree to a rounding error; where they do not,
+        # an unvalidated multiplicative weight is deciding the printed number, and
+        # that is exactly where it should be visible.
+        unweighted = sum(vals) / len(vals)
         result.update({
             "pooled": round(pooled, 1),
+            "unweighted": round(unweighted, 1),
+            "weight_swing": round(pooled - unweighted, 1),
             "low": min(vals),
             "high": max(vals),
             "spread": round(max(vals) - min(vals), 1),
             # a spread statistic over 2-3 points is noise dressed as precision
             "wsd": round(math.sqrt(var), 1) if len(numeric) >= 4 else None,
             "total_weight": round(wsum, 2),
-            "certainty": certainty(len(numeric), round(max(vals) - min(vals), 1)),
+            "certainty": certainty(len(numeric), round(max(vals) - min(vals), 1), n_primary),
         })
     else:
         # qualitative-only sign (direction known, no poolable percentage)
         wsum = sum(r["weight"] for r in qualitative)
         result.update({
             "pooled": None,
+            "unweighted": None, "weight_swing": None,
             "low": None, "high": None, "spread": None, "wsd": None,
             "total_weight": round(wsum, 2),
             # no percentage to average: a count of corroborating or restating
@@ -194,12 +218,22 @@ def build_sensitivity():
     for cid, conds in by_card.items():
         rows = []
         for cond, srcs in conds.items():
-            vals = [s["value"] for s in srcs]
-            n_points += len(vals)
+            n_points += len(srcs)
+            # Collapse within a publication before averaging across publications. One
+            # paper reporting the same sign-in-group frequency in two places (a table
+            # and a text figure, say) is one measurement; letting it contribute twice
+            # would give it double the influence and inflate k, which the caption
+            # calls a count of publications. Same rule as restatements upstream.
+            per_pub = {}
+            for src in srcs:
+                per_pub.setdefault(src["cite"], []).append(src["value"])
+            pub_vals = [sum(v) / len(v) for v in per_pub.values()]
             rows.append({
                 "cond": cond,
-                "mean": round(sum(vals) / len(vals), 1),
-                "low": min(vals), "high": max(vals), "k": len(vals),
+                "mean": round(sum(pub_vals) / len(pub_vals), 1),
+                "low": round(min(pub_vals), 1), "high": round(max(pub_vals), 1),
+                "k": len(per_pub),            # publications, as the caption claims
+                "n_findings": len(srcs),      # rows behind them, when a paper repeats itself
                 "sources": srcs,
             })
         rows.sort(key=lambda r: (-r["high"], r["cond"]))
@@ -223,7 +257,10 @@ def build_sensitivity():
                    "per group instead of being averaged together, because a sign can be common where "
                    "seizures start in one place and rare where they start in another. k is the number "
                    "of publications behind a percentage; where more than one reports the same sign in "
-                   "the same group, the mean and the range across them are shown. " + state),
+                   "the same group, the plain mean and the range across them are shown — unweighted, "
+                   "unlike the lateralization figures, because the group denominators behind these "
+                   "percentages are not recorded here and a weight would imply a precision the data "
+                   "does not carry. The two kinds of figure are not comparable. " + state),
         "note_specificity": ("Specificity would need the sign's rate in the other onset groups \u2014 the "
                              "false-positive side \u2014 and the source library reports that for "
                              f"{'no sign at all' if spec_points == 0 else 'essentially no sign'}"

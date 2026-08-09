@@ -21,6 +21,7 @@
   "size_cap": 2.0,
   "certainty_tiers": {
    "_order": "Tested in this order; the first that matches wins.",
+   "review_only": "every value in the pool comes from a narrative review quoting a series this library has not read, so no study here measured the figure (k counts reviews, not measurements)",
    "single_source": "k <= 1 (at most one study carries a percentage)",
    "contested": "the studies disagree by 25 points or more, at any k >= 2",
    "well_supported": "k >= 3 and the studies agree within 25 points",
