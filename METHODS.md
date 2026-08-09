@@ -1,4 +1,12 @@
-# Methods — weighted meta-analysis & source review
+# Methods — weighted averages & source review
+
+> **This is not a weighted average.** There is no protocol, no prespecified eligibility
+> criteria, no reproducible search, no risk-of-bias instrument, no inverse-variance
+> weighting, no confidence intervals and no heterogeneity statistics. What follows is a
+> transparent weighted average of the percentages extracted from the source library,
+> published with every contributing value and the weight it carried so the arithmetic
+> can be checked. It should be read as a summary of what this library reports, not as
+> evidence synthesis.
 
 Educational resource, not clinical. The figures here are teaching estimates drawn
 from the source library; they are not validated for individual patient decisions.

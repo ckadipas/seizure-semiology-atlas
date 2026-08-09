@@ -1,5 +1,12 @@
 #!/usr/bin/env python3
-"""Deterministic weighted meta-analysis engine (run in CI).
+"""Deterministic weighted-average engine (run in CI).
+
+    This is NOT a meta-analysis and must not be labelled one. There is no
+    protocol, no prespecified eligibility, no reproducible search, no
+    risk-of-bias instrument, no inverse-variance weighting, no confidence
+    interval and no heterogeneity statistic. It is a transparent weighted
+    average of the percentages this atlas extracted, shown with every
+    contributing value and the weight it carried.
 
 Reads enrichment/observations.json (structured, source-traceable records), applies
 the transparent weighting scheme declared in that file, pools the lateralization
@@ -49,12 +56,19 @@ def study_weight(study, scheme):
     return base, gt, sz, round(base * gt * sz, 3)
 
 
-def certainty(n_studies, total_weight):
-    if n_studies >= 3 or total_weight >= 6.0:
-        return "well_supported"
-    if n_studies == 2 or total_weight >= 3.0:
-        return "moderate"
-    return "single_source"
+def certainty(n_studies, total_weight, spread=None):
+    """
+    How well supported a pooled figure is. This is a function of how many
+    independent studies carry a number, never of the weight they add up to: a
+    single heavy study is still a single study. It is also capped when the
+    studies disagree, because a tier must not rise as the evidence conflicts.
+    """
+    if n_studies <= 1:
+        return "single_source"
+    tier = "well_supported" if n_studies >= 3 else "moderate"
+    if spread is not None and spread >= 25 and tier == "well_supported":
+        tier = "moderate"          # they do not agree; do not call it settled
+    return tier
 
 
 def pool_sign(sign, studies, scheme):
@@ -107,9 +121,10 @@ def pool_sign(sign, studies, scheme):
             "low": min(vals),
             "high": max(vals),
             "spread": round(max(vals) - min(vals), 1),
-            "wsd": round(math.sqrt(var), 1),
+            # a spread statistic over 2-3 points is noise dressed as precision
+            "wsd": round(math.sqrt(var), 1) if len(numeric) >= 4 else None,
             "total_weight": round(wsum, 2),
-            "certainty": certainty(len(numeric), wsum),
+            "certainty": certainty(len(numeric), wsum, round(max(vals) - min(vals), 1)),
         })
     else:
         # qualitative-only sign (direction known, no poolable percentage)

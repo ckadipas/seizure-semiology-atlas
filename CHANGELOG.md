@@ -4,6 +4,30 @@ All notable changes to the dataset and resource are recorded here.
 Format loosely follows Keep a Changelog; dates are ISO-8601.
 
 ## [Unreleased]
+### Fixed
+- **The atlas was calling one study "three studies".** A pooled percentage was printed
+  beside a count that added the direction-only sources — which corroborate a side but
+  measure nothing. *Ictal spitting* read **75% · 3 studies** when one study carried the
+  number; *ictal vomiting* **81% · 4 studies** on one; *unilateral ipsilateral automatisms*
+  **88% · 4 studies** on one. **16 signs** were affected. The count now says *"N studies
+  with a percentage"* and lists direction-only sources separately.
+- **The certainty tier could rise as the evidence got worse.** `certainty()` returned
+  *well supported* whenever the summed weight reached 6.0, **regardless of how many studies
+  there were** — contradicting the tier definition published in `observations.json`. It is
+  now a function of k, and is capped at *moderate* when the studies disagree by ≥25 points.
+  *Automatisms with preserved responsiveness* (100% vs 62%) and *postictal nose-wiping*
+  (62% vs 92%) were both labelled well supported; both now read moderate.
+- **"Weighted SD 0" implied perfect replication of a single number.** Five signs showed it
+  where the two "studies" were a primary series and a review restating it. The statistic is
+  no longer computed below k=4, where it cannot carry information.
+### Changed
+- **It is no longer called a meta-analysis.** There is no protocol, no prespecified
+  eligibility, no reproducible search, no risk-of-bias instrument, no inverse-variance
+  weighting, no confidence intervals and no heterogeneity statistics — so the label claimed
+  an evidential status the method does not have. The section is **"Weighted average of
+  reported lateralization — not a meta-analysis"**, and says so again in its own
+  description; `METHODS.md` opens with the same disclaimer. The sort control that read
+  *reliability ↓* now reads *percentage ↓*, which is what it actually sorts by.
 ### Changed
 - **"Source figures" is now "Source statistics".** The word meant extracted numbers, not
   images, and read as neither. The section is headed *each extracted statistic per

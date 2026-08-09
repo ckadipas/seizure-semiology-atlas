@@ -88,7 +88,7 @@
        "low": 100,
        "high": 100,
        "spread": 0,
-       "wsd": 0.0,
+       "wsd": null,
        "total_weight": 5.78,
        "certainty": "moderate"
       }
@@ -299,7 +299,7 @@
        "low": 83,
        "high": 83,
        "spread": 0,
-       "wsd": 0.0,
+       "wsd": null,
        "total_weight": 5.78,
        "certainty": "moderate"
       }
@@ -380,9 +380,9 @@
        "low": 62,
        "high": 100,
        "spread": 38,
-       "wsd": 13.5,
+       "wsd": null,
        "total_weight": 6.79,
-       "certainty": "well_supported"
+       "certainty": "moderate"
       }
      ]
     },
@@ -478,7 +478,7 @@
        "low": 81,
        "high": 81,
        "spread": 0,
-       "wsd": 0.0,
+       "wsd": null,
        "total_weight": 1.0,
        "certainty": "single_source"
       }
@@ -559,7 +559,7 @@
        "low": 75,
        "high": 75,
        "spread": 0,
-       "wsd": 0.0,
+       "wsd": null,
        "total_weight": 1.0,
        "certainty": "single_source"
       }
@@ -657,9 +657,9 @@
        "low": 62,
        "high": 92,
        "spread": 30,
-       "wsd": 10.6,
+       "wsd": null,
        "total_weight": 6.79,
-       "certainty": "well_supported"
+       "certainty": "moderate"
       }
      ]
     },
@@ -738,7 +738,7 @@
        "low": 83,
        "high": 86,
        "spread": 3,
-       "wsd": 1.2,
+       "wsd": null,
        "total_weight": 4.94,
        "certainty": "moderate"
       }
@@ -836,9 +836,9 @@
        "low": 88,
        "high": 88,
        "spread": 0,
-       "wsd": 0.0,
+       "wsd": null,
        "total_weight": 3.94,
-       "certainty": "moderate"
+       "certainty": "single_source"
       }
      ]
     }
@@ -1088,7 +1088,7 @@
        "low": 89,
        "high": 100,
        "spread": 11,
-       "wsd": 4.4,
+       "wsd": null,
        "total_weight": 4.94,
        "certainty": "moderate"
       }
@@ -1186,9 +1186,9 @@
        "low": 89,
        "high": 90,
        "spread": 1,
-       "wsd": 0.4,
+       "wsd": null,
        "total_weight": 6.39,
-       "certainty": "well_supported"
+       "certainty": "moderate"
       }
      ]
     },
@@ -1284,7 +1284,7 @@
        "low": 83,
        "high": 100,
        "spread": 17,
-       "wsd": 6.8,
+       "wsd": null,
        "total_weight": 4.94,
        "certainty": "moderate"
       }
@@ -1382,7 +1382,7 @@
        "low": 93,
        "high": 93,
        "spread": 0,
-       "wsd": 0.0,
+       "wsd": null,
        "total_weight": 2.0,
        "certainty": "moderate"
       }
@@ -1461,7 +1461,7 @@
        "low": 75,
        "high": 86,
        "spread": 11,
-       "wsd": 5.5,
+       "wsd": null,
        "total_weight": 2.0,
        "certainty": "moderate"
       }
@@ -1609,7 +1609,7 @@
        "low": 89,
        "high": 89,
        "spread": 0,
-       "wsd": 0.0,
+       "wsd": null,
        "total_weight": 2.0,
        "certainty": "moderate"
       }
@@ -1678,7 +1678,7 @@
        "low": 100,
        "high": 100,
        "spread": 0,
-       "wsd": 0.0,
+       "wsd": null,
        "total_weight": 2.0,
        "certainty": "moderate"
       }
@@ -1781,7 +1781,7 @@
        "low": 90,
        "high": 100,
        "spread": 10,
-       "wsd": 3.7,
+       "wsd": null,
        "total_weight": 5.94,
        "certainty": "well_supported"
       }
@@ -1879,7 +1879,7 @@
    "low": 89,
    "high": 100,
    "spread": 11,
-   "wsd": 4.4,
+   "wsd": null,
    "total_weight": 4.94,
    "certainty": "moderate"
   },
@@ -1954,9 +1954,9 @@
    "low": 62,
    "high": 100,
    "spread": 38,
-   "wsd": 13.5,
+   "wsd": null,
    "total_weight": 6.79,
-   "certainty": "well_supported"
+   "certainty": "moderate"
   },
   {
    "sign": "Figure-of-4 (extended arm)",
@@ -2046,9 +2046,9 @@
    "low": 89,
    "high": 90,
    "spread": 1,
-   "wsd": 0.4,
+   "wsd": null,
    "total_weight": 6.39,
-   "certainty": "well_supported"
+   "certainty": "moderate"
   },
   {
    "sign": "Forced head/eye version",
@@ -2247,7 +2247,7 @@
    "low": 100,
    "high": 100,
    "spread": 0,
-   "wsd": 0.0,
+   "wsd": null,
    "total_weight": 2.0,
    "certainty": "moderate"
   },
@@ -2305,7 +2305,7 @@
    "low": 100,
    "high": 100,
    "spread": 0,
-   "wsd": 0.0,
+   "wsd": null,
    "total_weight": 5.78,
    "certainty": "moderate"
   },
@@ -2419,7 +2419,7 @@
    "low": 75,
    "high": 75,
    "spread": 0,
-   "wsd": 0.0,
+   "wsd": null,
    "total_weight": 1.0,
    "certainty": "single_source"
   },
@@ -2511,7 +2511,7 @@
    "low": 81,
    "high": 81,
    "spread": 0,
-   "wsd": 0.0,
+   "wsd": null,
    "total_weight": 1.0,
    "certainty": "single_source"
   },
@@ -2584,7 +2584,7 @@
    "low": 75,
    "high": 86,
    "spread": 11,
-   "wsd": 5.5,
+   "wsd": null,
    "total_weight": 2.0,
    "certainty": "moderate"
   },
@@ -2676,7 +2676,7 @@
    "low": 93,
    "high": 93,
    "spread": 0,
-   "wsd": 0.0,
+   "wsd": null,
    "total_weight": 2.0,
    "certainty": "moderate"
   },
@@ -2894,9 +2894,9 @@
    "low": 62,
    "high": 92,
    "spread": 30,
-   "wsd": 10.6,
+   "wsd": null,
    "total_weight": 6.79,
-   "certainty": "well_supported"
+   "certainty": "moderate"
   },
   {
    "sign": "Preserved / identifiable ictal speech",
@@ -2967,7 +2967,7 @@
    "low": 83,
    "high": 83,
    "spread": 0,
-   "wsd": 0.0,
+   "wsd": null,
    "total_weight": 5.78,
    "certainty": "moderate"
   },
@@ -3059,9 +3059,9 @@
    "low": 88,
    "high": 88,
    "spread": 0,
-   "wsd": 0.0,
+   "wsd": null,
    "total_weight": 3.94,
-   "certainty": "moderate"
+   "certainty": "single_source"
   },
   {
    "sign": "Unilateral clonic activity",
@@ -3151,7 +3151,7 @@
    "low": 83,
    "high": 100,
    "spread": 17,
-   "wsd": 6.8,
+   "wsd": null,
    "total_weight": 4.94,
    "certainty": "moderate"
   },
@@ -3243,7 +3243,7 @@
    "low": 90,
    "high": 100,
    "spread": 10,
-   "wsd": 3.7,
+   "wsd": null,
    "total_weight": 5.94,
    "certainty": "well_supported"
   },
@@ -3318,7 +3318,7 @@
    "low": 83,
    "high": 86,
    "spread": 3,
-   "wsd": 1.2,
+   "wsd": null,
    "total_weight": 4.94,
    "certainty": "moderate"
   },
@@ -3410,7 +3410,7 @@
    "low": 89,
    "high": 89,
    "spread": 0,
-   "wsd": 0.0,
+   "wsd": null,
    "total_weight": 2.0,
    "certainty": "moderate"
   }
