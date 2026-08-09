@@ -1,4 +1,4 @@
-import json, re, os, sys
+import json, re, os, shutil, sys
 def _find_root(start):
     d = os.path.dirname(os.path.abspath(start))
     while True:
@@ -485,7 +485,7 @@ def build_meta(meta, flags):
     # view (ii): by semiology alphabetical
     view_sign = "".join(row(s,"s") for s in meta["by_sign"])
 
-    return f'''<details class="frontpage-fold meta-fold" open>
+    return f'''<details class="frontpage-fold meta-fold">
 <summary>Weighted meta-analysis &mdash; lateralizing reliability</summary>
 <div class="meta-wrap"><div class="meta-card">
   <div class="meta-head">
@@ -743,7 +743,7 @@ def build_brain(signs):
 
     payload = ("<script>const BRAIN_TILES=" + json.dumps(tiles, separators=(",", ":")) +
                ";const BRAIN_SIGNS=" + json.dumps(index, separators=(",", ":")) + ";</script>")
-    return payload + f'''<details class="frontpage-fold brain-fold" open>
+    return payload + f'''<details class="frontpage-fold brain-fold">
 <summary>Brodmann map &mdash; where each semiology localizes</summary>
 <div class="brain-card">
   <div class="brain-bar">
@@ -1130,7 +1130,14 @@ body.filtering .tb-dot{display:block}
 #result-count{font-size:.68rem;color:var(--muted);font-style:italic;margin-left:auto;padding:0 2px;white-space:nowrap}
 
 /* ---------- MAIN ---------- */
-main{padding:16px 16px 48px;max-width:1180px;margin:0 auto}
+main{padding:16px 20px 48px;max-width:1180px;margin:0 auto}
+/* A landscape tablet puts an overlay scrollbar - and the collapsed-toolbar puck -
+   straight over the right edge of the text. Hold the content off both. */
+main,.frontpage-fold,.callout{
+  padding-left:max(20px,env(safe-area-inset-left));
+  padding-right:max(20px,env(safe-area-inset-right))}
+body.tb-collapsed main,body.tb-collapsed .frontpage-fold,body.tb-collapsed .callout{
+  padding-right:max(62px,calc(env(safe-area-inset-right) + 46px))}
 .region-section{margin-bottom:11px;scroll-margin-top:118px}
 .region-toggle{width:100%;display:flex;align-items:center;gap:9px;background:var(--rc);color:#fff;border:none;border-left:3px solid color-mix(in srgb,var(--rc) 60%,#000);border-radius:6px;padding:6px 12px;font-size:.74rem;font-weight:800;letter-spacing:.06em;cursor:pointer;text-align:left}
 .region-chev{font-size:.66rem;transition:transform .18s;opacity:.8}
@@ -2057,16 +2064,22 @@ function filterAll(){
 })();
 
 // expand / collapse all (visible)
-document.getElementById('expand-all').addEventListener('click',()=>{
-  document.querySelectorAll('.sub-block').forEach(sb=>sb.classList.remove('collapsed'));
-  document.querySelectorAll('.sub-toggle').forEach(b=>b.setAttribute('aria-expanded','true'));
-  signs.forEach(s=>{ if(s.style.display!=='none') openSign(s); });
-});
-document.getElementById('collapse-all').addEventListener('click',()=>{
-  signs.forEach(s=>closeSign(s));
-  document.querySelectorAll('.sub-block').forEach(sb=>sb.classList.add('collapsed'));
-  document.querySelectorAll('.sub-toggle').forEach(b=>b.setAttribute('aria-expanded','false'));
-});
+/* These reach every level that can be folded - the summary panels at the top, the
+   region banners, the sub-region banners and the cards. Collapse all used to leave
+   the regions and the panels open, so on a phone it barely shortened the page. */
+function setAll(open){
+  document.querySelectorAll('.frontpage-fold').forEach(d=>{ d.open=open; });
+  document.querySelectorAll('.region-section').forEach(sec=>{
+    sec.classList.toggle('collapsed',!open);
+    const t=sec.querySelector('.region-toggle'); if(t) t.setAttribute('aria-expanded',open);
+  });
+  document.querySelectorAll('.sub-block').forEach(sb=>sb.classList.toggle('collapsed',!open));
+  document.querySelectorAll('.sub-toggle').forEach(b=>b.setAttribute('aria-expanded',open));
+  if(open) signs.forEach(s=>{ if(s.style.display!=='none') openSign(s); });
+  else     signs.forEach(s=>closeSign(s));
+}
+document.getElementById('expand-all').addEventListener('click',()=>setAll(true));
+document.getElementById('collapse-all').addEventListener('click',()=>setAll(false));
 
 // filters toggle (mobile)
 const ft=document.getElementById('filter-toggle');
@@ -2167,6 +2180,15 @@ HEAD = """<!DOCTYPE html>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Seizure Semiology &mdash; Interactive Study Reference</title>
+<!-- Added to the Home Screen this runs with no address bar or tab strip, which is
+     the only way a page can get that space back on iOS. -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Semiology">
+<meta name="theme-color" content="#12263f">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
 <style>""" + CSS + """</style>
 </head>
 <body>
@@ -2309,6 +2331,27 @@ HEAD = """<!DOCTYPE html>
 for name in ("seizure_semiology_localization.html", "index.html"):
     with open(os.path.join(DOCS, name), "w") as f:
         f.write(HEAD)
+
+# Added to the Home Screen the page runs with no address bar or tab strip. A page
+# cannot hide browser chrome any other way, so this is what makes that possible.
+with open(os.path.join(DOCS, "manifest.webmanifest"), "w") as f:
+    json.dump({
+        "name": "Seizure Semiology — Interactive Study Reference",
+        "short_name": "Semiology",
+        "start_url": "./index.html",
+        "scope": "./",
+        "display": "standalone",
+        "orientation": "any",
+        "background_color": "#f4f6fa",
+        "theme_color": "#12263f",
+        "icons": [{"src": "icon-180.png", "sizes": "180x180", "type": "image/png"},
+                  {"src": "icon-512.png", "sizes": "512x512", "type": "image/png",
+                   "purpose": "any maskable"}],
+    }, f, indent=1, ensure_ascii=False)
+for _icon in ("icon-180.png", "icon-512.png"):
+    _src = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", _icon)
+    if os.path.exists(_src):
+        shutil.copyfile(_src, os.path.join(DOCS, _icon))
 
 print(f"Written: {len(HEAD)} chars, {len(data)} signs")
 
