@@ -19,6 +19,15 @@ Format loosely follows Keep a Changelog; dates are ISO-8601.
   per view, in data); and the two plate scripts are one `tools/brodmann_plate.py`
   sharing their segmentation. The rendered page is byte-for-byte unchanged apart from
   two inconsistencies the refactor fixed (clip-path ids and `aria-label` casing).
+- **New papers flow onto the Brodmann map.** A sign added by intake under an
+  existing sub-region inherits that sub-region's cortical areas and appears on the
+  map with no manual step — verified end to end. A sign that introduces a *new*
+  sub-region needs one line of mapping, and the build now says so precisely rather
+  than failing cryptically: the error names the sub-region, points at
+  `mapping.by_sub` in `data/brodmann_map.json`, and lists the available area ids.
+  The intake workflow prompt and `intake/INTAKE.md` both carry the requirement, and
+  the intake's publishing step now commits `data/brodmann_map.json` alongside the
+  findings, so a mapping added during extraction reaches the pull request.
 - **The map is under the ledger's sync oversight.** Its curation is keyed by sign id
   and sub-region string, so it could drift silently: an intake that added a sign,
   renamed a sub-region or renumbered an id would have left signs off the map with
