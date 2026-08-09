@@ -619,6 +619,7 @@ _ASSETS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
 # (width, height, x, y) placing each photo so its brain aligns with the areas
 _PLACE = {"lateral": (793.4, 530.3, 92.6, 36.9),
           "medial":  (789.4, 517.9, 94.0, 40.0),
+          "dorsal":  (692.6, 739.3, -0.8, 56.8),
           "ventral": (715.7, 748.4, -8.9, 47.5)}
 
 def brain_image(view):
