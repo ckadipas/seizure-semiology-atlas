@@ -203,9 +203,10 @@ else:
                 err(f"brodmann_map: view {view!r} draws area {a['id']!r} more than once")
             seen.add(a["id"])
         for a in spec.get("areas", []):
-            if not a.get("points"):
-                err(f"brodmann_map: view {view!r} area {a['id']!r} has no outline — "
-                    f"run `python3 tools/brodmann_plate.py regions {view}`")
+            # the numeral is the whole of an area's presence on a view now: it is
+            # what is drawn, what is highlighted and what is clicked. The traced
+            # outlines are still in the file but nothing renders them, so they are
+            # not required of a newly added area.
             if not a.get("label"):
                 err(f"brodmann_map: view {view!r} area {a['id']!r} has no numeral position, "
                     f"so it would be drawn with nothing to click")

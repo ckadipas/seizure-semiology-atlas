@@ -4,6 +4,31 @@ All notable changes to the dataset and resource are recorded here.
 Format loosely follows Keep a Changelog; dates are ISO-8601.
 
 ## [Unreleased]
+### Changed
+- **Nothing is drawn over the cortex any more.** The map shaded each area with an
+  outline traced off the reference plate. Traced or not, an outline of an area whose
+  boundary the plate does not draw is a guess, and 80 of them tiling the surface read
+  as ill-fitting blocks that fought the numbers underneath. They are gone from the
+  page: a view is now the plate and its numerals, and the numeral is the whole of the
+  interface — it is what is drawn, what highlights, and what is clicked. The disc behind
+  each numeral carries the state (plain, has-signs, hover, selected, traced, density),
+  which is also how the published Brodmann plates label themselves. The traced outlines
+  stay in `data/brodmann_map.json` and `tools/brodmann_plate.py regions` still rebuilds
+  them, but nothing reads them, so `tools/validate_data.py` no longer demands one of a
+  newly added area — a numeral position is what makes an area usable.
+### Fixed
+- **The right hemisphere really flips now.** The plate was mirrored with a CSS transform
+  on SVG content, which is not honoured consistently — on iOS the numerals moved and the
+  brain stayed put, so every area sat on the wrong gyrus. The plate is now mirrored with
+  a plain SVG `transform` attribute set from script, which every engine honours.
+  Confirmed by measurement: BA 17 sits 0.94 of the way across the plate on the left and
+  0.06 on the right, and returns exactly on switching back.
+### Added
+- **The last Brodmann areas the map lacked are available.** BA 48 (retrosubicular) on
+  the medial view and BA 52 (parainsular) on the lateral, both parked at a placeholder
+  position to be dragged into place in the label editor. With 12, 26, 27, 29, 30 and 33
+  added earlier, all **49 human Brodmann areas** are now on the map; 49-51 were never
+  assigned in the human brain.
 ### Fixed
 - **Three pairs of Brodmann areas were named as if they were the same region.**
   BA 9 and BA 46 both read "dorsolateral prefrontal cortex"; BA 5 and BA 7 both read
