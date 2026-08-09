@@ -4,6 +4,15 @@ All notable changes to the dataset and resource are recorded here.
 Format loosely follows Keep a Changelog; dates are ISO-8601.
 
 ## [Unreleased]
+### Added
+- **The search toolbar collapses.** On a phone held sideways the sticky header — region
+  pills, search, filters, actions and count — took **40% of the screen** before a single
+  sign was visible. A control at the end of the toolbar folds the whole thing away to a
+  puck fixed at the top right, which stays put as the page scrolls and restores everything
+  on a tap, focusing the search box as it does. A landscape phone (viewport under 520px
+  tall) now starts collapsed; portrait and desktop are unchanged, and an explicit choice
+  either way is remembered. The puck carries a dot whenever a search term or filter is
+  active, so a folded toolbar can never quietly hide why the list looks short.
 ### Changed
 - **The dorsal view drops BA 17, 18 and 19 and re-places the rest.** The occipital areas
   are not visible from above on this plate, so numbering them there pointed at cortex the
