@@ -1080,6 +1080,24 @@ body{font-family:'Segoe UI','Helvetica Neue',Arial,sans-serif;background:var(--b
 
 /* ---------- STICKY HEAD ---------- */
 .sticky-head{position:sticky;top:0;z-index:100;background:#fff;box-shadow:0 2px 10px rgba(15,30,61,.09);border-bottom:1px solid var(--line)}
+/* The toolbar is a third of a landscape phone. It collapses out of the way to a
+   puck that stays put while the page scrolls, and brings everything back on a tap. */
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.tb-toggle{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;
+  border:1px solid var(--line);background:#fff;color:#9aa3b2;border-radius:8px;font-size:.6rem;
+  cursor:pointer;flex:0 0 auto;font-family:inherit}
+.tb-toggle:hover{border-color:var(--teal);color:var(--teal-d);background:#f0fbfd}
+body.tb-collapsed .sticky-head{display:none}
+.tb-fab{display:none;position:fixed;top:9px;right:11px;z-index:220;width:42px;height:42px;
+  align-items:center;justify-content:center;border-radius:50%;border:1px solid var(--line);
+  background:rgba(255,255,255,.95);backdrop-filter:blur(7px);font-size:1rem;cursor:pointer;
+  box-shadow:0 4px 16px rgba(15,30,61,.20)}
+.tb-fab:hover{border-color:var(--teal)}
+body.tb-collapsed .tb-fab{display:inline-flex}
+.tb-dot{position:absolute;top:5px;right:5px;width:9px;height:9px;border-radius:50%;
+  background:var(--teal);border:2px solid #fff;display:none}
+/* a collapsed toolbar must never hide the fact that a filter is on */
+body.filtering .tb-dot{display:block}
 .region-nav{display:flex;gap:6px;overflow-x:auto;padding:6px 14px;-webkit-overflow-scrolling:touch;border-bottom:1px solid var(--line2);scrollbar-width:thin}
 .region-nav::-webkit-scrollbar{height:5px}
 .region-nav::-webkit-scrollbar-thumb{background:#cfd6e2;border-radius:3px}
@@ -1429,7 +1447,7 @@ body.quiz .lib-chip{display:none}
 }
 
 @media print{
-  .sticky-head,.filter-toggle{display:none}
+  .sticky-head,.filter-toggle,.tb-fab{display:none}
   .detail{max-height:none!important}
   .region-section.collapsed .region-body{display:block}
   .site-header,.region-toggle,.evid-badge,.phase-badge,.chip{print-color-adjust:exact;-webkit-print-color-adjust:exact}
@@ -2007,12 +2025,36 @@ function filterAll(){
   });
 
   resultCount.textContent=visible+' of '+signs.length+' signs shown';
+  document.body.classList.toggle('filtering',
+    !!(searchInput.value.trim()||fRegion.value||fPhase.value||fLat.value||fEvid.value));
   noResults.style.display=visible===0?'block':'none';
 }
 
 [searchInput,fRegion,fPhase,fLat,fEvid].forEach(el=>{
   el.addEventListener(el.tagName==='INPUT'?'input':'change',filterAll);
 });
+
+/* ---------- collapsing the toolbar ---------- */
+(function(){
+  const KEY='atlasToolbar';
+  const fab=document.getElementById('tb-fab'), tog=document.getElementById('tb-toggle');
+  if(!fab||!tog) return;
+  function set(open,remember){
+    document.body.classList.toggle('tb-collapsed',!open);
+    tog.setAttribute('aria-expanded',open); fab.setAttribute('aria-expanded',open);
+    if(remember){ try{localStorage.setItem(KEY,open?'open':'closed');}catch(e){} }
+  }
+  function auto(){
+    let pref=null; try{pref=localStorage.getItem(KEY);}catch(e){}
+    /* a stated preference wins; otherwise a short viewport (a phone on its side)
+       starts collapsed, which is the case the toolbar was crowding */
+    if(pref) set(pref==='open',false); else set(window.innerHeight>520,false);
+  }
+  tog.addEventListener('click',()=>set(false,true));
+  fab.addEventListener('click',()=>{ set(true,true); searchInput.focus({preventScroll:true}); });
+  window.addEventListener('orientationchange',()=>setTimeout(auto,150));
+  auto();
+})();
 
 // expand / collapse all (visible)
 document.getElementById('expand-all').addEventListener('click',()=>{
@@ -2134,7 +2176,7 @@ HEAD = """<!DOCTYPE html>
   <p>Tap any sign for its localization, lateralization, pooled evidence and sources. <span class="edu-inline">&#9888;&#65039; Educational reference &mdash; not for clinical decision-making.</span></p>
 </div>
 
-<div class="sticky-head">
+<div class="sticky-head" id="sticky-head">
   <nav class="region-nav">
 """ + pills_html + """
   </nav>
@@ -2193,9 +2235,14 @@ HEAD = """<!DOCTYPE html>
       <button class="act-btn" id="collapse-all">&#10752; Collapse all</button>
       <label class="quiz-toggle"><input type="checkbox" id="quiz-mode"><span class="quiz-switch"></span>Quiz mode</label>
     </div>
+      <button class="tb-toggle" id="tb-toggle" aria-expanded="true" aria-controls="sticky-head"
+              title="Hide the toolbar">&#9650;<span class="vh"> Hide toolbar</span></button>
+    </div>
     <span id="result-count"></span>
   </div>
 </div>
+<button class="tb-fab" id="tb-fab" aria-expanded="false" aria-controls="sticky-head"
+        aria-label="Show search and filters">&#128269;<span class="tb-dot" aria-hidden="true"></span></button>
 
 <main>
 """ + brain_fold + meta_fold + sens_report_fold + figures_fold + forest_fold + callout_fold + """
