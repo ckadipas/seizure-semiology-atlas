@@ -4,6 +4,28 @@ All notable changes to the dataset and resource are recorded here.
 Format loosely follows Keep a Changelog; dates are ISO-8601.
 
 ## [Unreleased]
+### Fixed
+- **The label editor showed white blobs instead of numbers.** The numeral carried a fat
+  white stroke as its fingertip target, drawn behind the glyph by `paint-order`. When the
+  disc became the numeral's background that paint-order went, so the stroke painted over
+  the digits — a 34px-wide blob per number on a phone. The **disc** is the drag handle
+  now (19px, 26px on a phone) and the numeral just rides it, so there is no halo to cover
+  anything.
+### Changed
+- **Nothing on the page explains the build any more.** The map's panel quoted the rule that
+  mapped a sign, named `data/brodmann_map.json` and said what would make the build fail;
+  the figure footnote counted signs "not placed on the map". None of that is a reader's
+  business. The panel keeps only the one line that changes how a sign is read — whether it
+  is expected from the hemisphere on screen — and the footnote is gone.
+- **Shade by density uses a blue→red ramp.** Six anchors interpolated continuously, with
+  OKLCH lightness strictly decreasing 0.87 → 0.47 and chroma rising, routed blue → violet →
+  red so it never passes through green: it reads as magnitude, not as two colours, and the
+  worst adjacent pair clears CVD separation at ΔE 8.0 under deuteranopia. The numeral flips
+  to white where the disc is dark enough to need it. Counts are skewed (median 4, max 30),
+  so the scale is square-rooted, and the key's gradient stops are placed back through the
+  square — the bar is a linear count axis, so the compression at the low end is visible
+  rather than hidden. Areas with no signs keep a plain white disc, which is a different
+  statement from "few".
 ### Changed
 - **Nothing is drawn over the cortex any more.** The map shaded each area with an
   outline traced off the reference plate. Traced or not, an outline of an area whose
