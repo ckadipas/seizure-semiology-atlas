@@ -167,8 +167,9 @@ else:
     for r in rendered:
         got = by_sign.get(str(r.get("id")), {}).get("areas") or by_sub.get(r.get("sub"))
         if not got and str(r.get("id")) not in unmapped:
-            err(f"brodmann_map: sign {r.get('id')} ({r.get('sign','')[:40]!r}) maps to no area "
-                f"and is not declared under mapping.unmapped")
+            err(f"brodmann_map: sign {r.get('id')} ({r.get('sign','')[:40]!r}) maps to no area. "
+                f"Add its sub-region to mapping.by_sub in data/brodmann_map.json, or give it a "
+                f"mapping.by_sign entry, or declare it under mapping.unmapped with a reason.")
     for sid, entry in by_sign.items():
         rec = by_id.get(int(sid))
         if rec is None:
@@ -184,7 +185,9 @@ else:
             err(f"brodmann_map: rule for a sub-region no longer in the dataset: {sub!r}")
     for sub in sorted(subs_in_use):
         if sub not in by_sub:
-            err(f"brodmann_map: sub-region has no rule, so its signs fall off the map: {sub!r}")
+            err(f"brodmann_map: new sub-region {sub!r} has no rule, so its signs would not appear "
+                f"on the Brodmann map. Add it to mapping.by_sub in data/brodmann_map.json with the "
+                f"area ids it localizes to (available: {', '.join(sorted(areas))}).")
     referenced = {a for v in by_sub.values() for a in v} | {a for e in by_sign.values() for a in e.get("areas", [])}
     for a in sorted(referenced - set(areas)):
         err(f"brodmann_map: mapping references area {a!r}, which is not defined")

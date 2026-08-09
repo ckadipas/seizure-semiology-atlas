@@ -28,6 +28,16 @@ and do **not** commit the PDF or full text — only the short attributed figures
   `enrichment/build_enrichment.py`.
 - Add each figure as a structured record in `enrichment/observations.json` (with
   its page/locator), or an evidence call in `build_enrichment.py`.
+- **Keep the Brodmann map in step.** Every sign has to reach the map. A new sign
+  whose `sub` already exists inherits that sub-region's cortical areas
+  automatically — nothing to do. If the sign introduces a **new** `sub`, add it to
+  `mapping.by_sub` in `data/brodmann_map.json` with the area ids it localizes to
+  (the ids are the keys of `areas` in that file, e.g. `"4"`, `"22"`, `"3-1-2"`,
+  `"insula"`). If one sign localizes more precisely than its sub-region, give it a
+  `mapping.by_sign` entry keyed by its id — `{"sign": "<exact name>", "areas": [...]}`,
+  the name recorded so the mapping can be audited later. If a sign genuinely has no
+  cortical-surface localization, list it under `mapping.unmapped` with a reason.
+  `make validate` fails if a sign would fall off the map, so this is not optional.
 
 ## 5. Build, review, merge
 ```bash
