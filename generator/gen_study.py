@@ -892,10 +892,53 @@ body.lbledit .ba-num:hover{fill:var(--teal-d)}
 body.lbledit .ba-num.drag{cursor:grabbing;fill:var(--teal-d);stroke:rgba(14,157,176,.25)}
 #lbl-out{width:100%;height:70px;margin-top:7px;font-family:'SF Mono',Consolas,monospace;
   font-size:.62rem;border:1px solid var(--line);border-radius:6px;padding:5px}
+.lbl-editor{position:fixed;right:12px;bottom:12px;z-index:400;background:rgba(255,255,255,.97);
+  border:1px solid var(--line);border-radius:12px;padding:9px 11px;backdrop-filter:blur(6px);
+  box-shadow:0 8px 28px rgba(15,30,61,.20);font-size:.76rem;width:290px;line-height:1.4}
+.lbl-editor.folded .le-body{display:none}
+.le-row{display:flex;gap:6px;align-items:center;margin-top:6px}
+.le-row:first-child{margin-top:0}
+#le-pick{flex:1;min-width:0;border:1px solid var(--line);border-radius:7px;padding:7px 8px;
+  font-family:inherit;font-size:.8rem;background:#fff;color:var(--ink)}
+#le-fold{flex:0 0 auto;width:30px;height:30px;border:1px solid var(--line);background:#fff;
+  border-radius:7px;cursor:pointer;font-size:.7rem;color:var(--navy)}
+.lbl-editor.folded #le-fold{transform:rotate(180deg)}
+.le-modes{display:flex;gap:3px;background:#f1f4f9;border:1px solid var(--line);
+  border-radius:8px;padding:2px;margin-top:6px}
+.le-modes button{flex:1;border:none;background:none;border-radius:6px;padding:6px 4px;
+  font-family:inherit;font-size:.72rem;font-weight:700;color:#6d7789;cursor:pointer}
+.le-modes button.on{background:#fff;color:var(--teal-d);box-shadow:0 1px 3px rgba(15,30,61,.13)}
+.le-zoom button{flex:0 0 auto;min-width:34px;height:30px;border:1px solid var(--line);
+  background:#fff;border-radius:7px;font-size:.9rem;font-weight:700;color:var(--navy);cursor:pointer}
+.le-zoom #le-fit{font-size:.72rem;padding:0 9px}
+#le-z{flex:1;text-align:center;font-family:'SF Mono',Consolas,monospace;font-size:.72rem;color:var(--muted)}
+.lbl-editor .le-row:last-child button{flex:1;border:1px solid var(--line);background:#fff;
+  border-radius:7px;padding:6px 8px;font-family:inherit;font-size:.73rem;font-weight:700;
+  color:var(--navy);cursor:pointer}
+.lbl-editor .le-row:last-child button:hover{border-color:var(--teal);color:var(--teal-d)}
+#lbl-read{margin-top:6px;font-family:'SF Mono',Consolas,monospace;font-size:.7rem;color:var(--teal-d)}
+.ba-num.edit-sel{fill:var(--teal-d)!important;stroke:rgba(14,157,176,.30)!important}
+body.lbl-place .brain-svg{cursor:crosshair}
+/* D-pad: thumb-reachable, translucent, never covers the middle of the figure */
+.dpad{position:fixed;left:12px;bottom:12px;z-index:400;display:grid;width:132px;height:132px;
+  grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);gap:3px;
+  background:rgba(255,255,255,.86);backdrop-filter:blur(6px);border:1px solid var(--line);
+  border-radius:14px;padding:5px;box-shadow:0 8px 28px rgba(15,30,61,.20);touch-action:none}
+.dpad button{border:1px solid var(--line);background:#fff;border-radius:9px;font-size:.9rem;
+  color:var(--navy);cursor:pointer;touch-action:none;-webkit-user-select:none;user-select:none}
+.dpad button:active{background:var(--teal);color:#fff;border-color:var(--teal-d)}
+.dpad [data-d="u"]{grid-area:1/2}.dpad [data-d="l"]{grid-area:2/1}
+.dpad [data-d="c"]{grid-area:2/2;border:none;background:none;color:#c3cedd;font-size:.6rem;cursor:default}
+.dpad [data-d="r"]{grid-area:2/3}.dpad [data-d="d"]{grid-area:3/2}
+@media(max-width:760px){
+  .lbl-editor{left:8px;right:8px;bottom:8px;width:auto}
+  .dpad{left:auto;right:10px;bottom:190px;width:118px;height:118px}
+}
+#lbl-out{width:100%;height:70px;margin-top:7px;font-family:'SF Mono',Consolas,monospace;
+  font-size:.62rem;border:1px solid var(--line);border-radius:6px;padding:5px}
 .lbl-editor{position:fixed;right:14px;bottom:14px;z-index:400;background:#fff;
   border:1px solid var(--line);border-radius:10px;padding:11px 13px;
   box-shadow:0 8px 28px rgba(15,30,61,.20);font-size:.76rem;max-width:290px;line-height:1.45}
-@media(max-width:760px){.lbl-editor{left:8px;right:8px;bottom:8px;max-width:none}}
 .lbl-editor h4{font-size:.8rem;color:var(--navy);margin-bottom:4px}
 .lbl-editor p{color:var(--muted);margin-bottom:7px}
 .lbl-editor code{background:#eef2f7;border-radius:3px;padding:0 4px;font-size:.72rem}
@@ -1507,15 +1550,16 @@ JS = r"""
   svgs[0].classList.add('show');
 
   /* ---------- label position editor ----------
-     Add #edit-labels to the URL to drag the numerals onto the anatomy. Positions
-     persist in localStorage and "Copy" yields the LABEL_POS block for
-     generator/brain_atlas.py, so a session of nudging can be baked in. */
+     #edit-labels turns it on. Pick an area from the grouped list, the view zooms
+     to it, then move it by dragging, by holding a D-pad (continuous nudge), or
+     by tapping where it should go. Zoom works in every mode. */
   const LS='atlasLabelPos';
   let saved={}; try{saved=JSON.parse(localStorage.getItem(LS)||'{}');}catch(e){saved={};}
-  function vbWidth(svg){return (svg.getAttribute('viewBox')||'0 0 1000 620').split(/\s+/)[2]*1;}
+  svgs.forEach(s=>{ s.dataset.vb0 = s.getAttribute('viewBox'); });
+  function vb0(svg){ return svg.dataset.vb0.split(/\s+/).map(Number); }
   function place(svg,tile,x,y){
-    const w=vbWidth(svg);
-    svg.querySelectorAll('.lab-L .ba-num,.ba-labels:not(.lab-R) .ba-num').forEach(t=>{
+    const w=vb0(svg)[2];
+    svg.querySelectorAll('.ba-labels:not(.lab-R) .ba-num').forEach(t=>{
       if(t.dataset.tile===tile){t.setAttribute('x',x);t.setAttribute('y',y);}});
     svg.querySelectorAll('.lab-R .ba-num').forEach(t=>{
       if(t.dataset.tile===tile){t.setAttribute('x',w-x);t.setAttribute('y',y);}});
@@ -1525,78 +1569,151 @@ JS = r"""
       Object.keys(o).forEach(k=>place(s,k,o[k][0],o[k][1]));});
   }
   applySaved();
-
   if(location.hash.toLowerCase().indexOf('edit')<0) return;
   document.body.classList.add('lbledit');
-  const ed=document.createElement('div');
-  ed.className='lbl-editor';
-  ed.innerHTML='<h4>Label editor</h4><p>Drag any number onto its area. '+
-    'Click one then use <code>arrows</code> to nudge (<code>shift</code> = 10).</p>'+
-    '<div id="lbl-read">\u2014</div>'+
-    '<div class="row"><button id="lbl-copy">Copy positions</button>'+
-    '<button id="lbl-reset">Reset</button></div>';
-  document.body.appendChild(ed);
-  const read=ed.querySelector('#lbl-read');
-  let drag=null, pick=null;
 
-  function toSvg(svg,e){
-    const p=svg.createSVGPoint(); p.x=e.clientX; p.y=e.clientY;
-    return p.matrixTransform(svg.getScreenCTM().inverse());
+  const ed=document.createElement('div'); ed.className='lbl-editor';
+  ed.innerHTML=
+    '<div class="le-row"><select id="le-pick" aria-label="Brodmann area"></select>'+
+    '<button id="le-fold" title="collapse">▾</button></div>'+
+    '<div class="le-body">'+
+      '<div class="le-modes" role="group" aria-label="Move mode">'+
+        '<button data-mode="drag" class="on">Drag</button>'+
+        '<button data-mode="nudge">Nudge</button>'+
+        '<button data-mode="place">Place</button></div>'+
+      '<div class="le-row le-zoom"><button id="le-out">−</button>'+
+        '<span id="le-z">1.0×</span><button id="le-in">+</button>'+
+        '<button id="le-fit">Fit</button></div>'+
+      '<div id="lbl-read">Pick an area to begin</div>'+
+      '<div class="le-row"><button id="lbl-copy">Copy positions</button>'+
+      '<button id="lbl-reset">Reset</button></div>'+
+    '</div>';
+  document.body.appendChild(ed);
+  const pad=document.createElement('div'); pad.className='dpad'; pad.hidden=true;
+  pad.innerHTML='<button data-d="u">▲</button><button data-d="l">◀</button>'+
+    '<button data-d="c" title="hold an arrow to glide">●</button>'+
+    '<button data-d="r">▶</button><button data-d="d">▼</button>';
+  document.body.appendChild(pad);
+
+  const read=ed.querySelector('#lbl-read'), pick=ed.querySelector('#le-pick');
+  let mode='drag', cur=null, zoom=1, drag=null;
+  const shown=()=>svgs.find(s=>s.classList.contains('show'));
+
+  function fillPicker(){
+    const svg=shown(); if(!svg) return;
+    const byLobe={};
+    svg.querySelectorAll('.ba-labels:not(.lab-R) .ba-num').forEach(t=>{
+      const k=t.dataset.tile, inf=BRAIN_TILES[k]; if(!inf) return;
+      (byLobe[inf.lobe]=byLobe[inf.lobe]||[]).push([k,inf.label,inf.name]);
+    });
+    let h='<option value="">Area…</option>';
+    Object.keys(byLobe).sort().forEach(lo=>{
+      h+='<optgroup label="'+lo+'">';
+      byLobe[lo].sort((a,b)=>a[1].localeCompare(b[1],undefined,{numeric:true}))
+        .forEach(r=>{h+='<option value="'+r[0]+'">'+r[1]+' — '+r[2].split('(')[0].trim()+'</option>';});
+      h+='</optgroup>';
+    });
+    pick.innerHTML=h; if(cur) pick.value=cur;
   }
-  function store(svg,tile,x,y){
-    const v=svg.dataset.view; (saved[v]=saved[v]||{})[tile]=[Math.round(x),Math.round(y)];
-    localStorage.setItem(LS,JSON.stringify(saved));
-    read.textContent=v+' '+tile+'  \u2192  ('+Math.round(x)+', '+Math.round(y)+')';
+  function labelEl(){ const svg=shown(); if(!svg||!cur) return null;
+    return svg.querySelector('.ba-labels:not(.lab-R) .ba-num[data-tile="'+cur+'"]'); }
+  function setView(cx,cy){
+    const svg=shown(); if(!svg) return;
+    const [,,w,h]=vb0(svg), nw=w/zoom, nh=h/zoom;
+    svg.setAttribute('viewBox',(cx-nw/2)+' '+(cy-nh/2)+' '+nw+' '+nh);
+    ed.querySelector('#le-z').textContent=zoom.toFixed(1)+'×';
   }
+  function recenter(){
+    const t=labelEl(); const svg=shown(); if(!svg) return;
+    if(zoom===1){ svg.setAttribute('viewBox',svg.dataset.vb0); ed.querySelector('#le-z').textContent='1.0×'; return; }
+    if(t) setView(+t.getAttribute('x'), +t.getAttribute('y'));
+  }
+  function select(tile){
+    cur=tile;
+    svgs.forEach(s=>s.querySelectorAll('.ba-num').forEach(t=>
+      t.classList.toggle('edit-sel', !!tile && t.dataset.tile===tile)));
+    pad.hidden = !(mode==='nudge' && cur);
+    const t=labelEl();
+    if(t){ if(zoom<2.2) zoom=2.2; setView(+t.getAttribute('x'), +t.getAttribute('y')); say(); }
+  }
+  function say(){ const t=labelEl(); if(!t){read.textContent='Pick an area to begin';return;}
+    read.textContent=shown().dataset.view+' '+cur+'  →  ('+
+      Math.round(t.getAttribute('x'))+', '+Math.round(t.getAttribute('y'))+')'; }
+  function store(x,y){ const svg=shown(); if(!svg||!cur) return;
+    (saved[svg.dataset.view]=saved[svg.dataset.view]||{})[cur]=[Math.round(x),Math.round(y)];
+    localStorage.setItem(LS,JSON.stringify(saved)); say(); }
+  function moveTo(x,y){ const svg=shown(); if(!svg||!cur) return; place(svg,cur,x,y); store(x,y); }
+  function toSvg(svg,e){ const p=svg.createSVGPoint(); p.x=e.clientX; p.y=e.clientY;
+    return p.matrixTransform(svg.getScreenCTM().inverse()); }
+
+  fillPicker();
+  pick.addEventListener('change',e=>select(e.target.value||null));
+  ed.querySelector('#le-fold').addEventListener('click',()=>ed.classList.toggle('folded'));
+  ed.querySelectorAll('.le-modes button').forEach(b=>b.addEventListener('click',()=>{
+    mode=b.dataset.mode;
+    ed.querySelectorAll('.le-modes button').forEach(x=>x.classList.toggle('on',x===b));
+    pad.hidden = !(mode==='nudge' && cur);
+    document.body.classList.toggle('lbl-place', mode==='place');
+  }));
+  ed.querySelector('#le-in').addEventListener('click',()=>{zoom=Math.min(8,zoom*1.5);recenter();});
+  ed.querySelector('#le-out').addEventListener('click',()=>{zoom=Math.max(1,zoom/1.5);recenter();});
+  ed.querySelector('#le-fit').addEventListener('click',()=>{zoom=1;recenter();});
+  card.querySelectorAll('.seg-b[data-view]').forEach(b=>b.addEventListener('click',()=>{
+    setTimeout(()=>{zoom=1;cur=null;pad.hidden=true;fillPicker();recenter();say();},0);}));
+
+  /* continuous nudge while an arrow is held; step scales with zoom */
+  let rep=null;
+  function step(d){ const t=labelEl(); if(!t) return;
+    const k=1.1/zoom, dx=(d==='l'?-k:d==='r'?k:0), dy=(d==='u'?-k:d==='d'?k:0);
+    moveTo(+t.getAttribute('x')+dx, +t.getAttribute('y')+dy); recenter(); }
+  pad.addEventListener('pointerdown',e=>{ const b=e.target.closest('button'); if(!b) return;
+    e.preventDefault(); const d=b.dataset.d; if(d==='c') return;
+    step(d); rep=setInterval(()=>step(d),40); });
+  ['pointerup','pointercancel','pointerleave'].forEach(ev=>
+    window.addEventListener(ev,()=>{ if(rep){clearInterval(rep); rep=null;} }));
+
+  /* drag, and tap-to-place */
   card.addEventListener('pointerdown',e=>{
-    const t=e.target.closest('.ba-num'); if(!t) return;
+    const svg=e.target.closest('.brain-svg'); if(!svg) return;
+    if(mode==='place'){
+      if(!cur) return; e.preventDefault(); e.stopPropagation();
+      const p=toSvg(svg,e); moveTo(p.x,p.y); return;
+    }
+    const t=e.target.closest('.ba-num'); if(!t||mode!=='drag') return;
     e.preventDefault(); e.stopPropagation();
-    const svg=t.closest('.brain-svg');
-    drag={t:t,svg:svg,tile:t.dataset.tile}; pick=drag;
-    t.classList.add('drag'); t.setPointerCapture&&t.setPointerCapture(e.pointerId);
+    if(t.dataset.tile!==cur){ cur=t.dataset.tile; pick.value=cur; select(cur); }
+    drag={svg:svg}; t.classList.add('drag');
   },true);
-  window.addEventListener('pointermove',e=>{
-    if(!drag) return;
-    const p=toSvg(drag.svg,e);
-    place(drag.svg,drag.tile,p.x,p.y); store(drag.svg,drag.tile,p.x,p.y);
-  });
-  window.addEventListener('pointerup',()=>{
-    if(drag){drag.t.classList.remove('drag'); drag=null;}
-  });
+  window.addEventListener('pointermove',e=>{ if(!drag) return;
+    const p=toSvg(drag.svg,e); moveTo(p.x,p.y); });
+  window.addEventListener('pointerup',()=>{ if(drag){
+    card.querySelectorAll('.ba-num.drag').forEach(t=>t.classList.remove('drag')); drag=null; }});
   window.addEventListener('keydown',e=>{
-    if(!pick||['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].indexOf(e.key)<0) return;
-    e.preventDefault();
-    const step=e.shiftKey?10:1;
-    let x=+pick.t.getAttribute('x'), y=+pick.t.getAttribute('y');
-    if(e.key==='ArrowLeft')x-=step; if(e.key==='ArrowRight')x+=step;
-    if(e.key==='ArrowUp')y-=step;  if(e.key==='ArrowDown')y+=step;
-    place(pick.svg,pick.tile,x,y); store(pick.svg,pick.tile,x,y);
-  });
+    if(!cur||['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].indexOf(e.key)<0) return;
+    e.preventDefault(); const t=labelEl(); if(!t) return;
+    const k=e.shiftKey?10:1;
+    moveTo(+t.getAttribute('x')+(e.key==='ArrowLeft'?-k:e.key==='ArrowRight'?k:0),
+           +t.getAttribute('y')+(e.key==='ArrowUp'?-k:e.key==='ArrowDown'?k:0));
+    recenter(); });
+
   ed.querySelector('#lbl-copy').addEventListener('click',()=>{
     let out='LABEL_POS = {\n';
-    svgs.forEach(s=>{
-      const v=s.dataset.view; const seen={}; const parts=[];
+    svgs.forEach(s=>{ const seen={}, parts=[];
       s.querySelectorAll('.ba-labels:not(.lab-R) .ba-num').forEach(t=>{
         const k=t.dataset.tile; if(seen[k])return; seen[k]=1;
         parts.push('"'+k+'": ('+Math.round(t.getAttribute('x'))+', '+Math.round(t.getAttribute('y'))+')');
       });
-      if(parts.length) out+=' "'+v+'": {\n   '+parts.join(', ')+',\n },\n';
-    });
+      if(parts.length) out+=' "'+s.dataset.view+'": {\n   '+parts.join(', ')+',\n },\n'; });
     out+='}\n';
-    function showBox(){
-      let ta=ed.querySelector('#lbl-out');
-      if(!ta){ta=document.createElement('textarea');ta.id='lbl-out';ed.appendChild(ta);}
-      ta.value=out; ta.focus(); ta.select();
-      read.textContent='Select all and copy from the box below';
-    }
-    if(navigator.clipboard&&navigator.clipboard.writeText){
-      navigator.clipboard.writeText(out).then(
-        ()=>{read.textContent='Copied '+out.length+' chars to the clipboard';}, showBox);
-    } else showBox();
+    function box(){ let ta=ed.querySelector('#lbl-out');
+      if(!ta){ta=document.createElement('textarea');ta.id='lbl-out';ed.querySelector('.le-body').appendChild(ta);}
+      ta.value=out; ta.focus(); ta.select(); read.textContent='Select all and copy from the box'; }
+    if(navigator.clipboard&&navigator.clipboard.writeText)
+      navigator.clipboard.writeText(out).then(()=>{read.textContent='Copied to clipboard';},box);
+    else box();
   });
   ed.querySelector('#lbl-reset').addEventListener('click',()=>{
-    localStorage.removeItem(LS); location.reload();
-  });
+    localStorage.removeItem(LS); location.reload(); });
 })();
 
 const searchInput=document.getElementById('search-input');
