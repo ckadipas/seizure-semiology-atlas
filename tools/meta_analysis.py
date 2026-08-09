@@ -56,7 +56,17 @@ def study_weight(study, scheme):
     return base, gt, sz, round(base * gt * sz, 3)
 
 
-CONTESTED_POINTS = 25          # the one place this threshold is defined
+CONTESTED_POINTS = 25          # the one place this threshold is defined; the review
+                               # tool imports it rather than keeping a second copy
+
+# Provenance kinds that carry a number but must never be averaged. Each is a
+# different way of not being a measurement, and the page has to say which:
+#   secondary_citation   - a source restating a figure someone else measured
+#   review_synthesis     - a review's own summary across several series, which is
+#                          not a restatement of any one of them
+#   interpolated_midpoint- a point estimate the curator derived from a reported
+#                          range ("~80-90%" -> 85). Nobody measured 85.
+NOT_MEASURED = ("secondary_citation", "review_synthesis", "interpolated_midpoint")
 
 
 def certainty(n_studies, spread=None, n_primary=None):
@@ -105,13 +115,29 @@ def pool_sign(sign, studies, scheme):
             "freq": obs.get("freq"),
             "note": obs.get("note", ""),
         }
-        if obs.get("provenance") == "secondary_citation":
-            # a review restating a primary series already in this pool. Keep it
-            # visible as a corroborating citation; averaging it would report one
-            # measurement as two.
+        if obs.get("source_metric"):
+            # what the source ledger actually calls this number, when it is not the
+            # sign's own metric. Carried through so the checker can see a PPV that has
+            # been entered as a lateralization percentage.
+            row["source_metric"] = obs["source_metric"]
+
+        prov = obs.get("provenance")
+        if prov in NOT_MEASURED:
+            # carries a number that nobody measured. Keep it visible - it is why the
+            # figure is believed - but averaging it would report a citation, a
+            # summary, or the curator's own arithmetic as a measurement.
             row["value"] = obs.get("value")
-            row["restates"] = obs.get("restates")
-            row["qualitative"] = "restates " + str(obs.get("restates"))
+            row["provenance"] = prov
+            if prov == "secondary_citation":
+                row["restates"] = obs.get("restates")
+                row["qualitative"] = "restates " + str(obs.get("restates"))
+            elif prov == "review_synthesis":
+                row["qualitative"] = "the review's own summary across several series"
+            else:
+                row["value_range"] = obs.get("value_range")
+                lo, hi = (obs.get("value_range") or [None, None])[:2]
+                row["qualitative"] = (f"midpoint of a reported {lo}–{hi}% range"
+                                      if lo is not None else "midpoint of a reported range")
             qualitative.append(row)
         elif isinstance(obs.get("value"), (int, float)):
             row["value"] = obs["value"]

@@ -64,6 +64,32 @@ dressed as precision. **Frequencies are not pooled** — they are population-spe
 (% of FLE vs % of TLE vs % of EMU patients), so pooling them would be invalid; they
 are listed in the source-statistics table instead.
 
+### Three kinds of number that are never averaged
+
+A value in the ledger is not automatically a measurement. Three provenance marks say
+it is not, and the page prints which one applies beside the number rather than showing
+a figure it silently declines to use:
+
+| Mark | What it is |
+|---|---|
+| `secondary_citation` | a source restating a figure someone else measured; names it in `restates` |
+| `review_synthesis` | a review's own summary across several series — it restates no single one of them |
+| `interpolated_midpoint` | a point estimate the curator derived from a reported range (`value_range`) |
+
+The last two exist because both were previously recorded as restatements of a specific
+study, which was false in both cases. Loddenkemper's postictal-dysphasia figure is *"80–100%
+across series (midpoint 90)"* — a synthesis, not a restatement of Gabr 1989. Loddenkemper's
+dystonia figure was marked as restating Roh 1996 on nothing but `100 == 100`, while its own
+note names Yen. And Blair's postictal-aphasia *85* is the midpoint of a quoted "~80–90%":
+nobody measured 85, yet it was being averaged, raising that sign to `k = 4` and generating a
+weighted SD over a number the curator had invented.
+
+`restates` may name a study in this file **or** an entry in `external_sources` — a series
+this library has never read. Without that, the two best-documented restatements here could
+not be expressed at all: Kinney 2019's Todd's-palsy 93% is attributed in the source ledger to
+Kellinghaus & Kotagal 2004, and its hemifield 100% to Salanova 1992, and neither is in the
+corpus. Both were pointed at Loddenkemper instead, which was simply the wrong paper.
+
 ### Restatements are not averaged
 
 A narrative review reporting a figure it took from a series is not a second
@@ -149,6 +175,13 @@ page can never disagree:
   tagged `est.` — never fabricated as a source figure.
 
 ## Review checks — `tools/adversarial_review.py`
+
+**Its findings are shown on the page.** Each flag renders on the sign it was raised
+against, in the expanded row of the top plot. Until recently they were computed on every
+build, written to `review_flags.json`, indexed by the generator into a variable that was
+never read, and shown to nobody — while three files described a "conflicting-evidence
+panel" that did not exist. Two high-severity conflicts, 38 and 30 points, were flagged on
+every run and reached no reader.
 
 Runs on every pull request and writes `enrichment/review_flags.json`. It flags
 studies that disagree on a sign's figure, an unmarked restatement, a `restates`

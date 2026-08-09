@@ -124,10 +124,13 @@ literature supports.
 **Literature-mined meta-analyses are not used as an evidence source.** A large
 sample size does not fix bad labels: when phenomenologically unrelated signs are
 bundled into one category and paired with sparse localization cells, the
-resulting odds ratios can be large but artifactual. Quantitative figures here
-come from primary series with disciplined sign definitions and an explicit ground
-truth (SEEG, postoperative seizure-freedom, or imaging/neurophysiology
-concordance).
+resulting odds ratios can be large but artifactual. Quantitative figures here are
+sourced preferentially from primary series with disciplined sign definitions and an
+explicit ground truth (SEEG, postoperative seizure-freedom, or imaging/neurophysiology
+concordance) — but **not all of them are**, and the page says which. Six signs'
+percentages come only from narrative reviews quoting cohorts this library has not
+read; those are labelled *review only — no primary series here* and carry the lowest
+certainty. Read that label as part of the figure.
 
 **Preserved teaching threads:** the French anatomo-electro-clinical / network
 framework (semiology as a dynamic network trajectory; the *order* of signs often

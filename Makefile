@@ -3,8 +3,8 @@
 help:
 	@echo "targets:"
 	@echo "  make validate   - schema + integrity checks on dataset and Brodmann map (CI gate)"
-	@echo "  make build      - validate, rebuild enrichment + meta-analysis + review, render HTML -> docs/"
-	@echo "  make review     - rerun the weighted meta-analysis + adversarial review only"
+	@echo "  make build      - validate, rebuild enrichment + weighted average + review, render HTML -> docs/"
+	@echo "  make review     - rerun the weighted average + adversarial review only"
 	@echo "  make check-sync - verify committed generated JSON matches its sources"
 	@echo "  make serve      - build then serve docs/ at http://localhost:8000"
 	@echo "  make intake PDF=path/to/paper.pdf - screen & queue a new paper for integration"

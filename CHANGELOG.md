@@ -5,6 +5,45 @@ Format loosely follows Keep a Changelog; dates are ISO-8601.
 
 ## [Unreleased]
 ### Fixed
+- **The page printed two citations that were simply wrong.** Loddenkemper's postictal-dysphasia
+  90% was marked as restating Gabr 1989; its own note says *"80–100% across series (midpoint
+  90)"* — a synthesis of several series, not a restatement of one. Loddenkemper's dystonia 100%
+  was marked as restating Roh 1996 on nothing but `100 == 100`, while its note names Yen. Both
+  now carry `review_synthesis`, which excludes them from the average without inventing a target.
+- **A number nobody measured was being averaged.** Blair's postictal-aphasia *85* is the midpoint
+  of a quoted "~80–90%". It was raising that sign to `k = 4` and generating a weighted SD of 2.1
+  — a dispersion statistic over a value the curator had interpolated. Marked
+  `interpolated_midpoint` with its `value_range`; the sign is now `k = 3` on three genuine series
+  (Gabr 92, Maillard 92, Serafetinides 94), pooled 92.8%, and the manufactured SD is gone.
+- **The two best-documented restatements could not be expressed.** `restates` had to name a study
+  in the file, so Kinney 2019's Todd's-palsy 93% (attributed in the ledger to **Kellinghaus &
+  Kotagal 2004**) and its hemifield 100% (to **Salanova 1992**) were both pointed at Loddenkemper
+  — the wrong paper. `restates` now accepts an `external_sources` entry: a series this library has
+  never read. Both are corrected.
+- **A predictive value was sitting in a lateralization pool.** Kinney's hemifield 100% is recorded
+  in the source ledger as `ppv` — P(onset side | sign), not the share of cases falling one way.
+  A new `metric_mismatch` check records it, and blocks the build if such a figure ever reaches an
+  average (it is currently excluded as a restatement, so no number moves today).
+- **The review tool's findings reached nobody.** `flag_by_sign` was built by the generator on
+  every run and never read; `METHODS.md`, the `build_meta` docstring and `review_flags.json`
+  all described a "conflicting-evidence panel" that did not exist. Two high-severity conflicts
+  (38 and 30 points) were flagged on every build and shown to no reader. Flags now render on
+  the sign they were raised against.
+- **The checker was reading rows the engine had discarded.** `pooled_rows` filtered on `restates`
+  alone, so the two new exclusion kinds — which have no `restates` target — read as pooled and
+  produced three false `unmarked_restatement` flags at high severity. It now asks the same
+  question the engine asks.
+- **`CONTESTED_POINTS = 25  # the one place this threshold is defined`** was not the one place;
+  `CONFLICT_TOL = 25` sat in the other file. The review tool imports it now.
+- **The ledger claimed every numeric value traces to `corpus_findings.json`.** Seven of forty do
+  not — some are curator arithmetic over a quoted fraction (Serafetinides 16/17 → 94), one comes
+  from a paper absent from that file entirely (Wyllie 1986). The note now says so, and a new
+  `untraceable_value` check publishes the count on every run instead of leaving it to a sentence.
+- **`README.md` claimed all quantitative figures come from primary series with an explicit ground
+  truth.** False for the six `review only` signs. It now says which, and points at the label.
+- **Residual "meta-analysis" wording** in `Makefile`, `validate.yml`, the ledger `_doc` and a CSS
+  comment that ships in the built page.
+### Fixed
 - **Six pooled figures had no study behind them at all.** Excluding a review that
   restates another source still leaves a review standing in for a series, and after the
   last fix six signs were in exactly that position: every percentage behind them is

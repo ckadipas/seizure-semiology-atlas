@@ -6,10 +6,12 @@
  },
  "summary": {
   "sens_spec_provenance": 1,
-  "untraced_review_figure": 7,
+  "untraced_review_figure": 6,
   "conflict": 2,
   "single_source": 4,
-  "review_only_figure": 6
+  "metric_mismatch": 1,
+  "review_only_figure": 6,
+  "untraceable_value": 1
  },
  "flags": [
   {
@@ -23,7 +25,7 @@
    "kind": "untraced_review_figure",
    "severity": "medium",
    "sign": "Asymmetric tonic posturing (arm)",
-   "detail": "1 review figure(s) pooled beside 1 primary series as independent measurement(s) (Loddenkemper & Kotagal 2005 89%); if the series behind them is one already in this pool, mark `provenance: secondary_citation` and it drops out of the average.",
+   "detail": "1 review figure (Loddenkemper & Kotagal 2005 89%) is averaged beside 1 primary series as an independent measurement. A review usually took its number from somewhere; if that source is one of the series already here, this figure is being counted twice and should drop out of the average.",
    "evidence": []
   },
   {
@@ -39,7 +41,7 @@
    "kind": "untraced_review_figure",
    "severity": "medium",
    "sign": "Automatisms with preserved responsiveness",
-   "detail": "1 review figure(s) pooled beside 1 primary series as independent measurement(s) (Loddenkemper & Kotagal 2005 100%); if the series behind them is one already in this pool, mark `provenance: secondary_citation` and it drops out of the average.",
+   "detail": "1 review figure (Loddenkemper & Kotagal 2005 100%) is averaged beside 1 primary series as an independent measurement. A review usually took its number from somewhere; if that source is one of the series already here, this figure is being counted twice and should drop out of the average.",
    "evidence": []
   },
   {
@@ -47,6 +49,13 @@
    "severity": "low",
    "sign": "Figure-of-4 (extended arm)",
    "detail": "pooled figure rests on a single study (Kotagal et al. 2000); treat as provisional until corroborated.",
+   "evidence": []
+  },
+  {
+   "kind": "metric_mismatch",
+   "severity": "medium",
+   "sign": "Hemifield visual aura",
+   "detail": "Kinney, Kovac & Diehl 2019 contributes a figure the source ledger records as 'ppv', not a lateralization percentage (currently excluded from the average, so it changes no number today).",
    "evidence": []
   },
   {
@@ -92,13 +101,6 @@
    "evidence": []
   },
   {
-   "kind": "untraced_review_figure",
-   "severity": "medium",
-   "sign": "Postictal dysphasia / aphasia",
-   "detail": "1 review figure(s) pooled beside 3 primary series as independent measurement(s) (Blair 2012 85%); if the series behind them is one already in this pool, mark `provenance: secondary_citation` and it drops out of the average.",
-   "evidence": []
-  },
-  {
    "kind": "conflict",
    "severity": "high",
    "sign": "Postictal nose-wiping",
@@ -111,7 +113,7 @@
    "kind": "untraced_review_figure",
    "severity": "medium",
    "sign": "Postictal nose-wiping",
-   "detail": "1 review figure(s) pooled beside 1 primary series as independent measurement(s) (Loddenkemper & Kotagal 2005 92%); if the series behind them is one already in this pool, mark `provenance: secondary_citation` and it drops out of the average.",
+   "detail": "1 review figure (Loddenkemper & Kotagal 2005 92%) is averaged beside 1 primary series as an independent measurement. A review usually took its number from somewhere; if that source is one of the series already here, this figure is being counted twice and should drop out of the average.",
    "evidence": []
   },
   {
@@ -132,21 +134,21 @@
    "kind": "untraced_review_figure",
    "severity": "medium",
    "sign": "Unilateral clonic activity",
-   "detail": "1 review figure(s) pooled beside 1 primary series as independent measurement(s) (Loddenkemper & Kotagal 2005 83%); if the series behind them is one already in this pool, mark `provenance: secondary_citation` and it drops out of the average.",
+   "detail": "1 review figure (Loddenkemper & Kotagal 2005 83%) is averaged beside 1 primary series as an independent measurement. A review usually took its number from somewhere; if that source is one of the series already here, this figure is being counted twice and should drop out of the average.",
    "evidence": []
   },
   {
    "kind": "untraced_review_figure",
    "severity": "medium",
    "sign": "Unilateral dystonic posturing",
-   "detail": "1 review figure(s) pooled beside 1 primary series as independent measurement(s) (Foldvary-Schaefer & Unnwongse 2011 90%); if the series behind them is one already in this pool, mark `provenance: secondary_citation` and it drops out of the average.",
+   "detail": "1 review figure (Foldvary-Schaefer & Unnwongse 2011 90%) is averaged beside 1 primary series as an independent measurement. A review usually took its number from somewhere; if that source is one of the series already here, this figure is being counted twice and should drop out of the average.",
    "evidence": []
   },
   {
    "kind": "untraced_review_figure",
    "severity": "medium",
    "sign": "Unilateral eye-blinking",
-   "detail": "1 review figure(s) pooled beside 1 primary series as independent measurement(s) (Loddenkemper & Kotagal 2005 83%); if the series behind them is one already in this pool, mark `provenance: secondary_citation` and it drops out of the average.",
+   "detail": "1 review figure (Loddenkemper & Kotagal 2005 83%) is averaged beside 1 primary series as an independent measurement. A review usually took its number from somewhere; if that source is one of the series already here, this figure is being counted twice and should drop out of the average.",
    "evidence": []
   },
   {
@@ -155,6 +157,21 @@
    "sign": "Unilateral somatosensory aura",
    "detail": "every averaged value is a narrative review quoting a series this library has not read (Loddenkemper & Kotagal 2005 89%); k counts reviews, not measurements.",
    "evidence": []
+  },
+  {
+   "kind": "untraceable_value",
+   "severity": "low",
+   "sign": "(ledger)",
+   "detail": "7 numeric observation value(s) have no matching numeric finding in corpus_findings.json, so they cannot be checked against a quote and locator.",
+   "evidence": [
+    "Forced head/eye version / Wyllie 1986 100% (paper absent from corpus_findings.json)",
+    "Figure-of-4 (extended arm) / Kotagal 2000 90%",
+    "Ictal dysphasia / aphasia / Gabr 1989 100%",
+    "Postictal dysphasia / aphasia / Serafetinides 1963 94%",
+    "Postictal dysphasia / aphasia / Blair 2012 85%",
+    "Unilateral eye-blinking / Roh 1996 86%",
+    "Unilateral (ipsilateral) automatisms / Roh 1996 88%"
+   ]
   }
  ]
 }

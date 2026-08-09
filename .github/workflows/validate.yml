@@ -43,4 +43,4 @@ jobs:
         run: python3 generator/gen_study.py
 
       - name: Summarize
-        run: echo "✅ Dataset valid, meta-analysis + review in sync, provenance OK, HTML builds."
+        run: echo "✅ Dataset valid, weighted average + review in sync, provenance OK, HTML builds."

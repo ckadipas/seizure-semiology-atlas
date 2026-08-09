@@ -86,6 +86,7 @@
          "freq": "34.2% of EMU pts",
          "note": "Ictal dysphasia is dominant in 100%.",
          "value": 100,
+         "provenance": "secondary_citation",
          "restates": "Gabr 1989",
          "qualitative": "restates Gabr 1989"
         }
@@ -178,24 +179,6 @@
          "value": 94
         },
         {
-         "study": "Blair 2012",
-         "cite": "Blair 2012",
-         "eclass": "III",
-         "ground_truth": "review",
-         "is_review": true,
-         "n": null,
-         "weight": 1.0,
-         "weight_parts": {
-          "class_base": 1.0,
-          "ground_truth_mult": 1.0,
-          "size_factor": 1.0
-         },
-         "pg": null,
-         "freq": null,
-         "note": "Postictal aphasia a very reliable dominant-hemisphere sign, ~80-90% (midpoint 85).",
-         "value": 85
-        },
-        {
          "study": "Loddenkemper 2005",
          "cite": "Loddenkemper & Kotagal 2005",
          "eclass": "III",
@@ -212,8 +195,32 @@
          "freq": null,
          "note": "Postictal dysphasia/aphasia dominant-hemisphere in 80-100% across series (midpoint 90).",
          "value": 90,
-         "restates": "Gabr 1989",
-         "qualitative": "restates Gabr 1989"
+         "provenance": "review_synthesis",
+         "qualitative": "the review's own summary across several series"
+        },
+        {
+         "study": "Blair 2012",
+         "cite": "Blair 2012",
+         "eclass": "III",
+         "ground_truth": "review",
+         "is_review": true,
+         "n": null,
+         "weight": 1.0,
+         "weight_parts": {
+          "class_base": 1.0,
+          "ground_truth_mult": 1.0,
+          "size_factor": 1.0
+         },
+         "pg": null,
+         "freq": null,
+         "note": "Postictal aphasia a very reliable dominant-hemisphere sign, ~80-90% (midpoint 85).",
+         "value": 85,
+         "provenance": "interpolated_midpoint",
+         "value_range": [
+          80,
+          90
+         ],
+         "qualitative": "midpoint of a reported 80\u201390% range"
         },
         {
          "study": "Abou-Khalil 2022",
@@ -234,18 +241,18 @@
          "qualitative": "dominant"
         }
        ],
-       "n_studies": 4,
-       "n_qualitative": 2,
+       "n_studies": 3,
+       "n_qualitative": 3,
        "n_primary": 3,
-       "n_reviews_pooled": 1,
-       "pooled": 92.3,
-       "unweighted": 90.8,
-       "weight_swing": 1.5,
-       "low": 85,
+       "n_reviews_pooled": 0,
+       "pooled": 92.8,
+       "unweighted": 92.7,
+       "weight_swing": 0.1,
+       "low": 92,
        "high": 94,
-       "spread": 9,
-       "wsd": 2.1,
-       "total_weight": 16.91,
+       "spread": 2,
+       "wsd": null,
+       "total_weight": 15.91,
        "certainty": "well_supported"
       }
      ]
@@ -300,6 +307,7 @@
          "freq": "34.2% of EMU pts",
          "note": "Ictal speech that is preserved/identifiable is non-dominant in 83%.",
          "value": 83,
+         "provenance": "secondary_citation",
          "restates": "Gabr 1989",
          "qualitative": "restates Gabr 1989"
         },
@@ -1031,6 +1039,7 @@
          "freq": "22.2% of FLE",
          "note": "Forced version contralateral to the EZ in 100% (Table 1; cites Wyllie/Ebner).",
          "value": 100,
+         "provenance": "secondary_citation",
          "restates": "Wyllie 1986",
          "qualitative": "restates Wyllie 1986"
         },
@@ -1245,6 +1254,7 @@
          "freq": "17.7% of TLE",
          "note": "Extended arm contralateral in 89%.",
          "value": 89,
+         "provenance": "secondary_citation",
          "restates": "Kotagal 2000",
          "qualitative": "restates Kotagal 2000"
         },
@@ -1459,8 +1469,9 @@
          "freq": null,
          "note": "Todd's paresis contralateral in 93% (Kellinghaus series).",
          "value": 93,
-         "restates": "Loddenkemper 2005",
-         "qualitative": "restates Loddenkemper 2005"
+         "provenance": "secondary_citation",
+         "restates": "Kellinghaus 2004",
+         "qualitative": "restates Kellinghaus 2004"
         },
         {
          "study": "Marashly 2015",
@@ -1708,6 +1719,7 @@
          "freq": "<10% of LTM",
          "note": "Unilateral somatosensory aura contralateral in 89% of seizures.",
          "value": 89,
+         "provenance": "secondary_citation",
          "restates": "Loddenkemper 2005",
          "qualitative": "restates Loddenkemper 2005"
         },
@@ -1820,9 +1832,11 @@
          "pg": null,
          "freq": ">70%",
          "note": "Ictal homonymous hemianopia / lateralized visual aura contralateral with 100% predictive value (Salanova series).",
+         "source_metric": "ppv",
          "value": 100,
-         "restates": "Loddenkemper 2005",
-         "qualitative": "restates Loddenkemper 2005"
+         "provenance": "secondary_citation",
+         "restates": "Salanova 1992",
+         "qualitative": "restates Salanova 1992"
         }
        ],
        "n_studies": 1,
@@ -1916,8 +1930,8 @@
          "freq": "43.9% of TLE",
          "note": "Contralateral in ~100% (single exception reported by Yen).",
          "value": 100,
-         "restates": "Roh 1996",
-         "qualitative": "restates Roh 1996"
+         "provenance": "review_synthesis",
+         "qualitative": "the review's own summary across several series"
         },
         {
          "study": "Abou-Khalil 2022",
@@ -2188,6 +2202,7 @@
      "freq": "17.7% of TLE",
      "note": "Extended arm contralateral in 89%.",
      "value": 89,
+     "provenance": "secondary_citation",
      "restates": "Kotagal 2000",
      "qualitative": "restates Kotagal 2000"
     },
@@ -2344,6 +2359,7 @@
      "freq": "22.2% of FLE",
      "note": "Forced version contralateral to the EZ in 100% (Table 1; cites Wyllie/Ebner).",
      "value": 100,
+     "provenance": "secondary_citation",
      "restates": "Wyllie 1986",
      "qualitative": "restates Wyllie 1986"
     },
@@ -2445,9 +2461,11 @@
      "pg": null,
      "freq": ">70%",
      "note": "Ictal homonymous hemianopia / lateralized visual aura contralateral with 100% predictive value (Salanova series).",
+     "source_metric": "ppv",
      "value": 100,
-     "restates": "Loddenkemper 2005",
-     "qualitative": "restates Loddenkemper 2005"
+     "provenance": "secondary_citation",
+     "restates": "Salanova 1992",
+     "qualitative": "restates Salanova 1992"
     }
    ],
    "n_studies": 1,
@@ -2512,6 +2530,7 @@
      "freq": "34.2% of EMU pts",
      "note": "Ictal dysphasia is dominant in 100%.",
      "value": 100,
+     "provenance": "secondary_citation",
      "restates": "Gabr 1989",
      "qualitative": "restates Gabr 1989"
     }
@@ -2884,8 +2903,9 @@
      "freq": null,
      "note": "Todd's paresis contralateral in 93% (Kellinghaus series).",
      "value": 93,
-     "restates": "Loddenkemper 2005",
-     "qualitative": "restates Loddenkemper 2005"
+     "provenance": "secondary_citation",
+     "restates": "Kellinghaus 2004",
+     "qualitative": "restates Kellinghaus 2004"
     },
     {
      "study": "Marashly 2015",
@@ -3006,24 +3026,6 @@
      "value": 94
     },
     {
-     "study": "Blair 2012",
-     "cite": "Blair 2012",
-     "eclass": "III",
-     "ground_truth": "review",
-     "is_review": true,
-     "n": null,
-     "weight": 1.0,
-     "weight_parts": {
-      "class_base": 1.0,
-      "ground_truth_mult": 1.0,
-      "size_factor": 1.0
-     },
-     "pg": null,
-     "freq": null,
-     "note": "Postictal aphasia a very reliable dominant-hemisphere sign, ~80-90% (midpoint 85).",
-     "value": 85
-    },
-    {
      "study": "Loddenkemper 2005",
      "cite": "Loddenkemper & Kotagal 2005",
      "eclass": "III",
@@ -3040,8 +3042,32 @@
      "freq": null,
      "note": "Postictal dysphasia/aphasia dominant-hemisphere in 80-100% across series (midpoint 90).",
      "value": 90,
-     "restates": "Gabr 1989",
-     "qualitative": "restates Gabr 1989"
+     "provenance": "review_synthesis",
+     "qualitative": "the review's own summary across several series"
+    },
+    {
+     "study": "Blair 2012",
+     "cite": "Blair 2012",
+     "eclass": "III",
+     "ground_truth": "review",
+     "is_review": true,
+     "n": null,
+     "weight": 1.0,
+     "weight_parts": {
+      "class_base": 1.0,
+      "ground_truth_mult": 1.0,
+      "size_factor": 1.0
+     },
+     "pg": null,
+     "freq": null,
+     "note": "Postictal aphasia a very reliable dominant-hemisphere sign, ~80-90% (midpoint 85).",
+     "value": 85,
+     "provenance": "interpolated_midpoint",
+     "value_range": [
+      80,
+      90
+     ],
+     "qualitative": "midpoint of a reported 80\u201390% range"
     },
     {
      "study": "Abou-Khalil 2022",
@@ -3062,18 +3088,18 @@
      "qualitative": "dominant"
     }
    ],
-   "n_studies": 4,
-   "n_qualitative": 2,
+   "n_studies": 3,
+   "n_qualitative": 3,
    "n_primary": 3,
-   "n_reviews_pooled": 1,
-   "pooled": 92.3,
-   "unweighted": 90.8,
-   "weight_swing": 1.5,
-   "low": 85,
+   "n_reviews_pooled": 0,
+   "pooled": 92.8,
+   "unweighted": 92.7,
+   "weight_swing": 0.1,
+   "low": 92,
    "high": 94,
-   "spread": 9,
-   "wsd": 2.1,
-   "total_weight": 16.91,
+   "spread": 2,
+   "wsd": null,
+   "total_weight": 15.91,
    "certainty": "well_supported"
   },
   {
@@ -3222,6 +3248,7 @@
      "freq": "34.2% of EMU pts",
      "note": "Ictal speech that is preserved/identifiable is non-dominant in 83%.",
      "value": 83,
+     "provenance": "secondary_citation",
      "restates": "Gabr 1989",
      "qualitative": "restates Gabr 1989"
     },
@@ -3524,8 +3551,8 @@
      "freq": "43.9% of TLE",
      "note": "Contralateral in ~100% (single exception reported by Yen).",
      "value": 100,
-     "restates": "Roh 1996",
-     "qualitative": "restates Roh 1996"
+     "provenance": "review_synthesis",
+     "qualitative": "the review's own summary across several series"
     },
     {
      "study": "Abou-Khalil 2022",
@@ -3690,6 +3717,7 @@
      "freq": "<10% of LTM",
      "note": "Unilateral somatosensory aura contralateral in 89% of seizures.",
      "value": 89,
+     "provenance": "secondary_citation",
      "restates": "Loddenkemper 2005",
      "qualitative": "restates Loddenkemper 2005"
     },

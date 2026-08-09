@@ -64,9 +64,14 @@ def _find_root(start):
         d = p
 
 ROOT = _find_root(__file__)
-CONFLICT_TOL = 25      # percentage-point spread that trips a CONFLICT flag (genuine
-                       # disagreement; smaller same-direction spread is shown as the
-                       # row's range whisker + weighted SD, not the conflict panel)
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from meta_analysis import CONTESTED_POINTS, NOT_MEASURED   # noqa: E402
+
+# The spread that trips a CONFLICT flag is the same spread that makes a figure
+# `contested` upstream - imported, not re-typed, because two copies of one number in
+# two files is a divergence waiting to happen, and the comment on the original
+# claimed to be "the one place this threshold is defined" while this line existed.
+CONFLICT_TOL = CONTESTED_POINTS
 DOUBLE_TOL = 2.0       # review vs primary within this many points -> possible double-count
 
 
@@ -148,10 +153,15 @@ def review():
     for s in meta["by_sign"]:
         contribs = s["contributions"]
         # every row carrying a percentage, vs. only the rows that were averaged.
-        # A marked restatement carries a value but is not part of the figure, so it
-        # must not be quoted as a disagreeing study or named as the single source.
+        # A value that was kept out of the average must not be quoted back as a
+        # disagreeing study or named as the single source. Keying that on `restates`
+        # alone was wrong the moment a second kind of exclusion existed: a review's
+        # cross-series summary and an interpolated midpoint have no `restates` target,
+        # so they read as pooled here while the engine ignored them. Ask the same
+        # question the engine asks.
         numeric = [c for c in contribs if "value" in c]
-        pooled_rows = [c for c in numeric if not c.get("restates")]
+        pooled_rows = [c for c in numeric
+                       if c.get("provenance") not in NOT_MEASURED and not c.get("restates")]
 
         # ORPHAN_STEM - the figure attaches to no curated sign
         stem = (s.get("sign_stem") or "").lower()
@@ -220,13 +230,35 @@ def review():
                      f"{DOUBLE_TOL} points - {kind}; pooling both counts one measurement twice. "
                      f"Mark the restating observation `provenance: secondary_citation`.")
 
-        # ORPHAN_RESTATEMENT - `restates` must name a study in observations.json, or the
-        # page prints an attribution that traces to nothing.
+        # ORPHAN_RESTATEMENT - `restates` must name a study in observations.json or a
+        # declared external source, or the page prints an attribution that traces to
+        # nothing. External targets exist because the two most consequential
+        # restatements in this library name series it has never read (Kellinghaus 2004,
+        # Salanova 1992); without somewhere to point, the only expressible options were
+        # a false target or none at all.
+        known = set(obs.get("studies", {})) | set(obs.get("external_sources", {}))
         for c in numeric:
-            if c.get("restates") and c["restates"] not in obs.get("studies", {}):
+            if c.get("restates") and c["restates"] not in known:
                 flag("orphan_restatement", "high", s["sign"],
-                     f"{c['cite']} is marked as restating '{c['restates']}', which is not a study "
-                     f"in observations.json; the card would cite a source that does not exist.")
+                     f"{c['cite']} is marked as restating '{c['restates']}', which is neither a study "
+                     f"nor a declared external source in observations.json; the card would cite a "
+                     f"source that does not exist.")
+
+        # METRIC_MISMATCH - a predictive value is not a lateralization percentage. PPV
+        # is P(onset side | sign); a lateralization figure is the share of cases falling
+        # to one side. Averaging one into the other is a category error, not a rounding
+        # one, and it is live in this library: Kinney's hemifield 100% is recorded in the
+        # source ledger as `ppv`.
+        want = s.get("metric", "lateralization")
+        for c in contribs:
+            sm = c.get("source_metric")
+            if sm and sm != want and want == "lateralization":
+                pooled_in = "value" in c and not c.get("provenance")
+                flag("metric_mismatch", "high" if pooled_in else "medium", s["sign"],
+                     f"{c['cite']} contributes a figure the source ledger records as '{sm}', not a "
+                     f"lateralization percentage"
+                     + (" - and it is being averaged into one." if pooled_in else
+                        " (currently excluded from the average, so it changes no number today)."))
 
         # SINGLE_SOURCE - low robustness. Only where that one source is a series: a
         # lone review is the weaker review_only case below, and calling it "a single
@@ -259,10 +291,48 @@ def review():
         # average; until then it is being pooled on the strength of not having been traced.
         if s.get("n_primary") and revs:
             vals = ", ".join(f"{c['cite']} {c['value']}%" for c in revs)
+            nr, np_ = len(revs), s["n_primary"]
             flag("untraced_review_figure", "medium", s["sign"],
-                 f"{len(revs)} review figure(s) pooled beside {s['n_primary']} primary series as "
-                 f"independent measurement(s) ({vals}); if the series behind them is one already in "
-                 f"this pool, mark `provenance: secondary_citation` and it drops out of the average.")
+                 f"{nr} review figure{'' if nr == 1 else 's'} ({vals}) "
+                 f"{'is' if nr == 1 else 'are'} averaged beside "
+                 f"{np_} primary series as {'an independent measurement' if nr == 1 else 'independent measurements'}. "
+                 f"A review usually took its number from somewhere; if that source is one of the series "
+                 f"already here, this figure is being counted twice and should drop out of the average.")
+
+    # ---- UNTRACEABLE_VALUE. observations.json used to assert that every numeric value
+    #      was drawn from corpus_findings.json. Seven were not - some are honest curator
+    #      arithmetic over a quoted fraction (16/17 -> 94), some come from a paper whose
+    #      findings are not in that file at all. The claim is now accurate, and this
+    #      check keeps it that way: the count is published on every run rather than
+    #      resting on a sentence nobody re-checked.
+    corpus_vals = {}
+    for p in corpus.get("papers", []):
+        key = (p.get("cite") or "").lower()
+        corpus_vals[key] = {float(f["value"]) for f in p.get("findings", [])
+                            if isinstance(f.get("value"), (int, float))}
+
+    def corpus_has(study, value):
+        surname, year = study.split()[0].lower(), study.split()[-1]
+        cands = [v for k, v in corpus_vals.items() if surname in k and year in k] or \
+                [v for k, v in corpus_vals.items() if surname in k]
+        if not cands:
+            return None                      # paper not represented in the ledger
+        return any(float(value) in v for v in cands)
+
+    untraceable = []
+    for s in obs.get("signs", []):
+        for o in s.get("observations", []):
+            if not isinstance(o.get("value"), (int, float)):
+                continue
+            hit = corpus_has(o["study"], o["value"])
+            if hit is not True:
+                untraceable.append(f"{s['sign']} / {o['study']} {o['value']:g}%"
+                                   + (" (paper absent from corpus_findings.json)" if hit is None else ""))
+    if untraceable:
+        flag("untraceable_value", "low", "(ledger)",
+             f"{len(untraceable)} numeric observation value(s) have no matching numeric finding in "
+             f"corpus_findings.json, so they cannot be checked against a quote and locator.",
+             untraceable)
 
     # cross-sign: identical finding text attributed to two different papers
     finding_index = {}
@@ -300,10 +370,15 @@ def review():
         # one measurement is being averaged as two, and a curator must mark it.
         # Every other high-severity kind blocks too: a flag raised to high and then
         # left out of this list is a check that only looks like one.
-        blocking = [f for f in flags if f["kind"] in ("unmarked_restatement", "orphan_restatement",
-                                                       "direction_clash", "duplicate", "duplicate_card",
-                                                       "orphan_stem", "ppv_orphan_link", "ppv_direction_clash",
-                                                       "sens_orphan_link", "sens_no_condition", "sens_bad_metric")]
+        blocking = [f for f in flags
+                    if f["kind"] in ("unmarked_restatement", "orphan_restatement",
+                                     "direction_clash", "duplicate", "duplicate_card",
+                                     "orphan_stem", "ppv_orphan_link", "ppv_direction_clash",
+                                     "sens_orphan_link", "sens_no_condition", "sens_bad_metric")
+                    # a mismatched metric blocks only where it reaches the average; kept
+                    # visible but non-blocking while it sits excluded, so the guard is
+                    # in place before the case that needs it arrives
+                    or (f["kind"] == "metric_mismatch" and f["severity"] == "high")]
         if blocking:
             print(f"\nSTRICT: {len(blocking)} blocking flag(s).")
             return 1

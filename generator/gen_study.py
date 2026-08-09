@@ -101,6 +101,22 @@ _certword = {"well_supported":"well supported","moderate":"moderate",
 # would be noise.
 SWING_POINTS = 5.0
 
+def not_measured_reason(c):
+    """Why a row carries a number that was kept out of the average, in the reader's
+    words. Three different things were previously all called 'restates', including two
+    that restate nothing: a review's own cross-series summary, and a midpoint the
+    curator interpolated from a reported range."""
+    prov = c.get("provenance")
+    if prov == "secondary_citation" or c.get("restates"):
+        return "restates " + esc(str(c.get("restates")))
+    if prov == "review_synthesis":
+        return "the review&rsquo;s own summary across several series"
+    if prov == "interpolated_midpoint":
+        vr = c.get("value_range") or []
+        return (f'midpoint of a reported {vr[0]:g}&ndash;{vr[1]:g}% range' if len(vr) == 2
+                else 'midpoint of a reported range')
+    return ""
+
 def swing_note(ms):
     sw = ms.get("weight_swing")
     if sw is None or abs(sw) < SWING_POINTS:
@@ -114,12 +130,13 @@ def pooled_block_for(ms):
         return "", 0
     items = []
     for c in ms.get("contributions", []):
-        # a restatement carries a value, but it was not averaged - say so where it
-        # is shown, or the table contradicts the summary above it
-        if c.get("restates"):
-            val = (f'<span class="ev-restate">{c["value"]:g}% &mdash; restates '
-                   f'{esc(c["restates"])}, not averaged</span>' if c.get("value") is not None
-                   else f'<span class="ev-restate">restates {esc(c["restates"])}</span>')
+        # these carry a value but were not averaged - say so where the number is
+        # shown, or the table contradicts the summary above it
+        why = not_measured_reason(c)
+        if why:
+            val = (f'<span class="ev-restate">{c["value"]:g}% &mdash; {why}, not averaged</span>'
+                   if c.get("value") is not None
+                   else f'<span class="ev-restate">{why}</span>')
         else:
             val = (f'{c["value"]:g}%' if "value" in c else esc(c.get("qualitative","supportive")))
         meta = f'{c.get("eclass") or "?"} / {_gtname.get(c.get("ground_truth"), c.get("ground_truth") or "-")}'
@@ -130,7 +147,7 @@ def pooled_block_for(ms):
     # the count beside a percentage must be the studies that carry a percentage.
     # Direction-only sources corroborate the side; they measured nothing to pool.
     nnum = ms.get("n_studies", 0)
-    nrest = sum(1 for c in ms.get("contributions", []) if c.get("restates"))
+    nrest = sum(1 for c in ms.get("contributions", []) if not_measured_reason(c))
     nqual = ms.get("n_qualitative", 0) - nrest
     # "1 study with a percentage" reads as though a study measured it. Where every
     # value came from a narrative review, none did - the number is quoted from a
@@ -142,7 +159,7 @@ def pooled_block_for(ms):
     if nqual > 0:
         kword += f' &middot; {nqual} direction-only source{"" if nqual == 1 else "s"}'
     if nrest:
-        kword += f' &middot; {nrest} restatement{"" if nrest == 1 else "s"} excluded'
+        kword += f' &middot; {nrest} value{"" if nrest == 1 else "s"} not averaged'
     if ms.get("pooled") is not None:
         # one value has no range; "range 93-93%" is the arithmetic of a single number
         # dressed up as a spread
@@ -463,15 +480,18 @@ def build_meta(meta, flags):
             # only rows that entered the average carry a weight. A restatement or a
             # direction-only source has one on paper, but it multiplied nothing - so
             # the column says so instead of printing a number that had no effect.
-            averaged = "value" in c and not c.get("restates")
+            why = not_measured_reason(c)
+            averaged = "value" in c and not why
             # .mc-bar has min-width:3px, so a zero-width bar still paints a stub - the
             # row has to omit the element entirely, or an unweighted source keeps a
             # visible sliver of weight next to the dash that says it carries none
             bar = ('<span class="mc-bar" style="width:' + str(max(3, round(w/maxw*100)))
                    + '%;background:' + latcolor.get(s["direction"], "#888") + '"></span>') if averaged else ''
-            if c.get("restates"):
+            if why:
+                # the reason goes on the full-width note row below, not in the narrow
+                # value column, where a sentence wraps to one word per line
                 val = ('<span class="mc-qual mc-restate">' + (str(c["value"])+'% ' if c.get("value") is not None else '')
-                       + 'restates ' + esc(c["restates"]) + ' &mdash; not averaged</span>')
+                       + 'not averaged</span>')
             else:
                 val = (str(c["value"])+'%') if "value" in c else ('<span class="mc-qual">'+esc(c.get("qualitative","qual."))+'</span>')
             wp = c.get("weight_parts",{})
@@ -487,8 +507,13 @@ def build_meta(meta, flags):
                 + '<span class="mc-n">'+(str(c["n"]) if c.get("n") else "&#8212;")+'</span>'
                 + '<span class="mc-pg">'+(esc(c["pg"]) if c.get("pg") else "&#8212;")+'</span>'
                 + '</div>')
+            bits = []
+            if why:
+                bits.append('<span class="mc-why">' + why[0].upper() + why[1:] + '.</span>')
             if c.get("note"):
-                rows.append('<div class="mc-note">'+esc(c["note"])+'</div>')
+                bits.append(esc(c["note"]))
+            if bits:
+                rows.append('<div class="mc-note">' + " ".join(bits) + '</div>')
         return "".join(rows)
 
     def caveats(s):
@@ -507,6 +532,20 @@ def build_meta(meta, flags):
                       'checked.</div>')
         if s.get("contested"):
             out += '<div class="mcav mcav-warn"><strong>Contested.</strong> '+esc(s["contested"])+'</div>'
+        # The review tool's own findings, on the sign they were raised against. These
+        # were computed on every build, written to review_flags.json, indexed here into
+        # flag_by_sign - and then never read. Three files described the panel that was
+        # meant to show them; it did not exist, so two high-severity conflicts (38 and
+        # 30 points) were flagged on every run and shown to nobody.
+        for fl in sorted(flag_by_sign.get(s["sign"], []),
+                         key=lambda f: {"high": 0, "medium": 1, "low": 2}.get(f["severity"], 3)):
+            if fl["kind"] == "single_source":
+                continue          # already stated by the certainty tier on the row
+            cls = "mcav-warn" if fl["severity"] == "high" else "mcav-note"
+            out += (f'<div class="mcav {cls}"><strong>{esc(fl["kind"].replace("_", " ").capitalize())}.</strong> '
+                    + esc(fl["detail"])
+                    + "".join('<div class="mcav-ev">' + esc(e) + '</div>' for e in (fl.get("evidence") or []))
+                    + '</div>')
         return out
 
     _rid = [0]
@@ -521,7 +560,7 @@ def build_meta(meta, flags):
         pip_html = "".join('<i class="'+("on" if k<pips else "off")+'"></i>' for k in range(3))
         contested_mark = ' <span class="mflag" title="contested">&#9888;&#65039;</span>' if s.get("contested") else ''
         nnum = s["n_studies"]
-        nrest = sum(1 for c in s.get("contributions", []) if c.get("restates"))
+        nrest = sum(1 for c in s.get("contributions", []) if not_measured_reason(c))
         nqual = s.get("n_qualitative", 0) - nrest
         summ = ''
         if s.get("pooled") is not None:
@@ -534,7 +573,7 @@ def build_meta(meta, flags):
                     f'{sd}&middot; &Sigma;weight {s.get("total_weight",0):g} '
                     f'&middot; {kw}'
                     + (f' &middot; {nqual} direction-only' if nqual > 0 else '')
-                    + (f' &middot; {nrest} restatement{"" if nrest==1 else "s"} excluded' if nrest else '')
+                    + (f' &middot; {nrest} value{"" if nrest==1 else "s"} not averaged' if nrest else '')
                     + f' &middot; {certname.get(s.get("certainty"),"?")}'
                     + swing_note(s))
         else:
@@ -1337,6 +1376,7 @@ body.quiz .lib-chip{display:none}
 .ev-pop{font-size:.72rem;color:#5a6472;font-style:italic;margin-left:3px}
 .ev-restate{color:#8a5209;background:#fdf3e4;border:1px solid #e8c79a;border-radius:4px;padding:0 5px;font-weight:600}
 .mc-restate{color:#8a5209;font-style:normal}
+.mc-why{color:#8a5209;font-weight:600;font-style:normal}
 .pooled-swing{color:#8a5209;border-bottom:1px dotted #c69a5c;cursor:help}
 .ev-quote{color:#0a6472;cursor:help;font-weight:800}
 
@@ -1346,7 +1386,7 @@ body.quiz .lib-chip{display:none}
 .callout-inner strong{color:#7fd4e6}
 .callout-inner .tag{display:inline-block;background:#0e9db0;color:#04212a;font-size:.62rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:5px;margin-right:8px;vertical-align:middle}
 
-/* ---------- WEIGHTED META-ANALYSIS (top foldable plot) ---------- */
+/* ---------- WEIGHTED AVERAGE (top foldable plot) ---------- */
 .meta-fold>summary{background:linear-gradient(120deg,#0c2036,#123a52);color:#eaf3f8;border-color:#123a52}
 .meta-fold>summary::before{color:#7fd4e6}
 .meta-wrap{max-width:1180px;margin:0}
@@ -1399,6 +1439,9 @@ body.quiz .lib-chip{display:none}
 .mcav{font-size:.74rem;line-height:1.45;border-radius:7px;padding:6px 10px;margin-bottom:6px}
 .mcav-warn{background:#fff6e9;border:1px solid #f0cf8f;color:#7a4a06}
 .mcav-warn strong{color:#7a3e00}
+.mcav-note{background:#f4f6fa;border:1px solid #d8dfea;color:#465061}
+.mcav-note strong{color:#2f3a4a}
+.mcav-ev{margin-top:4px;font-size:.72rem;color:#5a6472;font-style:italic}
 .mctab{border:1px solid var(--line2);border-radius:8px;overflow:hidden}
 .mc-head,.mc-row{display:grid;grid-template-columns:minmax(120px,1.5fr) 46px 92px 34px minmax(80px,1fr) 30px 46px;gap:6px;align-items:center;font-size:.72rem;padding:5px 9px}
 .mc-head{background:#f1f4f8;font-weight:800;color:#6b7280;text-transform:uppercase;letter-spacing:.03em;font-size:.6rem}
