@@ -5,6 +5,19 @@ Format loosely follows Keep a Changelog; dates are ISO-8601.
 
 ## [Unreleased]
 ### Changed
+- **The sensitivity section says what it actually does.** It was headed "sensitivity by
+  localization (32 figures, 15 signs)" and explained itself as "population-specific, so
+  reported per (sign, localization) rather than pooled across groups; mean shown when a
+  group has >1 source, otherwise the single value with its k" — which named a count of
+  "figures" that are not figures, and left "localization group" undefined. It now reads
+  **sensitivity by seizure-onset group (15 signs)**, and says in plain words that each
+  percentage is the frequency one publication reported for that sign among patients whose
+  seizures started in one place, that the groups are the *source's* categories (mesial /
+  mesiolateral / lateral TLE, FLE, OLE) and not this atlas's regions, and why they are
+  never averaged together. The table's columns name the same thing. It also now states
+  the honest current position: every percentage rests on a single publication, and they
+  come from two sources.
+### Changed
 - **The summary panels start closed; the Brodmann map stays open.** The meta-analysis and
   the other reports opened by default, which read as the page's main structure and pushed
   the sign index — the thing the atlas is for — most of a phone screen down. Five of the
