@@ -239,12 +239,12 @@ for r in region_order:
             # it is always a marked estimate.
             _tsens = top_sens(d.get("id"))
             if _tsens:
-                sens_metric = (f'<span class="d-label">Sensitivity <span class="src-tag" title="Computed from the corpus as P(sign | localization). See the sensitivity breakdown below and the descriptive-statistics section.">corpus</span></span>'
+                sens_metric = (f'<span class="d-label">Sensitivity <span class="src-tag" title="How often this sign appeared among patients whose seizures started there, as reported by the source publication. See the breakdown below and the descriptive-statistics section.">corpus</span></span>'
                                f'<span class="metric-val">{esc(_tsens)}</span>')
             else:
-                sens_metric = (f'<span class="d-label">Sensitivity <span class="est-tag" title="Curator teaching estimate. The source corpus reports no localization-conditioned frequency for this sign, so its sensitivity is not computed; this approximate range is for orientation only.">est.</span></span>'
+                sens_metric = (f'<span class="d-label">Sensitivity <span class="est-tag" title="Curator teaching estimate. No source in the library reports how often this sign appeared within a single onset group, so its sensitivity is not computed; this approximate range is for orientation only.">est.</span></span>'
                                f'<span class="metric-val">{esc(d["sens"])}</span>')
-            spec_metric = (f'<span class="d-label">Specificity <span class="est-tag" title="Curator teaching estimate. Specificity needs the sign\'s rate in the other localization groups, which the source corpus does not report; this is for orientation only, not computed.">est.</span></span>'
+            spec_metric = (f'<span class="d-label">Specificity <span class="est-tag" title="Curator teaching estimate. Specificity needs the sign\'s rate in the other onset groups, which the source library does not report; this is for orientation only, not computed.">est.</span></span>'
                            f'<span class="metric-val">{esc(d["spec"])}</span>')
             rows.append(f'''<div class="sign" id="sign-{d['id']}" data-id="{d['id']}" data-region="{esc(d['region'])}" data-phase="{esc(d['phase'])}" data-latcode="{lc}" data-evid="{ec}" data-search="{esc(search_str)}" style="--accent:{accent}">
   <button class="sign-head" aria-expanded="false">
@@ -593,7 +593,7 @@ def build_figures(corpus):
 figures_fold = build_figures(CORPUS)
 
 
-# ---------- Descriptive statistics: sensitivity by localization ----------
+# ---------- Descriptive statistics: sensitivity by seizure-onset group ----------
 # Auto-generated from meta_analysis.json["sensitivity"], which the meta engine computes
 # from the ledger's tagged frequency-within-a-group findings. Tag another finding in the
 # ledger and this section, the cards, and the coverage counts all update on the next build.
@@ -616,11 +616,11 @@ def build_sensitivity_report(meta):
                 f'<td class="ds-val">{val}</td><td class="ds-k">{c["k"]}</td>'
                 f'<td class="ds-src" title="{esc(s0.get("quote",""))}">{esc(srcs)}</td></tr>')
     return f'''<details class="frontpage-fold ds-fold">
-<summary>Descriptive statistics &mdash; sensitivity by localization ({cov["data_points"]} figures, {cov["cards_with_sensitivity"]} signs)</summary>
+<summary>Descriptive statistics &mdash; sensitivity by seizure-onset group ({cov["cards_with_sensitivity"]} signs)</summary>
 <div class="ds-wrap">
   <p class="ds-method">{esc(sens["method"])}</p>
   <div class="ds-tablewrap"><table class="ds-table">
-    <thead><tr><th>Sign</th><th>Localization</th><th>Sensitivity &mdash; P(sign&nbsp;|&nbsp;group)</th><th>k</th><th>Source(s)</th></tr></thead>
+    <thead><tr><th>Sign</th><th>Onset group &mdash; as the source defined it</th><th>Sensitivity &mdash; P(sign&nbsp;|&nbsp;onset&nbsp;group)</th><th>k</th><th>Source(s)</th></tr></thead>
     <tbody>{"".join(trows)}</tbody>
   </table></div>
   <p class="ds-spec">&#9888;&#65039; <strong>Specificity is not computed.</strong> {esc(sens["note_specificity"])}</p>
