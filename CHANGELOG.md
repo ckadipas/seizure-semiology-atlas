@@ -4,6 +4,12 @@ All notable changes to the dataset and resource are recorded here.
 Format loosely follows Keep a Changelog; dates are ISO-8601.
 
 ## [Unreleased]
+### Changed
+- **The dorsal view drops BA 17, 18 and 19 and re-places the rest.** The occipital areas
+  are not visible from above on this plate, so numbering them there pointed at cortex the
+  reader cannot see; dorsal now carries 13 numerals instead of 16. All three remain on the
+  lateral, medial and ventral views, so no area and no sign loses its place on the map.
+  The other 13 dorsal numerals move to positions taken from the in-page editor.
 ### Fixed
 - **The label editor showed white blobs instead of numbers.** The numeral carried a fat
   white stroke as its fingertip target, drawn behind the glyph by `paint-order`. When the
