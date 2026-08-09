@@ -743,7 +743,7 @@ def build_brain(signs):
 
     payload = ("<script>const BRAIN_TILES=" + json.dumps(tiles, separators=(",", ":")) +
                ";const BRAIN_SIGNS=" + json.dumps(index, separators=(",", ":")) + ";</script>")
-    return payload + f'''<details class="frontpage-fold brain-fold">
+    return payload + f'''<details class="frontpage-fold brain-fold" open>
 <summary>Brodmann map &mdash; where each semiology localizes</summary>
 <div class="brain-card">
   <div class="brain-bar">

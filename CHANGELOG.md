@@ -5,10 +5,11 @@ Format loosely follows Keep a Changelog; dates are ISO-8601.
 
 ## [Unreleased]
 ### Changed
-- **Every summary panel starts closed.** The weighted meta-analysis and the Brodmann map
-  opened by default, which read as the page's main structure and pushed the sign index —
-  the thing the atlas is for — most of a phone screen down. All six panels now start
-  folded; opening one is a tap.
+- **The summary panels start closed; the Brodmann map stays open.** The meta-analysis and
+  the other reports opened by default, which read as the page's main structure and pushed
+  the sign index — the thing the atlas is for — most of a phone screen down. Five of the
+  six panels now start folded. The map is the exception: it is the front door to the atlas
+  rather than a report about it. Collapse all still closes it along with everything else.
 - **The page holds its text off the edge.** On a landscape tablet the region banners ran
   under the overlay scrollbar and the collapsed-toolbar puck. Side padding now honours the
   safe-area inset, and widens to clear the puck whenever the toolbar is folded.
