@@ -3416,11 +3416,12 @@
   }
  ],
  "sensitivity": {
-  "method": "Sensitivity = P(sign | localization): the frequency of the sign within a single localization group. Figures are the verified frequency-within-a-group findings in the source ledger, tagged to their sign. Population-specific, so reported per (sign, localization) rather than pooled across groups; mean shown when a group has >1 source, otherwise the single value with its k.",
-  "note_specificity": "Specificity requires the sign's rate in the OTHER localization groups (the false-positive side), which this corpus reports for essentially no sign (1 figure(s) corpus-wide). Card specificity is therefore a curator teaching estimate, marked 'est.', not computed here.",
+  "method": "Sensitivity is how often a sign shows up among patients whose seizures start in one particular place. Each percentage below is the frequency a source publication reported for that sign within one of its patient groups \u2014 for example, epigastric aura in 46% of the patients whose onset was mesial temporal. The groups are the source's own categories (mesial / mesiolateral / lateral temporal, frontal, occipital, and so on), not this atlas's own regions. Percentages are kept separate per group instead of being averaged together, because a sign can be common where seizures start in one place and rare where they start in another. k is the number of publications behind a percentage; where more than one reports the same sign in the same group, the mean and the range across them are shown. Every percentage here currently rests on a single publication; they come from 2 sources in the library.",
+  "note_specificity": "Specificity would need the sign's rate in the other onset groups \u2014 the false-positive side \u2014 and the source library reports that for essentially no sign (1 across the whole corpus). Specificity on a sign card is therefore a curator teaching estimate, marked 'est.', and is not computed.",
   "coverage": {
    "cards_with_sensitivity": 15,
    "data_points": 32,
+   "publications": 2,
    "specificity_points_in_corpus": 1
   },
   "by_card": {

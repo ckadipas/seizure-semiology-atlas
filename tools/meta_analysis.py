@@ -124,14 +124,15 @@ def pool_sign(sign, studies, scheme):
 
 
 def build_sensitivity():
-    """Descriptive sensitivity statistics computed from the master ledger.
+    """Sensitivity per sign, per seizure-onset group, computed from the master ledger.
 
-    Sensitivity of a sign for a localization = P(sign | localization): how often the
-    sign appears within that group. The raw figures are the frequency-within-a-group
-    findings in corpus_findings.json that were tagged (sens_card_ids + sens_for). They
-    are population-specific, so we report per (card, localization) - NOT pooled across
-    groups - as mean / range / k sources, each traceable to its quote. Any tagged
-    finding auto-appears here on the next build; nothing is hand-entered downstream.
+    How often a sign appears among patients whose seizures start in one place:
+    P(sign | onset group). The raw values are the frequency-within-a-group findings in
+    corpus_findings.json that were tagged (sens_card_ids + sens_for). A group is the
+    source publication's own category - mesial / mesiolateral / lateral TLE, FLE, OLE -
+    not this atlas's regions, so values are kept per (sign, group) and never averaged
+    across groups. k counts the publications behind a value. Any tagged finding appears
+    here on the next build; nothing is hand-entered downstream.
     """
     path = os.path.join(ROOT, "enrichment", "corpus_findings.json")
     if not os.path.exists(path):
@@ -173,17 +174,32 @@ def build_sensitivity():
         rows.sort(key=lambda r: (-r["high"], r["cond"]))
         cards[str(cid)] = {"conditions": rows}
 
+    pubs = sorted({s["cite"] for blk in cards.values()
+                   for c in blk["conditions"] for s in c["sources"]})
+    multi = sum(1 for blk in cards.values() for c in blk["conditions"] if c["k"] > 1)
+    state = (f"Every percentage here currently rests on a single publication; they come from "
+             f"{len(pubs)} sources in the library."
+             if not multi else
+             f"{multi} of these rest on more than one publication; the rest on a single one. "
+             f"They come from {len(pubs)} sources in the library.")
     return {
-        "method": ("Sensitivity = P(sign | localization): the frequency of the sign within a single "
-                   "localization group. Figures are the verified frequency-within-a-group findings in "
-                   "the source ledger, tagged to their sign. Population-specific, so reported per "
-                   "(sign, localization) rather than pooled across groups; mean shown when a group has "
-                   ">1 source, otherwise the single value with its k."),
-        "note_specificity": ("Specificity requires the sign's rate in the OTHER localization groups "
-                             "(the false-positive side), which this corpus reports for essentially no "
-                             f"sign ({spec_points} figure(s) corpus-wide). Card specificity is therefore "
-                             "a curator teaching estimate, marked 'est.', not computed here."),
+        "method": ("Sensitivity is how often a sign shows up among patients whose seizures start in "
+                   "one particular place. Each percentage below is the frequency a source publication "
+                   "reported for that sign within one of its patient groups \u2014 for example, "
+                   "epigastric aura in 46% of the patients whose onset was mesial temporal. The groups "
+                   "are the source's own categories (mesial / mesiolateral / lateral temporal, frontal, "
+                   "occipital, and so on), not this atlas's own regions. Percentages are kept separate "
+                   "per group instead of being averaged together, because a sign can be common where "
+                   "seizures start in one place and rare where they start in another. k is the number "
+                   "of publications behind a percentage; where more than one reports the same sign in "
+                   "the same group, the mean and the range across them are shown. " + state),
+        "note_specificity": ("Specificity would need the sign's rate in the other onset groups \u2014 the "
+                             "false-positive side \u2014 and the source library reports that for "
+                             f"{'no sign at all' if spec_points == 0 else 'essentially no sign'}"
+                             f" ({spec_points} across the whole corpus). Specificity on a sign card is "
+                             "therefore a curator teaching estimate, marked 'est.', and is not computed."),
         "coverage": {"cards_with_sensitivity": len(cards), "data_points": n_points,
+                     "publications": len(pubs),
                      "specificity_points_in_corpus": spec_points},
         "by_card": cards,
     }
