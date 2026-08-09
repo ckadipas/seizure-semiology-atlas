@@ -198,9 +198,7 @@ for r in region_order:
             _bmap = BA.mapping_for_sign(d)
             map_row = ""
             if _bmap["areas"]:
-                _why = ("Recorded for this sign in the map's per-sign table."
-                        if _bmap["via"] == "sign" else
-                        f'Inherited from the sub-region rule “{_bmap["rule"]}”.')
+                _why = f'Show where {d["sign"]} localizes'
                 _chips = "".join(
                     f'<button class="ba-chip{" bc-deep" if BA.AREAS[a].get("buried") else ""}" '
                     f'data-ba="{a}" title="{esc(BA.AREAS[a]["name"])}">{BA.AREAS[a]["label"]}</button>'
@@ -742,10 +740,6 @@ def build_brain(signs):
         f'<span class="dc-n">{len(tiles[t]["signs"])}</span></button>' for t in buried)
 
     note = ""
-    if unplaced:
-        note = (f'<span class="brain-note">{len(unplaced)} sign'
-                f'{"s" if len(unplaced) != 1 else ""} without a surface localization '
-                f'{"are" if len(unplaced) != 1 else "is"} not placed on the map.</span>')
 
     payload = ("<script>const BRAIN_TILES=" + json.dumps(tiles, separators=(",", ":")) +
                ";const BRAIN_SIGNS=" + json.dumps(index, separators=(",", ":")) + ";</script>")
@@ -759,6 +753,8 @@ def build_brain(signs):
       <button class="seg-b" data-hemi="R">Right</button>
     </div>
     <label class="brain-shade"><input type="checkbox" id="brain-density"> Shade by density</label>
+    <span class="dens-key"><span class="dk-n">0</span><i class="dk-bar"></i>
+      <span class="dk-n" id="dk-max"></span>&nbsp;signs per area</span>
   </div>
   <div class="brain-grid">
     <div class="brain-stage">
@@ -866,13 +862,16 @@ CSS = r"""
    solid boundaries between lobes, every area carrying its number */
 .brain-photo{pointer-events:none}
 /* label editor (opt-in via #edit-labels) */
-body.lbledit .ba-num{pointer-events:auto;cursor:grab;
+/* The disc is the drag handle. It used to be the glyph, wearing a fat white
+   stroke as its fingertip target — which, once the disc became the numeral's
+   background, painted straight over the digits and left white blobs. */
+body.lbledit .ba-hit{pointer-events:all;cursor:grab;r:19px;
   /* stop the browser panning the page when a finger drags a numeral */
-  touch-action:none;-webkit-user-select:none;user-select:none;
-  /* the halo is also the hit area, so widen it for fingertips */
-  stroke:rgba(255,255,255,.9);stroke-width:13}
-body.lbledit .ba-num:hover{fill:var(--teal-d)}
-body.lbledit .ba-num.drag{cursor:grabbing;fill:var(--teal-d);stroke:rgba(14,157,176,.25)}
+  touch-action:none;-webkit-user-select:none;user-select:none}
+body.lbledit .ba-num{pointer-events:none}
+body.lbledit .ba-hit:hover{fill:#cdeff5;stroke:var(--teal-d)}
+body.lbledit .ba-hit.drag{cursor:grabbing;fill:var(--teal);stroke:var(--teal-d);stroke-width:2}
+body.lbledit .ba-hit.drag+.ba-num{fill:#fff}
 #lbl-out{width:100%;height:70px;margin-top:7px;font-family:'SF Mono',Consolas,monospace;
   font-size:.62rem;border:1px solid var(--line);border-radius:6px;padding:5px}
 .lbl-editor{position:fixed;right:12px;bottom:12px;z-index:400;background:rgba(255,255,255,.97);
@@ -900,13 +899,13 @@ body.lbledit .ba-num.drag{cursor:grabbing;fill:var(--teal-d);stroke:rgba(14,157,
   color:var(--navy);cursor:pointer}
 .lbl-editor .le-row:last-child button:hover{border-color:var(--teal);color:var(--teal-d)}
 #lbl-read{margin-top:6px;font-family:'SF Mono',Consolas,monospace;font-size:.7rem;color:var(--teal-d)}
-.ba-num.edit-sel{fill:var(--teal-d)!important;stroke:rgba(14,157,176,.30)!important}
+.ba-hit.edit-sel{fill:#bdeef6!important;stroke:var(--teal-d)!important;stroke-width:2!important}
 /* focus mode: only the numeral being moved is live; the others fade back so they
    neither block the pointer nor clutter the anatomy underneath */
 body.lbledit.focusing .ba-num,body.lbledit.focusing .ba-hit{opacity:.12;pointer-events:none;transition:opacity .15s}
-body.lbledit.focusing .ba-num.edit-sel,body.lbledit.focusing .ba-hit.edit-sel{opacity:1}
+body.lbledit.focusing .ba-num.edit-sel{opacity:1}
+body.lbledit.focusing .ba-hit.edit-sel{opacity:1;pointer-events:all}
 body.lbledit .ba-num,body.lbledit .ba-hit{transition:opacity .15s}
-body.lbledit .ba-hit{pointer-events:none}   /* dragging a numeral must not hit its disc */
 #le-done{background:var(--teal)!important;border-color:var(--teal-d)!important;color:#fff!important}
 body.lbl-place .brain-svg{cursor:crosshair}
 /* D-pad: thumb-reachable, translucent, never covers the middle of the figure */
@@ -946,9 +945,19 @@ body.lbl-place .brain-svg{cursor:crosshair}
 .ba-hit.sel{fill:var(--teal);stroke:var(--teal-d);stroke-width:2}
 .ba-hit:focus{outline:none}
 .ba-hit:focus-visible{stroke:var(--teal-d);stroke-width:2.5;stroke-dasharray:3 3}
-.brain-card.dens .ba-hit.d1{fill:#e8f1f8}.brain-card.dens .ba-hit.d2{fill:#cfe4f0}
-.brain-card.dens .ba-hit.d3{fill:#a9d3e6}.brain-card.dens .ba-hit.d4{fill:#7cbcd8}
-.brain-card.dens .ba-hit.sel{fill:var(--teal)}
+/* Density ramp: blue -> red, lightness strictly decreasing (0.87 -> 0.47 OKLCH)
+   so it reads as magnitude rather than as two colours, and never through green.
+   Counts are skewed (median 4, max 30), so the scale is square-rooted; the key
+   prints the real counts at both ends and the midpoint. */
+.brain-card.dens .ba-hit{fill:var(--dens,rgba(255,255,255,.85));stroke:rgba(30,42,61,.35)}
+.brain-card.dens .ba-num{fill:var(--densink,#1e2a3d)}
+.brain-card.dens .ba-hit.sel{fill:var(--teal);stroke:var(--teal-d)}
+.brain-card.dens .ba-hit.sel+.ba-num{fill:#fff}
+.dens-key{display:none;align-items:center;gap:7px;margin-left:auto;font-size:.66rem;color:var(--muted)}
+.brain-card.dens .dens-key{display:inline-flex}
+.dk-bar{width:104px;height:9px;border-radius:5px;display:block;border:1px solid rgba(30,42,61,.18);
+  background:linear-gradient(90deg,#b3daff 0%,#adb6fa 4%,#b48edf 16%,#bb66b0 36%,#b93c71 64%,#ac011a 100%)}
+.dk-n{font-variant-numeric:tabular-nums;font-weight:700;color:#5a6478}
 .ba-num{font-family:'Segoe UI',Arial,sans-serif;font-size:15px;font-weight:800;fill:#1e2a3d;
   text-anchor:middle;dominant-baseline:central;pointer-events:none;user-select:none}
 .ba-num.has{fill:#0d1626}
@@ -1050,8 +1059,8 @@ body.lbl-place .brain-svg{cursor:crosshair}
   /* numerals are in SVG user units, so scale them up for the small canvas */
   .ba-num{font-size:20px}
   .ba-num-sm{font-size:16px}
-  body.lbledit .ba-num{stroke-width:34}
   .ba-hit{r:18px}
+  body.lbledit .ba-hit{r:26px}
   .bp-list{max-height:430px}
   .brain-bar{gap:7px}
   .brain-shade{margin-left:0;width:100%}
@@ -1449,11 +1458,25 @@ JS = r"""
   /* density buckets + "has data" styling */
   const counts=Object.values(BRAIN_TILES).map(t=>t.signs.length).filter(n=>n>0);
   const maxN=Math.max(1,...counts);
+  const RAMP=[[179,218,255],[173,182,250],[180,142,223],[187,102,176],[185,60,113],[172,1,26]];
+  function densColour(t){                     /* t in 0..1 across the ramp */
+    const x=Math.max(0,Math.min(1,t))*(RAMP.length-1), i=Math.min(RAMP.length-2,Math.floor(x)), f=x-i;
+    const a=RAMP[i], b=RAMP[i+1];
+    const c=[0,1,2].map(k=>Math.round(a[k]+(b[k]-a[k])*f));
+    /* relative luminance decides whether the numeral reads dark or white */
+    const L=[0,1,2].map(k=>{const v=c[k]/255; return v<=0.04045?v/12.92:Math.pow((v+0.055)/1.055,2.4);});
+    const lum=0.2126*L[0]+0.7152*L[1]+0.0722*L[2];
+    return ['rgb('+c.join(',')+')', lum<0.30?'#fff':'#1e2a3d'];
+  }
   card.querySelectorAll('.ba-hit').forEach(p=>{
     const n=+p.dataset.n||0;
-    if(n>0){p.classList.add('has');
-      const q=n/maxN; p.classList.add(q>0.66?'d4':q>0.4?'d3':q>0.18?'d2':'d1');}
+    if(n>0) p.classList.add('has');
+    const [fill,ink]=densColour(n>0?Math.sqrt(n/maxN):0);
+    const num=p.nextElementSibling;
+    if(n>0){ p.style.setProperty('--dens',fill); if(num) num.style.setProperty('--densink',ink); }
   });
+  const dkMax=document.getElementById('dk-max');
+  if(dkMax) dkMax.textContent=maxN;
   card.querySelectorAll('.ba-num').forEach(t=>{
     const tile=BRAIN_TILES[t.dataset.tile];
     if(tile&&tile.signs.length) t.classList.add('has');
@@ -1567,13 +1590,9 @@ JS = r"""
         '<span class="bt-name">'+esc(t.name)+'<span class="bt-where">'+esc(where)+'</span></span>'+
         '<span class="bt-n" title="signs this atlas localizes here">'+t.signs.length+'</span></button>';
     }).join('');
-    let why = s.via==='sign'
-      ? 'Mapped by this sign’s own entry in <b>data/brodmann_map.json</b>, recorded against the name '+
-        '“'+esc(s.rule)+'” — the build fails if the entry and the sign drift apart.'
-      : 'Inherited from the sub-region rule <b>“'+esc(s.rule)+'”</b> in <b>data/brodmann_map.json</b>; '+
-        'every sign filed there maps to the same areas. The build fails if that rule goes missing.';
-    if(!applies(s.lc)) why+=' <b>Note:</b> this sign is not expected from the hemisphere on screen.';
-    document.getElementById('bt-why').innerHTML=why;
+    const note = applies(s.lc) ? '' : 'Not expected from the hemisphere shown.';
+    const why=document.getElementById('bt-why');
+    why.textContent=note; why.hidden=!note;
     hover.textContent=s.n+' — '+set.length+(set.length===1?' area':' areas')+' highlighted';
     if(scroll){
       const f=card.closest('.brain-fold'); if(f&&!f.open) f.open=true;
@@ -1772,7 +1791,7 @@ JS = r"""
   function select(tile){
     cur=tile;
     document.body.classList.toggle('focusing', !!tile);
-    svgs.forEach(s=>s.querySelectorAll('.ba-num').forEach(t=>
+    svgs.forEach(s=>s.querySelectorAll('.ba-num,.ba-hit').forEach(t=>
       t.classList.toggle('edit-sel', !!tile && t.dataset.tile===tile)));
     pad.hidden = !(mode==='nudge' && cur);
     const t=labelEl();
@@ -1821,7 +1840,7 @@ JS = r"""
       if(!cur) return; e.preventDefault(); e.stopPropagation();
       const p=toSvg(svg,e); moveTo(p.x,p.y); return;
     }
-    const t=e.target.closest('.ba-num'); if(!t||mode!=='drag') return;
+    const t=e.target.closest('.ba-hit'); if(!t||mode!=='drag') return;
     e.preventDefault(); e.stopPropagation();
     if(t.dataset.tile!==cur){ cur=t.dataset.tile; pick.value=cur; select(cur); }
     drag={svg:svg}; t.classList.add('drag');
@@ -1829,7 +1848,7 @@ JS = r"""
   window.addEventListener('pointermove',e=>{ if(!drag) return;
     const p=toSvg(drag.svg,e); moveTo(p.x,p.y); });
   window.addEventListener('pointerup',()=>{ if(drag){
-    card.querySelectorAll('.ba-num.drag').forEach(t=>t.classList.remove('drag')); drag=null; }});
+    card.querySelectorAll('.ba-hit.drag').forEach(t=>t.classList.remove('drag')); drag=null; }});
   window.addEventListener('keydown',e=>{
     if(!cur||['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].indexOf(e.key)<0) return;
     e.preventDefault(); const t=labelEl(); if(!t) return;
@@ -1841,7 +1860,7 @@ JS = r"""
   ed.querySelector('#le-done').addEventListener('click',()=>{
     cur=null; pick.value=''; pad.hidden=true;
     document.body.classList.remove('focusing');
-    svgs.forEach(s=>s.querySelectorAll('.ba-num').forEach(t=>t.classList.remove('edit-sel')));
+    svgs.forEach(s=>s.querySelectorAll('.ba-num,.ba-hit').forEach(t=>t.classList.remove('edit-sel')));
     read.textContent='Saved \u2014 pick another area';
   });
   ed.querySelector('#lbl-copy').addEventListener('click',()=>{
