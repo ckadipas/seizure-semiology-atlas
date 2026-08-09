@@ -5,19 +5,31 @@ Format loosely follows Keep a Changelog; dates are ISO-8601.
 
 ## [Unreleased]
 ### Added
-- **The Brodmann map is now under the same sync oversight as the rest of the atlas.**
-  The map carries its own curation layer — which cortical areas each sign localizes
-  to — keyed by sign id and by sub-region string, so it could drift out of step with
-  the dataset silently: an intake that added a sign, renamed a sub-region or
-  renumbered an id would have quietly left signs off the map with nothing failing.
-  `tools/check_brain_map.py` now runs in `make validate` and in CI ahead of the
-  build, and fails the deploy if: any rendered sign maps to no area (unless declared
-  unmapped with a reason); a per-sign override points at an id that no longer exists;
-  a sub-region rule is orphaned by a rename; a dataset sub-region has no rule; a rule
-  names an area that isn't defined; a defined area is drawn in no view and isn't
-  marked buried; or a label position refers to an area absent from that view. It
-  reports coverage on every run (currently 110/111 signs across 37 areas and 4 views,
-  with one sign declared unmapped because its record states no lobar localization).
+- **The Brodmann map follows the repo's own structure.** It was first written as a
+  feature bolted onto the generator: 39 areas, 17 sub-region rules, 79 per-sign
+  overrides, 80 label positions and 231 outline points all lived as Python literals
+  inside `generator/brain_atlas.py`, with a second label-position system layered on
+  top of the first, a separate one-off gate script, and two authoring scripts that
+  duplicated the same segmentation code. That is not how this repo works. All of that
+  curation now lives in **`data/brodmann_map.json`**, a hand-edited source of truth
+  beside `data/semiology_data.json`, validated against **`schema/brodmann.schema.json`**
+  by the existing **`tools/validate_data.py`** gate — one gate, one CI step, as before.
+  `generator/brain_atlas.py` is now a 130-line renderer (was 518) holding geometry
+  maths and no knowledge; the duplicate label system is gone (one position per area
+  per view, in data); and the two plate scripts are one `tools/brodmann_plate.py`
+  sharing their segmentation. The rendered page is byte-for-byte unchanged apart from
+  two inconsistencies the refactor fixed (clip-path ids and `aria-label` casing).
+- **The map is under the ledger's sync oversight.** Its curation is keyed by sign id
+  and sub-region string, so it could drift silently: an intake that added a sign,
+  renamed a sub-region or renumbered an id would have left signs off the map with
+  every gate still passing. `tools/validate_data.py` now fails the build if a rendered
+  sign maps to no area (unless declared unmapped with a reason), a per-sign entry no
+  longer names the sign it was written for, a sub-region rule is orphaned, a dataset
+  sub-region has no rule, a referenced area is undefined, or a defined area is drawn
+  in no view without being marked buried. Per-sign entries record the **sign name**
+  alongside the id, so drift is reviewable in the diff rather than merely detectable.
+  Coverage is reported every run (110/111 signs, 39 areas, 4 views, 1 declared
+  unmapped).
 - **Interactive Brodmann map — "where each semiology localizes".** A new figure at the
   top of the page maps every sign in the dataset onto the Brodmann areas it localizes to,
   across three schematic surface views of one hemisphere: **lateral, dorsal and ventral**.

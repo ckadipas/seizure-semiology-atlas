@@ -15,14 +15,17 @@ HTML page that is published to GitHub Pages.
 | Path | Role |
 |---|---|
 | `data/semiology_data.json` | **Source of truth** — the curated signs (human-edited). |
+| `data/brodmann_map.json` | **Source of truth** — the Brodmann areas, their geometry per view, and which areas each sign localizes to (human-edited). |
 | `enrichment/build_enrichment.py` | Authors the corpus layer → `enrichment/enrichment.json`. |
 | `enrichment/enrichment.json` | Evidence, new signs, paper library, chart data (committed; CI checks it's in sync). |
 | `generator/gen_study.py` | Renders the self-contained HTML into `docs/`. |
-| `generator/brain_atlas.py` | Brodmann-map geometry (lateral/dorsal/ventral views) + the sign→area mapping. |
-| `tools/validate_data.py` | Schema + integrity gate (runs in CI). |
-| `tools/check_brain_map.py` | Keeps the Brodmann map in sync with the dataset (runs in CI). |
+| `generator/assets/` | Reference brain plates used as the map's base images. |
+| `generator/brain_atlas.py` | Renders the Brodmann map from its data file (geometry maths only — no curation). |
+| `tools/validate_data.py` | Schema + integrity gate for the dataset **and** the Brodmann map (runs in CI). |
 | `tools/intake_paper.py` | Screens, de-dups, extracts & queues a new paper. |
+| `tools/brodmann_plate.py` | Authoring aid: cleans a reference plate into a base image, or traces its silhouette. |
 | `schema/sign.schema.json` | JSON Schema for a sign record. |
+| `schema/brodmann.schema.json` | JSON Schema for a Brodmann-area record. |
 | `corpus/manifest.csv` | Bibliographic metadata for the source library. |
 | `corpus/corpus_extract_summary.md` | Human-readable ledger of source-grounded figures. |
 | `intake/INTAKE.md` | The paper-intake standard operating procedure. |
