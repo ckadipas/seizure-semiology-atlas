@@ -5,6 +5,18 @@ Format loosely follows Keep a Changelog; dates are ISO-8601.
 
 ## [Unreleased]
 ### Fixed
+- **A review restating a primary series was being counted as a second study.** Six
+  observations were Loddenkemper & Kotagal 2005 reporting a number that Wyllie, Roh,
+  Kotagal or Gabr had already contributed to the same average — the atlas's own review tool
+  had flagged all of them as probable double counts, at severity *low*, and pooled them
+  anyway. Observations now carry **`provenance`**: one marked `secondary_citation` names the
+  study it restates, stays visible as a corroborating citation, and is never averaged.
+  Consequences are real and mostly downward: *figure-of-4* falls from 2 studies to 1
+  (89.8% → 90.0%, now **single source**), *ictal dysphasia* and *preserved ictal speech*
+  likewise; *unilateral dystonic posturing* drops to k=2 and *moderate*. The detector was
+  retargeted from "we knowingly double count" to **unmarked restatement, severity high**,
+  so the same fault cannot be re-introduced silently. Nine flags before, zero now.
+### Fixed
 - **The atlas was calling one study "three studies".** A pooled percentage was printed
   beside a count that added the direction-only sources — which corroborate a side but
   measure nothing. *Ictal spitting* read **75% · 3 studies** when one study carried the

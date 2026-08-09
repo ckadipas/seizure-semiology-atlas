@@ -1,5 +1,5 @@
 {
- "_doc": "Structured, source-traceable observation records for the weighted meta-analysis. Every numeric value is drawn from enrichment/corpus_findings.json, where each figure carries a verbatim quote and a locator, so every pooled figure traces to the paper, page/table, and words it came from. tools/meta_analysis.py applies the weighting scheme below and writes enrichment/meta_analysis.json. Educational resource - not for clinical decision-making.",
+ "_doc": "Structured, source-traceable observation records for the weighted meta-analysis. Every numeric value is drawn from enrichment/corpus_findings.json, where each figure carries a verbatim quote and a locator, so every pooled figure traces to the paper, page/table, and words it came from. tools/meta_analysis.py applies the weighting scheme below and writes enrichment/meta_analysis.json. Educational resource - not for clinical decision-making. Provenance: an observation marked secondary_citation is a review restating a primary series already in this file. It is shown as a corroborating citation and is never averaged, because counting it would report one measurement as two.",
  "weighting": {
   "_doc": "weight = class_base x ground_truth_mult x size_factor. Higher evidence class and more direct ground truth (SEEG / postoperative seizure-freedom) earn more weight. Transparent and tunable: change these and re-run tools/meta_analysis.py.",
   "class_base": {
@@ -153,7 +153,9 @@
      "study": "Loddenkemper 2005",
      "value": 100,
      "freq": "22.2% of FLE",
-     "note": "Forced version contralateral to the EZ in 100% (Table 1; cites Wyllie/Ebner)."
+     "note": "Forced version contralateral to the EZ in 100% (Table 1; cites Wyllie/Ebner).",
+     "provenance": "secondary_citation",
+     "restates": "Wyllie 1986"
     },
     {
      "study": "Wyllie 1986",
@@ -211,7 +213,9 @@
      "study": "Loddenkemper 2005",
      "value": 100,
      "freq": "43.9% of TLE",
-     "note": "Contralateral in ~100% (single exception reported by Yen)."
+     "note": "Contralateral in ~100% (single exception reported by Yen).",
+     "provenance": "secondary_citation",
+     "restates": "Roh 1996"
     },
     {
      "study": "Roh 1996",
@@ -321,7 +325,9 @@
      "study": "Loddenkemper 2005",
      "value": 89,
      "freq": "17.7% of TLE",
-     "note": "Extended arm contralateral in 89%."
+     "note": "Extended arm contralateral in 89%.",
+     "provenance": "secondary_citation",
+     "restates": "Kotagal 2000"
     },
     {
      "study": "Marashly 2015",
@@ -507,7 +513,9 @@
      "study": "Loddenkemper 2005",
      "value": 100,
      "freq": "34.2% of EMU pts",
-     "note": "Ictal dysphasia is dominant in 100%."
+     "note": "Ictal dysphasia is dominant in 100%.",
+     "provenance": "secondary_citation",
+     "restates": "Gabr 1989"
     }
    ],
    "sign_ids": [
@@ -545,7 +553,9 @@
      "study": "Loddenkemper 2005",
      "value": 90,
      "freq": null,
-     "note": "Postictal dysphasia/aphasia dominant-hemisphere in 80-100% across series (midpoint 90)."
+     "note": "Postictal dysphasia/aphasia dominant-hemisphere in 80-100% across series (midpoint 90).",
+     "provenance": "secondary_citation",
+     "restates": "Gabr 1989"
     },
     {
      "study": "Blair 2012",
@@ -585,7 +595,9 @@
      "study": "Loddenkemper 2005",
      "value": 83,
      "freq": "34.2% of EMU pts",
-     "note": "Ictal speech that is preserved/identifiable is non-dominant in 83%."
+     "note": "Ictal speech that is preserved/identifiable is non-dominant in 83%.",
+     "provenance": "secondary_citation",
+     "restates": "Gabr 1989"
     },
     {
      "study": "Roh 1996",

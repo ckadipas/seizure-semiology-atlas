@@ -79,18 +79,20 @@
          "pg": null,
          "freq": "34.2% of EMU pts",
          "note": "Ictal dysphasia is dominant in 100%.",
-         "value": 100
+         "value": 100,
+         "restates": "Gabr 1989",
+         "qualitative": "restates Gabr 1989"
         }
        ],
-       "n_studies": 2,
-       "n_qualitative": 0,
+       "n_studies": 1,
+       "n_qualitative": 1,
        "pooled": 100.0,
        "low": 100,
        "high": 100,
        "spread": 0,
        "wsd": null,
-       "total_weight": 5.78,
-       "certainty": "moderate"
+       "total_weight": 4.78,
+       "certainty": "single_source"
       }
      ]
     },
@@ -163,23 +165,6 @@
          "value": 94
         },
         {
-         "study": "Loddenkemper 2005",
-         "cite": "Loddenkemper & Kotagal 2005",
-         "eclass": "III",
-         "ground_truth": "review",
-         "n": null,
-         "weight": 1.0,
-         "weight_parts": {
-          "class_base": 1.0,
-          "ground_truth_mult": 1.0,
-          "size_factor": 1.0
-         },
-         "pg": null,
-         "freq": null,
-         "note": "Postictal dysphasia/aphasia dominant-hemisphere in 80-100% across series (midpoint 90).",
-         "value": 90
-        },
-        {
          "study": "Blair 2012",
          "cite": "Blair 2012",
          "eclass": "III",
@@ -195,6 +180,25 @@
          "freq": null,
          "note": "Postictal aphasia a very reliable dominant-hemisphere sign, ~80-90% (midpoint 85).",
          "value": 85
+        },
+        {
+         "study": "Loddenkemper 2005",
+         "cite": "Loddenkemper & Kotagal 2005",
+         "eclass": "III",
+         "ground_truth": "review",
+         "n": null,
+         "weight": 1.0,
+         "weight_parts": {
+          "class_base": 1.0,
+          "ground_truth_mult": 1.0,
+          "size_factor": 1.0
+         },
+         "pg": null,
+         "freq": null,
+         "note": "Postictal dysphasia/aphasia dominant-hemisphere in 80-100% across series (midpoint 90).",
+         "value": 90,
+         "restates": "Gabr 1989",
+         "qualitative": "restates Gabr 1989"
         },
         {
          "study": "Abou-Khalil 2022",
@@ -214,14 +218,14 @@
          "qualitative": "dominant"
         }
        ],
-       "n_studies": 5,
-       "n_qualitative": 1,
-       "pooled": 92.2,
+       "n_studies": 4,
+       "n_qualitative": 2,
+       "pooled": 92.3,
        "low": 85,
        "high": 94,
        "spread": 9,
        "wsd": 2.1,
-       "total_weight": 17.91,
+       "total_weight": 16.91,
        "certainty": "well_supported"
       }
      ]
@@ -273,7 +277,9 @@
          "pg": null,
          "freq": "34.2% of EMU pts",
          "note": "Ictal speech that is preserved/identifiable is non-dominant in 83%.",
-         "value": 83
+         "value": 83,
+         "restates": "Gabr 1989",
+         "qualitative": "restates Gabr 1989"
         },
         {
          "study": "Roh 1996",
@@ -293,15 +299,15 @@
          "qualitative": "nondominant"
         }
        ],
-       "n_studies": 2,
-       "n_qualitative": 1,
+       "n_studies": 1,
+       "n_qualitative": 2,
        "pooled": 83.0,
        "low": 83,
        "high": 83,
        "spread": 0,
        "wsd": null,
-       "total_weight": 5.78,
-       "certainty": "moderate"
+       "total_weight": 4.78,
+       "certainty": "single_source"
       }
      ]
     },
@@ -865,23 +871,6 @@
        "contested": null,
        "contributions": [
         {
-         "study": "Loddenkemper 2005",
-         "cite": "Loddenkemper & Kotagal 2005",
-         "eclass": "III",
-         "ground_truth": "review",
-         "n": null,
-         "weight": 1.0,
-         "weight_parts": {
-          "class_base": 1.0,
-          "ground_truth_mult": 1.0,
-          "size_factor": 1.0
-         },
-         "pg": null,
-         "freq": "22.2% of FLE",
-         "note": "Forced version contralateral to the EZ in 100% (Table 1; cites Wyllie/Ebner).",
-         "value": 100
-        },
-        {
          "study": "Wyllie 1986",
          "cite": "Wyllie et al. 1986",
          "eclass": "II",
@@ -950,6 +939,25 @@
          "value": 90
         },
         {
+         "study": "Loddenkemper 2005",
+         "cite": "Loddenkemper & Kotagal 2005",
+         "eclass": "III",
+         "ground_truth": "review",
+         "n": null,
+         "weight": 1.0,
+         "weight_parts": {
+          "class_base": 1.0,
+          "ground_truth_mult": 1.0,
+          "size_factor": 1.0
+         },
+         "pg": null,
+         "freq": "22.2% of FLE",
+         "note": "Forced version contralateral to the EZ in 100% (Table 1; cites Wyllie/Ebner).",
+         "value": 100,
+         "restates": "Wyllie 1986",
+         "qualitative": "restates Wyllie 1986"
+        },
+        {
          "study": "Foldvary-Schaefer 2011",
          "cite": "Foldvary-Schaefer & Unnwongse 2011",
          "eclass": "III",
@@ -984,14 +992,14 @@
          "qualitative": "contra"
         }
        ],
-       "n_studies": 5,
-       "n_qualitative": 2,
-       "pooled": 98.6,
+       "n_studies": 4,
+       "n_qualitative": 3,
+       "pooled": 98.5,
        "low": 90,
        "high": 100,
        "spread": 10,
-       "wsd": 3.5,
-       "total_weight": 17.0,
+       "wsd": 3.6,
+       "total_weight": 16.0,
        "certainty": "well_supported"
       }
      ]
@@ -1143,7 +1151,9 @@
          "pg": null,
          "freq": "17.7% of TLE",
          "note": "Extended arm contralateral in 89%.",
-         "value": 89
+         "value": 89,
+         "restates": "Kotagal 2000",
+         "qualitative": "restates Kotagal 2000"
         },
         {
          "study": "Marashly 2015",
@@ -1180,15 +1190,15 @@
          "qualitative": "contra"
         }
        ],
-       "n_studies": 2,
-       "n_qualitative": 2,
-       "pooled": 89.8,
-       "low": 89,
+       "n_studies": 1,
+       "n_qualitative": 3,
+       "pooled": 90.0,
+       "low": 90,
        "high": 90,
-       "spread": 1,
+       "spread": 0,
        "wsd": null,
-       "total_weight": 6.39,
-       "certainty": "moderate"
+       "total_weight": 5.39,
+       "certainty": "single_source"
       }
      ]
     },
@@ -1707,23 +1717,6 @@
        "contested": null,
        "contributions": [
         {
-         "study": "Loddenkemper 2005",
-         "cite": "Loddenkemper & Kotagal 2005",
-         "eclass": "III",
-         "ground_truth": "review",
-         "n": null,
-         "weight": 1.0,
-         "weight_parts": {
-          "class_base": 1.0,
-          "ground_truth_mult": 1.0,
-          "size_factor": 1.0
-         },
-         "pg": null,
-         "freq": "43.9% of TLE",
-         "note": "Contralateral in ~100% (single exception reported by Yen).",
-         "value": 100
-        },
-        {
          "study": "Roh 1996",
          "cite": "Roh et al. 1996",
          "eclass": "II",
@@ -1758,6 +1751,25 @@
          "value": 90
         },
         {
+         "study": "Loddenkemper 2005",
+         "cite": "Loddenkemper & Kotagal 2005",
+         "eclass": "III",
+         "ground_truth": "review",
+         "n": null,
+         "weight": 1.0,
+         "weight_parts": {
+          "class_base": 1.0,
+          "ground_truth_mult": 1.0,
+          "size_factor": 1.0
+         },
+         "pg": null,
+         "freq": "43.9% of TLE",
+         "note": "Contralateral in ~100% (single exception reported by Yen).",
+         "value": 100,
+         "restates": "Roh 1996",
+         "qualitative": "restates Roh 1996"
+        },
+        {
          "study": "Abou-Khalil 2022",
          "cite": "Abou-Khalil (in Misulis et al. 2022)",
          "eclass": "III",
@@ -1775,15 +1787,15 @@
          "qualitative": "contra"
         }
        ],
-       "n_studies": 3,
-       "n_qualitative": 1,
-       "pooled": 98.3,
+       "n_studies": 2,
+       "n_qualitative": 2,
+       "pooled": 98.0,
        "low": 90,
        "high": 100,
        "spread": 10,
        "wsd": null,
-       "total_weight": 5.94,
-       "certainty": "well_supported"
+       "total_weight": 4.94,
+       "certainty": "moderate"
       }
      ]
     }
@@ -2003,7 +2015,9 @@
      "pg": null,
      "freq": "17.7% of TLE",
      "note": "Extended arm contralateral in 89%.",
-     "value": 89
+     "value": 89,
+     "restates": "Kotagal 2000",
+     "qualitative": "restates Kotagal 2000"
     },
     {
      "study": "Marashly 2015",
@@ -2040,15 +2054,15 @@
      "qualitative": "contra"
     }
    ],
-   "n_studies": 2,
-   "n_qualitative": 2,
-   "pooled": 89.8,
-   "low": 89,
+   "n_studies": 1,
+   "n_qualitative": 3,
+   "pooled": 90.0,
+   "low": 90,
    "high": 90,
-   "spread": 1,
+   "spread": 0,
    "wsd": null,
-   "total_weight": 6.39,
-   "certainty": "moderate"
+   "total_weight": 5.39,
+   "certainty": "single_source"
   },
   {
    "sign": "Forced head/eye version",
@@ -2063,23 +2077,6 @@
    ],
    "contested": null,
    "contributions": [
-    {
-     "study": "Loddenkemper 2005",
-     "cite": "Loddenkemper & Kotagal 2005",
-     "eclass": "III",
-     "ground_truth": "review",
-     "n": null,
-     "weight": 1.0,
-     "weight_parts": {
-      "class_base": 1.0,
-      "ground_truth_mult": 1.0,
-      "size_factor": 1.0
-     },
-     "pg": null,
-     "freq": "22.2% of FLE",
-     "note": "Forced version contralateral to the EZ in 100% (Table 1; cites Wyllie/Ebner).",
-     "value": 100
-    },
     {
      "study": "Wyllie 1986",
      "cite": "Wyllie et al. 1986",
@@ -2149,6 +2146,25 @@
      "value": 90
     },
     {
+     "study": "Loddenkemper 2005",
+     "cite": "Loddenkemper & Kotagal 2005",
+     "eclass": "III",
+     "ground_truth": "review",
+     "n": null,
+     "weight": 1.0,
+     "weight_parts": {
+      "class_base": 1.0,
+      "ground_truth_mult": 1.0,
+      "size_factor": 1.0
+     },
+     "pg": null,
+     "freq": "22.2% of FLE",
+     "note": "Forced version contralateral to the EZ in 100% (Table 1; cites Wyllie/Ebner).",
+     "value": 100,
+     "restates": "Wyllie 1986",
+     "qualitative": "restates Wyllie 1986"
+    },
+    {
      "study": "Foldvary-Schaefer 2011",
      "cite": "Foldvary-Schaefer & Unnwongse 2011",
      "eclass": "III",
@@ -2183,14 +2199,14 @@
      "qualitative": "contra"
     }
    ],
-   "n_studies": 5,
-   "n_qualitative": 2,
-   "pooled": 98.6,
+   "n_studies": 4,
+   "n_qualitative": 3,
+   "pooled": 98.5,
    "low": 90,
    "high": 100,
    "spread": 10,
-   "wsd": 3.5,
-   "total_weight": 17.0,
+   "wsd": 3.6,
+   "total_weight": 16.0,
    "certainty": "well_supported"
   },
   {
@@ -2296,18 +2312,20 @@
      "pg": null,
      "freq": "34.2% of EMU pts",
      "note": "Ictal dysphasia is dominant in 100%.",
-     "value": 100
+     "value": 100,
+     "restates": "Gabr 1989",
+     "qualitative": "restates Gabr 1989"
     }
    ],
-   "n_studies": 2,
-   "n_qualitative": 0,
+   "n_studies": 1,
+   "n_qualitative": 1,
    "pooled": 100.0,
    "low": 100,
    "high": 100,
    "spread": 0,
    "wsd": null,
-   "total_weight": 5.78,
-   "certainty": "moderate"
+   "total_weight": 4.78,
+   "certainty": "single_source"
   },
   {
    "sign": "Ictal dysprosody",
@@ -2745,23 +2763,6 @@
      "value": 94
     },
     {
-     "study": "Loddenkemper 2005",
-     "cite": "Loddenkemper & Kotagal 2005",
-     "eclass": "III",
-     "ground_truth": "review",
-     "n": null,
-     "weight": 1.0,
-     "weight_parts": {
-      "class_base": 1.0,
-      "ground_truth_mult": 1.0,
-      "size_factor": 1.0
-     },
-     "pg": null,
-     "freq": null,
-     "note": "Postictal dysphasia/aphasia dominant-hemisphere in 80-100% across series (midpoint 90).",
-     "value": 90
-    },
-    {
      "study": "Blair 2012",
      "cite": "Blair 2012",
      "eclass": "III",
@@ -2777,6 +2778,25 @@
      "freq": null,
      "note": "Postictal aphasia a very reliable dominant-hemisphere sign, ~80-90% (midpoint 85).",
      "value": 85
+    },
+    {
+     "study": "Loddenkemper 2005",
+     "cite": "Loddenkemper & Kotagal 2005",
+     "eclass": "III",
+     "ground_truth": "review",
+     "n": null,
+     "weight": 1.0,
+     "weight_parts": {
+      "class_base": 1.0,
+      "ground_truth_mult": 1.0,
+      "size_factor": 1.0
+     },
+     "pg": null,
+     "freq": null,
+     "note": "Postictal dysphasia/aphasia dominant-hemisphere in 80-100% across series (midpoint 90).",
+     "value": 90,
+     "restates": "Gabr 1989",
+     "qualitative": "restates Gabr 1989"
     },
     {
      "study": "Abou-Khalil 2022",
@@ -2796,14 +2816,14 @@
      "qualitative": "dominant"
     }
    ],
-   "n_studies": 5,
-   "n_qualitative": 1,
-   "pooled": 92.2,
+   "n_studies": 4,
+   "n_qualitative": 2,
+   "pooled": 92.3,
    "low": 85,
    "high": 94,
    "spread": 9,
    "wsd": 2.1,
-   "total_weight": 17.91,
+   "total_weight": 16.91,
    "certainty": "well_supported"
   },
   {
@@ -2941,7 +2961,9 @@
      "pg": null,
      "freq": "34.2% of EMU pts",
      "note": "Ictal speech that is preserved/identifiable is non-dominant in 83%.",
-     "value": 83
+     "value": 83,
+     "restates": "Gabr 1989",
+     "qualitative": "restates Gabr 1989"
     },
     {
      "study": "Roh 1996",
@@ -2961,15 +2983,15 @@
      "qualitative": "nondominant"
     }
    ],
-   "n_studies": 2,
-   "n_qualitative": 1,
+   "n_studies": 1,
+   "n_qualitative": 2,
    "pooled": 83.0,
    "low": 83,
    "high": 83,
    "spread": 0,
    "wsd": null,
-   "total_weight": 5.78,
-   "certainty": "moderate"
+   "total_weight": 4.78,
+   "certainty": "single_source"
   },
   {
    "sign": "Unilateral (ipsilateral) automatisms",
@@ -3169,23 +3191,6 @@
    "contested": null,
    "contributions": [
     {
-     "study": "Loddenkemper 2005",
-     "cite": "Loddenkemper & Kotagal 2005",
-     "eclass": "III",
-     "ground_truth": "review",
-     "n": null,
-     "weight": 1.0,
-     "weight_parts": {
-      "class_base": 1.0,
-      "ground_truth_mult": 1.0,
-      "size_factor": 1.0
-     },
-     "pg": null,
-     "freq": "43.9% of TLE",
-     "note": "Contralateral in ~100% (single exception reported by Yen).",
-     "value": 100
-    },
-    {
      "study": "Roh 1996",
      "cite": "Roh et al. 1996",
      "eclass": "II",
@@ -3220,6 +3225,25 @@
      "value": 90
     },
     {
+     "study": "Loddenkemper 2005",
+     "cite": "Loddenkemper & Kotagal 2005",
+     "eclass": "III",
+     "ground_truth": "review",
+     "n": null,
+     "weight": 1.0,
+     "weight_parts": {
+      "class_base": 1.0,
+      "ground_truth_mult": 1.0,
+      "size_factor": 1.0
+     },
+     "pg": null,
+     "freq": "43.9% of TLE",
+     "note": "Contralateral in ~100% (single exception reported by Yen).",
+     "value": 100,
+     "restates": "Roh 1996",
+     "qualitative": "restates Roh 1996"
+    },
+    {
      "study": "Abou-Khalil 2022",
      "cite": "Abou-Khalil (in Misulis et al. 2022)",
      "eclass": "III",
@@ -3237,15 +3261,15 @@
      "qualitative": "contra"
     }
    ],
-   "n_studies": 3,
-   "n_qualitative": 1,
-   "pooled": 98.3,
+   "n_studies": 2,
+   "n_qualitative": 2,
+   "pooled": 98.0,
    "low": 90,
    "high": 100,
    "spread": 10,
    "wsd": null,
-   "total_weight": 5.94,
-   "certainty": "well_supported"
+   "total_weight": 4.94,
+   "certainty": "moderate"
   },
   {
    "sign": "Unilateral eye-blinking",

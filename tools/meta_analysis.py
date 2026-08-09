@@ -88,7 +88,15 @@ def pool_sign(sign, studies, scheme):
             "freq": obs.get("freq"),
             "note": obs.get("note", ""),
         }
-        if isinstance(obs.get("value"), (int, float)):
+        if obs.get("provenance") == "secondary_citation":
+            # a review restating a primary series already in this pool. Keep it
+            # visible as a corroborating citation; averaging it would report one
+            # measurement as two.
+            row["value"] = obs.get("value")
+            row["restates"] = obs.get("restates")
+            row["qualitative"] = "restates " + str(obs.get("restates"))
+            qualitative.append(row)
+        elif isinstance(obs.get("value"), (int, float)):
             row["value"] = obs["value"]
             numeric.append(row)
         else:
