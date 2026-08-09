@@ -666,12 +666,16 @@ def build_brain(signs):
         t["signs"].sort(key=lambda s: (_evrank.get(s["ev"], 3), s["n"]))
 
     def render_view(name):
+        """
+        A view is the reference plate with its numerals on top. Nothing else is
+        drawn over the cortex: the area outlines are in the data but no longer
+        rendered, because an outline traced off a plate never fits the anatomy
+        well enough to sit on it, and it got in the way of the numbers. Only a
+        numeral is highlighted, and only a numeral is clickable.
+        """
         v = BA.VIEWS[name]
         vw, vh = v["viewBox"][2], v["viewBox"][3]
         mirrored = v.get("mirror")
-        outline = [tuple(p) for p in (v.get("outline") or
-                   (v["margin"] + [[vw - x, y] for x, y in reversed(v["margin"])]))]
-        out_d = BA.smooth_path(outline, closed=True, s=0.11)
 
         img = ""
         if v.get("image"):
@@ -682,70 +686,48 @@ def build_brain(signs):
                        f'height="{i["h"]}" preserveAspectRatio="none" '
                        f'href="data:image/jpeg;base64,{_b64(f)}"/>')
 
-        # The shading and the hit target are separate things. The shading is the
-        # area's traced outline and takes no pointer events, so a large area can
-        # never swallow the numeral of a small one sitting inside it; what you
-        # click is a disc the size of the numeral, over the numeral.
-        shapes, labels, rlabels = [], [], []
+        labels, rlabels = [], []
         for area in v["areas"]:
             aid = area["id"]
-            n = len(tiles.get(aid, {}).get("signs", []))
-            shapes.append(
-                f'<path class="ba" data-tile="{aid}" data-n="{n}" '
-                f'data-lobe="{BA.AREAS[aid]["lobe"]}" '
-                f'd="{BA.smooth_path(BA.area_polygon(area), s=0.06)}"/>')
             lab = area.get("label")
             if not lab:
                 continue
             lx, ly = lab
+            n = len(tiles.get(aid, {}).get("signs", []))
             txt = BA.AREAS[aid]["label"]
             cls = "ba-num ba-num-sm" if len(txt) > 2 else "ba-num"
+            r = 13 if len(txt) <= 2 else 15
 
             def marks(x, mx):
-                return (f'<text class="{cls}" data-tile="{aid}" x="{x}" y="{ly}" '
-                        f'data-mx="{mx}">{txt}</text>'
-                        f'<circle class="ba-hit" data-tile="{aid}" cx="{x}" cy="{ly}" '
-                        f'r="{13 if len(txt) <= 2 else 15}" data-mx="{mx}" tabindex="0" '
-                        f'role="button" aria-label="Brodmann area {txt}">'
-                        f'<title>{esc(BA.AREAS[aid]["name"])}</title></circle>')
+                # disc first, numeral second: the disc is the hit target and the
+                # highlight, and has to sit behind the digits it belongs to
+                return (f'<circle class="ba-hit" data-tile="{aid}" data-n="{n}" '
+                        f'data-lobe="{BA.AREAS[aid]["lobe"]}" cx="{x}" cy="{ly}" r="{r}" '
+                        f'data-mx="{mx}" tabindex="0" role="button" '
+                        f'aria-label="Brodmann area {txt}">'
+                        f'<title>{esc(BA.AREAS[aid]["name"])}</title></circle>'
+                        f'<text class="{cls}" data-tile="{aid}" x="{x}" y="{ly}" '
+                        f'data-mx="{mx}">{txt}</text>')
 
             labels.append(marks(lx, vw - lx))
             if mirrored:
                 rlabels.append(marks(vw - lx, lx))
 
-        body = "\n".join(shapes)
-        extra = ""
-        if v.get("core"):
-            extra += (f'<path class="brain-core" d="{BA.smooth_path([tuple(p) for p in v["core"]], s=0.16)}">'
-                      f'<title>Corpus callosum &amp; diencephalon (not cortex)</title></path>')
-        for seam in v.get("solid", []):
-            extra += f'<path class="lobe-line" d="{BA.smooth_path([tuple(p) for p in seam], closed=False, s=0.12)}"/>'
-
         if mirrored:
-            inner = (f'<g class="hemi hemi-L">{body}{extra}</g>'
-                     f'<g class="hemi hemi-R" transform="translate({vw},0) scale(-1,1)">{body}{extra}</g>')
-            mid = (f'<line class="midline-mask" x1="{vw/2}" y1="{v["margin"][0][1]-2}" '
-                   f'x2="{vw/2}" y2="{v["margin"][-1][1]+2}"/>'
-                   f'<line class="midline" x1="{vw/2}" y1="{v["margin"][0][1]-2}" '
-                   f'x2="{vw/2}" y2="{v["margin"][-1][1]+2}"/>')
             lab_g = (f'<g class="ba-labels lab-L">{"".join(labels)}</g>'
                      f'<g class="ba-labels lab-R">{"".join(rlabels)}</g>')
             orient = (f'<text class="brain-orient" x="{vw/2}" y="{v["margin"][0][1]-24}" '
                       f'text-anchor="middle">anterior</text>')
         else:
-            # clip on the .hemi element itself: the hemisphere switch flips this
-            # group, and the clip has to flip with it
-            inner = f'<g class="hemi" clip-path="url(#clip-{name})">{body}{extra}</g>'
-            mid = ""
             lab_g = f'<g class="ba-labels">{"".join(labels)}</g>'
             orient = (f'<text class="brain-orient" x="150" y="{vh-24}" text-anchor="middle" '
                       f'data-mx="{vw-150}">anterior</text>')
 
+        # the plate lives in its own group so the hemisphere switch can mirror it
+        # with a plain SVG transform attribute, which every browser honours
         return (f'<svg class="brain-svg" data-view="{name}" viewBox="0 0 {vw} {vh}" role="group" '
                 f'aria-label="{name.capitalize()} surface, Brodmann areas">'
-                f'<defs><clipPath id="clip-{name}"><path d="{out_d}"/></clipPath></defs>'
-                f'{img}' + (f'<g clip-path="url(#clip-{name})">{inner}</g>' if mirrored else inner) +
-                f'<path class="brain-edge" d="{out_d}"/>{mid}{lab_g}{orient}</svg>')
+                f'<g class="plate">{img}</g>{lab_g}{orient}</svg>')
 
     views_html = "".join(render_view(v) for v in BA.VIEWS)
     view_btns = "".join(
@@ -879,10 +861,6 @@ CSS = r"""
 .brain-svg{display:none;width:100%;height:auto;max-height:400px;overflow:visible}
 .brain-svg.show{display:block}
 .brain-svg[data-view="dorsal"],.brain-svg[data-view="ventral"]{max-height:430px}
-.brain-svg.flip .hemi,.brain-svg.flip .brain-photo{transform:translateX(1000px) scale(-1,1)}
-.brain-svg[data-view="medial"].flip .hemi{transform:translateX(1000px) scale(-1,1)}
-.brain-svg[data-view="lateral"].flip .ins-g{transform:translateX(1000px) scale(-1,1)}
-.brain-svg[data-view="lateral"].flip .syl-line{transform:translateX(1000px) scale(-1,1)}
 
 /* classic Brodmann-plate convention: dashed boundaries inside a lobe,
    solid boundaries between lobes, every area carrying its number */
@@ -925,9 +903,9 @@ body.lbledit .ba-num.drag{cursor:grabbing;fill:var(--teal-d);stroke:rgba(14,157,
 .ba-num.edit-sel{fill:var(--teal-d)!important;stroke:rgba(14,157,176,.30)!important}
 /* focus mode: only the numeral being moved is live; the others fade back so they
    neither block the pointer nor clutter the anatomy underneath */
-body.lbledit.focusing .ba-num{opacity:.12;pointer-events:none;transition:opacity .15s}
-body.lbledit.focusing .ba-num.edit-sel{opacity:1;pointer-events:auto}
-body.lbledit .ba-num{transition:opacity .15s}
+body.lbledit.focusing .ba-num,body.lbledit.focusing .ba-hit{opacity:.12;pointer-events:none;transition:opacity .15s}
+body.lbledit.focusing .ba-num.edit-sel,body.lbledit.focusing .ba-hit.edit-sel{opacity:1}
+body.lbledit .ba-num,body.lbledit .ba-hit{transition:opacity .15s}
 body.lbledit .ba-hit{pointer-events:none}   /* dragging a numeral must not hit its disc */
 #le-done{background:var(--teal)!important;border-color:var(--teal-d)!important;color:#fff!important}
 body.lbl-place .brain-svg{cursor:crosshair}
@@ -959,31 +937,22 @@ body.lbl-place .brain-svg{cursor:crosshair}
   padding:5px 8px;font-family:inherit;font-size:.74rem;font-weight:700;color:var(--navy);cursor:pointer}
 .lbl-editor button:hover{border-color:var(--teal);color:var(--teal-d);background:#f0fbfd}
 #lbl-read{font-family:'SF Mono',Consolas,monospace;font-size:.72rem;color:var(--teal-d)}
-/* the shading never takes a click: it only ever colours the anatomy */
-.ba{fill:transparent;stroke:transparent;stroke-width:1.1;pointer-events:none;transition:fill .14s}
-.ba.hot{fill:rgba(14,157,176,.30)}
-.ba.sel{fill:rgba(14,157,176,.42);stroke:var(--teal-d);stroke-width:2}
-/* what you click: a disc the size of the numeral, centred on it */
-.ba-hit{fill:transparent;stroke:transparent;stroke-width:9;pointer-events:all;cursor:pointer}
+/* Nothing is drawn over the cortex. The disc behind each numeral is the whole
+   of the interface: it is the hit target, and it is the highlight. */
+.ba-hit{fill:rgba(255,255,255,.80);stroke:#b9c4d4;stroke-width:1;pointer-events:all;
+  cursor:pointer;transition:fill .13s,stroke .13s}
+.ba-hit.has{fill:rgba(255,255,255,.92);stroke:#8d9cb2}
+.ba-hit:hover{fill:#cdeff5;stroke:var(--teal-d)}
+.ba-hit.sel{fill:var(--teal);stroke:var(--teal-d);stroke-width:2}
 .ba-hit:focus{outline:none}
 .ba-hit:focus-visible{stroke:var(--teal-d);stroke-width:2.5;stroke-dasharray:3 3}
-.brain-card.dens .ba.d1{fill:#e8f1f8}.brain-card.dens .ba.d2{fill:#cfe4f0}
-.brain-card.dens .ba.d3{fill:#a9d3e6}.brain-card.dens .ba.d4{fill:#7cbcd8}
-.brain-card.dens .ba.sel{fill:var(--teal)}
-.lobe-line{display:none}
-.brain-core{display:none}
-.ba-buried{fill:rgba(14,157,176,.10);stroke:var(--teal-d);stroke-width:1.6;stroke-dasharray:5 4}
-.ba-buried:hover{fill:rgba(14,157,176,.24)}
-.ba-buried.sel{fill:var(--teal);stroke:var(--teal-d);stroke-dasharray:none}
-.brain-edge{display:none}
-.syl-line{display:none}
-.midline-mask{display:none}
-.midline{display:none}
+.brain-card.dens .ba-hit.d1{fill:#e8f1f8}.brain-card.dens .ba-hit.d2{fill:#cfe4f0}
+.brain-card.dens .ba-hit.d3{fill:#a9d3e6}.brain-card.dens .ba-hit.d4{fill:#7cbcd8}
+.brain-card.dens .ba-hit.sel{fill:var(--teal)}
 .ba-num{font-family:'Segoe UI',Arial,sans-serif;font-size:15px;font-weight:800;fill:#1e2a3d;
-  text-anchor:middle;dominant-baseline:central;pointer-events:none;user-select:none;
-  paint-order:stroke;stroke:#fff;stroke-width:3;stroke-linejoin:round}
+  text-anchor:middle;dominant-baseline:central;pointer-events:none;user-select:none}
 .ba-num.has{fill:#0d1626}
-.ba-num.sel{fill:#08343c;stroke:#fff;stroke-width:4}
+.ba-num.sel{fill:#fff;stroke:none}
 .ba-num-sm{font-size:12px}
 .ba-num-ins{font-size:13px;letter-spacing:.08em;fill:var(--teal-d)}
 .ba-num-ins.sel{fill:#fff}
@@ -991,7 +960,6 @@ body.lbl-place .brain-svg{cursor:crosshair}
 .brain-svg .lab-R{display:none}
 .brain-svg.show-R .lab-R{display:block}
 .brain-svg.show-R .lab-L{display:none}
-.brain-svg.show-R .hemi-L,.brain-svg:not(.show-R) .hemi-R{opacity:.3;pointer-events:none}
 
 .brain-caption{text-align:center;font-size:.76rem;color:var(--muted);margin-top:6px;min-height:19px}
 #brain-hover{font-weight:600;color:#54627a}
@@ -1042,15 +1010,12 @@ body.lbl-place .brain-svg{cursor:crosshair}
 
 /* ---- the map read backwards: one sign, every area it localizes to ----
    amber, so a traced set never reads as the teal "selected area" state */
-.ba.trace{fill:rgba(224,138,30,.34);stroke:#b56a08;stroke-width:2}
-.brain-card.dens .ba.trace{fill:#e8a23e}
-.ba-buried.trace{fill:rgba(224,138,30,.30);stroke:#b56a08;stroke-dasharray:none}
-.ba-num.trace{fill:#7a4405;stroke:#fff;stroke-width:4}
+.ba-hit.trace{fill:#f2a63c;stroke:#8a5209;stroke-width:2}
+.brain-card.dens .ba-hit.trace{fill:#f2a63c}
+.ba-num.trace{fill:#3d2200}
 .deep-chip.trace{background:#fdf3e4;border-style:solid;border-color:#e0a75a}
 .deep-chip.trace .dc-lab{color:#8a5209}
-.brain-card.tracing .ba:not(.trace){fill:transparent}
-.brain-card.dens.tracing .ba:not(.trace){fill:#eef3f7}
-.brain-card.tracing .ba-num:not(.trace){opacity:.24}
+.brain-card.tracing .ba-num:not(.trace),.brain-card.tracing .ba-hit:not(.trace){opacity:.22}
 .ba-num{transition:opacity .15s}
 .seg-b.has-trace::after{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;
   background:#e08a1e;margin-left:5px;vertical-align:middle}
@@ -1086,7 +1051,7 @@ body.lbl-place .brain-svg{cursor:crosshair}
   .ba-num{font-size:20px}
   .ba-num-sm{font-size:16px}
   body.lbledit .ba-num{stroke-width:34}
-  .ba-hit{stroke-width:17}
+  .ba-hit{r:18px}
   .bp-list{max-height:430px}
   .brain-bar{gap:7px}
   .brain-shade{margin-left:0;width:100%}
@@ -1484,7 +1449,7 @@ JS = r"""
   /* density buckets + "has data" styling */
   const counts=Object.values(BRAIN_TILES).map(t=>t.signs.length).filter(n=>n>0);
   const maxN=Math.max(1,...counts);
-  card.querySelectorAll('.ba').forEach(p=>{
+  card.querySelectorAll('.ba-hit').forEach(p=>{
     const n=+p.dataset.n||0;
     if(n>0){p.classList.add('has');
       const q=n/maxN; p.classList.add(q>0.66?'d4':q>0.4?'d3':q>0.18?'d2':'d1');}
@@ -1493,7 +1458,7 @@ JS = r"""
     const tile=BRAIN_TILES[t.dataset.tile];
     if(tile&&tile.signs.length) t.classList.add('has');
   });
-  const MARKS='.ba,.ba-num,.deep-chip';
+  const MARKS='.ba-hit,.ba-num,.deep-chip';
 
   /* which signs actually apply to the hemisphere on screen */
   function applies(lc){
@@ -1513,7 +1478,7 @@ JS = r"""
   function render(tid){
     const t=BRAIN_TILES[tid]; if(!t) return;
     sel=tid;
-    card.querySelectorAll(MARKS+',.ba-hit').forEach(el=>
+    card.querySelectorAll(MARKS).forEach(el=>
       el.classList.toggle('sel', el.dataset.tile===tid));
     /* land on a view that actually draws it (a traced set can span views) */
     if(!t.buried&&t.views&&t.views.length&&t.views.indexOf(curView())<0) showView(t.views[0]);
@@ -1574,7 +1539,7 @@ JS = r"""
     const set=s.areas;
     card.classList.add('tracing');
     card.querySelectorAll('.sel').forEach(el=>el.classList.remove('sel'));
-    card.querySelectorAll(MARKS+',.ba-hit').forEach(el=>
+    card.querySelectorAll(MARKS).forEach(el=>
       el.classList.toggle('trace', set.indexOf(el.dataset.tile)>=0));
 
     /* flag every view that carries part of the set, and land on one that does */
@@ -1632,15 +1597,9 @@ JS = r"""
       e.preventDefault(); render(e.target.dataset.tile);}
     if(e.key==='Escape') clear();
   });
-  card.addEventListener('mouseout',e=>{
-    const h=e.target.closest('.ba-hit');
-    if(h) card.querySelectorAll('.ba.hot').forEach(p=>p.classList.remove('hot'));
-  });
   card.addEventListener('mouseover',e=>{
     const hit=e.target.closest('.ba-hit');
     if(!hit) return;
-    card.querySelectorAll('.ba.hot').forEach(p=>p.classList.remove('hot'));
-    card.querySelectorAll('.ba[data-tile="'+hit.dataset.tile+'"]').forEach(p=>p.classList.add('hot'));
     /* a traced set owns the caption; hovering past it must not steal the line */
     if(traced&&!hit.classList.contains('trace')) return;
     const t=BRAIN_TILES[hit.dataset.tile]; if(!t) return;
@@ -1692,9 +1651,16 @@ JS = r"""
     b.addEventListener('click',()=>showView(b.dataset.view)));
   function applyHemi(){
     svgs.forEach(s=>{
-      if(s.dataset.view==='lateral'||s.dataset.view==='medial') s.classList.toggle('flip',hemi==='R');
-      else s.classList.toggle('show-R',hemi==='R');
-      if(s.dataset.view==='lateral'||s.dataset.view==='medial')
+      const flips = s.dataset.view==='lateral'||s.dataset.view==='medial';
+      if(flips){
+        /* set on the element, not via CSS: a CSS transform on SVG content is not
+           honoured consistently, and on iOS the plate stayed put while the
+           numerals moved */
+        const w=s.viewBox.baseVal.width, g=s.querySelector('.plate');
+        if(g){ if(hemi==='R') g.setAttribute('transform','translate('+w+',0) scale(-1,1)');
+               else g.removeAttribute('transform'); }
+      } else s.classList.toggle('show-R',hemi==='R');
+      if(flips)
         s.querySelectorAll('.ba-num,.ba-hit,.brain-orient').forEach(t=>{
           const a=t.tagName==='circle'?'cx':'x';
           const mx=t.getAttribute('data-mx');
