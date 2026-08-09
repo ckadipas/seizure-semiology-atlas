@@ -432,20 +432,24 @@ def build_meta(meta, flags):
         rows.append('<div class="mc-head"><span>Study</span><span>Value</span><span>Weight</span><span>Class</span><span>Ground truth</span><span>N</span><span>Pg</span></div>')
         for c in s["contributions"]:
             w = c.get("weight",0)
-            barw = max(3, round(w/maxw*100))
+            # only rows that entered the average carry a weight. A restatement or a
+            # direction-only source has one on paper, but it multiplied nothing - so
+            # the column says so instead of printing a number that had no effect.
+            averaged = "value" in c and not c.get("restates")
+            barw = max(3, round(w/maxw*100)) if averaged else 0
             if c.get("restates"):
                 val = ('<span class="mc-qual mc-restate">' + (str(c["value"])+'% ' if c.get("value") is not None else '')
                        + 'restates ' + esc(c["restates"]) + ' &mdash; not averaged</span>')
-                barw = 0                      # it contributes no weight; draw no bar
             else:
                 val = (str(c["value"])+'%') if "value" in c else ('<span class="mc-qual">'+esc(c.get("qualitative","qual."))+'</span>')
             wp = c.get("weight_parts",{})
-            wtitle = f'{wp.get("class_base","?")} (class) x {wp.get("ground_truth_mult","?")} (ground truth) x {wp.get("size_factor","?")} (size) = {w}'
+            wtitle = (f'{wp.get("class_base","?")} (class) x {wp.get("ground_truth_mult","?")} (ground truth) '
+                      f'x {wp.get("size_factor","?")} (size) = {w}') if averaged else 'not averaged - carries no weight'
             rows.append(
                 '<div class="mc-row">'
                 + '<span class="mc-cite">'+esc(c.get("cite",c["study"]))+'</span>'
                 + '<span class="mc-val">'+val+'</span>'
-                + '<span class="mc-wt" title="'+esc(wtitle)+'"><span class="mc-bar" style="width:'+str(barw)+'%;background:'+latcolor.get(s["direction"],"#888")+'"></span><span class="mc-wn">'+f'{w:.2f}'+'</span></span>'
+                + '<span class="mc-wt" title="'+esc(wtitle)+'"><span class="mc-bar" style="width:'+str(barw)+'%;background:'+latcolor.get(s["direction"],"#888")+'"></span><span class="mc-wn">'+(f'{w:.2f}' if averaged else '&#8212;')+'</span></span>'
                 + '<span class="mc-cl">'+esc(c.get("eclass") or "?")+'</span>'
                 + '<span class="mc-gt">'+esc(gtname.get(c.get("ground_truth"),c.get("ground_truth") or "-"))+'</span>'
                 + '<span class="mc-n">'+(str(c["n"]) if c.get("n") else "&#8212;")+'</span>'
