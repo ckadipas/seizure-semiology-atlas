@@ -23,7 +23,7 @@
     8
    ],
    "lobe": "Frontal",
-   "name": "Frontal eye field"
+   "name": "Frontal eye field (posterior area 8)"
   },
   "9": {
    "label": "9",
@@ -31,7 +31,7 @@
     9
    ],
    "lobe": "Frontal",
-   "name": "Dorsolateral prefrontal cortex"
+   "name": "Dorsomedial & dorsolateral prefrontal cortex (superior frontal gyrus)"
   },
   "10": {
    "label": "10",
@@ -111,7 +111,7 @@
     5
    ],
    "lobe": "Parietal",
-   "name": "Superior parietal lobule (somatosensory association)"
+   "name": "Somatosensory association cortex (anterior superior parietal lobule)"
   },
   "7": {
    "label": "7",
@@ -119,7 +119,7 @@
     7
    ],
    "lobe": "Parietal",
-   "name": "Superior parietal lobule / precuneus"
+   "name": "Posterior superior parietal lobule & precuneus"
   },
   "39": {
    "label": "39",
@@ -287,7 +287,7 @@
     23
    ],
    "lobe": "Limbic",
-   "name": "Posterior cingulate cortex"
+   "name": "Ventral posterior cingulate cortex"
   },
   "31": {
    "label": "31",

@@ -5,6 +5,18 @@ Format loosely follows Keep a Changelog; dates are ISO-8601.
 
 ## [Unreleased]
 ### Fixed
+- **Three pairs of Brodmann areas were named as if they were the same region.**
+  BA 9 and BA 46 both read "dorsolateral prefrontal cortex"; BA 5 and BA 7 both read
+  "superior parietal lobule"; BA 23 and BA 31 both read as posterior cingulate. Each
+  pair is now named for what distinguishes it: **BA 9** is *dorsomedial & dorsolateral
+  prefrontal cortex (superior frontal gyrus)* — it occupies the superior frontal gyrus
+  and wraps over the convexity onto the medial surface, which is why the map draws it
+  on the lateral, medial *and* dorsal views, so calling it dorsolateral alone was
+  misleading — leaving **BA 46** (middle frontal gyrus) as the dorsolateral prefrontal
+  cortex proper. **BA 5** is the anterior somatosensory association strip and **BA 7**
+  the posterior lobule that becomes the precuneus medially; **BA 23** is the ventral
+  posterior cingulate against **BA 31**'s dorsal. Separately, **BA 8** was named
+  "frontal eye field" for the whole area when the field is only its posterior part.
 - **The map's shading follows the anatomy, and the numerals are individually clickable.**
   Two faults, one cause: every area was a hand-drawn polygon, grown 7px along each
   vertex normal so neighbours would overlap and never show a gap. The result read as
