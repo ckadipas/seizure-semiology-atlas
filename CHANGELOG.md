@@ -39,9 +39,15 @@ Format loosely follows Keep a Changelog; dates are ISO-8601.
 - **The hemisphere switch flipped the outlines but not the plate underneath**, so the
   right-hemisphere lateral and medial views put every area on the wrong gyrus. The
   photograph now mirrors with them.
-- **Two numerals sat outside the brain** — lateral BA 17 and medial BA 20 were drawn in
-  the white margin. Moved onto the cortex. Ventral BA 36 and 37 were drawn with no
-  numeral at all, so they could not be selected on that view; both now carry one.
+- **Lateral BA 17's numeral sat outside the brain**, drawn in the white margin.
+- **The ventral view drew BA 36 and BA 37 twice each.** Each was listed as two adjacent
+  bands making up one region — a way to describe a shape the old band geometry could not
+  state in one go. Under plate-derived outlines a single numeral grows into the whole
+  drawn region, so the second entries are gone; without that, each of those areas would
+  have carried two outlines and two competing hit targets. `tools/validate_data.py` now
+  fails the build if a view draws an area more than once, or draws one with no outline or
+  no numeral position — unlike a name, this is exactly the kind of defect a mechanical
+  check does catch.
 ### Added
 - **The Brodmann map now reads both ways.** It answered "which signs localize here?"; it
   now also answers "where does *this* sign localize?" Every sign card carries a **Brodmann
