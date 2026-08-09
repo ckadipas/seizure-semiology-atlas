@@ -4,6 +4,32 @@ All notable changes to the dataset and resource are recorded here.
 Format loosely follows Keep a Changelog; dates are ISO-8601.
 
 ## [Unreleased]
+### Fixed
+- **The map's shading follows the anatomy, and the numerals are individually clickable.**
+  Two faults, one cause: every area was a hand-drawn polygon, grown 7px along each
+  vertex normal so neighbours would overlap and never show a gap. The result read as
+  blocks laid over the plate rather than regions of it, and because those inflated
+  polygons *were* the click targets, a large one covered its smaller neighbours —
+  BA 9 could not be clicked at all, and the temporal areas took a huge swathe of the
+  figure. Now **`tools/brodmann_plate.py regions`** derives each outline from the plate
+  itself: it rebuilds the graticule and crosshairs out of the picture, separates the
+  drawn boundary lines from the finer sulcal shading, and lets each numeral claim
+  outward until it meets a drawn boundary or a change of tint. The plate does not draw
+  one patch per Brodmann area — the frontal band alone carries 8, 10 and 11 — so where
+  a patch holds several numerals it is subdivided between them, each keeping the drawn
+  edge as its outer border; all 82 outlines across the four views come from this.
+  Clicking is now a separate thing from shading: the shading takes no pointer events at
+  all, and the target is a disc the size of the numeral, centred on it. Verified in a
+  browser that every one of the 82 numerals selects its own area, that no two targets
+  overlap, and that dragging a numeral in the label editor carries its target with it.
+  `generator/brain_atlas.py` loses the polygon-inflation, band and margin maths this
+  made redundant (130 → 98 lines).
+- **The hemisphere switch flipped the outlines but not the plate underneath**, so the
+  right-hemisphere lateral and medial views put every area on the wrong gyrus. The
+  photograph now mirrors with them.
+- **Two numerals sat outside the brain** — lateral BA 17 and medial BA 20 were drawn in
+  the white margin. Moved onto the cortex. Ventral BA 36 and 37 were drawn with no
+  numeral at all, so they could not be selected on that view; both now carry one.
 ### Added
 - **The Brodmann map now reads both ways.** It answered "which signs localize here?"; it
   now also answers "where does *this* sign localize?" Every sign card carries a **Brodmann
