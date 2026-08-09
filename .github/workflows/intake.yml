@@ -131,11 +131,12 @@ jobs:
             4. From EACH not-yet-listed paper, extract ONLY short, attributed, PAGE-CITED findings bearing on LOCALIZING or LATERALIZING semiology. For each finding: a one- or two-sentence paraphrase in your own words (never a long verbatim quote) including the reported figure/percentage/N; a "pg" source page (e.g. "p.608"); a "paper" citation; and a "sign_stem" that is a lowercase substring of the sign it attaches to. Add each new paper under "papers" (cite, journal, title, contribution). Follow any specific instruction in the issue body. Never fabricate a figure; omit anything a paper does not support. Prefer disciplined primary series; treat literature-mined meta-analyses skeptically.
             4b. IMPORTANT — a paper may describe a well-evidenced localizing/lateralizing sign that is NOT yet in data/semiology_data.json. Do NOT decline it and do NOT mis-attach it to an unrelated existing sign. Instead ADD it under "new_signs" as a full record: {region, sub, sign, phase, lat, latcode (one of contra/ipsi/dominant/nondominant/right/nonlat/variable), loc, sens, spec, evid (I/II/III), notes, cite, "_ev":[{p,f,pg}]}. Match the region/sub wording used in data/semiology_data.json. Then attach that paper's findings to it via a sign_stem that is a substring of the new sign's name. The maintainer approves by merging the PR — your job is to propose it, not to gatekeep. Only skip a paper if it genuinely has no localizing/lateralizing content (e.g. a pure mortality/outcome study).
             5. Append all findings to enrichment/intake_findings.json (into "findings" and, when applicable, "new_signs"), keeping it valid JSON.
+            5b. KEEP THE BRODMANN MAP IN STEP. The atlas renders an interactive Brodmann map, and every sign must reach it. A new sign whose "sub" already exists inherits that sub-region's cortical areas automatically — nothing to do. But if you introduce a NEW "sub" value, you MUST add it to `mapping.by_sub` in data/brodmann_map.json, listing the area ids it localizes to (the ids are the keys of "areas" in that file, e.g. "4", "22", "3-1-2", "insula"). If a single sign localizes more precisely than its sub-region, add a `mapping.by_sign` entry keyed by its id, of the form {"sign": "<the sign's exact name>", "areas": [...]} — the name is recorded so the mapping can be audited. If a sign genuinely has no cortical-surface localization, add it to `mapping.unmapped` with a short reason. tools/validate_data.py fails the build if any sign would fall off the map, so this is not optional.
             6. Validate your work by running these THREE commands ONE AT A TIME, each as its own separate Bash call (do NOT chain them with && — a chained command is not permitted and will be denied). Fix your JSON and re-run until all three pass:
                - `python3 enrichment/build_enrichment.py`
                - `python3 tools/check_provenance.py`
-               - `python3 tools/validate_data.py`
-            7. IP boundary: do NOT keep any document or full/long text in the repo. The only file you should change is enrichment/intake_findings.json.
+               - `python3 tools/validate_data.py`   (this also gates the Brodmann map)
+            7. IP boundary: do NOT keep any document or full/long text in the repo. The only files you should change are enrichment/intake_findings.json and, if a new sub-region needs a mapping, data/brodmann_map.json.
             8. Do NOT run git and do NOT open a pull request — leave the file changed for the publishing step.
             9. Write a short summary to /tmp/intake_summary.txt: for each paper processed, its name, how many findings you added, their source pages, and which sign(s) they attach to. If you added nothing usable from a paper, say so and why.
 
@@ -149,6 +150,7 @@ jobs:
           BR="intake/issue-${{ steps.ctx.outputs.number }}"
           SUM="$(cat /tmp/intake_summary.txt 2>/dev/null || echo '')"
           cp enrichment/intake_findings.json /tmp/intake_findings.json
+          cp data/brodmann_map.json /tmp/brodmann_map.json
           # Authenticate git with the job's own token. The extraction step revokes
           # the credential it set up when it finishes, so a plain push has no valid
           # auth; use GITHUB_TOKEN directly and drop any leftover auth header.
@@ -159,12 +161,13 @@ jobs:
           git fetch origin main
           git checkout -B "$BR" origin/main
           cp /tmp/intake_findings.json enrichment/intake_findings.json
+          cp /tmp/brodmann_map.json data/brodmann_map.json
           python3 enrichment/build_enrichment.py
-          if git diff --quiet -- enrichment/intake_findings.json enrichment/enrichment.json; then
+          if git diff --quiet -- enrichment/intake_findings.json enrichment/enrichment.json data/brodmann_map.json; then
             gh issue comment "${{ steps.ctx.outputs.number }}" --body "Reviewed the submitted document — no changes to publish. ${SUM}"
             exit 0
           fi
-          git add enrichment/intake_findings.json enrichment/enrichment.json
+          git add enrichment/intake_findings.json enrichment/enrichment.json data/brodmann_map.json
           git commit -m "Intake: page-cited findings from issue #${{ steps.ctx.outputs.number }}"
           git push -u origin "$BR"
           # Try to open the PR automatically. If the repo has "Allow GitHub Actions to
