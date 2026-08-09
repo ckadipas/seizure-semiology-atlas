@@ -883,12 +883,19 @@ CSS = r"""
    solid boundaries between lobes, every area carrying its number */
 .brain-photo{pointer-events:none}
 /* label editor (opt-in via #edit-labels) */
-body.lbledit .ba-num{pointer-events:auto;cursor:grab}
+body.lbledit .ba-num{pointer-events:auto;cursor:grab;
+  /* stop the browser panning the page when a finger drags a numeral */
+  touch-action:none;-webkit-user-select:none;user-select:none;
+  /* the halo is also the hit area, so widen it for fingertips */
+  stroke:rgba(255,255,255,.9);stroke-width:13}
 body.lbledit .ba-num:hover{fill:var(--teal-d)}
-body.lbledit .ba-num.drag{cursor:grabbing;fill:var(--teal-d)}
+body.lbledit .ba-num.drag{cursor:grabbing;fill:var(--teal-d);stroke:rgba(14,157,176,.25)}
+#lbl-out{width:100%;height:70px;margin-top:7px;font-family:'SF Mono',Consolas,monospace;
+  font-size:.62rem;border:1px solid var(--line);border-radius:6px;padding:5px}
 .lbl-editor{position:fixed;right:14px;bottom:14px;z-index:400;background:#fff;
   border:1px solid var(--line);border-radius:10px;padding:11px 13px;
   box-shadow:0 8px 28px rgba(15,30,61,.20);font-size:.76rem;max-width:290px;line-height:1.45}
+@media(max-width:760px){.lbl-editor{left:8px;right:8px;bottom:8px;max-width:none}}
 .lbl-editor h4{font-size:.8rem;color:var(--navy);margin-bottom:4px}
 .lbl-editor p{color:var(--muted);margin-bottom:7px}
 .lbl-editor code{background:#eef2f7;border-radius:3px;padding:0 4px;font-size:.72rem}
@@ -977,6 +984,7 @@ body.lbledit .ba-num.drag{cursor:grabbing;fill:var(--teal-d)}
   /* numerals are in SVG user units, so scale them up for the small canvas */
   .ba-num{font-size:26px}
   .ba-num-sm{font-size:21px}
+  body.lbledit .ba-num{stroke-width:34}
   .bp-list{max-height:430px}
   .brain-bar{gap:7px}
   .brain-shade{margin-left:0;width:100%}
@@ -1575,9 +1583,16 @@ JS = r"""
       if(parts.length) out+=' "'+v+'": {\n   '+parts.join(', ')+',\n },\n';
     });
     out+='}\n';
-    navigator.clipboard.writeText(out).then(
-      ()=>{read.textContent='Copied '+out.length+' chars to the clipboard';},
-      ()=>{console.log(out); read.textContent='Clipboard blocked \u2014 printed to console';});
+    function showBox(){
+      let ta=ed.querySelector('#lbl-out');
+      if(!ta){ta=document.createElement('textarea');ta.id='lbl-out';ed.appendChild(ta);}
+      ta.value=out; ta.focus(); ta.select();
+      read.textContent='Select all and copy from the box below';
+    }
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(out).then(
+        ()=>{read.textContent='Copied '+out.length+' chars to the clipboard';}, showBox);
+    } else showBox();
   });
   ed.querySelector('#lbl-reset').addEventListener('click',()=>{
     localStorage.removeItem(LS); location.reload();
