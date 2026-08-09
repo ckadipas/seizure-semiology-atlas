@@ -1,0 +1,15 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Brodmann map area",
+  "description": "One clickable cortical area in data/brodmann_map.json. Validated by tools/validate_data.py with the same machinery as schema/sign.schema.json.",
+  "type": "object",
+  "required": ["label", "bas", "lobe", "name"],
+  "additionalProperties": false,
+  "properties": {
+    "label": {"type": "string", "description": "Numeral drawn on the figure, e.g. '4' or 'INS'."},
+    "bas": {"type": "array", "items": {"type": "integer"}, "description": "Brodmann numbers this area covers."},
+    "lobe": {"type": "string", "enum": ["Frontal", "Parietal", "Temporal", "Occipital", "Limbic", "Insular", "Deep/Subcortical"]},
+    "name": {"type": "string", "description": "Anatomical name shown in the panel."},
+    "buried": {"type": "boolean", "description": "Not on any drawn surface; offered as a chip instead."}
+  }
+}

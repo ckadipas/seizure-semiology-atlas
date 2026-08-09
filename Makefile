@@ -2,7 +2,7 @@
 
 help:
 	@echo "targets:"
-	@echo "  make validate   - schema + integrity checks + Brodmann-map sync (CI gate)"
+	@echo "  make validate   - schema + integrity checks on dataset and Brodmann map (CI gate)"
 	@echo "  make build      - validate, rebuild enrichment + meta-analysis + review, render HTML -> docs/"
 	@echo "  make review     - rerun the weighted meta-analysis + adversarial review only"
 	@echo "  make check-sync - verify committed generated JSON matches its sources"
@@ -12,7 +12,6 @@ help:
 
 validate:
 	python3 tools/validate_data.py
-	python3 tools/check_brain_map.py
 
 build: validate
 	python3 enrichment/build_enrichment.py

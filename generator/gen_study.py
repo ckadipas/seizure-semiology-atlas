@@ -615,151 +615,118 @@ sens_report_fold = build_sensitivity_report(META)
 
 
 import base64
-_ASSETS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
-# (width, height, x, y) placing each photo so its brain aligns with the areas
-_PLACE = {"lateral": (793.4, 530.3, 92.6, 36.9),
-          "medial":  (789.4, 517.9, 94.0, 40.0),
-          "dorsal":  (692.6, 739.3, -0.8, 56.8),
-          "ventral": (715.7, 748.4, -8.9, 47.5)}
 
-def brain_image(view):
-    """<image> layer: the reference photograph, registered to the area geometry."""
-    f = os.path.join(_ASSETS, f"brain_{view}.jpg")
-    if not os.path.exists(f) or view not in _PLACE:
-        return ""
-    b64 = base64.b64encode(open(f, "rb").read()).decode()
-    w, h, x, y = _PLACE[view]
-    return (f'<image class="brain-photo" x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" '
-            f'height="{h:.1f}" preserveAspectRatio="none" '
-            f'href="data:image/jpeg;base64,{b64}"/>')
+def _b64(path):
+    with open(path, "rb") as f:
+        return base64.b64encode(f.read()).decode()
 
 # ---------- Interactive Brodmann map ----------
+# All curation (areas, geometry, label positions, sign->area rules) comes from
+# data/brodmann_map.json via brain_atlas; this only renders it.
 def build_brain(signs):
-    """Three schematic hemisphere views tiled by Brodmann area, each area
-    clickable to reveal the semiology the dataset localizes there."""
-    # --- payload: tile -> the signs that localize to it ---
     tiles = {}
-    for tid, info in BA.TILE_INFO.items():
-        tiles[tid] = {"label": info["label"], "name": info["name"], "lobe": info["lobe"],
+    for aid, info in BA.AREAS.items():
+        tiles[aid] = {"label": info["label"], "name": info["name"], "lobe": info["lobe"],
                       "bas": info["bas"], "buried": bool(info.get("buried")), "signs": []}
     _evrank = {"I": 0, "II": 1, "III": 2}
     unplaced = []
     for d in signs:
-        tl = BA.tiles_for_sign(d)
-        if not tl:
+        al = BA.areas_for_sign(d)
+        if not al:
             unplaced.append(d["sign"]); continue
-        for t in tl:
-            tiles[t]["signs"].append({
+        for a in al:
+            tiles[a]["signs"].append({
                 "id": d["id"], "n": d["sign"], "ph": d["phase"], "lc": d.get("latcode", "nonlat"),
                 "lat": d.get("lat", ""), "ev": d.get("evid", "III"), "rg": d["region"],
                 "loc": d.get("loc", "")})
     for t in tiles.values():
         t["signs"].sort(key=lambda s: (_evrank.get(s["ev"], 3), s["n"]))
 
-    def poly(pts, closed=True, s=0.17):
-        return BA.smooth_path(pts, closed=closed, s=s)
+    def render_view(name):
+        v = BA.VIEWS[name]
+        vw, vh = v["viewBox"][2], v["viewBox"][3]
+        mirrored = v.get("mirror")
+        outline = [tuple(p) for p in (v.get("outline") or
+                   (v["margin"] + [[vw - x, y] for x, y in reversed(v["margin"])]))]
+        out_d = BA.smooth_path(outline, closed=True, s=0.11)
 
-    def tile_paths(view, items, mirror_w=None, grow=7.0):
-        """<path> for each tile; label positions returned separately."""
-        out, labels = [], []
-        for tid, pts, lab in items:
-            key = re.sub(r'b$', '', tid) if tid.endswith("b") else tid   # 36b -> 36
-            over = BA.LABEL_POS.get(view, {}).get(key)
-            if over and lab:
-                lab = (over[0], over[1]) + tuple(lab[2:])
-            n = len(tiles.get(key, {}).get("signs", []))
-            out.append(f'<path class="ba" data-tile="{key}" data-n="{n}" '
-                       f'data-lobe="{BA.TILE_INFO[key]["lobe"]}" tabindex="0" '
-                       f'role="button" aria-label="Brodmann area {BA.TILE_INFO[key]["label"]}" '
-                       f'd="{poly(BA.inflate(pts, grow), s=0.07)}"><title>{esc(BA.TILE_INFO[key]["name"])}</title></path>')
-            if lab:
-                lx, ly = lab[0], lab[1]
-                cls = "ba-num ba-num-sm" if len(lab) > 2 else "ba-num"
-                mx = (mirror_w - lx) if mirror_w else lx
-                labels.append(f'<text class="{cls}" data-tile="{key}" x="{lx:.0f}" y="{ly:.0f}" '
-                              f'data-mx="{mx:.0f}">{BA.TILE_INFO[key]["label"]}</text>')
-        return "\n".join(out), "\n".join(labels)
+        img = ""
+        if v.get("image"):
+            f = os.path.join(BA.ASSETS, v["image"]["file"])
+            if os.path.exists(f):
+                i = v["image"]
+                img = (f'<image class="brain-photo" x="{i["x"]}" y="{i["y"]}" width="{i["w"]}" '
+                       f'height="{i["h"]}" preserveAspectRatio="none" '
+                       f'href="data:image/jpeg;base64,{_b64(f)}"/>')
 
-    def solid_lines(seams):
-        return "".join(f'<path class="lobe-line" d="{poly(sm, closed=False, s=0.12)}"/>' for sm in seams)
+        shapes, labels, rlabels = [], [], []
+        for area in v["areas"]:
+            aid = area["id"]
+            n = len(tiles.get(aid, {}).get("signs", []))
+            poly = BA.inflate(BA.area_polygon(v, area))
+            shapes.append(
+                f'<path class="ba" data-tile="{aid}" data-n="{n}" '
+                f'data-lobe="{BA.AREAS[aid]["lobe"]}" tabindex="0" role="button" '
+                f'aria-label="Brodmann area {BA.AREAS[aid]["label"]}" '
+                f'd="{BA.smooth_path(poly, s=0.07)}">'
+                f'<title>{esc(BA.AREAS[aid]["name"])}</title></path>')
+            lab = area.get("label")
+            if not lab:
+                continue
+            lx, ly = lab
+            cls = "ba-num ba-num-sm" if area.get("small") or (
+                "band" in area and area["band"][1] - area["band"][0] < 50) else "ba-num"
+            labels.append(f'<text class="{cls}" data-tile="{aid}" x="{lx}" y="{ly}" '
+                          f'data-mx="{vw - lx}">{BA.AREAS[aid]["label"]}</text>')
+            if mirrored:
+                rlabels.append(f'<text class="{cls}" data-tile="{aid}" x="{vw - lx}" y="{ly}" '
+                               f'data-mx="{lx}">{BA.AREAS[aid]["label"]}</text>')
 
-    # ---------------- lateral ----------------
-    lat_tiles, lat_labels = tile_paths("lateral", BA.LATERAL_TILES, mirror_w=1000)
-    lat_out = BA.smooth_path(BA.LAT_OUTLINE, closed=True, s=0.11)
-    lateral_svg = f'''<svg class="brain-svg" data-view="lateral" viewBox="0 0 1000 620" role="group" aria-label="Lateral surface, Brodmann areas">
-<defs><clipPath id="clip-lat"><path d="{lat_out}"/></clipPath></defs>
-{brain_image("lateral")}
-<g class="hemi" clip-path="url(#clip-lat)">{lat_tiles}
-{solid_lines(BA.LAT_SOLID)}</g>
-<path class="brain-edge" d="{lat_out}"/>
-<g class="ba-labels">{lat_labels}</g>
-<text class="brain-orient" x="150" y="596" text-anchor="middle" data-mx="850">anterior</text>
-</svg>'''
+        body = "\n".join(shapes)
+        extra = ""
+        if v.get("core"):
+            extra += (f'<path class="brain-core" d="{BA.smooth_path([tuple(p) for p in v["core"]], s=0.16)}">'
+                      f'<title>Corpus callosum &amp; diencephalon (not cortex)</title></path>')
+        for seam in v.get("solid", []):
+            extra += f'<path class="lobe-line" d="{BA.smooth_path([tuple(p) for p in seam], closed=False, s=0.12)}"/>'
 
-    # ---------------- medial ----------------
-    med_tiles, med_labels = tile_paths("medial", BA.MEDIAL_TILES, mirror_w=1000)
-    med_out = BA.smooth_path(BA.MED_OUTLINE, closed=True, s=0.11)
-    med_core = BA.smooth_path(BA.MED_CORE, closed=True, s=0.16)
-    medial_svg = f'''<svg class="brain-svg" data-view="medial" viewBox="0 0 1000 620" role="group" aria-label="Medial surface, Brodmann areas">
-<defs><clipPath id="clip-med"><path d="{med_out}"/></clipPath></defs>
-{brain_image("medial")}
-<g class="hemi" clip-path="url(#clip-med)">{med_tiles}
-<path class="brain-core" d="{med_core}"><title>Corpus callosum &amp; diencephalon (not cortex)</title></path>
-{solid_lines(BA.MED_SOLID)}</g>
-<path class="brain-edge" d="{med_out}"/>
-<g class="ba-labels">{med_labels}</g>
-<text class="brain-orient" x="150" y="596" text-anchor="middle" data-mx="850">anterior</text>
-</svg>'''
+        if mirrored:
+            inner = (f'<g class="hemi hemi-L">{body}{extra}</g>'
+                     f'<g class="hemi hemi-R" transform="translate({vw},0) scale(-1,1)">{body}{extra}</g>')
+            mid = (f'<line class="midline-mask" x1="{vw/2}" y1="{v["margin"][0][1]-2}" '
+                   f'x2="{vw/2}" y2="{v["margin"][-1][1]+2}"/>'
+                   f'<line class="midline" x1="{vw/2}" y1="{v["margin"][0][1]-2}" '
+                   f'x2="{vw/2}" y2="{v["margin"][-1][1]+2}"/>')
+            lab_g = (f'<g class="ba-labels lab-L">{"".join(labels)}</g>'
+                     f'<g class="ba-labels lab-R">{"".join(rlabels)}</g>')
+            orient = (f'<text class="brain-orient" x="{vw/2}" y="{v["margin"][0][1]-24}" '
+                      f'text-anchor="middle">anterior</text>')
+        else:
+            # clip on the .hemi element itself: the hemisphere switch flips this
+            # group, and the clip has to flip with it
+            inner = f'<g class="hemi" clip-path="url(#clip-{name})">{body}{extra}</g>'
+            mid = ""
+            lab_g = f'<g class="ba-labels">{"".join(labels)}</g>'
+            orient = (f'<text class="brain-orient" x="150" y="{vh-24}" text-anchor="middle" '
+                      f'data-mx="{vw-150}">anterior</text>')
 
-    # ---------------- dorsal / ventral (banded, mirrored) ----------------
-    def banded(view, margin, bands, edges, vb_w, vb_h, cx, cy):
-        items = []
-        def place(y0, y1, f0, f1):
-            ly = y0 + (y1 - y0) * 0.48
-            half = BA.DOR_MID - BA._margin_x(margin, ly)
-            return (BA.DOR_MID - (f0 + f1) / 2.0 * half, ly)
-        for tid, y0, y1, f0, f1 in bands:
-            pts = BA.band(margin, y0, y1, f0, f1)
-            cont = tid.endswith("b")          # continuation strip: no second label
-            lab = None if cont else place(y0, y1, f0, f1)
-            if lab and (y1 - y0) < 50:
-                lab = (lab[0], lab[1], "sm")
-            items.append((tid[:-1] if cont else tid, pts, lab))
-        for tid, y0, y1, f0, f1 in edges:
-            items.append((tid, BA.band(margin, y0, y1, f0, f1), place(y0, y1, f0, f1)))
-        full = margin + [(vb_w - x, y) for x, y in reversed(margin)]
-        outline = poly(full)
-        body, labels = tile_paths(view, items, mirror_w=vb_w)
-        # mirrored labels for the right hemisphere
-        rlabels = []
-        for tid, pts, lab in items:
-            if not lab: continue
-            cls = "ba-num ba-num-sm" if len(lab) > 2 else "ba-num"
-            rlabels.append(f'<text class="{cls}" data-tile="{tid}" x="{vb_w - lab[0]:.0f}" '
-                           f'y="{lab[1]:.0f}" data-mx="{lab[0]:.0f}">{BA.TILE_INFO[tid]["label"]}</text>')
-        return f'''<svg class="brain-svg" data-view="{view}" viewBox="0 0 {vb_w} {vb_h}" role="group" aria-label="{view} surface, Brodmann areas">
-<defs><clipPath id="clip-{view}"><path d="{outline}"/></clipPath></defs>
-{brain_image(view)}
-<g clip-path="url(#clip-{view})">
-  <g class="hemi hemi-L">{body}</g>
-  <g class="hemi hemi-R" transform="translate({vb_w},0) scale(-1,1)">{body}</g>
-</g>
-<path class="brain-edge" d="{outline}"/>
-<line class="midline-mask" x1="{vb_w/2}" y1="{margin[0][1]-2}" x2="{vb_w/2}" y2="{margin[-1][1]+2}"/>
-<line class="midline" x1="{vb_w/2}" y1="{margin[0][1]-2}" x2="{vb_w/2}" y2="{margin[-1][1]+2}"/>
-<g class="ba-labels lab-L">{labels}</g>
-<g class="ba-labels lab-R">{"".join(rlabels)}</g>
-<text class="brain-orient" x="{vb_w/2}" y="{margin[0][1]-24}" text-anchor="middle">anterior</text>
-</svg>'''
+        return (f'<svg class="brain-svg" data-view="{name}" viewBox="0 0 {vw} {vh}" role="group" '
+                f'aria-label="{name.capitalize()} surface, Brodmann areas">'
+                f'<defs><clipPath id="clip-{name}"><path d="{out_d}"/></clipPath></defs>'
+                f'{img}' + (f'<g clip-path="url(#clip-{name})">{inner}</g>' if mirrored else inner) +
+                f'<path class="brain-edge" d="{out_d}"/>{mid}{lab_g}{orient}</svg>')
 
-    dorsal_svg = banded("dorsal", BA.DOR_MARGIN, BA.DORSAL_BANDS, BA.DORSAL_EDGE, 700, 880, 350, 426)
-    ventral_svg = banded("ventral", BA.VEN_MARGIN, BA.VENTRAL_BANDS, [], 700, 830, 350, 410)
+    views_html = "".join(render_view(v) for v in BA.VIEWS)
+    view_btns = "".join(
+        f'<button class="seg-b{" active" if i == 0 else ""}" data-view="{v}" role="tab" '
+        f'aria-selected="{"true" if i == 0 else "false"}">{v.capitalize()}</button>'
+        for i, v in enumerate(BA.VIEWS))
 
+    buried = [a for a, i in BA.AREAS.items() if i.get("buried")]
     buried_chips = "".join(
-        f'<button class="deep-chip" data-tile="{t}"><span class="dc-lab">{BA.TILE_INFO[t]["label"]}</span>'
-        f'<span class="dc-name">{esc(BA.TILE_INFO[t]["name"].split("(")[0].strip())}</span>'
-        f'<span class="dc-n">{len(tiles[t]["signs"])}</span></button>'
-        for t in ("insula", "subcort"))
+        f'<button class="deep-chip" data-tile="{t}"><span class="dc-lab">{BA.AREAS[t]["label"]}</span>'
+        f'<span class="dc-name">{esc(BA.AREAS[t]["name"].split("(")[0].strip())}</span>'
+        f'<span class="dc-n">{len(tiles[t]["signs"])}</span></button>' for t in buried)
 
     note = ""
     if unplaced:
@@ -768,17 +735,11 @@ def build_brain(signs):
                 f'{"are" if len(unplaced) != 1 else "is"} not placed on the map.</span>')
 
     payload = "<script>const BRAIN_TILES=" + json.dumps(tiles, separators=(",", ":")) + ";</script>"
-
     return payload + f'''<details class="frontpage-fold brain-fold" open>
 <summary>Brodmann map &mdash; where each semiology localizes</summary>
 <div class="brain-card">
   <div class="brain-bar">
-    <div class="seg" role="tablist" aria-label="Surface view">
-      <button class="seg-b active" data-view="lateral" role="tab" aria-selected="true">Lateral</button>
-      <button class="seg-b" data-view="medial" role="tab" aria-selected="false">Medial</button>
-      <button class="seg-b" data-view="dorsal" role="tab" aria-selected="false">Dorsal</button>
-      <button class="seg-b" data-view="ventral" role="tab" aria-selected="false">Ventral</button>
-    </div>
+    <div class="seg" role="tablist" aria-label="Surface view">{view_btns}</div>
     <div class="seg seg-hemi" role="group" aria-label="Hemisphere">
       <button class="seg-b active" data-hemi="L">Left</button>
       <button class="seg-b" data-hemi="R">Right</button>
@@ -787,7 +748,7 @@ def build_brain(signs):
   </div>
   <div class="brain-grid">
     <div class="brain-stage">
-      <div class="brain-views">{lateral_svg}{medial_svg}{dorsal_svg}{ventral_svg}</div>
+      <div class="brain-views">{views_html}</div>
       <div class="brain-caption"><span id="brain-hover">Select a numbered area</span>{note}</div>
       <div class="deep-row"><span class="deep-lab">Not on a surface &mdash;</span>{buried_chips}</div>
     </div>
