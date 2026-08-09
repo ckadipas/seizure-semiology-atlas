@@ -363,6 +363,22 @@
    ],
    "lobe": "Limbic",
    "name": "Pregenual anterior cingulate (area 33)"
+  },
+  "48": {
+   "label": "48",
+   "bas": [
+    48
+   ],
+   "lobe": "Limbic",
+   "name": "Retrosubicular area 48"
+  },
+  "52": {
+   "label": "52",
+   "bas": [
+    52
+   ],
+   "lobe": "Insular",
+   "name": "Parainsular area 52"
   }
  },
  "views": {
@@ -3175,6 +3191,13 @@
      "label": [
       552.0,
       338.0
+     ]
+    },
+    {
+     "id": "52",
+     "label": [
+      480.0,
+      320.0
      ]
     }
    ]
@@ -6246,6 +6269,13 @@
        424.5,
        179.0
       ]
+     ]
+    },
+    {
+     "id": "48",
+     "label": [
+      470.0,
+      500.0
      ]
     }
    ]
