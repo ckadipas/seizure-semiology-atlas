@@ -221,7 +221,10 @@ def review():
         print(f"  [{fl['severity']:>6}] {fl['kind']:<15} {fl['sign']}: {fl['detail']}")
 
     if "--strict" in sys.argv:
-        blocking = [f for f in flags if f["kind"] in ("conflict", "direction_clash", "duplicate",
+        # A conflict is a fact about the literature, not a defect a build can fix -
+        # it is surfaced, not blocked. An unmarked restatement IS a defect: it means
+        # one measurement is being averaged as two, and a curator must mark it.
+        blocking = [f for f in flags if f["kind"] in ("unmarked_restatement", "direction_clash", "duplicate",
                                                        "orphan_stem", "ppv_orphan_link", "ppv_direction_clash",
                                                        "sens_orphan_link", "sens_no_condition", "sens_bad_metric")]
         if blocking:

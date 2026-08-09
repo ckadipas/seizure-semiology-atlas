@@ -20,9 +20,11 @@
   "size_factor": "1 + log10(N)/2, capped at 2.0, when N is reported; 1.0 when N is not stated (never fabricated).",
   "size_cap": 2.0,
   "certainty_tiers": {
-   "well_supported": "n_studies >= 3 OR total_weight >= 6.0",
-   "moderate": "n_studies == 2 OR total_weight >= 3.0",
-   "single_source": "n_studies == 1"
+   "single_source": "k == 1 (one study carries a percentage)",
+   "moderate": "k == 2, or k >= 3 where the studies disagree by 25 points or more",
+   "well_supported": "k >= 3 and the studies agree within 25 points",
+   "contested": "the studies disagree by 25 points or more, at any k",
+   "_note": "k counts studies contributing a percentage. Restatements of another study in this file are excluded. Total weight never sets the tier: a single heavy study is still a single study."
   }
  },
  "studies": {

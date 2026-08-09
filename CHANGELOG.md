@@ -5,6 +5,38 @@ Format loosely follows Keep a Changelog; dates are ISO-8601.
 
 ## [Unreleased]
 ### Fixed
+- **The page showed a value it had just refused to average.** Marking a review as a
+  restatement kept it out of the average but left it rendering as an ordinary row with a
+  weight bar, so figure-of-4 read *"range 90–90%, 1 study with a percentage"* above a table
+  listing Loddenkemper at 89%. That was worse than the double counting it replaced: the
+  correction was invisible and the page looked broken. A restatement now says so where it
+  is shown — *"89% — restates Kotagal 2000, not averaged"* — and draws no weight bar.
+- **Restatements and dissenting sources were being counted as "direction-only sources".**
+  Figure-of-4 advertised *3 direction-only sources* when one of them reported a percentage
+  and another argues the sign is unreliable. The count now separates direction-only from
+  restatements-excluded, and the card's library chip counts studies contributing a
+  percentage rather than every contribution attached to the sign.
+- **A second tier definition contradicted the code.** `observations.json` still published
+  the old rule (*"well_supported: n_studies >= 3 OR total_weight >= 6.0"*) after the code
+  stopped using weight — the same defect the previous change claimed to fix, inverted. The
+  ledger now publishes the rule that is implemented.
+- **The certainty cap was unreachable.** Capping a spread ≥ 25 sign at *moderate* could
+  only demote k ≥ 3, and every disagreeing sign in this corpus is k = 2 — so it fired on
+  none of 19. Disagreement is now its own tier, **contested**, which sits below moderate
+  and applies at any k. Two signs earn it: *automatisms with preserved responsiveness*
+  (62–100%) and *postictal nose-wiping* (62–92%). The legend no longer claims weight is
+  involved.
+- **A sign with no percentage at all could be tiered from its restatement count**; it is
+  now always *single source*.
+- **CI did not gate on the new flag.** `unmarked_restatement` was raised to severity high
+  but was absent from the blocking list, and the workflow ran the reviewer advisory-only —
+  so the claim that this could not return quietly was false. It now blocks the build.
+  Genuine literature *conflicts* stay advisory: they are facts about the evidence, not
+  defects a build can fix.
+- **`METHODS.md` opened with "This is not a weighted average."** A global find-and-replace
+  rewrote the subject of the disclaimer it was meant to add, so the document denied the
+  method it documents, two lines above asserting it.
+### Fixed
 - **A review restating a primary series was being counted as a second study.** Six
   observations were Loddenkemper & Kotagal 2005 reporting a number that Wyllie, Roh,
   Kotagal or Gabr had already contributed to the same average — the atlas's own review tool

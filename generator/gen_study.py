@@ -92,7 +92,8 @@ _gtname = {"seeg":"SEEG","postop":"post-op sz-freedom","intracranial_eeg":"intra
            "video_eeg":"video-EEG","scalp_eeg":"scalp EEG","imaging_concordance":"imaging concordance",
            "review":"review","none":"none"}
 _dirword = {"contra":"Contralateral","ipsi":"Ipsilateral","dominant":"Dominant hemisphere","nondominant":"Non-dominant hemisphere"}
-_certword = {"well_supported":"well supported","moderate":"moderate","single_source":"single source"}
+_certword = {"well_supported":"well supported","moderate":"moderate",
+             "contested":"contested \u2014 sources disagree","single_source":"single source"}
 
 def pooled_block_for(ms):
     """The card's lateralization evidence, rendered from the shared meta ledger."""
@@ -100,7 +101,14 @@ def pooled_block_for(ms):
         return "", 0
     items = []
     for c in ms.get("contributions", []):
-        val = (f'{c["value"]:g}%' if "value" in c else esc(c.get("qualitative","supportive")))
+        # a restatement carries a value, but it was not averaged - say so where it
+        # is shown, or the table contradicts the summary above it
+        if c.get("restates"):
+            val = (f'<span class="ev-restate">{c["value"]:g}% &mdash; restates '
+                   f'{esc(c["restates"])}, not averaged</span>' if c.get("value") is not None
+                   else f'<span class="ev-restate">restates {esc(c["restates"])}</span>')
+        else:
+            val = (f'{c["value"]:g}%' if "value" in c else esc(c.get("qualitative","supportive")))
         meta = f'{c.get("eclass") or "?"} / {_gtname.get(c.get("ground_truth"), c.get("ground_truth") or "-")}'
         items.append('<li><span class="ev-src">'+esc(c.get("cite", c["study"]))+'</span>'
                      + ((' <span class="ev-pg" title="Source page">'+esc(c["pg"])+'</span>') if c.get("pg") else '')
@@ -109,10 +117,13 @@ def pooled_block_for(ms):
     # the count beside a percentage must be the studies that carry a percentage.
     # Direction-only sources corroborate the side; they measured nothing to pool.
     nnum = ms.get("n_studies", 0)
-    nqual = ms.get("n_qualitative", 0)
+    nrest = sum(1 for c in ms.get("contributions", []) if c.get("restates"))
+    nqual = ms.get("n_qualitative", 0) - nrest
     kword = f'{nnum} stud{"y" if nnum == 1 else "ies"} with a percentage'
-    if nqual:
+    if nqual > 0:
         kword += f' &middot; {nqual} direction-only source{"" if nqual == 1 else "s"}'
+    if nrest:
+        kword += f' &middot; {nrest} restatement{"" if nrest == 1 else "s"} excluded'
     if ms.get("pooled") is not None:
         head = (f'<span class="pooled-hd"><strong>{ms["pooled"]:g}% {esc(_dirword.get(ms["direction"], ms["direction"]))}</strong> '
                 f'&middot; range {ms["low"]:g}&#8211;{ms["high"]:g}% &middot; {kword}'
@@ -225,7 +236,7 @@ for r in region_order:
             if _ms:
                 ev_block, _nsrc = pooled_block_for(_ms)
                 has_ev = True
-                lib_chip = ('<span class="chip lib-chip" title="Sources behind the weighted average">&#128218; '+str(len(_ms.get("contributions",[])))+'</span>')
+                lib_chip = ('<span class="chip lib-chip" title="Studies contributing a percentage to the average">&#128218; '+str(_ms.get("n_studies",0))+'</span>')
             else:
                 has_ev = bool(d.get("_ev"))
                 lib_chip = ('<span class="chip lib-chip" title="Grounded in the source library">&#128218; '+str(len(d["_ev"]))+'</span>') if has_ev else ''
@@ -366,8 +377,9 @@ def build_meta(meta, flags):
     if not meta or not meta.get("by_sign"):
         return ""
     dirlabel = {"contra":"CONTRA","ipsi":"IPSI","dominant":"DOMINANT","nondominant":"NON-DOM"}
-    certpips = {"well_supported":3, "moderate":2, "single_source":1}
-    certname = {"well_supported":"well supported", "moderate":"moderate", "single_source":"single source"}
+    certpips = {"well_supported":3, "moderate":2, "contested":1, "single_source":1}
+    certname = {"well_supported":"well supported", "moderate":"moderate",
+                "contested":"contested &mdash; sources disagree", "single_source":"single source"}
     gtname = {"seeg":"SEEG","postop":"post-op sz-freedom","intracranial_eeg":"intracranial EEG",
               "video_eeg":"video-EEG","scalp_eeg":"scalp EEG","imaging_concordance":"imaging concordance",
               "review":"review","none":"none"}
@@ -417,7 +429,12 @@ def build_meta(meta, flags):
         for c in s["contributions"]:
             w = c.get("weight",0)
             barw = max(3, round(w/maxw*100))
-            val = (str(c["value"])+'%') if "value" in c else ('<span class="mc-qual">'+esc(c.get("qualitative","qual."))+'</span>')
+            if c.get("restates"):
+                val = ('<span class="mc-qual mc-restate">' + (str(c["value"])+'% ' if c.get("value") is not None else '')
+                       + 'restates ' + esc(c["restates"]) + ' &mdash; not averaged</span>')
+                barw = 0                      # it contributes no weight; draw no bar
+            else:
+                val = (str(c["value"])+'%') if "value" in c else ('<span class="mc-qual">'+esc(c.get("qualitative","qual."))+'</span>')
             wp = c.get("weight_parts",{})
             wtitle = f'{wp.get("class_base","?")} (class) x {wp.get("ground_truth_mult","?")} (ground truth) x {wp.get("size_factor","?")} (size) = {w}'
             rows.append(
@@ -450,14 +467,17 @@ def build_meta(meta, flags):
         pips = certpips.get(s.get("certainty"),1)
         pip_html = "".join('<i class="'+("on" if k<pips else "off")+'"></i>' for k in range(3))
         contested_mark = ' <span class="mflag" title="contested">&#9888;&#65039;</span>' if s.get("contested") else ''
-        nnum = s["n_studies"]; nqual = s.get("n_qualitative", 0)
+        nnum = s["n_studies"]
+        nrest = sum(1 for c in s.get("contributions", []) if c.get("restates"))
+        nqual = s.get("n_qualitative", 0) - nrest
         summ = ''
         if s.get("pooled") is not None:
             sd = (f'&middot; weighted SD {s["wsd"]:g} ' if s.get("wsd") is not None else '')
             summ = (f'weighted average <strong>{s["pooled"]:g}%</strong> &middot; range {s["low"]:g}&#8211;{s["high"]:g}% '
                     f'{sd}&middot; &Sigma;weight {s.get("total_weight",0):g} '
                     f'&middot; {nnum} stud{"y" if nnum==1 else "ies"} with a percentage'
-                    + (f' &middot; {nqual} direction-only' if nqual else '')
+                    + (f' &middot; {nqual} direction-only' if nqual > 0 else '')
+                    + (f' &middot; {nrest} restatement{"" if nrest==1 else "s"} excluded' if nrest else '')
                     + f' &middot; {certname.get(s.get("certainty"),"?")}')
         else:
             summ = f'direction-only ({nqual} source{"s" if nqual!=1 else ""}); no percentage to average'
@@ -519,7 +539,7 @@ def build_meta(meta, flags):
     <span><span class="ml-dot" style="background:{latcolor['ipsi']}"></span>Ipsilateral</span>
     <span><span class="ml-dot" style="background:{latcolor['dominant']}"></span>Dominant</span>
     <span><span class="ml-dot" style="background:{latcolor['nondominant']}"></span>Non-dominant</span>
-    <span class="ml-cert"><i class="on"></i><i class="on"></i><i class="on"></i> certainty (studies &amp; weight)</span>
+    <span class="ml-cert"><i class="on"></i><i class="on"></i><i class="on"></i> certainty (number of studies; contested if they disagree)</span>
   </div>
   <div class="meta-view" id="meta-view-region">{view_region}</div>
   <div class="meta-view" id="meta-view-sign" hidden>{view_sign}</div>
@@ -1257,6 +1277,8 @@ body.quiz .lib-chip{display:none}
 .d-ppv .ev-pg{color:#0a6472;background:#e0f4f6;border-color:#a7dbe1}
 .ev-dir{font-size:.66rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#0a6472;background:#e0f4f6;border-radius:4px;padding:0 5px;margin-left:2px}
 .ev-pop{font-size:.72rem;color:#5a6472;font-style:italic;margin-left:3px}
+.ev-restate{color:#8a5209;background:#fdf3e4;border:1px solid #e8c79a;border-radius:4px;padding:0 5px;font-weight:600}
+.mc-restate{color:#8a5209;font-style:normal}
 .ev-quote{color:#0a6472;cursor:help;font-weight:800}
 
 /* framework callout */

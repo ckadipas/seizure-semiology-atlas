@@ -36,8 +36,8 @@ jobs:
       - name: Check intake provenance (every added finding is page-cited)
         run: python3 tools/check_provenance.py
 
-      - name: Adversarial review (advisory — surfaces conflicts, does not block)
-        run: python3 tools/adversarial_review.py
+      - name: Adversarial review (blocks on unmarked restatements)
+        run: python3 tools/adversarial_review.py --strict
 
       - name: Build must succeed
         run: python3 generator/gen_study.py

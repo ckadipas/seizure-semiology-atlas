@@ -1,6 +1,6 @@
 # Methods — weighted averages & source review
 
-> **This is not a weighted average.** There is no protocol, no prespecified eligibility
+> **This is not a meta-analysis.** There is no protocol, no prespecified eligibility
 > criteria, no reproducible search, no risk-of-bias instrument, no inverse-variance
 > weighting, no confidence intervals and no heterogeneity statistics. What follows is a
 > transparent weighted average of the percentages extracted from the source library,

@@ -56,19 +56,25 @@ def study_weight(study, scheme):
     return base, gt, sz, round(base * gt * sz, 3)
 
 
-def certainty(n_studies, total_weight, spread=None):
+CONTESTED_POINTS = 25          # the one place this threshold is defined
+
+
+def certainty(n_studies, spread=None):
     """
-    How well supported a pooled figure is. This is a function of how many
-    independent studies carry a number, never of the weight they add up to: a
-    single heavy study is still a single study. It is also capped when the
-    studies disagree, because a tier must not rise as the evidence conflicts.
+    How well supported an averaged figure is: a function of how many studies
+    carry a percentage, never of the weight they add up to, because a single
+    heavy study is still a single study.
+
+    Disagreement outranks count. Two studies 38 points apart are not better
+    evidence than two that agree, so `contested` sits below `moderate` and can
+    be reached at any k - the previous cap could only demote a k>=3 sign to
+    `moderate`, which no sign in this corpus ever triggered.
     """
     if n_studies <= 1:
         return "single_source"
-    tier = "well_supported" if n_studies >= 3 else "moderate"
-    if spread is not None and spread >= 25 and tier == "well_supported":
-        tier = "moderate"          # they do not agree; do not call it settled
-    return tier
+    if spread is not None and spread >= CONTESTED_POINTS:
+        return "contested"
+    return "well_supported" if n_studies >= 3 else "moderate"
 
 
 def pool_sign(sign, studies, scheme):
@@ -132,7 +138,7 @@ def pool_sign(sign, studies, scheme):
             # a spread statistic over 2-3 points is noise dressed as precision
             "wsd": round(math.sqrt(var), 1) if len(numeric) >= 4 else None,
             "total_weight": round(wsum, 2),
-            "certainty": certainty(len(numeric), wsum, round(max(vals) - min(vals), 1)),
+            "certainty": certainty(len(numeric), round(max(vals) - min(vals), 1)),
         })
     else:
         # qualitative-only sign (direction known, no poolable percentage)
@@ -141,7 +147,9 @@ def pool_sign(sign, studies, scheme):
             "pooled": None,
             "low": None, "high": None, "spread": None, "wsd": None,
             "total_weight": round(wsum, 2),
-            "certainty": certainty(len(qualitative), wsum) if len(qualitative) > 1 else "single_source",
+            # no percentage to average: a count of corroborating or restating
+            # sources cannot make a figure well supported
+            "certainty": "single_source",
         })
     return result
 
