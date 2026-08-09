@@ -5,6 +5,23 @@ Format loosely follows Keep a Changelog; dates are ISO-8601.
 
 ## [Unreleased]
 ### Added
+- **Interactive Brodmann map — "where each semiology localizes".** A new figure at the
+  top of the page maps every sign in the dataset onto the Brodmann areas it localizes to,
+  across three schematic surface views of one hemisphere: **lateral, dorsal and ventral**.
+  Each numbered area is clickable (and keyboard-reachable); selecting one opens a panel
+  listing the semiology localized there, ordered by evidence tier, with its phase,
+  lateralizing value and evidence level — and clicking a row jumps to that sign's full
+  card in the index below. A **hemisphere switch (left/right)** mirrors the view and
+  re-reads each sign for that side: contralateral/ipsilateral signs are restated as the
+  body side they appear on, and dominant-only signs are dimmed when the non-dominant
+  hemisphere is shown. An optional *shade by density* toggle tints areas by how many
+  signs they carry; the default presentation is deliberately plain. Areas with no
+  surface representation — **insula (13–16)**, **cingulate (24/32)** and deep
+  subcortical — are offered as separate chips rather than being silently dropped, and
+  the one sign with no lobar localization is declared under the figure.
+  The mapping is derived from the dataset's own `sub`/`loc` localization fields (which
+  already name Brodmann areas), refined per sign where the record is more specific; the
+  brain outlines are schematic drawings authored for this atlas, not traced artwork.
 - **Integrated Abou-Khalil's seizure-semiology chapter** (in Misulis et al., *Atlas of
   EEG, Seizure Semiology, and Management*, 3rd ed., Oxford Univ. Press 2022, §3.4). This
   authoritative textbook is added to the source library and now **corroborates the
