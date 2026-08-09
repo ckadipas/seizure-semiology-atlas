@@ -919,6 +919,12 @@ body.lbledit .ba-num.drag{cursor:grabbing;fill:var(--teal-d);stroke:rgba(14,157,
 .lbl-editor .le-row:last-child button:hover{border-color:var(--teal);color:var(--teal-d)}
 #lbl-read{margin-top:6px;font-family:'SF Mono',Consolas,monospace;font-size:.7rem;color:var(--teal-d)}
 .ba-num.edit-sel{fill:var(--teal-d)!important;stroke:rgba(14,157,176,.30)!important}
+/* focus mode: only the numeral being moved is live; the others fade back so they
+   neither block the pointer nor clutter the anatomy underneath */
+body.lbledit.focusing .ba-num{opacity:.12;pointer-events:none;transition:opacity .15s}
+body.lbledit.focusing .ba-num.edit-sel{opacity:1;pointer-events:auto}
+body.lbledit .ba-num{transition:opacity .15s}
+#le-done{background:var(--teal)!important;border-color:var(--teal-d)!important;color:#fff!important}
 body.lbl-place .brain-svg{cursor:crosshair}
 /* D-pad: thumb-reachable, translucent, never covers the middle of the figure */
 .dpad{position:fixed;left:12px;bottom:12px;z-index:400;display:grid;width:132px;height:132px;
@@ -966,12 +972,12 @@ body.lbl-place .brain-svg{cursor:crosshair}
 .syl-line{display:none}
 .midline-mask{display:none}
 .midline{display:none}
-.ba-num{font-family:'Segoe UI',Arial,sans-serif;font-size:19px;font-weight:800;fill:#1e2a3d;
+.ba-num{font-family:'Segoe UI',Arial,sans-serif;font-size:15px;font-weight:800;fill:#1e2a3d;
   text-anchor:middle;dominant-baseline:central;pointer-events:none;user-select:none;
-  paint-order:stroke;stroke:#fff;stroke-width:3.5;stroke-linejoin:round}
+  paint-order:stroke;stroke:#fff;stroke-width:3;stroke-linejoin:round}
 .ba-num.has{fill:#0d1626}
 .ba-num.sel{fill:#08343c;stroke:#fff;stroke-width:4}
-.ba-num-sm{font-size:15px}
+.ba-num-sm{font-size:12px}
 .ba-num-ins{font-size:13px;letter-spacing:.08em;fill:var(--teal-d)}
 .ba-num-ins.sel{fill:#fff}
 .brain-orient{font-size:12px;fill:#aab3c2;letter-spacing:.1em;text-transform:uppercase;pointer-events:none}
@@ -1026,8 +1032,8 @@ body.lbl-place .brain-svg{cursor:crosshair}
   .brain-card{padding:11px 10px}
   .brain-svg{max-height:320px}
   /* numerals are in SVG user units, so scale them up for the small canvas */
-  .ba-num{font-size:26px}
-  .ba-num-sm{font-size:21px}
+  .ba-num{font-size:20px}
+  .ba-num-sm{font-size:16px}
   body.lbledit .ba-num{stroke-width:34}
   .bp-list{max-height:430px}
   .brain-bar{gap:7px}
@@ -1586,7 +1592,8 @@ JS = r"""
         '<span id="le-z">1.0×</span><button id="le-in">+</button>'+
         '<button id="le-fit">Fit</button></div>'+
       '<div id="lbl-read">Pick an area to begin</div>'+
-      '<div class="le-row"><button id="lbl-copy">Copy positions</button>'+
+      '<div class="le-row"><button id="le-done">Done \u2713</button>'+
+      '<button id="lbl-copy">Copy positions</button>'+
       '<button id="lbl-reset">Reset</button></div>'+
     '</div>';
   document.body.appendChild(ed);
@@ -1631,6 +1638,7 @@ JS = r"""
   }
   function select(tile){
     cur=tile;
+    document.body.classList.toggle('focusing', !!tile);
     svgs.forEach(s=>s.querySelectorAll('.ba-num').forEach(t=>
       t.classList.toggle('edit-sel', !!tile && t.dataset.tile===tile)));
     pad.hidden = !(mode==='nudge' && cur);
@@ -1697,6 +1705,12 @@ JS = r"""
            +t.getAttribute('y')+(e.key==='ArrowUp'?-k:e.key==='ArrowDown'?k:0));
     recenter(); });
 
+  ed.querySelector('#le-done').addEventListener('click',()=>{
+    cur=null; pick.value=''; pad.hidden=true;
+    document.body.classList.remove('focusing');
+    svgs.forEach(s=>s.querySelectorAll('.ba-num').forEach(t=>t.classList.remove('edit-sel')));
+    read.textContent='Saved \u2014 pick another area';
+  });
   ed.querySelector('#lbl-copy').addEventListener('click',()=>{
     let out='LABEL_POS = {\n';
     svgs.forEach(s=>{ const seen={}, parts=[];
