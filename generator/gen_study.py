@@ -663,6 +663,8 @@ def build_brain(signs):
     for t in tiles.values():
         t["signs"].sort(key=lambda s: (_evrank.get(s["ev"], 3), s["n"]))
 
+    first_view = next(iter(BA.VIEWS))
+
     def render_view(name):
         """
         A view is the reference plate with its numerals on top. Nothing else is
@@ -723,7 +725,8 @@ def build_brain(signs):
 
         # the plate lives in its own group so the hemisphere switch can mirror it
         # with a plain SVG transform attribute, which every browser honours
-        return (f'<svg class="brain-svg" data-view="{name}" viewBox="0 0 {vw} {vh}" role="group" '
+        visible = " show" if name == first_view else ""
+        return (f'<svg class="brain-svg{visible}" data-view="{name}" viewBox="0 0 {vw} {vh}" role="group" '
                 f'aria-label="{name.capitalize()} surface, Brodmann areas">'
                 f'<g class="plate">{img}</g>{lab_g}{orient}</svg>')
 
@@ -959,7 +962,7 @@ body.lbl-place .brain-svg{cursor:crosshair}
   background:linear-gradient(90deg,#b3daff 0%,#adb6fa 4%,#b48edf 16%,#bb66b0 36%,#b93c71 64%,#ac011a 100%)}
 .dk-n{font-variant-numeric:tabular-nums;font-weight:700;color:#5a6478}
 .ba-num{font-family:'Segoe UI',Arial,sans-serif;font-size:15px;font-weight:800;fill:#1e2a3d;
-  text-anchor:middle;dominant-baseline:central;pointer-events:none;user-select:none}
+  text-anchor:middle;dominant-baseline:central;pointer-events:all;cursor:pointer;user-select:none}
 .ba-num.has{fill:#0d1626}
 .ba-num.sel{fill:#fff;stroke:none}
 .ba-num-sm{font-size:12px}
@@ -1082,6 +1085,9 @@ body{font-family:'Segoe UI','Helvetica Neue',Arial,sans-serif;background:var(--b
 .sticky-head{position:sticky;top:0;z-index:100;background:#fff;box-shadow:0 2px 10px rgba(15,30,61,.09);border-bottom:1px solid var(--line)}
 /* The toolbar is a third of a landscape phone. It collapses out of the way to a
    puck that stays put while the page scrolls, and brings everything back on a tap. */
+.tb-state{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.tb-state:checked~.sticky-head{display:none}
+.tb-state:checked~.tb-fab{display:inline-flex}
 .vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .tb-toggle{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;
   border:1px solid var(--line);background:#fff;color:#9aa3b2;border-radius:8px;font-size:.6rem;
@@ -1136,8 +1142,10 @@ main{padding:16px 20px 48px;max-width:1180px;margin:0 auto}
 main,.frontpage-fold,.callout{
   padding-left:max(20px,env(safe-area-inset-left));
   padding-right:max(20px,env(safe-area-inset-right))}
-body.tb-collapsed main,body.tb-collapsed .frontpage-fold,body.tb-collapsed .callout{
-  padding-right:max(62px,calc(env(safe-area-inset-right) + 46px))}
+@media (min-width:761px){
+  body.tb-collapsed main,body.tb-collapsed .frontpage-fold,body.tb-collapsed .callout{
+    padding-right:max(62px,calc(env(safe-area-inset-right) + 46px))}
+}
 .region-section{margin-bottom:11px;scroll-margin-top:118px}
 .region-toggle{width:100%;display:flex;align-items:center;gap:9px;background:var(--rc);color:#fff;border:none;border-left:3px solid color-mix(in srgb,var(--rc) 60%,#000);border-radius:6px;padding:6px 12px;font-size:.74rem;font-weight:800;letter-spacing:.06em;cursor:pointer;text-align:left}
 .region-chev{font-size:.66rem;transition:transform .18s;opacity:.8}
@@ -1542,7 +1550,7 @@ JS = r"""
     hover.textContent=(t.bas.length?'BA '+t.label+' \u2014 ':'')+t.name;
     const list=document.getElementById('bp-list');
     if(!n){list.innerHTML='<div class="bp-empty" style="padding:18px">No sign in the current dataset is'+
-      ' localized to this area. That is a gap in the evidence collected here, not proof the area is silent.</div>';return;}
+      ' localized to this area. That is a gap in the evidence collected here, not proof the area is silent.</div>';revealPanel();return;}
     list.innerHTML=t.signs.map(s=>{
       const on=applies(s.lc);
       return '<button class="bp-row'+(on?'':' off')+'" data-sign="'+s.id+'">'+
@@ -1557,8 +1565,15 @@ JS = r"""
         '<span class="bp-ev" style="background:'+(evColor[s.ev]||'#888')+'" title="Evidence '+s.ev+'">'+s.ev+'</span>'+
       '</button>';}).join('');
     list.scrollTop=0;
+    revealPanel();
   }
   function esc(x){return String(x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+  function revealPanel(){
+    /* On phones the one-column layout places the detail panel below the map. */
+    if(window.matchMedia('(max-width:899px)').matches)
+      requestAnimationFrame(()=>panel.scrollIntoView({behavior:'smooth',block:'center'}));
+  }
 
   function clear(){
     sel=null; empty.hidden=false; body.hidden=true;
@@ -1628,7 +1643,7 @@ JS = r"""
 
   /* clicking an area */
   card.addEventListener('click',e=>{
-    const hit=e.target.closest('.ba-hit,.deep-chip');
+    const hit=e.target.closest('.ba-hit,.ba-num,.deep-chip');
     if(!hit) return;
     const g=hit.closest('.lab-L,.lab-R');
     if(g&&((hemi==='R'&&g.classList.contains('lab-L'))||(hemi==='L'&&g.classList.contains('lab-R')))) return;
@@ -1637,12 +1652,12 @@ JS = r"""
     render(hit.dataset.tile);
   });
   card.addEventListener('keydown',e=>{
-    if((e.key==='Enter'||e.key===' ')&&e.target.classList.contains('ba-hit')){
+    if((e.key==='Enter'||e.key===' ')&&e.target.matches('.ba-hit,.ba-num')){
       e.preventDefault(); render(e.target.dataset.tile);}
     if(e.key==='Escape') clear();
   });
   card.addEventListener('mouseover',e=>{
-    const hit=e.target.closest('.ba-hit');
+    const hit=e.target.closest('.ba-hit,.ba-num');
     if(!hit) return;
     /* a traced set owns the caption; hovering past it must not steal the line */
     if(traced&&!hit.classList.contains('trace')) return;
@@ -2045,9 +2060,11 @@ function filterAll(){
 (function(){
   const KEY='atlasToolbar';
   const fab=document.getElementById('tb-fab'), tog=document.getElementById('tb-toggle');
-  if(!fab||!tog) return;
+  const state=document.getElementById('tb-collapse');
+  if(!fab||!tog||!state) return;
   function set(open,remember){
     document.body.classList.toggle('tb-collapsed',!open);
+    state.checked=!open;
     tog.setAttribute('aria-expanded',open); fab.setAttribute('aria-expanded',open);
     if(remember){ try{localStorage.setItem(KEY,open?'open':'closed');}catch(e){} }
   }
@@ -2057,8 +2074,11 @@ function filterAll(){
        starts collapsed, which is the case the toolbar was crowding */
     if(pref) set(pref==='open',false); else set(window.innerHeight>520,false);
   }
-  tog.addEventListener('click',()=>set(false,true));
-  fab.addEventListener('click',()=>{ set(true,true); searchInput.focus({preventScroll:true}); });
+  state.addEventListener('change',()=>{
+    const open=!state.checked;
+    set(open,true);
+    if(open) searchInput.focus({preventScroll:true});
+  });
   window.addEventListener('orientationchange',()=>setTimeout(auto,150));
   auto();
 })();
@@ -2198,6 +2218,7 @@ HEAD = """<!DOCTYPE html>
   <p>Tap any sign for its localization, lateralization, pooled evidence and sources. <span class="edu-inline">&#9888;&#65039; Educational reference &mdash; not for clinical decision-making.</span></p>
 </div>
 
+<input class="tb-state" type="checkbox" id="tb-collapse" aria-label="Collapse toolbar">
 <div class="sticky-head" id="sticky-head">
   <nav class="region-nav">
 """ + pills_html + """
@@ -2257,14 +2278,14 @@ HEAD = """<!DOCTYPE html>
       <button class="act-btn" id="collapse-all">&#10752; Collapse all</button>
       <label class="quiz-toggle"><input type="checkbox" id="quiz-mode"><span class="quiz-switch"></span>Quiz mode</label>
     </div>
-      <button class="tb-toggle" id="tb-toggle" aria-expanded="true" aria-controls="sticky-head"
-              title="Hide the toolbar">&#9650;<span class="vh"> Hide toolbar</span></button>
+      <label class="tb-toggle" id="tb-toggle" for="tb-collapse" role="button" aria-expanded="true" aria-controls="sticky-head"
+             title="Hide the toolbar">&#9650;<span class="vh"> Hide toolbar</span></label>
     </div>
     <span id="result-count"></span>
   </div>
 </div>
-<button class="tb-fab" id="tb-fab" aria-expanded="false" aria-controls="sticky-head"
-        aria-label="Show search and filters">&#128269;<span class="tb-dot" aria-hidden="true"></span></button>
+<label class="tb-fab" id="tb-fab" for="tb-collapse" role="button" aria-expanded="false" aria-controls="sticky-head"
+       aria-label="Show search and filters">&#128269;<span class="tb-dot" aria-hidden="true"></span></label>
 
 <main>
 """ + brain_fold + meta_fold + sens_report_fold + figures_fold + forest_fold + callout_fold + """
