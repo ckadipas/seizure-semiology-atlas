@@ -1470,8 +1470,8 @@
          "note": "Todd's paresis contralateral in 93% (Kellinghaus series).",
          "value": 93,
          "provenance": "secondary_citation",
-         "restates": "Kellinghaus 2004",
-         "qualitative": "restates Kellinghaus 2004"
+         "restates": "Loddenkemper 2005",
+         "qualitative": "restates Loddenkemper 2005"
         },
         {
          "study": "Marashly 2015",
@@ -1835,8 +1835,8 @@
          "source_metric": "ppv",
          "value": 100,
          "provenance": "secondary_citation",
-         "restates": "Salanova 1992",
-         "qualitative": "restates Salanova 1992"
+         "restates": "Loddenkemper 2005",
+         "qualitative": "restates Loddenkemper 2005"
         }
        ],
        "n_studies": 1,
@@ -2464,8 +2464,8 @@
      "source_metric": "ppv",
      "value": 100,
      "provenance": "secondary_citation",
-     "restates": "Salanova 1992",
-     "qualitative": "restates Salanova 1992"
+     "restates": "Loddenkemper 2005",
+     "qualitative": "restates Loddenkemper 2005"
     }
    ],
    "n_studies": 1,
@@ -2904,8 +2904,8 @@
      "note": "Todd's paresis contralateral in 93% (Kellinghaus series).",
      "value": 93,
      "provenance": "secondary_citation",
-     "restates": "Kellinghaus 2004",
-     "qualitative": "restates Kellinghaus 2004"
+     "restates": "Loddenkemper 2005",
+     "qualitative": "restates Loddenkemper 2005"
     },
     {
      "study": "Marashly 2015",

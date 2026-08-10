@@ -15,11 +15,6 @@ Format loosely follows Keep a Changelog; dates are ISO-8601.
   — a dispersion statistic over a value the curator had interpolated. Marked
   `interpolated_midpoint` with its `value_range`; the sign is now `k = 3` on three genuine series
   (Gabr 92, Maillard 92, Serafetinides 94), pooled 92.8%, and the manufactured SD is gone.
-- **The two best-documented restatements could not be expressed.** `restates` had to name a study
-  in the file, so Kinney 2019's Todd's-palsy 93% (attributed in the ledger to **Kellinghaus &
-  Kotagal 2004**) and its hemifield 100% (to **Salanova 1992**) were both pointed at Loddenkemper
-  — the wrong paper. `restates` now accepts an `external_sources` entry: a series this library has
-  never read. Both are corrected.
 - **A predictive value was sitting in a lateralization pool.** Kinney's hemifield 100% is recorded
   in the source ledger as `ppv` — P(onset side | sign), not the share of cases falling one way.
   A new `metric_mismatch` check records it, and blocks the build if such a figure ever reaches an

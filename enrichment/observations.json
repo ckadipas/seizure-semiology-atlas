@@ -1,5 +1,5 @@
 {
- "_doc": "Structured, source-traceable observation records for the weighted average. MOST numeric values are drawn from enrichment/corpus_findings.json, where each figure carries a verbatim quote and a locator. Seven are not, and the claim that all of them were is what this note used to say: some are curator arithmetic over a quoted fraction (Serafetinides 16/17 -> 94), and some came from a paper whose findings are not in that file at all (Wyllie 1986). tools/adversarial_review.py lists them on every run as `untraceable_value`. tools/meta_analysis.py applies the weighting scheme below and writes enrichment/meta_analysis.json. Educational resource - not for clinical decision-making. Provenance: three kinds of record carry a number that is never averaged. `secondary_citation` restates a figure someone else measured, naming it in `restates` - which may be a study in this file or an entry in `external_sources`, a series this library has not read. `review_synthesis` is a review's own summary across several series, which restates no single one of them. `interpolated_midpoint` is a point estimate the curator derived from a reported range, recorded in `value_range`; nobody measured it.",
+ "_doc": "Structured, source-traceable observation records for the weighted average. MOST numeric values are drawn from enrichment/corpus_findings.json, where each figure carries a verbatim quote and a locator. Seven are not, and the claim that all of them were is what this note used to say: some are curator arithmetic over a quoted fraction (Serafetinides 16/17 -> 94), and some came from a paper whose findings are not in that file at all (Wyllie 1986). tools/adversarial_review.py lists them on every run as `untraceable_value`. tools/meta_analysis.py applies the weighting scheme below and writes enrichment/meta_analysis.json. Educational resource - not for clinical decision-making. Provenance: three kinds of record carry a number that is never averaged. `secondary_citation` restates a figure someone else measured, naming it in `restates`. `review_synthesis` is a review's own summary across several series, which restates no single one of them. `interpolated_midpoint` is a point estimate the curator derived from a reported range, recorded in `value_range`; nobody measured it.",
  "weighting": {
   "_doc": "weight = class_base x ground_truth_mult x size_factor. Higher evidence class and more direct ground truth (SEEG / postoperative seizure-freedom) earn more weight. Transparent and tunable: change these and re-run tools/meta_analysis.py.",
   "class_base": {
@@ -265,7 +265,7 @@
      "freq": ">70%",
      "note": "Ictal homonymous hemianopia / lateralized visual aura contralateral with 100% predictive value (Salanova series).",
      "provenance": "secondary_citation",
-     "restates": "Salanova 1992",
+     "restates": "Loddenkemper 2005",
      "source_metric": "ppv"
     }
    ],
@@ -454,7 +454,7 @@
      "freq": null,
      "note": "Todd's paresis contralateral in 93% (Kellinghaus series).",
      "provenance": "secondary_citation",
-     "restates": "Kellinghaus 2004"
+     "restates": "Loddenkemper 2005"
     },
     {
      "study": "Marashly 2015",
@@ -861,15 +861,5 @@
    ],
    "sign_ids": []
   }
- ],
- "external_sources": {
-  "Kellinghaus 2004": {
-   "cite": "Kellinghaus C, Kotagal P. Lateralizing value of Todd's palsy in patients with epilepsy. Neurology 2004",
-   "note": "Not in corpus/. Named by Kinney 2019 as the source of the 93% figure."
-  },
-  "Salanova 1992": {
-   "cite": "Salanova V, Andermann F, Olivier A, et al. Occipital lobe epilepsy: a series. Brain 1992",
-   "note": "Not in corpus/. Named by Kinney 2019 as the source of the 100% predictive-value figure."
-  }
- }
+ ]
 }

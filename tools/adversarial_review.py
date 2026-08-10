@@ -230,13 +230,9 @@ def review():
                      f"{DOUBLE_TOL} points - {kind}; pooling both counts one measurement twice. "
                      f"Mark the restating observation `provenance: secondary_citation`.")
 
-        # ORPHAN_RESTATEMENT - `restates` must name a study in observations.json or a
-        # declared external source, or the page prints an attribution that traces to
-        # nothing. External targets exist because the two most consequential
-        # restatements in this library name series it has never read (Kellinghaus 2004,
-        # Salanova 1992); without somewhere to point, the only expressible options were
-        # a false target or none at all.
-        known = set(obs.get("studies", {})) | set(obs.get("external_sources", {}))
+        # ORPHAN_RESTATEMENT - `restates` must name a study in observations.json, or the
+        # page prints an attribution that traces to nothing.
+        known = set(obs.get("studies", {}))
         for c in numeric:
             if c.get("restates") and c["restates"] not in known:
                 flag("orphan_restatement", "high", s["sign"],

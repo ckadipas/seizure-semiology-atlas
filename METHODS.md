@@ -84,12 +84,6 @@ note names Yen. And Blair's postictal-aphasia *85* is the midpoint of a quoted "
 nobody measured 85, yet it was being averaged, raising that sign to `k = 4` and generating a
 weighted SD over a number the curator had invented.
 
-`restates` may name a study in this file **or** an entry in `external_sources` — a series
-this library has never read. Without that, the two best-documented restatements here could
-not be expressed at all: Kinney 2019's Todd's-palsy 93% is attributed in the source ledger to
-Kellinghaus & Kotagal 2004, and its hemifield 100% to Salanova 1992, and neither is in the
-corpus. Both were pointed at Loddenkemper instead, which was simply the wrong paper.
-
 ### Restatements are not averaged
 
 A narrative review reporting a figure it took from a series is not a second
