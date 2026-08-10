@@ -1,187 +1,55 @@
-name: Paper intake
+name: Paper intake — Gate A registration only
 
-# Approval-gated intake. A submission issue does nothing on its own; a maintainer
-# reviews it and APPROVES by adding the "approved" label (only users with write
-# access can label), which runs this workflow: the attached document(s) or
-# photographed pages are read on the runner, short page-cited figures are extracted,
-# and a pull request is opened for the maintainer to review and merge. Only the
-# derived figures are committed — the document/images/full text stay on the runner.
-# (Manual workflow_dispatch with an issue number also works, as a fallback.)
-#
-# Setup: add a repository secret named INTAKE_TOKEN (Settings -> Secrets and
-# variables -> Actions) holding the extraction token.
+# Safety boundary: this workflow never downloads source files, invokes a model,
+# edits repository content, creates a branch/PR, or publishes scientific output.
+# It only records that the owner has approved moving an intake request into the
+# private evidence-review workflow defined in ckadipas/semiology_refs/AGENTS.md.
 
 on:
-  # Approval-gated. Two ways to start extraction, both maintainer-only:
-  #   1. Add the "approved" label to a submission issue (only users with write
-  #      access can label, so this is the human approval step), OR
-  #   2. Manually dispatch with the issue number.
-  # A plain issue submission does NOT run anything — the maintainer is notified,
-  # reviews, and approves. This keeps the extraction token off anything a random
-  # issue-opener can trigger.
   issues:
     types: [labeled]
   workflow_dispatch:
     inputs:
       issue_number:
-        description: Issue number to process (its attached document(s) or photographed pages are read)
+        description: Issue number to register for private Gate A preparation
         required: true
 
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
   issues: write
-  id-token: write
 
 concurrency:
-  group: intake-${{ github.event.inputs.issue_number || github.event.issue.number }}
+  group: intake-register-${{ github.event.inputs.issue_number || github.event.issue.number }}
   cancel-in-progress: false
 
 jobs:
-  intake:
-    runs-on: ubuntu-latest
-    # Run only on a manual dispatch, or when the label just added is exactly "approved".
+  register:
     if: >-
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'issues' && github.event.label.name == 'approved')
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Resolve the target issue
-        id: ctx
+      - name: Post private-review gate instructions
         uses: actions/github-script@v7
         with:
           script: |
-            // issue number comes from the manual input, or from the labeled issue.
-            const num = context.eventName === 'workflow_dispatch'
+            const issueNumber = context.eventName === 'workflow_dispatch'
               ? Number(context.payload.inputs.issue_number)
               : context.payload.issue.number;
-            const { data: issue } = await github.rest.issues.get({
-              owner: context.repo.owner, repo: context.repo.repo, issue_number: num });
-            core.setOutput('number', String(num));
-            core.setOutput('title', issue.title || '');
-            core.setOutput('body', issue.body || '');
 
-      # Deterministic download of the submission's attachments (PDFs and pasted
-      # page photos alike), done in plain bash so the extraction agent never has to
-      # curl / rename / sniff file types itself (that thrash previously burned its
-      # whole turn budget on denied shell commands). The agent just Reads the files.
-      - name: Fetch submitted attachments
-        env:
-          ISSUE_BODY: ${{ steps.ctx.outputs.body }}
-        run: |
-          set -e
-          mkdir -p /tmp/intake
-          python3 - <<'PY'
-          import os, re, subprocess
-          body = os.environ.get("ISSUE_BODY", "")
-          # every GitHub user-attachments URL: file uploads (.../files/...) and pasted
-          # images (.../assets/...), whether in markdown or an <img src="..."> tag.
-          urls = re.findall(r'https://github\.com/user-attachments/(?:files|assets)/[^\s"\')>]+', body)
-          seen = set(); urls = [u for u in urls if not (u in seen or seen.add(u))]
-          manifest = []
-          for i, u in enumerate(urls, 1):
-              raw = f"/tmp/intake/att{i}.bin"
-              # plain curl, no auth header: these assets are public, and sending an
-              # Authorization header would break the signed CDN redirect.
-              subprocess.run(["curl", "-sSL", "--retry", "3", "-o", raw, u], check=False)
-              head = open(raw, "rb").read(16) if os.path.exists(raw) else b""
-              ext = ("pdf" if head[:4] == b"%PDF" else
-                     "png" if head[:4] == b"\x89PNG" else
-                     "jpg" if head[:3] == b"\xff\xd8\xff" else
-                     "gif" if head[:6] in (b"GIF87a", b"GIF89a") else
-                     "webp" if head[:4] == b"RIFF" else None)
-              if not ext:
-                  snippet = (open(raw, "rb").read(120) if os.path.exists(raw) else b"")
-                  manifest.append(f"SKIP  {u}  (not a document/image; got {snippet[:80]!r})")
-                  continue
-              dest = f"/tmp/intake/att{i}.{ext}"
-              os.replace(raw, dest)
-              manifest.append(f"OK    {dest}   <- {u}")
-          open("/tmp/intake/manifest.txt", "w").write("\n".join(manifest) if manifest else "NONE")
-          print("\n".join(manifest) if manifest else "no user-attachments URLs found in the issue body")
-          PY
+            const body = [
+              'The intake request has been registered for **private Gate A preparation**.',
+              '',
+              'Direct model extraction and repository publishing are disabled. Before any source review begins, the owner must approve a private Gate A record that binds the exact source SHA-256, the frozen review release, representations, and invocation budget in ckadipas/semiology_refs.',
+              '',
+              'All source files, extracted text, model outputs, review rows, and audit artifacts remain in the private evidence repository. This public workflow does not download or inspect attachments and made no scientific or repository-content change.',
+              '',
+              'After private review, an exact owner packet and separate Gate B approval are required before any deterministic integration. Deployment is separately authorized.'
+            ].join('\n');
 
-      # Extraction step. Restricted to file editing only — no git, no gh — so it
-      # never commits or opens anything itself. It just leaves the findings file
-      # changed for the next step to publish under a neutral identity.
-      - name: Extract page-cited findings from the attached documents
-        uses: anthropics/claude-code-action@v1
-        with:
-          claude_code_oauth_token: ${{ secrets.INTAKE_TOKEN }}
-          claude_args: '--max-turns 150 --allowedTools "Read,Edit,Write,Bash(python3:*),Bash(cat:*),Bash(ls:*)"'
-          prompt: |
-            You are extracting quantitative figures from one or more papers for a source-grounded, educational epilepsy-semiology atlas.
-
-            Intake issue #${{ steps.ctx.outputs.number }}
-            Title: ${{ steps.ctx.outputs.title }}
-            Body:
-            ${{ steps.ctx.outputs.body }}
-
-            Do this:
-            1. The submission's attachments have ALREADY been downloaded for you to /tmp/intake/. Run `cat /tmp/intake/manifest.txt` to see them: each line beginning `OK` is a ready-to-read file (a `.pdf` document, or a `.png`/`.jpg` page photo). Lines beginning `SKIP` were not fetchable — ignore them. If the manifest is `NONE` or has no `OK` lines, write "NO_DOCUMENT" to /tmp/intake_summary.txt and stop.
-            2. Read EVERY `OK` file — all of them, not just the first. Read PDFs in full; Read image files directly (you can see images — transcribe the localizing/lateralizing text, tables, and figures on each page). Several page photos may together make up one source (e.g. a handbook); treat them as one document when they clearly belong together.
-            3. Read enrichment/intake_findings.json (schema: "papers", "new_signs", "findings"), data/semiology_data.json (existing sign names), and enrichment/enrichment.json (the "papers" list). First triage the batch: for each OK file, decide whether that paper is ALREADY in the "papers" list. Skip re-adding a paper already there, but this is the important part — you MUST still open and fully read EVERY paper that is NOT already in the list, and extract its findings. A batch being mostly duplicates is NOT a reason to stop: keep going until every not-yet-listed paper has been read. Do NOT conclude "nothing to add" while any not-yet-listed OK file is still unread. In your summary (step 9) list, for each OK file, whether you treated it as already-present or newly-processed.
-            4. From EACH not-yet-listed paper, extract ONLY short, attributed, PAGE-CITED findings bearing on LOCALIZING or LATERALIZING semiology. For each finding: a one- or two-sentence paraphrase in your own words (never a long verbatim quote) including the reported figure/percentage/N; a "pg" source page (e.g. "p.608"); a "paper" citation; and a "sign_stem" that is a lowercase substring of the sign it attaches to. Add each new paper under "papers" (cite, journal, title, contribution). Follow any specific instruction in the issue body. Never fabricate a figure; omit anything a paper does not support. Prefer disciplined primary series; treat literature-mined meta-analyses skeptically.
-            4b. IMPORTANT — a paper may describe a well-evidenced localizing/lateralizing sign that is NOT yet in data/semiology_data.json. Do NOT decline it and do NOT mis-attach it to an unrelated existing sign. Instead ADD it under "new_signs" as a full record: {region, sub, sign, phase, lat, latcode (one of contra/ipsi/dominant/nondominant/right/nonlat/variable), loc, sens, spec, evid (I/II/III), notes, cite, "_ev":[{p,f,pg}]}. Match the region/sub wording used in data/semiology_data.json. Then attach that paper's findings to it via a sign_stem that is a substring of the new sign's name. The maintainer approves by merging the PR — your job is to propose it, not to gatekeep. Only skip a paper if it genuinely has no localizing/lateralizing content (e.g. a pure mortality/outcome study).
-            5. Append all findings to enrichment/intake_findings.json (into "findings" and, when applicable, "new_signs"), keeping it valid JSON.
-            5b. KEEP THE BRODMANN MAP IN STEP. The atlas renders an interactive Brodmann map, and every sign must reach it. A new sign whose "sub" already exists inherits that sub-region's cortical areas automatically — nothing to do. But if you introduce a NEW "sub" value, you MUST add it to `mapping.by_sub` in data/brodmann_map.json, listing the area ids it localizes to (the ids are the keys of "areas" in that file, e.g. "4", "22", "3-1-2", "insula"). If a single sign localizes more precisely than its sub-region, add a `mapping.by_sign` entry keyed by its id, of the form {"sign": "<the sign's exact name>", "areas": [...]} — the name is recorded so the mapping can be audited. If a sign genuinely has no cortical-surface localization, add it to `mapping.unmapped` with a short reason. tools/validate_data.py fails the build if any sign would fall off the map, so this is not optional.
-            6. Validate your work by running these THREE commands ONE AT A TIME, each as its own separate Bash call (do NOT chain them with && — a chained command is not permitted and will be denied). Fix your JSON and re-run until all three pass:
-               - `python3 enrichment/build_enrichment.py`
-               - `python3 tools/check_provenance.py`
-               - `python3 tools/validate_data.py`   (this also gates the Brodmann map)
-            7. IP boundary: do NOT keep any document or full/long text in the repo. The only files you should change are enrichment/intake_findings.json and, if a new sub-region needs a mapping, data/brodmann_map.json.
-            8. Do NOT run git and do NOT open a pull request — leave the file changed for the publishing step.
-            9. Write a short summary to /tmp/intake_summary.txt: for each paper processed, its name, how many findings you added, their source pages, and which sign(s) they attach to. If you added nothing usable from a paper, say so and why.
-
-      # Publish step. Rebuilds the branch fresh from main and commits/opens the PR
-      # under a neutral CI identity, so nothing carries the extraction step's author.
-      - name: Open the pull request
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -e
-          BR="intake/issue-${{ steps.ctx.outputs.number }}"
-          SUM="$(cat /tmp/intake_summary.txt 2>/dev/null || echo '')"
-          cp enrichment/intake_findings.json /tmp/intake_findings.json
-          cp data/brodmann_map.json /tmp/brodmann_map.json
-          # Authenticate git with the job's own token. The extraction step revokes
-          # the credential it set up when it finishes, so a plain push has no valid
-          # auth; use GITHUB_TOKEN directly and drop any leftover auth header.
-          git config --unset-all "http.https://github.com/.extraheader" 2>/dev/null || true
-          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-          git config user.name "atlas-intake"
-          git config user.email "atlas-intake@users.noreply.github.com"
-          git fetch origin main
-          git checkout -B "$BR" origin/main
-          cp /tmp/intake_findings.json enrichment/intake_findings.json
-          cp /tmp/brodmann_map.json data/brodmann_map.json
-          python3 enrichment/build_enrichment.py
-          if git diff --quiet -- enrichment/intake_findings.json enrichment/enrichment.json data/brodmann_map.json; then
-            gh issue comment "${{ steps.ctx.outputs.number }}" --body "Reviewed the submitted document — no changes to publish. ${SUM}"
-            exit 0
-          fi
-          git add enrichment/intake_findings.json enrichment/enrichment.json data/brodmann_map.json
-          git commit -m "Intake: page-cited findings from issue #${{ steps.ctx.outputs.number }}"
-          git push -u origin "$BR"
-          # Try to open the PR automatically. If the repo has "Allow GitHub Actions to
-          # create and approve pull requests" enabled, this succeeds and the run is fully
-          # automatic. If that setting is OFF, gh fails with "GitHub Actions is not
-          # permitted to create ... pull requests" — don't fail the run; the branch is
-          # already pushed, so hand the maintainer a one-click compare link instead.
-          PRBODY="Page-cited findings extracted from the submitted document. Only short attributed figures with their source pages were added; the document and full text were not committed. Review each finding against its cited page, then merge. ${SUM} Closes #${{ steps.ctx.outputs.number }}"
-          if PRURL="$(gh pr create --base main --head "$BR" \
-                --title "Intake: findings from issue #${{ steps.ctx.outputs.number }}" \
-                --body "$PRBODY" 2>/tmp/pr_err)"; then
-            gh issue comment "${{ steps.ctx.outputs.number }}" --body "Opened a pull request with the extracted findings for review: ${PRURL} ${SUM}"
-          else
-            CMP="${GITHUB_SERVER_URL:-https://github.com}/${GITHUB_REPOSITORY}/compare/main...${BR}?expand=1"
-            echo "gh pr create failed (see below); posting a one-click link instead:"; cat /tmp/pr_err || true
-            gh issue comment "${{ steps.ctx.outputs.number }}" --body "The extracted findings are pushed to branch \`${BR}\`, but GitHub Actions could not open the pull request automatically. This is a one-time repo setting: **Settings -> Actions -> General -> Workflow permissions -> enable \"Allow GitHub Actions to create and approve pull requests\"**, after which future intakes open their PR on their own. For now, open this one in a click: ${CMP} ${SUM}"
-          fi
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              body
+            });
