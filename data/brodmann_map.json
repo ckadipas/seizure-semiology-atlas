@@ -1115,10 +1115,6 @@
    "Hypothalamic Hamartoma / Deep Subcortical": [
     "subcort"
    ],
-   "Frontal / Precentral Operculum (Brodmann 6 / 44)": [
-    "6",
-    "44"
-   ],
    "Multiregional / Propagation / EEG Correlates": []
   },
   "by_sign": {
@@ -1689,66 +1685,8 @@
      "4",
      "43"
     ]
-   },
-   "102": {
-    "sign": "Ictal central apnea (breathing cessation)",
-    "areas": [
-     "34",
-     "28"
-    ]
-   },
-   "103": {
-    "sign": "Postictal central apnea (breathing cessation)",
-    "areas": [
-     "34",
-     "28"
-    ]
-   },
-   "107": {
-    "sign": "Asymmetric terminal seizure activity (ending clonus/version ipsilateral to focus)",
-    "areas": [
-     "4",
-     "6"
-    ]
-   },
-   "108": {
-    "sign": "Immediate postictal speech (rapid resumption of speech right after seizure end)",
-    "areas": [
-     "22",
-     "39"
-    ]
-   },
-   "109": {
-    "sign": "Unilateral ictal pupillary dilatation (low-reliability)",
-    "areas": [
-     "6",
-     "8",
-     "9"
-    ]
-   },
-   "111": {
-    "sign": "Postictal dysphoria (temporal-plus network marker)",
-    "areas": [
-     "38",
-     "20",
-     "21",
-     "22",
-     "insula",
-     "11"
-    ]
-   },
-   "112": {
-    "sign": "Ability to warn at seizure onset (preserved aura reporting)",
-    "areas": [
-     "28",
-     "34",
-     "35",
-     "36"
-    ]
    }
   },
-  "unmapped": {
-   "110": "peri-ictal urinary urge - the record states no lobar localization"
-  }
+  "unmapped": {}
  }
 }

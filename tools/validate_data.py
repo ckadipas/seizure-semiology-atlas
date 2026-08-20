@@ -23,7 +23,7 @@ Checks:
      sub-regions agree; referenced areas exist; defined areas are drawn or
      buried.
 """
-import json, os, sys, csv
+import hashlib, json, os, sys, csv
 
 def _find_root(start):
     d = os.path.dirname(os.path.abspath(start))
@@ -103,6 +103,47 @@ for i, rec in enumerate(data):
     seen_ids[rid] = i
 
 sign_names = [r.get("sign", "").lower() for r in data]
+
+# ---- canonical owner-reviewed V30 evidence ledger ----
+ledger_path = os.path.join(ROOT, "enrichment", "corpus_findings.json")
+try:
+    ledger = json.load(open(ledger_path))
+except Exception as e:
+    err(f"cannot parse {ledger_path}: {e}"); ledger = None
+
+if ledger is not None:
+    canonical = hashlib.sha256(json.dumps(
+        data, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")).hexdigest()
+    if ledger.get("registry_value_digest") != canonical:
+        err("V30 ledger: pinned registry digest does not match data/semiology_data.json")
+    sources = ledger.get("sources", [])
+    findings = [row for source in sources for row in source.get("findings", [])]
+    refs = [row.get("source_finding_ref") for row in findings]
+    stats = [row.get("source_statistic_id") for row in findings if row.get("source_statistic_id")]
+    accounting = ledger.get("integration_accounting", {})
+    if len(refs) != len(set(refs)):
+        err("V30 ledger: duplicate source_finding_ref")
+    if len(stats) != len(set(stats)):
+        err("V30 ledger: duplicate source_statistic_id")
+    if accounting.get("source_reports") != len(sources):
+        err("V30 ledger: source-report accounting mismatch")
+    if accounting.get("public_ledger_findings") != len(findings):
+        err("V30 ledger: public-finding accounting mismatch")
+    if accounting.get("source_reported_statistics") != len(stats):
+        err("V30 ledger: source-statistic accounting mismatch")
+    if accounting.get("owner_reviewed_findings") != 1711 or len(findings) != 1710:
+        err("V30 ledger: owner-reviewed/public universe is not 1,711/1,710")
+    if ledger.get("excluded_finding_refs") != ["0e7aef2f494877ca4d7698305008de3f23489f26d2dffda02f58391171923e8d:F045"]:
+        err("V30 ledger: owner exclusion set changed")
+    for row in findings:
+        ref = row.get("source_finding_ref", "?")
+        expected = None if row.get("measure") == "NOT_QUANTITATIVE" else f"STAT:{ref}"
+        if row.get("source_statistic_id") != expected:
+            err(f"V30 ledger: statistic identity mismatch for {ref}")
+        mapped = row.get("exact_sign_ids", []) + row.get("related_sign_ids", [])
+        if not set(mapped).issubset(seen_ids):
+            err(f"V30 ledger: {ref} maps outside the immutable sign registry")
 
 # ---- 4: enrichment ----
 enr_path = os.path.join(ROOT, "enrichment", "enrichment.json")
@@ -215,6 +256,8 @@ else:
 n = len(data)
 print(f"Validated {n} signs, {len(enr.get('evidence', {})) if enr else 0} evidence keys, "
       f"{len(enr.get('papers', [])) if enr else 0} papers.")
+if ledger:
+    print(f"Validated V30 ledger: {len(sources)} sources, {len(findings)} findings, {len(stats)} unique statistics.")
 if bmap:
     _mapped = sum(1 for r in rendered if (by_sign.get(str(r.get('id')), {}).get('areas')
                                           or by_sub.get(r.get('sub'))))

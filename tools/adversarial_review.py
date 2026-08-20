@@ -1,4 +1,75 @@
 #!/usr/bin/env python3
+"""Independent deterministic audit of the canonical V30 evidence ledger."""
+
+from collections import Counter as _Counter
+import json as _json
+from pathlib import Path as _Path
+import sys as _sys
+
+
+def _v30_audit() -> int:
+    root = _Path(__file__).resolve().parents[1]
+    ledger = _json.loads((root / "enrichment" / "corpus_findings.json").read_text(encoding="utf-8"))
+    index = _json.loads((root / "enrichment" / "evidence_index.json").read_text(encoding="utf-8"))
+    rows = [row for source in ledger["sources"] for row in source["findings"]]
+    refs = [row["source_finding_ref"] for row in rows]
+    stats = [row["source_statistic_id"] for row in rows if row["source_statistic_id"]]
+    flags = []
+
+    def flag(kind, ref, detail):
+        flags.append({"kind": kind, "source_finding_ref": ref, "detail": detail})
+
+    for ref, count in _Counter(refs).items():
+        if count != 1:
+            flag("DUPLICATE_FINDING_IDENTITY", ref, f"appears {count} times")
+    for stat, count in _Counter(stats).items():
+        if count != 1:
+            flag("DUPLICATE_STATISTIC_IDENTITY", stat, f"appears {count} times")
+    if ledger["integration_accounting"] != index["accounting"]:
+        flag("INDEX_ACCOUNTING_DRIFT", "evidence_index.json", "index accounting differs from ledger")
+
+    indexed = {}
+    for row in rows:
+        ref = row["source_finding_ref"]
+        if row["source_statistic_id"] not in (None, f"STAT:{ref}"):
+            flag("STATISTIC_IDENTITY_MISMATCH", ref, "statistic identity does not derive from finding identity")
+        if row["source_statistic_id"] is None and row["measure"] != "NOT_QUANTITATIVE":
+            flag("MISSING_STATISTIC_IDENTITY", ref, "quantitative finding lacks statistic identity")
+        if row["source_statistic_id"] and row["measure"] == "NOT_QUANTITATIVE":
+            flag("SPURIOUS_STATISTIC_IDENTITY", ref, "nonquantitative finding has statistic identity")
+        if row["evidence_role"] not in {"PRIMARY_RESULT", "CASE_OBSERVATION"} and row["independent_evidence"]:
+            flag("NONPRIMARY_MARKED_INDEPENDENT", ref, "contextual evidence cannot count as an independent primary study")
+        for sign_id in row["exact_sign_ids"]:
+            indexed.setdefault(str(sign_id), {"exact": [], "related": []})["exact"].append(ref)
+        for sign_id in row["related_sign_ids"]:
+            indexed.setdefault(str(sign_id), {"exact": [], "related": []})["related"].append(ref)
+
+    if indexed != index["by_sign_id"]:
+        flag("SIGN_INDEX_DRIFT", "evidence_index.json", "explicit sign links differ from the canonical ledger")
+    excluded = set(ledger["excluded_finding_refs"])
+    if excluded & set(refs):
+        flag("EXCLUDED_FINDING_PRESENT", next(iter(excluded & set(refs))), "owner-excluded finding entered public rows")
+
+    output = {
+        "_doc": "Independent deterministic V30 audit; no scientific values are copied here.",
+        "schema_version": "v30-public-adversarial-audit-1.0.0",
+        "status": "CLEAR" if not flags else "FAILED",
+        "source_ledger": "corpus_findings.json",
+        "accounting": ledger["integration_accounting"],
+        "summary": dict(sorted(_Counter(item["kind"] for item in flags).items())),
+        "flags": flags,
+    }
+    (root / "enrichment" / "review_flags.json").write_text(
+        _json.dumps(output, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+    print("V30 adversarial audit:", "clear" if not flags else output["summary"])
+    return 1 if flags else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(_v30_audit())
+raise SystemExit("This command-line audit is not an importable scientific analysis module.")
+
 """Deterministic source-review checks.
 
 Catches the checkable failure modes the resource must guard against as new

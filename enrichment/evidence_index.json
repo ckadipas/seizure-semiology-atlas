@@ -1,0 +1,568 @@
+{
+  "_doc": "Generated reference-only index. Scientific text and values remain solely in corpus_findings.json.",
+  "accounting": {
+    "alternate_version_findings_not_independent": 38,
+    "mapping_relations": {
+      "EXACT": 6,
+      "NOT_APPLICABLE": 2,
+      "PROSPECTIVE": 1700,
+      "RELATED": 2
+    },
+    "owner_accepted_findings": 1711,
+    "owner_excluded_findings": 1,
+    "owner_reviewed_findings": 1711,
+    "public_ledger_findings": 1710,
+    "source_reported_statistics": 1216,
+    "source_reports": 57
+  },
+  "by_sign_id": {
+    "12": {
+      "exact": [
+        "d66043e5db58e4ecaaf4a9a3379a7e349737ddb2c9a45284aa758adda06b9f77:F001"
+      ],
+      "related": [
+        "d66043e5db58e4ecaaf4a9a3379a7e349737ddb2c9a45284aa758adda06b9f77:F012"
+      ]
+    },
+    "13": {
+      "exact": [],
+      "related": [
+        "d66043e5db58e4ecaaf4a9a3379a7e349737ddb2c9a45284aa758adda06b9f77:F002"
+      ]
+    },
+    "24": {
+      "exact": [
+        "b283713890337bc48915ca7ce0f9d717cba93d2f38d938639f8ed308175a9e99:F019",
+        "9cb85ea30c287c921762c7bb1fe98adc138efa7f3ee91fe772b153fd5cf522b5:F015",
+        "ac0cc5e501a90e7653d955e1742f3157405c76d32307018a86e1b2e92893131e:F032"
+      ],
+      "related": []
+    },
+    "25": {
+      "exact": [
+        "b283713890337bc48915ca7ce0f9d717cba93d2f38d938639f8ed308175a9e99:F018",
+        "9cb85ea30c287c921762c7bb1fe98adc138efa7f3ee91fe772b153fd5cf522b5:F011"
+      ],
+      "related": []
+    }
+  },
+  "registry_value_digest": "011a475e4150f8a8c2813e3b928cbcd9cd0746a2c44b4b41747b45317263963e",
+  "review_release": "v30-bounded-review-2026-08-10",
+  "schema_version": "v30-public-evidence-index-1.0.0",
+  "source_ledger": "corpus_findings.json",
+  "sources": [
+    {
+      "finding_count": 24,
+      "page_count": 12,
+      "source_file": "aron-jonas-language-mapping-stereo-electroencephalography-review-expert-opinion-2021.pdf",
+      "source_sha256": "7bec53ec1fcd89716f458df52efb6be841623db1925af45f20fa30ba3b3671aa",
+      "source_version_role": "CANONICAL_REVIEWED_VERSION",
+      "statistic_count": 12,
+      "work_id": "WORK:7bec53ec1fcd89716f458df52efb6be841623db1925af45f20fa30ba3b3671aa"
+    },
+    {
+      "finding_count": 86,
+      "page_count": 11,
+      "source_file": "barba-temporal-plus-epilepsy-clinical-scalp-eeg-2007.pdf",
+      "source_sha256": "0e7aef2f494877ca4d7698305008de3f23489f26d2dffda02f58391171923e8d",
+      "source_version_role": "CANONICAL_REVIEWED_VERSION",
+      "statistic_count": 86,
+      "work_id": "WORK:0e7aef2f494877ca4d7698305008de3f23489f26d2dffda02f58391171923e8d"
+    },
+    {
+      "finding_count": 66,
+      "page_count": 10,
+      "source_file": "blair-temporal-lobe-epilepsy-semiology-2012.pdf",
+      "source_sha256": "52950ebe18cb493922760850975f34ceee80145252ca4c3a6f7bc4b603ac0d22",
+      "source_version_role": "CANONICAL_REVIEWED_VERSION",
+      "statistic_count": 21,
+      "work_id": "WORK:52950ebe18cb493922760850975f34ceee80145252ca4c3a6f7bc4b603ac0d22"
+    },
+    {
+      "finding_count": 13,
+      "page_count": 14,
+      "source_file": "bonini-frontal-lobe-seizures-clinical-semiology-localization-2014-46edb4.pdf",
+      "source_sha256": "46edb41f5eaab9ce5f7a363921708059b697f36c5daf30866175682dfb96a943",
+      "source_version_role": "ALTERNATE_REVIEWED_VERSION",
+      "statistic_count": 13,
+      "work_id": "WORK:BONINI-FRONTAL-SEIZURES-2014"
+    },
+    {
+      "finding_count": 15,
+      "page_count": 14,
+      "source_file": "bonini-frontal-lobe-seizures-clinical-semiology-localization-2014-838eb8.pdf",
+      "source_sha256": "838eb8efdc0ace76ac2bbb986da74f9ca269cc05b58e493491fe661d5a27adcd",
+      "source_version_role": "CANONICAL_REVIEWED_VERSION",
+      "statistic_count": 11,
+      "work_id": "WORK:BONINI-FRONTAL-SEIZURES-2014"
+    },
+    {
+      "finding_count": 30,
+      "page_count": 10,
+      "source_file": "chauvel-mcgonigal-emergence-semiology-epileptic-seizures-2014.pdf",
+      "source_sha256": "881b969277ac1e5dda27eee6f0d1b622d8be2780cd3087631c40e82f410eec41",
+      "source_version_role": "CANONICAL_REVIEWED_VERSION",
+      "statistic_count": 30,
+      "work_id": "WORK:881b969277ac1e5dda27eee6f0d1b622d8be2780cd3087631c40e82f410eec41"
+    },
+    {
+      "finding_count": 36,
+      "page_count": 12,
+      "source_file": "chowdhury-localisation-focal-epilepsy-practical-guide-2021.pdf",
+      "source_sha256": "a9b79f4b10172fdb3a70a0f1987877f949a1cfff87ee93f50e587836ed4c5903",
+      "source_version_role": "CANONICAL_REVIEWED_VERSION",
+      "statistic_count": 30,
+      "work_id": "WORK:a9b79f4b10172fdb3a70a0f1987877f949a1cfff87ee93f50e587836ed4c5903"
+    },
+    {
+      "finding_count": 22,
+      "page_count": 12,
+      "source_file": "cossette-roberge-localizing-lateralizing-auditory-phenomena-seizures-2023.pdf",
+      "source_sha256": "d86d6791cf817e475cda92a736b500917c4ad9174c7b96b5c65494025d5faeb8",
+      "source_version_role": "CANONICAL_REVIEWED_VERSION",
+      "statistic_count": 22,
+      "work_id": "WORK:d86d6791cf817e475cda92a736b500917c4ad9174c7b96b5c65494025d5faeb8"
+    },
+    {
+      "finding_count": 28,
+      "page_count": 5,
+      "source_file": "e236615-full.pdf",
+      "source_sha256": "9970703da6e2e98f5513a2bd27dfdf66a64995c85df843382882ddc75cfb9b99",
+      "source_version_role": "CANONICAL_REVIEWED_VERSION",
+      "statistic_count": 23,
+      "work_id": "WORK:9970703da6e2e98f5513a2bd27dfdf66a64995c85df843382882ddc75cfb9b99"
+    },
+    {
+      "finding_count": 32,
+      "page_count": 6,
+      "source_file": "elwan-kotagal-lateralizing-localizing-seizure-semiology-2018.pdf",
+      "source_sha256": "43ae1d2abedcc154dfb74bf058ef7851e5b095e1e5e3b03178afafe87d88f3c1",
+      "source_version_role": "CANONICAL_REVIEWED_VERSION",
+      "statistic_count": 26,
+      "work_id": "WORK:43ae1d2abedcc154dfb74bf058ef7851e5b095e1e5e3b03178afafe87d88f3c1"
+    },
+    {
+      "finding_count": 24,
+      "page_count": 3,
+      "source_file": "epilepsy-fellowship-handbook-semiologyreferences.pdf",
+      "source_sha256": "5d618c0d9007f2f360674cbd33afd624eb673162b76d4435bf10564c6e647eba",
+      "source_version_role": "CANONICAL_REVIEWED_VERSION",
+      "statistic_count": 0,
+      "work_id": "WORK:5d618c0d9007f2f360674cbd33afd624eb673162b76d4435bf10564c6e647eba"
+    },
+    {
+      "finding_count": 34,
+      "page_count": 7,
+      "source_file": "fakhoury-right-left-temporal-lobe-clinical-features-1994.pdf",
+      "source_sha256": "b283713890337bc48915ca7ce0f9d717cba93d2f38d938639f8ed308175a9e99",
+      "source_version_role": "CANONICAL_REVIEWED_VERSION",
+      "statistic_count": 33,
+      "work_id": "WORK:b283713890337bc48915ca7ce0f9d717cba93d2f38d938639f8ed308175a9e99"
+    },
+    {
+      "finding_count": 34,
+      "page_count": 16,
+      "source_file": "foldvary-focal-epilepsy-surgical-evaluation-comprehensive-clinical-neurophysiology-2000.pdf",
+      "source_sha256": "95a6693fe06f39be770d9c59c97dff76db233cb2137997d2500d39c609c4a3f6",
+      "source_version_role": "CANONICAL_REVIEWED_VERSION",
+      "statistic_count": 23,
+      "work_id": "WORK:95a6693fe06f39be770d9c59c97dff76db233cb2137997d2500d39c609c4a3f6"
+    },
+    {
+      "finding_count": 62,
+      "page_count": 7,
+      "source_file": "foldvary-schaefer-localizing-lateralizing-auras-seizures-2011.pdf",
+      "source_sha256": "aeafb1491b3286522cc8df6e0439ac75cf87452a0c00daab46ff46a684217a1b",
+      "source_version_role": "CANONICAL_REVIEWED_VERSION",
+      "statistic_count": 25,
+      "work_id": "WORK:aeafb1491b3286522cc8df6e0439ac75cf87452a0c00daab46ff46a684217a1b"
+    },
+    {
+      "finding_count": 47,
+      "page_count": 30,
+      "source_file": "frazzini-cousyn-navarro-semiology-eeg-neuroimaging-temporal-lobe-epilepsies-2022.pdf",
+      "source_sha256": "e2a31e202e598680ecd25a54c4dfd59f7e13d8a93b68b870a495fa392d848d93",
+      "source_version_role": "CANONICAL_REVIEWED_VERSION",
+      "statistic_count": 27,
+      "work_id": "WORK:e2a31e202e598680ecd25a54c4dfd59f7e13d8a93b68b870a495fa392d848d93"
+    },
+    {
+      "finding_count": 28,
+      "page_count": 6,
+      "source_file": "gabr-speech-manifestations-lateralization-temporal-lobe-seizures-1989.pdf",
+      "source_sha256": "9cb85ea30c287c921762c7bb1fe98adc138efa7f3ee91fe772b153fd5cf522b5",
+      "source_version_role": "CANONICAL_REVIEWED_VERSION",
+      "statistic_count": 27,
+      "work_id": "WORK:9cb85ea30c287c921762c7bb1fe98adc138efa7f3ee91fe772b153fd5cf522b5"
+    },
+    {
+      "finding_count": 20,
+      "page_count": 11,
+      "source_file": "gibbs-clinical-features-sleep-related-hypermotor-epilepsy-2019.pdf",
+      "source_sha256": "89dc77715902f6c6cc557986ec111a8d4b794d9770e21d1cd49b4a67f011bbb6",
+      "source_version_role": "CANONICAL_REVIEWED_VERSION",
+      "statistic_count": 20,
+      "work_id": "WORK:89dc77715902f6c6cc557986ec111a8d4b794d9770e21d1cd49b4a67f011bbb6"
+    },
+    {
+      "finding_count": 0,
+      "page_count": 16,
+      "source_file": "hauser-incidence-epilepsy-unprovoked-seizures-rochester-1935-1984-1993.pdf",
+      "source_sha256": "e6f57f89bbf5fa8dfd862da284067b5ec9f16a1485f2d4599e5145522de471ee",
+      "source_version_role": "CANONICAL_REVIEWED_VERSION",
+      "statistic_count": 0,
+      "work_id": "WORK:e6f57f89bbf5fa8dfd862da284067b5ec9f16a1485f2d4599e5145522de471ee"
+    },
+    {
+      "finding_count": 16,
+      "page_count": 10,
+      "source_file": "hickok-poeppel-cortical-organization-speech-processing-2007.pdf",
+      "source_sha256": "4d46e2ed0a0be5dc23e31b74eca951b19b14741ccfbd1c8d8f3fabda62365b74",
+      "source_version_role": "CANONICAL_REVIEWED_VERSION",
+      "statistic_count": 16,
+      "work_id": "WORK:4d46e2ed0a0be5dc23e31b74eca951b19b14741ccfbd1c8d8f3fabda62365b74"
+    },
+    {
+      "finding_count": 40,
+      "page_count": 7,
+      "source_file": "hwang-painful-seizures-review-ictal-pain-2019.pdf",
+      "source_sha256": "f08187583ea2406ba6088572df3881fc0a38fd0c402355acbaaf35fc9e020afc",
+      "source_version_role": "CANONICAL_REVIEWED_VERSION",
+      "statistic_count": 28,
+      "work_id": "WORK:f08187583ea2406ba6088572df3881fc0a38fd0c402355acbaaf35fc9e020afc"
+    },
+    {
+      "finding_count": 15,
+      "page_count": 5,
+      "source_file": "ictal-paraphasia-atypical-temporal-lobe-epilepsy.pdf",
+      "source_sha256": "356eb97c5ebb3e1ba39f8003fbaae43459f7b0446a7672c3a5e73a7f483f626c",
+      "source_version_role": "CANONICAL_REVIEWED_VERSION",
+      "statistic_count": 12,
+      "work_id": "WORK:356eb97c5ebb3e1ba39f8003fbaae43459f7b0446a7672c3a5e73a7f483f626c"
+    },
+    {
+      "finding_count": 18,
+      "page_count": 6,
+      "source_file": "ictal-speech-disturbance-cerebral-dominance.pdf",
+      "source_sha256": "ddd1383b739e47e120bcf6addb0757656b858d2e212cf3dffc1385f6472c65f5",
+      "source_version_role": "CANONICAL_REVIEWED_VERSION",
+      "statistic_count": 18,
+      "work_id": "WORK:ddd1383b739e47e120bcf6addb0757656b858d2e212cf3dffc1385f6472c65f5"
+    },
+    {
+      "finding_count": 30,
+      "page_count": 9,
+      "source_file": "isnard-french-guidelines-stereoelectroencephalography-2018.pdf",
+      "source_sha256": "36336f172c8da2a34f4608b4dc2b850f9ccc40362e1b4293fecabc23cef094f2",
+      "source_version_role": "CANONICAL_REVIEWED_VERSION",
+      "statistic_count": 8,
+      "work_id": "WORK:36336f172c8da2a34f4608b4dc2b850f9ccc40362e1b4293fecabc23cef094f2"
+    },
+    {
+      "finding_count": 9,
+      "page_count": 11,
+      "source_file": "jain-bottom-of-sulcus-dysplasia-surgical-outcomes-2021.pdf",
+      "source_sha256": "4459093d296f5b521e741942124a3c3193f93f423ac236ed41cf57a8976f94ca",
+      "source_version_role": "CANONICAL_REVIEWED_VERSION",
+      "statistic_count": 4,
+      "work_id": "WORK:4459093d296f5b521e741942124a3c3193f93f423ac236ed41cf57a8976f94ca"
+    },
+    {
+      "finding_count": 54,
+      "page_count": 7,
+      "source_file": "khoo-semiology-epileptogenic-zone-frontal-surgery-2023.pdf",
+      "source_sha256": "1f4eb2009a9f7eb4dfcf1b7a3e949ee1f30cd8aa1ee864ffcc4479e55b87f82e",
+      "source_version_role": "CANONICAL_REVIEWED_VERSION",
+      "statistic_count": 40,
+      "work_id": "WORK:1f4eb2009a9f7eb4dfcf1b7a3e949ee1f30cd8aa1ee864ffcc4479e55b87f82e"
+    },
+    {
+      "finding_count": 79,
+      "page_count": 10,
+      "source_file": "kinney-structured-testing-ictal-postictal-video-eeg-2019.pdf",
+      "source_sha256": "9a14fbcd35ca3c487b176d550da221ddcb7e9a9bd4e4abe29b6f0eee30574307",
+      "source_version_role": "CANONICAL_REVIEWED_VERSION",
+      "statistic_count": 46,
+      "work_id": "WORK:9a14fbcd35ca3c487b176d550da221ddcb7e9a9bd4e4abe29b6f0eee30574307"
+    },
+    {
+      "finding_count": 34,
+      "page_count": 6,
+      "source_file": "kotagal-asymmetric-tonic-limb-posturing-secondarily-generalized.pdf",
+      "source_sha256": "a62ba9cddbbfbef27339bb56336402938c84e344dec6549938ae1918f3240705",
+      "source_version_role": "CANONICAL_REVIEWED_VERSION",
+      "statistic_count": 27,
+      "work_id": "WORK:a62ba9cddbbfbef27339bb56336402938c84e344dec6549938ae1918f3240705"
+    },
+    {
+      "finding_count": 29,
+      "page_count": 23,
+      "source_file": "lacuey-ictal-central-apnea-predictive-mesial-temporal-seizure-onset-2024.pdf",
+      "source_sha256": "cb4c9ebf2321162e4e8b35f59949f51fcb2588be51082d34f3b9a8238321d60f",
+      "source_version_role": "CANONICAL_REVIEWED_VERSION",
+      "statistic_count": 29,
+      "work_id": "WORK:cb4c9ebf2321162e4e8b35f59949f51fcb2588be51082d34f3b9a8238321d60f"
+    },
+    {
+      "finding_count": 38,
+      "page_count": 93,
+      "source_file": "laoprasert-stereoelectroencephalography-seeg-mset-2018.pdf",
+      "source_sha256": "9fe2aa351d7dd3bb1cd77b64817762bae558fd45b20bd038c9c80237068b3898",
+      "source_version_role": "CANONICAL_REVIEWED_VERSION",
+      "statistic_count": 38,
+      "work_id": "WORK:9fe2aa351d7dd3bb1cd77b64817762bae558fd45b20bd038c9c80237068b3898"
+    },
+    {
+      "finding_count": 10,
+      "page_count": 9,
+      "source_file": "loddenkemper-five-dimensional-patient-oriented-epilepsy-classification-2005.pdf",
+      "source_sha256": "57abbcc3af9462d41491bd8a91a25779835ac80cf3052daf9f7ead1e7896261e",
+      "source_version_role": "CANONICAL_REVIEWED_VERSION",
+      "statistic_count": 6,
+      "work_id": "WORK:57abbcc3af9462d41491bd8a91a25779835ac80cf3052daf9f7ead1e7896261e"
+    },
+    {
+      "finding_count": 117,
+      "page_count": 17,
+      "source_file": "loddenkemper-lateralizing-signs-during-seizures-in-focal-epilepsy-2005.pdf",
+      "source_sha256": "eae56edd0ca62bd93d07cdfcdc6b4f9320080025717e247f9bed2e66b5283159",
+      "source_version_role": "CANONICAL_REVIEWED_VERSION",
+      "statistic_count": 96,
+      "work_id": "WORK:eae56edd0ca62bd93d07cdfcdc6b4f9320080025717e247f9bed2e66b5283159"
+    },
+    {
+      "finding_count": 42,
+      "page_count": 8,
+      "source_file": "luders-semiological-seizure-classification-1998.pdf",
+      "source_sha256": "f7d4c7278e1e54d1ce4a9a948757f08807adbcda12bc08e9af71d24d17af4f2a",
+      "source_version_role": "CANONICAL_REVIEWED_VERSION",
+      "statistic_count": 11,
+      "work_id": "WORK:f7d4c7278e1e54d1ce4a9a948757f08807adbcda12bc08e9af71d24d17af4f2a"
+    },
+    {
+      "finding_count": 58,
+      "page_count": 10,
+      "source_file": "maillard-semiologic-electrophysiologic-temporal-seizure-subtypes-2004.pdf",
+      "source_sha256": "ac0cc5e501a90e7653d955e1742f3157405c76d32307018a86e1b2e92893131e",
+      "source_version_role": "CANONICAL_REVIEWED_VERSION",
+      "statistic_count": 47,
+      "work_id": "WORK:ac0cc5e501a90e7653d955e1742f3157405c76d32307018a86e1b2e92893131e"
+    },
+    {
+      "finding_count": 12,
+      "page_count": 23,
+      "source_file": "marashly-ictal-motor-sequences-lateralization-localization-values-2016.pdf",
+      "source_sha256": "c824399545b3427f14a20f00453bff7545f2ab64c291d7098ca60e4419a44ee4",
+      "source_version_role": "CANONICAL_REVIEWED_VERSION",
+      "statistic_count": 12,
+      "work_id": "WORK:c824399545b3427f14a20f00453bff7545f2ab64c291d7098ca60e4419a44ee4"
+    },
+    {
+      "finding_count": 36,
+      "page_count": 8,
+      "source_file": "mazzola-electrical-stimulation-human-insula-ictal-semiology-2017.pdf",
+      "source_sha256": "84c9d7bc1afb66870d2b8f8d1a657ee302d556ed87791b942d30db125df7a866",
+      "source_version_role": "CANONICAL_REVIEWED_VERSION",
+      "statistic_count": 33,
+      "work_id": "WORK:84c9d7bc1afb66870d2b8f8d1a657ee302d556ed87791b942d30db125df7a866"
+    },
+    {
+      "finding_count": 16,
+      "page_count": 9,
+      "source_file": "mcgonigal-frontal-lobe-seizures-overview-update-2022.pdf",
+      "source_sha256": "6578689151c79970c17ed5ce908b01ad2911fc8947b6f3a1eaca5e4b7f9fffbd",
+      "source_version_role": "CANONICAL_REVIEWED_VERSION",
+      "statistic_count": 5,
+      "work_id": "WORK:6578689151c79970c17ed5ce908b01ad2911fc8947b6f3a1eaca5e4b7f9fffbd"
+    },
+    {
+      "finding_count": 25,
+      "page_count": 17,
+      "source_file": "mcgonigal-on-seizure-semiology-2021-5ba29d.pdf",
+      "source_sha256": "5ba29d8fff1fb0a9e4f35fe6dad5eaa5f812a79f383ca932101d512f2523210c",
+      "source_version_role": "ALTERNATE_REVIEWED_VERSION",
+      "statistic_count": 19,
+      "work_id": "WORK:MCGONIGAL-ON-SEIZURE-SEMIOLOGY-2021"
+    },
+    {
+      "finding_count": 30,
+      "page_count": 17,
+      "source_file": "mcgonigal-on-seizure-semiology-2021-9127f2.pdf",
+      "source_sha256": "9127f26d984caa1da7621bc86e581c2e4f60961eadccc63461ae1d0648ef8ffd",
+      "source_version_role": "CANONICAL_REVIEWED_VERSION",
+      "statistic_count": 18,
+      "work_id": "WORK:MCGONIGAL-ON-SEIZURE-SEMIOLOGY-2021"
+    },
+    {
+      "finding_count": 30,
+      "page_count": 12,
+      "source_file": "meletti-persistent-postictal-central-apnea-focal-seizures-2025.pdf",
+      "source_sha256": "d113b08ece6d0bfb0e6d04af412b953b1dbae599ec490dfa7f7cf573ad0f083d",
+      "source_version_role": "CANONICAL_REVIEWED_VERSION",
+      "statistic_count": 28,
+      "work_id": "WORK:d113b08ece6d0bfb0e6d04af412b953b1dbae599ec490dfa7f7cf573ad0f083d"
+    },
+    {
+      "finding_count": 38,
+      "page_count": 473,
+      "source_file": "misulis-sonmezturk-ess-abou-khalil-atlas-eeg-seizure-semiology-management-3e-2022.pdf",
+      "source_sha256": "6b82977f237c5f31dbc0b007a017f02ae4b34229770460dc333a7c2ff680264c",
+      "source_version_role": "CANONICAL_REVIEWED_VERSION",
+      "statistic_count": 15,
+      "work_id": "WORK:6b82977f237c5f31dbc0b007a017f02ae4b34229770460dc333a7c2ff680264c"
+    },
+    {
+      "finding_count": 14,
+      "page_count": 5,
+      "source_file": "montavont-ictal-dysprosody-nondominant-frontal-operculum-2005.pdf",
+      "source_sha256": "170eed12619641ab9195430d8857c88bb8dd8541b087c1f7ced34a366e90d4f6",
+      "source_version_role": "CANONICAL_REVIEWED_VERSION",
+      "statistic_count": 10,
+      "work_id": "WORK:170eed12619641ab9195430d8857c88bb8dd8541b087c1f7ced34a366e90d4f6"
+    },
+    {
+      "finding_count": 17,
+      "page_count": 11,
+      "source_file": "ochoa-urrea-sudep-risk-markers-prospective-cohort-2025.pdf",
+      "source_sha256": "299cb94912e94c9a2598c9a5a6073d008f79531ba5078be669e0ee9759ef6a52",
+      "source_version_role": "CANONICAL_REVIEWED_VERSION",
+      "statistic_count": 17,
+      "work_id": "WORK:299cb94912e94c9a2598c9a5a6073d008f79531ba5078be669e0ee9759ef6a52"
+    },
+    {
+      "finding_count": 18,
+      "page_count": 4,
+      "source_file": "palinacousis-seven-new-cases.pdf",
+      "source_sha256": "8ab42a9f05b15892f322f5d94b546d369e0f86c3e1676efeefdd9c3f1312f62d",
+      "source_version_role": "CANONICAL_REVIEWED_VERSION",
+      "statistic_count": 13,
+      "work_id": "WORK:8ab42a9f05b15892f322f5d94b546d369e0f86c3e1676efeefdd9c3f1312f62d"
+    },
+    {
+      "finding_count": 22,
+      "page_count": 18,
+      "source_file": "pana-nguyen-operculo-insular-epilepsy-stereo-eeg-2020.pdf",
+      "source_sha256": "91e3f610c391e10a2b1e54b8caed3c57fd8596107ea1c8d453378b10bbcf0c2c",
+      "source_version_role": "CANONICAL_REVIEWED_VERSION",
+      "statistic_count": 7,
+      "work_id": "WORK:91e3f610c391e10a2b1e54b8caed3c57fd8596107ea1c8d453378b10bbcf0c2c"
+    },
+    {
+      "finding_count": 13,
+      "page_count": 12,
+      "source_file": "pitkaniemi-hodological-organization-spoken-language-production-singing-2023.pdf",
+      "source_sha256": "00ed1b679346a20f6a8cdc57dd0df6be43a1ebe38f49c0871c55a2a5e1a276bb",
+      "source_version_role": "CANONICAL_REVIEWED_VERSION",
+      "statistic_count": 9,
+      "work_id": "WORK:00ed1b679346a20f6a8cdc57dd0df6be43a1ebe38f49c0871c55a2a5e1a276bb"
+    },
+    {
+      "finding_count": 16,
+      "page_count": 14,
+      "source_file": "popa-illusory-own-body-perceptions-cingulate-cortex-intracranial-stimulation-2019.pdf",
+      "source_sha256": "01b229597287c78ffc82bb96ac1e4f74f2cfc1b5fa956c8e26a3ba5ece81f85d",
+      "source_version_role": "CANONICAL_REVIEWED_VERSION",
+      "statistic_count": 9,
+      "work_id": "WORK:01b229597287c78ffc82bb96ac1e4f74f2cfc1b5fa956c8e26a3ba5ece81f85d"
+    },
+    {
+      "finding_count": 26,
+      "page_count": 8,
+      "source_file": "roh-lateralizing-value-ictal-behaviors-temporal-lobe-epilepsy-1996.pdf",
+      "source_sha256": "141b82804de1ffa01167d99a32aa9a81b84e24e9520b36fe6842c85318546589",
+      "source_version_role": "CANONICAL_REVIEWED_VERSION",
+      "statistic_count": 16,
+      "work_id": "WORK:141b82804de1ffa01167d99a32aa9a81b84e24e9520b36fe6842c85318546589"
+    },
+    {
+      "finding_count": 20,
+      "page_count": 14,
+      "source_file": "serafetinides-falconer-speech-disturbances-temporal-lobe-seizures-100-patients-1963.pdf",
+      "source_sha256": "7ecc169667424bb161184b4ae9c62b662ecdff9dfcef6cebd3528744b3fe162b",
+      "source_version_role": "CANONICAL_REVIEWED_VERSION",
+      "statistic_count": 20,
+      "work_id": "WORK:7ecc169667424bb161184b4ae9c62b662ecdff9dfcef6cebd3528744b3fe162b"
+    },
+    {
+      "finding_count": 4,
+      "page_count": 22,
+      "source_file": "simone-anatomo-functional-organization-insular-networks-2025.pdf",
+      "source_sha256": "e8b33ff7bc9e2e22608606a49a0ffecdfa24b759c7dde1b64e80349cb571a874",
+      "source_version_role": "CANONICAL_REVIEWED_VERSION",
+      "statistic_count": 0,
+      "work_id": "WORK:e8b33ff7bc9e2e22608606a49a0ffecdfa24b759c7dde1b64e80349cb571a874"
+    },
+    {
+      "finding_count": 9,
+      "page_count": 10,
+      "source_file": "sisodiya-malformations-cortical-development-epilepsy-2004.pdf",
+      "source_sha256": "fbb2bd7632fb6813e1ea2bd22f149d1840ca790c075dc0ab40bce507e6673b60",
+      "source_version_role": "CANONICAL_REVIEWED_VERSION",
+      "statistic_count": 1,
+      "work_id": "WORK:fbb2bd7632fb6813e1ea2bd22f149d1840ca790c075dc0ab40bce507e6673b60"
+    },
+    {
+      "finding_count": 23,
+      "page_count": 4,
+      "source_file": "suzuki-sensory-motor-networks-reflex-seizure-case-report-2017.pdf",
+      "source_sha256": "d048c61c68b6955bab1717bc0d3f0be0a31ab1b535c895f4aa80d6bfafa16fa0",
+      "source_version_role": "CANONICAL_REVIEWED_VERSION",
+      "statistic_count": 22,
+      "work_id": "WORK:d048c61c68b6955bab1717bc0d3f0be0a31ab1b535c895f4aa80d6bfafa16fa0"
+    },
+    {
+      "finding_count": 28,
+      "page_count": 25,
+      "source_file": "trebuchon-drane-electrical-stimulation-functional-mapping-seeg-2025.pdf",
+      "source_sha256": "3e45b11606ca013aae96bc66fb20e421a0020d189faa9030d200f305490bab62",
+      "source_version_role": "CANONICAL_REVIEWED_VERSION",
+      "statistic_count": 11,
+      "work_id": "WORK:3e45b11606ca013aae96bc66fb20e421a0020d189faa9030d200f305490bab62"
+    },
+    {
+      "finding_count": 43,
+      "page_count": 8,
+      "source_file": "tufenkjian-luders-seizure-semiology-localizing-epileptogenic-zone-2012.pdf",
+      "source_sha256": "9ade24256f2fb99977323630bcbd4d409e714e484ed58ab5a61728ab431a05b4",
+      "source_version_role": "CANONICAL_REVIEWED_VERSION",
+      "statistic_count": 19,
+      "work_id": "WORK:9ade24256f2fb99977323630bcbd4d409e714e484ed58ab5a61728ab431a05b4"
+    },
+    {
+      "finding_count": 29,
+      "page_count": 8,
+      "source_file": "unterberger-epileptic-aphasia-critical-appraisal-2021.pdf",
+      "source_sha256": "7e10a5c2f4b66152e1b29ed9f19dbdc7adb46a946d267641fa14fb7fcf7f29e7",
+      "source_version_role": "CANONICAL_REVIEWED_VERSION",
+      "statistic_count": 29,
+      "work_id": "WORK:7e10a5c2f4b66152e1b29ed9f19dbdc7adb46a946d267641fa14fb7fcf7f29e7"
+    },
+    {
+      "finding_count": 25,
+      "page_count": 13,
+      "source_file": "wang-electroclinical-insulo-opercular-epilepsy-seeg-pet-2019.pdf",
+      "source_sha256": "56ec76a1aa19ab963733d11a75475b96dcd04a9cd575afe26c2ed012d38d9c76",
+      "source_version_role": "CANONICAL_REVIEWED_VERSION",
+      "statistic_count": 23,
+      "work_id": "WORK:56ec76a1aa19ab963733d11a75475b96dcd04a9cd575afe26c2ed012d38d9c76"
+    },
+    {
+      "finding_count": 16,
+      "page_count": 7,
+      "source_file": "wyllie1986.pdf",
+      "source_sha256": "d66043e5db58e4ecaaf4a9a3379a7e349737ddb2c9a45284aa758adda06b9f77",
+      "source_version_role": "CANONICAL_REVIEWED_VERSION",
+      "statistic_count": 15,
+      "work_id": "WORK:d66043e5db58e4ecaaf4a9a3379a7e349737ddb2c9a45284aa758adda06b9f77"
+    },
+    {
+      "finding_count": 10,
+      "page_count": 10,
+      "source_file": "zhang-ipsiversive-ictal-eye-deviation-temporal-epilepsy-2017.pdf",
+      "source_sha256": "cdae0950f4f784efc0718dbe8f756721bc05c8801b54cf8ad8d59e78bb11d3e7",
+      "source_version_role": "CANONICAL_REVIEWED_VERSION",
+      "statistic_count": 10,
+      "work_id": "WORK:cdae0950f4f784efc0718dbe8f756721bc05c8801b54cf8ad8d59e78bb11d3e7"
+    }
+  ]
+}
