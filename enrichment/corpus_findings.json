@@ -512,8 +512,22 @@
      "value_text": "92% (n=12); 12/13 = 92%, p < 0.001",
      "n": 13,
      "population": "TLE patients with postictal dysphasia",
-     "locator": "Abstract; Results; Table 6",
-     "quote": "In 92% (n = 12) of patients with postictal dys-phasia, seizures originated from the dominant tem-poral lobe. ... 12/13 = 92%, p < 0.001."
+     "locator": "PDF p.1, abstract; PDF p.4, Table 6 and Results; PDF p.5, Discussion and conclusion",
+     "quote": "In 92% (n = 12) of patients with postictal dysphasia, seizures originated from the dominant temporal lobe.",
+     "card_ids": [
+      24
+     ],
+     "source_finding_ref": "9cb85ea30c287c921762c7bb1fe98adc138efa7f3ee91fe772b153fd5cf522b5:F015",
+     "source_review_release": "v30-bounded-review-2026-08-10",
+     "source_report_sha256": "9861a65a5eea63218e163c8f2709b1d7be19a2a467267f40b7bd3f67703670c7",
+     "evidence_role": "PRIMARY_RESULT",
+     "phase": "postictal",
+     "numerator": "12 dominant-origin patients; 1 nondominant-origin patient",
+     "denominator": "13 patients with postictal dysphasia",
+     "analysis_unit": "patient",
+     "comparator": "dominant-origin versus nondominant-origin patients with postictal dysphasia",
+     "uncertainty": "chi-square p < 0.001",
+     "limitations": "The source discusses isolated paraphasia as a small exception/caveat and reports limited ability to perform thorough ictal aphasia testing. Dominance was source-defined and must not be replaced automatically with anatomical left."
     },
     {
      "phenomenon": "ictal identifiable (normal) speech",
@@ -679,9 +693,23 @@
      "value": null,
      "value_text": "3 seizures in 3 patients (dominant 1, nondominant 2); no lateralizing value",
      "n": 3,
-     "population": "TLE",
-     "locator": "Results; Table 3",
-     "quote": "Speech awest was seen in only 3 seizures in 3 differ-ent patients ... Speech arrest 1 (1) 2 (2) 3 (3)"
+     "population": "3 patients and 3 seizures in the 35-patient temporal-lobe epilepsy cohort",
+     "locator": "PDF p.3, Table 3 and Results; PDF p.5, conclusion",
+     "quote": "Speech arrest was seen in only 3 seizures in 3 different patients.",
+     "card_ids": [
+      25
+     ],
+     "source_finding_ref": "9cb85ea30c287c921762c7bb1fe98adc138efa7f3ee91fe772b153fd5cf522b5:F011",
+     "source_review_release": "v30-bounded-review-2026-08-10",
+     "source_report_sha256": "9861a65a5eea63218e163c8f2709b1d7be19a2a467267f40b7bd3f67703670c7",
+     "evidence_role": "PRIMARY_RESULT",
+     "phase": "2 ictal episodes and 1 postictal episode",
+     "numerator": "3 patients; 3 seizures; 2 ictal episodes; 1 postictal episode",
+     "denominator": "35 patients; 100 seizures; 3 speech-arrest seizures",
+     "analysis_unit": "patient and seizure",
+     "comparator": "dominant-origin versus nondominant-origin speech-arrest seizures",
+     "uncertainty": "NOT_REPORTED",
+     "limitations": "The source describes three individual episodes and reports no inferential lateralization estimate for this small subgroup. One of the three episodes was postictal and must not be counted as ictal speech arrest."
     },
     {
      "phenomenon": "nonidentifiable speech",
@@ -1068,11 +1096,25 @@
      "ba": "",
      "metric": "lateralization_pct",
      "value": null,
-     "value_text": "RTL 0 vs LTL 21 (29%); p<0.001 (29% of LTLE patients, 0 RTLE)",
+     "value_text": "RTL 0/54 vs LTL 21/73 (29%); p<0.001",
      "n": null,
-     "population": "TLE (RTL vs LTL; LTL=dominant)",
-     "locator": "Table 5; Discussion",
-     "quote": "Speech arrest at onset 0 21 (29) <0.001"
+     "population": "127 seizures from 19 unilateral TLE patients: RTL 54 seizures versus LTL 73 seizures",
+     "locator": "PDF p.4, numbered clinical-feature results and Table 5; PDF p.5, Discussion",
+     "quote": "Speech arrest at onset 0 21 (29) <0.001",
+     "card_ids": [
+      25
+     ],
+     "source_finding_ref": "b283713890337bc48915ca7ce0f9d717cba93d2f38d938639f8ed308175a9e99:F018",
+     "source_review_release": "v30-bounded-review-2026-08-10",
+     "source_report_sha256": "5d39ddc33ab146701bde488311f434717608e5586833e9a49c6054434f7483f2",
+     "evidence_role": "PRIMARY_RESULT",
+     "phase": "at ictal onset, before alteration of consciousness",
+     "numerator": "RTL 0 seizures; LTL 21 seizures",
+     "denominator": "RTL 54 seizures; LTL 73 seizures",
+     "analysis_unit": "seizure; discussion also uses patient-level wording without a patient denominator",
+     "comparator": "RTL versus LTL",
+     "uncertainty": "p < 0.001",
+     "limitations": "Speech arrest could be observed only if the patient was talking at seizure onset, and the interpretation excludes motor-effect or clearly altered-awareness explanations. Left/right was the source comparison and must not be treated as a universal dominant/nondominant equivalence."
     },
     {
      "phenomenon": "postictal aphasia",
@@ -1082,11 +1124,25 @@
      "ba": "",
      "metric": "lateralization_pct",
      "value": null,
-     "value_text": "RTL 0 vs LTL 37 (51%); p<0.001 (51% of all LTL, 59% of left CPS)",
+     "value_text": "RTL 0/54 vs LTL 37/73 (51%); p<0.001; LTL total comprised 32 CPS and 5 PE seizures",
      "n": null,
-     "population": "TLE (RTL vs LTL; LTL=dominant)",
-     "locator": "Table 5; Discussion",
-     "quote": "Postictal aphasia 0 37 (51) <0.001 ... Postictal aphasia was recorded in 51% of all LTL seizures (59% of left CPS) but not after RTL seizures."
+     "population": "127 seizures from 19 unilateral TLE patients: RTL 54 seizures versus LTL 73 seizures",
+     "locator": "PDF p.1, Summary; PDF p.4, numbered clinical-feature results and Table 5; PDF p.5, Discussion",
+     "quote": "Postictal aphasia occurred only in seizures of LTL origin; postictal aphasia was noted after 32 CPS and five PE seizures.",
+     "card_ids": [
+      24
+     ],
+     "source_finding_ref": "b283713890337bc48915ca7ce0f9d717cba93d2f38d938639f8ed308175a9e99:F019",
+     "source_review_release": "v30-bounded-review-2026-08-10",
+     "source_report_sha256": "5d39ddc33ab146701bde488311f434717608e5586833e9a49c6054434f7483f2",
+     "evidence_role": "PRIMARY_RESULT",
+     "phase": "postictal",
+     "numerator": "RTL 0 seizures; LTL 37 seizures, consisting of 32 CPS and 5 PE seizures",
+     "denominator": "RTL 54 seizures; LTL 73 seizures; LTL CPS subgroup 54 seizures",
+     "analysis_unit": "seizure",
+     "comparator": "RTL versus LTL",
+     "uncertainty": "p < 0.001 for all seizures and for the CPS-only comparison",
+     "limitations": "The source reports additional paraphasic-error and delayed-reading associations without additional counts. Left/right was the source comparison and must not be treated as a universal dominant/nondominant equivalence."
     },
     {
      "phenomenon": "rapid return to baseline postictally",
@@ -5301,6 +5357,21 @@
      "population": "55 unilateral TLE (39 left, 16 right)",
      "locator": "Results, Postictal behavior; p.1596",
      "quote": "Postictal dysphasia was statistically more frequent in left than in right temporal lobe seizures ... (61.5% vs 12.5%; p < 0.001)",
+     "card_ids": [
+      24
+     ],
+     "source_finding_ref": "ac0cc5e501a90e7653d955e1742f3157405c76d32307018a86e1b2e92893131e:F032",
+     "source_measure": "left-versus-right frequency comparison",
+     "source_review_release": "v30-bounded-review-2026-08-10",
+     "source_report_sha256": "3e533c5628fc17b149083240bafcc7f311eec5c30c26f6da9659bfba89773de3",
+     "evidence_role": "PRIMARY_RESULT",
+     "phase": "postictal",
+     "numerator": "left/right comparison numerators NOT_REPORTED",
+     "denominator": "left/right comparison denominators NOT_REPORTED",
+     "analysis_unit": "patient",
+     "comparator": "left versus right temporal lobe",
+     "uncertainty": "p < 0.001",
+     "limitations": "The source does not provide the underlying counts for the 61.5% and 12.5% side-specific percentages; these percentages must not be pooled as if their denominators were known.",
      "sens": [
       {
        "card_id": 24,
@@ -5320,8 +5391,23 @@
      "value_text": "24/26 (92%) patients with postictal dysphasia had left temporal lobe seizures",
      "n": 26,
      "population": "26 patients with postictal dysphasia",
-     "locator": "Results, Postictal behavior; p.1596",
-     "quote": "Among the 26 patients with postictal dysphasia, 24 had left temporal lobe seizures (92%)"
+     "locator": "PDF p.7, Postictal behavior",
+     "quote": "Among the 26 patients with postictal dysphasia, 24 had left temporal lobe seizures (92%)",
+     "card_ids": [
+      24
+     ],
+     "source_finding_ref": "ac0cc5e501a90e7653d955e1742f3157405c76d32307018a86e1b2e92893131e:F032",
+     "source_measure": "affected-subset lateralization",
+     "source_review_release": "v30-bounded-review-2026-08-10",
+     "source_report_sha256": "3e533c5628fc17b149083240bafcc7f311eec5c30c26f6da9659bfba89773de3",
+     "evidence_role": "PRIMARY_RESULT",
+     "phase": "postictal",
+     "numerator": "24 patients with left temporal seizures",
+     "denominator": "26 patients with postictal dysphasia",
+     "analysis_unit": "patient",
+     "comparator": "left versus right temporal lobe",
+     "uncertainty": "p < 0.001 for the left-versus-right frequency comparison; 24/26 (92%) explicitly reported",
+     "limitations": "The source does not report the underlying counts for the separate 61.5% left-versus-12.5% right comparison. Left/right must not be treated as a universal dominant/nondominant equivalence."
     }
    ],
    "notes": "Landmark SEEG study individually characterizing the Medial-Lateral (ML) temporal subtype for the first time. Subtype figures are frequency of each sign within SEEG-defined M/ML/L onset groups (localization within temporal lobe, not L/R lateralization) - direction coded 'none' with subtype association given in value_text; value populated with the associated subtype percentage only when p<0.05, else null. Summary conclusions: M subtype = initial epigastric/viscerosensory symptoms, fear, dreamy state, long duration, delayed loss of contact and delayed oroalimentary/upper-limb automatisms; L subtype = initial sensory illusion/hallucination (mainly auditory), initial loss of contact, shorter duration, frequent secondary generalizations; ML subtype = shares M subjective symptoms plus early loss of contact and early oroalimentary/verbal/vocal automatisms. Discussion (non-quantitative) assigns Heschl's gyrus to primary auditory hallucinations, STG to complex auditory, temporo-parietal junction to vertigo, basal-temporal/temporo-occipital junction to complex visual. Non-semiologic differentiators (not extracted as findings): febrile seizure history M 58.3%/ML 22.2%/L 0% p=0.0004; hippocampal sclerosis on MRI M 66.7%/ML 22.2%/L 0% p<0.0001; younger onset in M (7.9 vs 12.8 vs 11.2 yr, p=0.021); Engel I outcome no subtype difference (82.6% M/66.6% ML/75% L)."
