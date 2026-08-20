@@ -1,11 +1,9 @@
-name: Validate PR
-
-# Gates every pull request: the dataset must pass schema/integrity checks, the
-# committed enrichment.json must match its source, and the HTML must build.
-# This is what keeps a "correctable by anyone" repo from becoming breakable.
+name: Validate
 
 on:
   pull_request:
+    branches: [main]
+  push:
     branches: [main]
   workflow_dispatch: {}
 
@@ -17,30 +15,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-
-      - name: Validate dataset (schema + integrity)
-        run: python3 tools/validate_data.py
-
-      - name: Check generated data is in sync with its sources
-        run: |
-          python3 enrichment/build_enrichment.py
-          python3 tools/meta_analysis.py
-          python3 tools/adversarial_review.py
-          git diff --exit-code enrichment/enrichment.json enrichment/meta_analysis.json enrichment/review_flags.json \
-            || (echo "::error::generated data is out of sync. Run 'make build' and commit the result." && exit 1)
-
-      - name: Check intake provenance (every added finding is page-cited)
-        run: python3 tools/check_provenance.py
-
-      - name: Adversarial review (advisory — surfaces conflicts, does not block)
-        run: python3 tools/adversarial_review.py
-
-      - name: Build must succeed
+      - name: Validate generated atlas bundle
+        run: python3 tools/validate_atlas_bundle.py
+      - name: Build website
         run: python3 generator/gen_study.py
-
-      - name: Summarize
-        run: echo "✅ Dataset valid, meta-analysis + review in sync, provenance OK, HTML builds."
