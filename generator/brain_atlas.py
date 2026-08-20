@@ -2,12 +2,9 @@
 """
 brain_atlas.py — renders the Brodmann map from its data file.
 
-This module holds **no curation**. Which areas exist, where they are drawn, where
-their numerals sit and which areas a sign localizes to all live in
-`data/brodmann_map.json` — edited by hand like `data/semiology_data.json`,
-validated by `tools/validate_data.py`, rendered here. That keeps the map's
-knowledge reviewable as data and under the same gate as the rest of the atlas,
-instead of buried in generator code.
+This module holds **no scientific curation**. Area definitions and sign links
+come from the generated canonical atlas bundle. The surface-view coordinates
+are presentation data carried in that same redacted bundle.
 
 A view is a reference plate and the numerals placed on it, so there is no
 geometry left to compute here: this loads the map and answers which areas a sign
@@ -17,7 +14,8 @@ import json
 import os
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-MAP = json.load(open(os.path.join(_ROOT, "data", "brodmann_map.json")))
+with open(os.path.join(_ROOT, "data", "atlas_bundle.json"), encoding="utf-8") as stream:
+    MAP = json.load(stream)["brodmann"]
 
 AREAS = MAP["areas"]
 VIEWS = MAP["views"]
