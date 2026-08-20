@@ -955,7 +955,7 @@ def build_brain(signs):
         t["signs"].sort(key=lambda s: (_evrank.get(s["ev"], 3), s["n"]))
         t["findings"].sort(key=lambda finding: (finding["n"].casefold(), finding["source"].casefold()))
 
-    first_view = next(iter(BA.VIEWS))
+    first_view = BA.VIEW_ORDER[0]
 
     def render_view(name):
         """
@@ -1023,11 +1023,11 @@ def build_brain(signs):
                 f'aria-label="{name.capitalize()} surface, Brodmann areas">'
                 f'<g class="plate">{img}</g>{lab_g}{orient}</svg>')
 
-    views_html = "".join(render_view(v) for v in BA.VIEWS)
+    views_html = "".join(render_view(v) for v in BA.VIEW_ORDER)
     view_btns = "".join(
         f'<button class="seg-b{" active" if i == 0 else ""}" data-view="{v}" role="tab" '
         f'aria-selected="{"true" if i == 0 else "false"}">{v.capitalize()}</button>'
-        for i, v in enumerate(BA.VIEWS))
+        for i, v in enumerate(BA.VIEW_ORDER))
 
     buried = [a for a, i in BA.AREAS.items() if i.get("buried")]
     buried_chips = "".join(
@@ -2751,6 +2751,8 @@ assert h.count('class="sign"')==len(data), f'sign count {h.count(chr(34)+"class=
 assert h.count(chr(34).join(["class=","sign",""]))==len(data)
 assert 'id="quiz-mode"' in h
 assert 'id="expand-all"' in h and 'id="collapse-all"' in h
+assert '<button class="seg-b active" data-view="lateral"' in h
+assert '<svg class="brain-svg show" data-view="lateral"' in h
 _area_ref_count = sum(len(signs) for areas in area_signs_by_region.values() for signs in areas.values())
 assert h.count('class="map-sign-ref"') == _area_ref_count
 _regional_finding_count = sum(len(refs) for refs in finding_refs_by_region.values())
