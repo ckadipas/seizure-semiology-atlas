@@ -19,6 +19,7 @@ with open(os.path.join(_ROOT, "data", "atlas_bundle.json"), encoding="utf-8") as
 
 AREAS = MAP["areas"]
 VIEWS = MAP["views"]
+VIEW_ORDER = tuple(name for name in ("lateral", "medial", "dorsal", "ventral") if name in VIEWS)
 MAPPING = MAP["mapping"]
 ASSETS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
 
@@ -62,4 +63,4 @@ def areas_for_sign(sign):
 
 def views_with(aid):
     """The views that draw an area — so the page can say where to look for it."""
-    return [v for v, spec in VIEWS.items() if any(a["id"] == aid for a in spec["areas"])]
+    return [v for v in VIEW_ORDER if any(a["id"] == aid for a in VIEWS[v]["areas"])]
