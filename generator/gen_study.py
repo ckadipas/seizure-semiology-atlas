@@ -35,7 +35,7 @@ PAPERS = []
 ledger_by_ref = {}
 ledger_evidence_by_cardid = {}
 for _source in CORPUS["sources"]:
-    _nstat = sum(_row["source_statistic_id"] is not None for _row in _source["findings"])
+    _nstat = sum(len(_row.get("statistics", [])) for _row in _source["findings"])
     PAPERS.append((
         _source["source_file"],
         f'{_source["page_count"]} pages',
@@ -100,6 +100,56 @@ def cited_source_line(row):
         return ""
     return f'<div><strong>Cited source:</strong> {esc(citation)}</div>'
 
+def finding_statistics(row):
+    return row.get("statistics", [])
+
+def statistic_value(statistic):
+    return statistic.get("value_text") or statistic.get("measure") or "Reported statistical result"
+
+def statistic_search_text(row):
+    fields = []
+    for statistic in finding_statistics(row):
+        fields.extend(statistic.get(key) for key in (
+            "metric_type", "value_text", "measure", "numerator", "denominator", "analysis_unit",
+            "comparator", "uncertainty", "population", "subgroup", "timepoint", "endpoint", "phase",
+            "anatomy_laterality_context", "citation", "source_locator", "source_excerpt",
+        ))
+    return " ".join(str(value or "") for value in fields)
+
+def statistic_block(row):
+    statistics = finding_statistics(row)
+    if not statistics:
+        return ""
+    items = []
+    for statistic in statistics:
+        metric = str(statistic.get("metric_type") or "reported result").replace("_", " ").lower()
+        context = []
+        for label, key in (
+            ("Subgroup", "subgroup"), ("Time", "timepoint"), ("Outcome", "endpoint"),
+            ("What was counted", "analysis_unit"), ("Compared with", "comparator"),
+        ):
+            value = statistic.get(key)
+            if value and str(value).upper() not in {"NONE", "NOT_APPLICABLE", "NOT_REPORTED"}:
+                context.append(f'<span><strong>{label}:</strong> {esc(value)}</span>')
+        numerator, denominator = statistic.get("numerator"), statistic.get("denominator")
+        if numerator and denominator and str(numerator).upper() != "NOT_APPLICABLE" and str(denominator).upper() != "NOT_APPLICABLE":
+            context.append(f'<span><strong>Counts:</strong> {esc(numerator)} / {esc(denominator)}</span>')
+        uncertainty = statistic.get("uncertainty")
+        if uncertainty and str(uncertainty).upper() not in {"NONE", "NOT_APPLICABLE", "NOT_REPORTED", "{}"}:
+            context.append(f'<span><strong>Statistical details:</strong> {esc(uncertainty)}</span>')
+        items.append(
+            f'<li><strong>{esc(statistic_value(statistic))}</strong> '
+            f'<span class="ev-meta">{esc(metric)}</span>'
+            + (f'<div class="ev-stat-context">{"".join(context)}</div>' if context else "")
+            + '</li>'
+        )
+    if len(items) == 1:
+        return f'<div class="ev-measure"><strong>Reported result:</strong><ul class="ev-stat-list">{items[0]}</ul></div>'
+    return (
+        f'<details class="ev-stats"><summary>{len(items)} reported results</summary>'
+        f'<ol class="ev-stat-list">{"".join(items)}</ol></details>'
+    )
+
 def slug(s):
     return re.sub(r'[^a-z0-9]+','-', s.lower()).strip('-')
 
@@ -145,7 +195,7 @@ def sign_search_text(d, area_ids=None):
     for entry, _relation in ledger_evidence_by_cardid.get(d["id"], []):
         row = entry["finding"]
         evidence_terms.extend([
-            row["source_term"], row["claim"], row["measure"], row["citation"],
+            row["source_term"], row["claim"], statistic_search_text(row), row["citation"],
             row["evidence_text"], row["laterality_localization"],
         ])
     return " ".join(str(x or "") for x in [
@@ -274,10 +324,9 @@ def ledger_evidence_block(cid):
     items, search = [], []
     for entry, relation in linked:
         source, row = entry["source"], entry["finding"]
-        search.extend([row["source_term"], row["claim"], row["measure"], row["citation"],
+        search.extend([row["source_term"], row["claim"], statistic_search_text(row), row["citation"],
                        row["evidence_text"], row["source_finding_ref"]])
-        measure = (f'<div class="ev-measure"><strong>Reported result:</strong> {esc(row["measure"])}</div>'
-                   if row["source_statistic_id"] else '')
+        measure = statistic_block(row)
         counting_note = ('' if row["independent_evidence"] else
                          '<div><strong>Counting note:</strong> This repeats information from another source and is not counted as a separate result.</div>')
         items.append(
@@ -712,14 +761,13 @@ def build_evidence_library(corpus):
         for row in source["findings"]:
             role = row["evidence_role"]
             counts[role] = counts.get(role, 0) + 1
-            is_stat = row["source_statistic_id"] is not None
+            is_stat = bool(finding_statistics(row))
             search = " ".join(str(x or "") for x in [
-                row["source_term"], row["claim"], row["measure"], row["citation"], row["locators"],
+                row["source_term"], row["claim"], statistic_search_text(row), row["citation"], row["locators"],
                 row["evidence_text"], row["population"], row["laterality_localization"],
                 source["source_file"], ROLE_LABEL.get(role, ""),
             ]).lower().replace('"', "")
-            measure = (f'<div><strong>Reported result:</strong> {esc(row["measure"])}</div>'
-                       if is_stat else "")
+            measure = statistic_block(row)
             counting_note = ("" if row["independent_evidence"] else
                              '<div><strong>Counting note:</strong> This repeats information from another source and is not counted as a separate result.</div>')
             rows.append(
@@ -733,10 +781,6 @@ def build_evidence_library(corpus):
                 f'<div><strong>Relevant source text:</strong> {esc(row["evidence_text"])}</div>'
                 f'<div><strong>Who was studied:</strong> {esc(row["population"])}</div>'
                 f'<div><strong>What the finding suggests:</strong> {esc(row["laterality_localization"])}</div>'
-                f'<div><strong>What was counted:</strong> {esc(row["analysis_unit"])}</div>'
-                f'<div><strong>Groups compared:</strong> {esc(row["comparator"])}</div>'
-                f'<div><strong>Reported counts:</strong> {esc(row["numerator"])} / {esc(row["denominator"])}</div>'
-                f'<div><strong>Statistical details:</strong> {esc(row["uncertainty"])}</div>'
                 f'<div><strong>Important cautions:</strong> {esc(row["limitations"])}</div>'
                 f'{cited_source_line(row)}'
                 f'{counting_note}</details></div>')
@@ -1569,6 +1613,7 @@ body.quiz .lib-chip{display:none}
 .ev-map{display:inline-block;font-size:.58rem;font-weight:800;border:1px solid currentColor;border-radius:4px;padding:1px 5px}
 .ev-map-exact{color:#1a7a4a}.ev-map-related{color:#95691a}
 .reviewed-card-evidence{margin-bottom:9px}.ev-measure,.ev-owner{margin:4px 0;color:#475569}
+.ev-stats{margin:7px 0}.ev-stats>summary{cursor:pointer;color:#0e7490;font-weight:700}.ev-stat-list{margin:5px 0 0;padding-left:22px}.ev-stat-list>li{margin:5px 0}.ev-stat-context{display:grid;gap:2px;margin-top:3px;color:#64748b;font-size:.9em}.ev-stat-context span{display:block}
 .ev-trace{margin-top:5px;border:1px solid var(--line2);border-radius:6px;padding:4px 7px;color:#475569}
 .ev-trace>summary{cursor:pointer;font-weight:700;color:var(--teal-d)}
 .ev-trace>div{margin-top:4px;line-height:1.4}
