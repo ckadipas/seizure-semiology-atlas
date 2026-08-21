@@ -831,7 +831,7 @@ def build_brain(signs):
     for t in tiles.values():
         t["signs"].sort(key=lambda s: (_evrank.get(s["ev"], 3), s["n"]))
 
-    first_view = next(iter(BA.VIEWS))
+    first_view = "lateral"
 
     def render_view(name):
         """
@@ -900,9 +900,9 @@ def build_brain(signs):
 
     views_html = "".join(render_view(v) for v in BA.VIEWS)
     view_btns = "".join(
-        f'<button class="seg-b{" active" if i == 0 else ""}" data-view="{v}" role="tab" '
-        f'aria-selected="{"true" if i == 0 else "false"}">{v.capitalize()}</button>'
-        for i, v in enumerate(BA.VIEWS))
+        f'<button class="seg-b{" active" if v == first_view else ""}" data-view="{v}" role="tab" '
+        f'aria-selected="{"true" if v == first_view else "false"}">{v.capitalize()}</button>'
+        for v in BA.VIEWS)
 
     buried = [a for a, i in BA.AREAS.items() if i.get("buried")]
     buried_chips = "".join(
