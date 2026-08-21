@@ -1,6 +1,6 @@
 name: Paper intake — Gate A registration only
 
-# Safety boundary: this workflow never downloads source files, invokes a model,
+# Safety boundary: this workflow never downloads source files, performs source review,
 # edits repository content, creates a branch/PR, or publishes scientific output.
 # It only records that the owner has approved moving an intake request into the
 # private evidence-review workflow defined in ckadipas/semiology_refs/AGENTS.md.
@@ -40,7 +40,7 @@ jobs:
             const body = [
               'The intake request has been registered for **private Gate A preparation**.',
               '',
-              'Direct model extraction and repository publishing are disabled. Before any source review begins, the owner must approve a private Gate A record that binds the exact source SHA-256, the frozen review release, representations, and invocation budget in ckadipas/semiology_refs.',
+              'Automated source review and repository publishing are disabled here. Before any source review begins, the owner must approve a private Gate A record that binds the exact source SHA-256, the frozen review release, representations, and review budget in ckadipas/semiology_refs.',
               '',
               'All source files, extracted text, review materials, review rows, and audit artifacts remain in the private evidence repository. This public workflow does not download or inspect attachments and made no scientific or repository-content change.',
               '',
