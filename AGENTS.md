@@ -5,7 +5,7 @@ Read this file before changing the public atlas.
 ## Authority and active data route
 
 - The repository owner is the final clinical and scientific authority.
-- The binding private review method is V30. Source PDFs, text, owner comments, model outputs, dossiers, and audit artifacts remain only in `ckadipas/semiology_refs`.
+- The binding private review method is V30. Source PDFs, text, owner comments, review materials, dossiers, and audit artifacts remain only in `ckadipas/semiology_refs`.
 - This public repository is a generated/redacted consumer. Its only active website data input is `data/atlas_bundle.json`, exported from the private canonical relational database after owner approval.
 - Legacy `data/`, `enrichment/`, and `corpus/` artifacts do not drive the build and are not evidence sources.
 
@@ -26,7 +26,7 @@ Never mint, renumber, reuse, or change the meaning of a `sign_id`, source findin
 
 Every submission follows: owner Gate A → private V30 source review → owner adjudication packet → owner Gate B for the exact integration diff → deterministic integration → separately authorized deployment.
 
-The public intake workflow may only acknowledge or register a request for private Gate-A preparation. It may not download source files, invoke a model, write scientific content, create a scientific pull request, or publish output.
+The public intake workflow may only acknowledge or register a request for private Gate-A preparation. It may not download source files, perform source review, write scientific content, create a scientific pull request, or publish output.
 
 ## Build and validation
 
