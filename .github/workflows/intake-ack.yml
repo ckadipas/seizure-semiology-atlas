@@ -1,10 +1,9 @@
 name: Intake acknowledgement
 
 # When a submission issue is opened (any issue that attaches a document or photos),
-# post a short receipt so the maintainer and submitter know the next step: a
-# maintainer approves by adding the "approved" label, which starts the extraction
-# (see intake.yml). Comment-only — no extraction, no INTAKE_TOKEN — so it is safe to
-# run on every opened issue regardless of who opened it.
+# post a short receipt so the maintainer and submitter know the next step. An
+# "approved" label registers the request for private Gate A preparation. This
+# workflow only comments and is safe to run on every qualifying opened issue.
 
 on:
   issues:
@@ -24,4 +23,4 @@ jobs:
         run: |
           gh issue comment "${{ github.event.issue.number }}" \
             --repo "${{ github.repository }}" \
-            --body "Thanks — your submission has been received and is queued for review. Once a maintainer approves it, the relevant page-cited figures will be prepared as a pull request for review. Nothing is added until that review is complete."
+            --body "Thanks — your submission has been received. A maintainer's approval registers it for private Gate A preparation. The source and scientific data are not added to this public repository until private review, owner adjudication, exact integration approval, and separately authorized deployment are complete."
