@@ -52,7 +52,7 @@ for _source in CORPUS["sources"]:
             ledger_evidence_by_cardid.setdefault(_cid, []).append((_entry, "RELATED"))
 
 # assign ids to new signs and append
-_nextid = max(x["id"] for x in data) + 1
+_nextid = max(int(x["id"]) for x in data if str(x["id"]).isdigit()) + 1
 for ns in NEW_SIGNS:
     ns.setdefault("id", _nextid); _nextid += 1
     data.append(ns)
@@ -69,14 +69,14 @@ for d in data:
                     ev.append(fnd); seen.add((fnd["p"], fnd["f"]))
     d["_ev"] = ev
 
-latcolor = {"contra":"#c0392b","ipsi":"#2471a3","dominant":"#8e44ad","nondominant":"#1a7a4a","right":"#d35400","nonlat":"#6b7280","variable":"#95691a"}
-latbg    = {"contra":"#fdf2f2","ipsi":"#eaf4fb","dominant":"#f5f0fb","nondominant":"#eafaf1","right":"#fef5ee","nonlat":"#f3f4f6","variable":"#fdf8ee"}
-latlabel = {"contra":"CONTRA","ipsi":"IPSI","dominant":"DOM","nondominant":"NON-DOM","right":"RIGHT","nonlat":"NON-LAT","variable":"VARIABLE"}
-evidcolor= {"I":"#1a7a4a","II":"#c47a00","III":"#c0392b"}
+latcolor = {"contra":"#c0392b","ipsi":"#2471a3","dominant":"#8e44ad","nondominant":"#1a7a4a","right":"#d35400","left":"#2471a3","bilateral":"#5b6472","nonlat":"#6b7280","variable":"#95691a","notreported":"#6b7280"}
+latbg    = {"contra":"#fdf2f2","ipsi":"#eaf4fb","dominant":"#f5f0fb","nondominant":"#eafaf1","right":"#fef5ee","left":"#eef5fb","bilateral":"#f3f4f6","nonlat":"#f3f4f6","variable":"#fdf8ee","notreported":"#f3f4f6"}
+latlabel = {"contra":"CONTRA","ipsi":"IPSI","dominant":"DOM","nondominant":"NON-DOM","right":"RIGHT","left":"LEFT","bilateral":"BILATERAL","nonlat":"NON-LAT","variable":"VARIABLE","notreported":"NOT STATED"}
+evidcolor= {"I":"#1a7a4a","II":"#c47a00","III":"#c0392b","SRC":"#0e9db0"}
 
-region_order = ["Temporal","Frontal","Parietal","Occipital","Insular","Deep/Subcortical","Multiregional/Propagation"]
-region_short = {"Temporal":"Temporal","Frontal":"Frontal","Parietal":"Parietal","Occipital":"Occipital","Insular":"Insular","Deep/Subcortical":"Deep","Multiregional/Propagation":"Multiregional"}
-region_colors= {"Temporal":"#1a3a6b","Frontal":"#2d4a1e","Parietal":"#4a1e3d","Occipital":"#1e3d4a","Insular":"#4a3a1e","Deep/Subcortical":"#3d2a0a","Multiregional/Propagation":"#1e1e4a"}
+region_order = ["Temporal","Frontal","Parietal","Occipital","Insular","Limbic","Deep/Subcortical","Multiregional/Propagation","No localization stated"]
+region_short = {"Temporal":"Temporal","Frontal":"Frontal","Parietal":"Parietal","Occipital":"Occipital","Insular":"Insular","Limbic":"Limbic","Deep/Subcortical":"Deep","Multiregional/Propagation":"Multiregional","No localization stated":"Unlocalized"}
+region_colors= {"Temporal":"#1a3a6b","Frontal":"#2d4a1e","Parietal":"#4a1e3d","Occipital":"#1e3d4a","Insular":"#4a3a1e","Limbic":"#51375c","Deep/Subcortical":"#3d2a0a","Multiregional/Propagation":"#1e1e4a","No localization stated":"#5f6878"}
 
 def esc(s):
     text = "" if s is None else str(s)
@@ -122,7 +122,11 @@ grouped = OrderedDict()
 for r in region_order:
     grouped[r] = OrderedDict()
 for d in data:
-    grouped[d["region"]].setdefault(d["sub"], []).append(d)
+    for region in d.get("regions") or [d["region"]]:
+        if region not in grouped:
+            continue
+        sub = d.get("subs_by_region", {}).get(region, d["sub"])
+        grouped[region].setdefault(sub, []).append(d)
 
 area_signs_by_region = OrderedDict((r, OrderedDict()) for r in region_order)
 for d in data:
@@ -354,7 +358,7 @@ for r in region_order:
                         if _nsrc else '')
             search_str = SIGN_SEARCH_BY_ID[d["id"]]
             ppv_block = sens_block = ""
-            rows.append(f'''<div class="sign" id="sign-{d['id']}" data-id="{d['id']}" data-region="{esc(d['region'])}" data-phase="{esc(d['phase'])}" data-latcode="{lc}" data-evid="{ec}" data-search="{esc(search_str)}" style="--accent:{accent}">
+            rows.append(f'''<div class="sign" id="sign-{slug(r)}-{d['id']}" data-id="{d['id']}" data-region="{esc(r)}" data-phase="{esc(d['phase'])}" data-latcode="{lc}" data-evid="{ec}" data-search="{esc(search_str)}" style="--accent:{accent}">
   <button class="sign-head" aria-expanded="false">
     <span class="chevron">&#8250;</span>
     <span class="sign-name">{esc(d['sign'])}</span>
@@ -1858,7 +1862,7 @@ JS = r"""
     const trow=e.target.closest('.bt-row');
     if(trow){ render(trow.dataset.tile); return; }
     const row=e.target.closest('.bp-row'); if(!row) return;
-    const el=document.getElementById('sign-'+row.dataset.sign); if(!el) return;
+    const el=Array.from(document.querySelectorAll('.sign')).find(node=>String(node.dataset.id)===String(row.dataset.sign)); if(!el) return;
     const sec=el.closest('.region-section'), sub=el.closest('.sub-block');
     if(sec) sec.classList.remove('collapsed');
     if(sub) sub.classList.remove('collapsed');
@@ -2587,19 +2591,20 @@ for _icon in ("icon-180.png", "icon-512.png"):
     if os.path.exists(_src):
         shutil.copyfile(_src, os.path.join(DOCS, _icon))
 
-print(f"Written: {len(HEAD)} chars, {len(data)} signs")
+_placement_count = sum(region_counts.values())
+print(f"Written: {len(HEAD)} chars, {len(data)} unique signs, {_placement_count} anatomical placements")
 
 # ---- sanity checks ----
 h=HEAD
-assert h.count('class="sign"')==len(data), f'sign count {h.count(chr(34)+"class="+chr(34))}'
-assert h.count(chr(34).join(["class=","sign",""]))==len(data)
+assert h.count('class="sign"')==_placement_count
+assert h.count(chr(34).join(["class=","sign",""]))==_placement_count
 assert 'id="quiz-mode"' in h
 assert 'id="expand-all"' in h and 'id="collapse-all"' in h
 _area_ref_count = sum(len(signs) for areas in area_signs_by_region.values() for signs in areas.values())
 assert h.count('class="map-sign-ref"') == _area_ref_count
-assert h.count("data-search=") == len(data) + _area_ref_count
+assert h.count("data-search=") == _placement_count + _area_ref_count
 assert 'class="detail"' in h
 assert '@media (max-width:760px)' in h
-assert h.count('class="pill"')==7
+assert h.count('class="pill"')==len(region_order)
 assert 'body.quiz' in h
 print("All sanity checks passed.")
