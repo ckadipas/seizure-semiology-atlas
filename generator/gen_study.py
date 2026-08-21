@@ -1933,7 +1933,6 @@ JS = r"""
   }));
   document.getElementById('brain-density').addEventListener('change',e=>
     card.classList.toggle('dens',e.target.checked));
-  svgs[0].classList.add('show');
 
   /* ---------- label position editor ----------
      #edit-labels turns it on. Pick an area from the grouped list, the view zooms
