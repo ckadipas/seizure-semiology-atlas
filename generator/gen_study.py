@@ -16,7 +16,6 @@ with open(os.path.join(ROOT,"data","atlas_bundle.json"), encoding="utf-8") as f:
     ATLAS = json.load(f)
 data = ATLAS["signs"]
 CORPUS = ATLAS["corpus"]
-FINDING_LOCATIONS = ATLAS["finding_locations"]
 ACCOUNTING = CORPUS["integration_accounting"]
 EVID = {}; NEW_SIGNS = []; LATERAL = []
 ROLE_LABEL = {
@@ -52,22 +51,6 @@ for _source in CORPUS["sources"]:
         for _cid in _row["related_sign_ids"]:
             ledger_evidence_by_cardid.setdefault(_cid, []).append((_entry, "RELATED"))
 
-# Source findings keep their own identity. Explicitly stored locations make the
-# same finding available from regional search and the map without turning it
-# into a new canonical sign or guessing a synonym.
-finding_refs_by_region = OrderedDict()
-finding_refs_by_area = OrderedDict()
-for _ref, _location in FINDING_LOCATIONS.items():
-    if _ref not in ledger_by_ref:
-        continue
-    for _region in _location.get("regions", []):
-        finding_refs_by_region.setdefault(_region, []).append(_ref)
-    for _area in _location.get("areas", []):
-        finding_refs_by_area.setdefault(str(_area), []).append(_ref)
-for _lookup in (finding_refs_by_region, finding_refs_by_area):
-    for _key, _refs in _lookup.items():
-        _lookup[_key] = list(dict.fromkeys(_refs))
-
 # assign ids to new signs and append
 _nextid = max(x["id"] for x in data) + 1
 for ns in NEW_SIGNS:
@@ -91,9 +74,9 @@ latbg    = {"contra":"#fdf2f2","ipsi":"#eaf4fb","dominant":"#f5f0fb","nondominan
 latlabel = {"contra":"CONTRA","ipsi":"IPSI","dominant":"DOM","nondominant":"NON-DOM","right":"RIGHT","nonlat":"NON-LAT","variable":"VARIABLE"}
 evidcolor= {"I":"#1a7a4a","II":"#c47a00","III":"#c0392b"}
 
-region_order = ["Temporal","Frontal","Parietal","Occipital","Insular","Limbic","Deep/Subcortical","Multiregional/Propagation"]
-region_short = {"Temporal":"Temporal","Frontal":"Frontal","Parietal":"Parietal","Occipital":"Occipital","Insular":"Insular","Limbic":"Limbic","Deep/Subcortical":"Deep","Multiregional/Propagation":"Multiregional"}
-region_colors= {"Temporal":"#1a3a6b","Frontal":"#2d4a1e","Parietal":"#4a1e3d","Occipital":"#1e3d4a","Insular":"#4a3a1e","Limbic":"#5a2f45","Deep/Subcortical":"#3d2a0a","Multiregional/Propagation":"#1e1e4a"}
+region_order = ["Temporal","Frontal","Parietal","Occipital","Insular","Deep/Subcortical","Multiregional/Propagation"]
+region_short = {"Temporal":"Temporal","Frontal":"Frontal","Parietal":"Parietal","Occipital":"Occipital","Insular":"Insular","Deep/Subcortical":"Deep","Multiregional/Propagation":"Multiregional"}
+region_colors= {"Temporal":"#1a3a6b","Frontal":"#2d4a1e","Parietal":"#4a1e3d","Occipital":"#1e3d4a","Insular":"#4a3a1e","Deep/Subcortical":"#3d2a0a","Multiregional/Propagation":"#1e1e4a"}
 
 def esc(s):
     text = "" if s is None else str(s)
@@ -116,13 +99,6 @@ def cited_source_line(row):
     if citation.upper() in {"", "NONE", "NOT_REPORTED", "NOT_APPLICABLE"}:
         return ""
     return f'<div><strong>Cited source:</strong> {esc(citation)}</div>'
-
-def cited_source_row(row):
-    """Render the cited source as a valid detail row when one was reported."""
-    citation = str(row.get("citation") or "").strip()
-    if citation.upper() in {"", "NONE", "NOT_REPORTED", "NOT_APPLICABLE"}:
-        return ""
-    return f'<div class="d-row"><span class="d-label">Cited source</span><span class="d-value cite">{esc(citation)}</span></div>'
 
 def slug(s):
     return re.sub(r'[^a-z0-9]+','-', s.lower()).strip('-')
@@ -175,10 +151,7 @@ def sign_search_text(d, area_ids=None):
 
 SIGN_BASE_SEARCH_BY_ID = {d["id"]: sign_search_text(d, []) for d in data}
 SIGN_SEARCH_BY_ID = {d["id"]: sign_search_text(d) for d in data}
-region_counts = {
-    r: sum(len(v) for v in grouped[r].values()) + len(finding_refs_by_region.get(r, []))
-    for r in region_order
-}
+region_counts = {r: sum(len(v) for v in grouped[r].values()) for r in region_order}
 
 # ---- build region-jump pills ----
 pills = []
@@ -320,17 +293,9 @@ def ledger_evidence_block(cid):
             '<ul class="ev-list">'+"".join(items)+'</ul></div>', len(linked), " ".join(search))
 
 def area_reference_blocks(region):
-    """Regional rows from the canonical sign and reviewed-finding location joins."""
+    """Regional lookup rows generated from the same sign-id location join as the map."""
     blocks = []
-    area_ids = [
-        aid for aid, area in BA.AREAS.items()
-        if area["lobe"] == region and (
-            area_signs_by_region[region].get(aid) or finding_refs_by_area.get(aid)
-        )
-    ]
-    for aid in area_ids:
-        signs = area_signs_by_region[region].get(aid, [])
-        finding_refs = finding_refs_by_area.get(aid, [])
+    for aid, signs in area_signs_by_region[region].items():
         area = BA.AREAS[aid]
         title = f'{area["name"]} (Brodmann {area["label"]})'
         refs = []
@@ -350,93 +315,17 @@ def area_reference_blocks(region):
     <span class="chip evid-dot" style="background:{evidcolor.get(ec,'#888')}" title="Evidence level {ec}">{ec}</span>
   </span>
 </button>''')
-        for finding_ref in finding_refs:
-            entry = ledger_by_ref[finding_ref]
-            source, row = entry["source"], entry["finding"]
-            finding_dom_id = finding_ref.replace(":", "-")
-            ref_search = " ".join(str(value or "") for value in (
-                row["source_term"], row["claim"], row["evidence_text"], row["citation"],
-                row["laterality_localization"], source["source_file"], area["name"], area["label"], region,
-            )).lower()
-            refs.append(f'''<button class="map-sign-ref source-finding-ref" id="map-finding-{aid}-{finding_dom_id}"
-    data-id="finding-{esc(finding_ref)}" data-finding="{esc(finding_ref)}" data-ba="{esc(aid)}" data-region="{esc(region)}"
-    data-phase="{esc(row['phase'])}" data-latcode="" data-evid=""
-    data-search="{esc(ref_search)}" style="--accent:#0e9db0"
-    title="Show Brodmann {esc(area['label'])} on the map">
-  <span class="map-ref-arrow">&#8250;</span>
-  <span class="map-ref-name">{esc(row['source_term'])}<small>{esc(row['claim'])}</small></span>
-  <span class="head-chips">
-    <span class="chip phase-badge phase-{slug(row['phase'].split('/')[0])}">{esc(row['phase'])}</span>
-    <span class="chip lib-chip">Reviewed source</span>
-  </span>
-</button>''')
         blocks.append(f'''<div class="sub-block area-map-block collapsed" data-sub="{esc(title)}" data-map-area="{esc(aid)}">
   <button class="sub-toggle" aria-expanded="false">
     <span class="sub-chev">&#9656;</span>
     <span class="sub-name">{esc(title)}</span>
-    <span class="sub-count">{len(signs) + len(finding_refs)}</span>
+    <span class="sub-count">{len(signs)}</span>
   </button>
   <div class="sub-body">
 {chr(10).join(refs)}
   </div>
 </div>''')
     return blocks
-
-def regional_finding_block(region):
-    """Compact source-wording cards for every reviewed finding stored in this region."""
-    finding_refs = finding_refs_by_region.get(region, [])
-    if not finding_refs:
-        return []
-    rows = []
-    for finding_ref in finding_refs:
-        entry = ledger_by_ref[finding_ref]
-        source, row = entry["source"], entry["finding"]
-        finding_dom_id = finding_ref.replace(":", "-")
-        location = FINDING_LOCATIONS[finding_ref]
-        area_names = [f'BA {BA.AREAS[aid]["label"]} {BA.AREAS[aid]["name"]}' for aid in location.get("areas", []) if aid in BA.AREAS]
-        search_text = " ".join(str(value or "") for value in (
-            row["source_term"], row["claim"], row["measure"], row["citation"], row["evidence_text"],
-            row["population"], row["laterality_localization"], source["source_file"], region, *area_names,
-        )).lower()
-        measure = (f'<div class="d-row"><span class="d-label">Reported result</span><span class="d-value">{esc(row["measure"])}</span></div>'
-                   if row["source_statistic_id"] else '')
-        area_chips = "".join(
-            f'<button class="ba-chip" data-ba="{esc(aid)}" title="{esc(BA.AREAS[aid]["name"])}">{esc(BA.AREAS[aid]["label"])}</button>'
-            for aid in location.get("areas", []) if aid in BA.AREAS
-        )
-        map_row = (f'<div class="d-row d-map"><span class="d-label">Brodmann areas stated or already linked</span>'
-                   f'<span class="d-value"><span class="ba-chips">{area_chips}</span></span></div>') if area_chips else ''
-        rows.append(f'''<div class="sign source-finding-card" id="regional-finding-{slug(region)}-{finding_dom_id}"
-  data-id="finding-{esc(finding_ref)}" data-region="{esc(region)}" data-phase="{esc(row['phase'])}"
-  data-latcode="" data-evid="" data-search="{esc(search_text)}" style="--accent:#0e9db0">
-  <button class="sign-head" aria-expanded="false">
-    <span class="chevron">&#8250;</span>
-    <span class="sign-name">{esc(row['source_term'])}</span>
-    <span class="head-chips">
-      <span class="chip phase-badge phase-{slug(row['phase'].split('/')[0])}">{esc(row['phase'])}</span>
-      <span class="chip lib-chip">Reviewed source</span>
-    </span>
-  </button>
-  <div class="detail"><div class="detail-inner">
-    <div class="d-row"><span class="d-label">What the source reports</span><span class="d-value">{esc(row['claim'])}</span></div>
-    <div class="d-row"><span class="d-label">Location described</span><span class="d-value">{esc(row['laterality_localization'])}</span></div>
-    {map_row}{measure}
-    <div class="d-row"><span class="d-label">Source</span><span class="d-value cite">{esc(source['source_file'])}</span></div>
-    {cited_source_row(row)}
-    <div class="d-row"><span class="d-label">Where to find it</span><span class="d-value">{esc(row['locators'])}</span></div>
-    <div class="d-row"><span class="d-label">Relevant source text</span><span class="d-value">{esc(row['evidence_text'])}</span></div>
-    <div class="d-row"><span class="d-label">Who was studied</span><span class="d-value">{esc(row['population'])}</span></div>
-    <div class="d-row"><span class="d-label">Important cautions</span><span class="d-value">{esc(row['limitations'])}</span></div>
-  </div></div>
-</div>''')
-    return [f'''<div class="sub-block reviewed-region-block collapsed" data-sub="Reviewed source findings">
-  <button class="sub-toggle" aria-expanded="false">
-    <span class="sub-chev">&#9656;</span>
-    <span class="sub-name">Reviewed source findings assigned to {esc(region)}</span>
-    <span class="sub-count">{len(finding_refs)}</span>
-  </button>
-  <div class="sub-body">{chr(10).join(rows)}</div>
-</div>''']
 
 # ---- build sections ----
 sections = []
@@ -520,8 +409,8 @@ for r in region_order:
     <span class="region-name">{esc(r).upper()}</span>
     <span class="region-count"><span data-region="{esc(r)}">{region_counts[r]}</span></span>
   </button>
-    <div class="region-body">
-{chr(10).join(regional_finding_block(r) + area_reference_blocks(r) + sub_blocks)}
+  <div class="region-body">
+{chr(10).join(area_reference_blocks(r) + sub_blocks)}
   </div>
 </section>''')
 sections_html = "\n".join(sections)
@@ -623,13 +512,13 @@ def build_meta(meta, flags):
 
     def contrib_table(s):
         rows = []
-        rows.append('<div class="mc-head"><span>Study</span><span>Result</span><span>Weight</span><span>Evidence class</span><span>How seizure origin was confirmed</span><span>Patients</span><span>Page</span></div>')
+        rows.append('<div class="mc-head"><span>Study</span><span>Value</span><span>Weight</span><span>Class</span><span>Ground truth</span><span>N</span><span>Pg</span></div>')
         for c in s["contributions"]:
             w = c.get("weight",0)
             barw = max(3, round(w/maxw*100))
             val = (str(c["value"])+'%') if "value" in c else ('<span class="mc-qual">'+esc(c.get("qualitative","qual."))+'</span>')
             wp = c.get("weight_parts",{})
-            wtitle = f'{wp.get("class_base","?")} (evidence class) x {wp.get("ground_truth_mult","?")} (confirmation method) x {wp.get("size_factor","?")} (sample size) = {w}'
+            wtitle = f'{wp.get("class_base","?")} (class) x {wp.get("ground_truth_mult","?")} (ground truth) x {wp.get("size_factor","?")} (size) = {w}'
             rows.append(
                 '<div class="mc-row">'
                 + '<span class="mc-cite">'+esc(c.get("cite",c["study"]))+'</span>'
@@ -663,8 +552,9 @@ def build_meta(meta, flags):
         nsent = s["n_studies"] + s.get("n_qualitative",0)
         summ = ''
         if s.get("pooled") is not None:
-            summ = (f'combined result <strong>{s["pooled"]:g}%</strong> &middot; individual studies {s["low"]:g}&#8211;{s["high"]:g}% '
-                    f'&middot; {nsent} stud{"y" if nsent==1 else "ies"} &middot; {certname.get(s.get("certainty"),"?")} confidence')
+            summ = (f'pooled <strong>{s["pooled"]:g}%</strong> &middot; range {s["low"]:g}&#8211;{s["high"]:g}% '
+                    f'&middot; weighted SD {s.get("wsd",0):g} &middot; &Sigma;weight {s.get("total_weight",0):g} '
+                    f'&middot; {nsent} stud{"y" if nsent==1 else "ies"} &middot; {certname.get(s.get("certainty"),"?")}')
         else:
             summ = f'direction-only ({nsent} qualitative source{"s" if nsent!=1 else ""}); no comparable percentage to pool'
         sortp = s["pooled"] if s.get("pooled") is not None else -1
@@ -702,11 +592,10 @@ def build_meta(meta, flags):
     view_sign = "".join(row(s,"s") for s in meta["by_sign"])
 
     return f'''<details class="frontpage-fold meta-fold">
-<summary>Evidence-weighted lateralizing reliability</summary>
+<summary>Weighted meta-analysis &mdash; lateralizing reliability</summary>
 <div class="meta-wrap"><div class="meta-card">
   <div class="meta-head">
-    <p>{esc(meta.get("method_explanation", ""))}</p>
-    <p>The dot is the combined result, the pale bar spans the individual study results, and the confidence dots reflect the number and total weight of the contributing studies. Open any row to see every study value and weight.</p>
+    <p>Each sign's lateralization&nbsp;% pooled across its sources, weighted by evidence class and ground-truth directness (SEEG / post-op &gt; video-EEG &gt; review). Marker = weighted estimate, pale bar = range, pips = certainty. Tap a row for per-study values.</p>
   </div>
   <div class="meta-tabs">
     <button class="mtab on" data-view="region">By region &rarr; gyrus (Brodmann) &rarr; sign</button>
@@ -818,7 +707,6 @@ def build_evidence_library(corpus):
     for source in corpus["sources"]:
         for row in source["findings"]:
             role = row["evidence_role"]
-            finding_dom_id = row["source_finding_ref"].replace(":", "-")
             counts[role] = counts.get(role, 0) + 1
             is_stat = row["source_statistic_id"] is not None
             search = " ".join(str(x or "") for x in [
@@ -831,7 +719,7 @@ def build_evidence_library(corpus):
             counting_note = ("" if row["independent_evidence"] else
                              '<div><strong>Counting note:</strong> This repeats information from another source and is not counted as a separate result.</div>')
             rows.append(
-                f'<div class="fx-row evidence-row" id="evidence-{finding_dom_id}" data-metric="{role}" data-fq="{esc(search)}">'
+                f'<div class="fx-row evidence-row" data-metric="{role}" data-fq="{esc(search)}">'
                 f'<span class="fx-m" style="background:{role_color.get(role,"#6b7280")}">{esc(ROLE_LABEL.get(role,"Source information"))}</span>'
                 f'<span class="fx-ph">{esc(row["source_term"])}<span class="fx-reg">{esc(row["phase"])}</span></span>'
                 f'<span class="fx-val">{"Reported number" if is_stat else "Description"}</span>'
@@ -919,7 +807,7 @@ def build_brain(signs):
     for aid, info in BA.AREAS.items():
         tiles[aid] = {"label": info["label"], "name": info["name"], "lobe": info["lobe"],
                       "bas": info["bas"], "buried": bool(info.get("buried")),
-                      "views": BA.views_with(aid), "signs": [], "findings": []}
+                      "views": BA.views_with(aid), "signs": []}
     _evrank = {"I": 0, "II": 1, "III": 2}
     unplaced = []
     index = {}          # the same mapping read backwards: sign -> its areas + why
@@ -936,26 +824,10 @@ def build_brain(signs):
                 "id": d["id"], "n": d["sign"], "ph": d["phase"], "lc": d.get("latcode", "nonlat"),
                 "lat": d.get("lat", ""), "ev": d.get("evid", "III"), "rg": d["region"],
                 "loc": d.get("loc", "")})
-    for aid, finding_refs in finding_refs_by_area.items():
-        if aid not in tiles:
-            continue
-        for finding_ref in finding_refs:
-            entry = ledger_by_ref[finding_ref]
-            source, row = entry["source"], entry["finding"]
-            tiles[aid]["findings"].append({
-                "ref": finding_ref,
-                "dom": finding_ref.replace(":", "-"),
-                "n": row["source_term"],
-                "claim": row["claim"],
-                "ph": row["phase"],
-                "source": source["source_file"],
-                "loc": row["laterality_localization"],
-            })
     for t in tiles.values():
         t["signs"].sort(key=lambda s: (_evrank.get(s["ev"], 3), s["n"]))
-        t["findings"].sort(key=lambda finding: (finding["n"].casefold(), finding["source"].casefold()))
 
-    first_view = BA.VIEW_ORDER[0]
+    first_view = next(iter(BA.VIEWS))
 
     def render_view(name):
         """
@@ -985,8 +857,7 @@ def build_brain(signs):
             if not lab:
                 continue
             lx, ly = lab
-            tile = tiles.get(aid, {})
-            n = len(tile.get("signs", [])) + len(tile.get("findings", []))
+            n = len(tiles.get(aid, {}).get("signs", []))
             txt = BA.AREAS[aid]["label"]
             cls = "ba-num ba-num-sm" if len(txt) > 2 else "ba-num"
             r = 13 if len(txt) <= 2 else 15
@@ -1023,17 +894,17 @@ def build_brain(signs):
                 f'aria-label="{name.capitalize()} surface, Brodmann areas">'
                 f'<g class="plate">{img}</g>{lab_g}{orient}</svg>')
 
-    views_html = "".join(render_view(v) for v in BA.VIEW_ORDER)
+    views_html = "".join(render_view(v) for v in BA.VIEWS)
     view_btns = "".join(
         f'<button class="seg-b{" active" if i == 0 else ""}" data-view="{v}" role="tab" '
         f'aria-selected="{"true" if i == 0 else "false"}">{v.capitalize()}</button>'
-        for i, v in enumerate(BA.VIEW_ORDER))
+        for i, v in enumerate(BA.VIEWS))
 
     buried = [a for a, i in BA.AREAS.items() if i.get("buried")]
     buried_chips = "".join(
         f'<button class="deep-chip" data-tile="{t}"><span class="dc-lab">{BA.AREAS[t]["label"]}</span>'
         f'<span class="dc-name">{esc(BA.AREAS[t]["name"].split("(")[0].strip())}</span>'
-        f'<span class="dc-n">{len(tiles[t]["signs"]) + len(tiles[t]["findings"])}</span></button>' for t in buried)
+        f'<span class="dc-n">{len(tiles[t]["signs"])}</span></button>' for t in buried)
 
     note = ""
 
@@ -1061,8 +932,8 @@ def build_brain(signs):
     <aside class="brain-panel" id="brain-panel" aria-live="polite">
       <div class="bp-empty">
         <div class="bp-empty-mark">BA</div>
-        <p>Tap any Brodmann number to see the seizure signs and reviewed source findings linked to that area.</p>
-        <p class="bp-hint">Or open an atlas sign below and press <strong>Show on map</strong> to light up every area linked to it. An unshaded area currently has neither an atlas sign nor a reviewed finding explicitly linked to it.</p>
+        <p>Tap any Brodmann number to see the semiology this atlas localizes there &mdash; with its phase, lateralizing value and evidence tier.</p>
+        <p class="bp-hint">Or go the other way: open any sign below and press <strong>Show on map</strong> to light up every area it localizes to. Areas with no shading carry no sign in the current dataset.</p>
       </div>
       <div class="bp-body" hidden>
         <div class="bp-head">
@@ -1615,8 +1486,8 @@ body.quiz .lib-chip{display:none}
 .mcav{font-size:.74rem;line-height:1.45;border-radius:7px;padding:6px 10px;margin-bottom:6px}
 .mcav-warn{background:#fff6e9;border:1px solid #f0cf8f;color:#7a4a06}
 .mcav-warn strong{color:#7a3e00}
-.mctab{border:1px solid var(--line2);border-radius:8px;overflow-x:auto}
-.mc-head,.mc-row{display:grid;grid-template-columns:minmax(120px,1.4fr) 54px 100px 72px minmax(130px,1fr) 50px 48px;gap:6px;align-items:center;min-width:680px;font-size:.72rem;padding:5px 9px}
+.mctab{border:1px solid var(--line2);border-radius:8px;overflow:hidden}
+.mc-head,.mc-row{display:grid;grid-template-columns:minmax(120px,1.5fr) 46px 92px 34px minmax(80px,1fr) 30px 46px;gap:6px;align-items:center;font-size:.72rem;padding:5px 9px}
 .mc-head{background:#f1f4f8;font-weight:800;color:#6b7280;text-transform:uppercase;letter-spacing:.03em;font-size:.6rem}
 .mc-row{border-top:1px solid var(--line2)}
 .mc-row:nth-child(odd){background:#fff}
@@ -1694,11 +1565,6 @@ body.quiz .lib-chip{display:none}
 .ev-map{display:inline-block;font-size:.58rem;font-weight:800;border:1px solid currentColor;border-radius:4px;padding:1px 5px}
 .ev-map-exact{color:#1a7a4a}.ev-map-related{color:#95691a}
 .reviewed-card-evidence{margin-bottom:9px}.ev-measure,.ev-owner{margin:4px 0;color:#475569}
-.source-finding-ref .map-ref-name small{display:block;margin-top:2px;color:#687386;font-size:.72rem;font-weight:500;line-height:1.25}
-.source-finding-card{background:#fbfeff}.source-finding-card .sign-name{font-weight:650}
-.bp-group-label{padding:7px 13px 4px;color:#687386;font-size:.66rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
-.bp-source-row{border-left:3px solid var(--teal)}
-.evidence-row.match{outline:2px solid var(--teal);outline-offset:2px;background:#f0fbfc}
 .ev-trace{margin-top:5px;border:1px solid var(--line2);border-radius:6px;padding:4px 7px;color:#475569}
 .ev-trace>summary{cursor:pointer;font-weight:700;color:var(--teal-d)}
 .ev-trace>div{margin-top:4px;line-height:1.4}
@@ -1805,7 +1671,7 @@ JS = r"""
   let hemi='L', sel=null, traced=null;
 
   /* density buckets + "has data" styling */
-  const counts=Object.values(BRAIN_TILES).map(t=>t.signs.length+t.findings.length).filter(n=>n>0);
+  const counts=Object.values(BRAIN_TILES).map(t=>t.signs.length).filter(n=>n>0);
   const maxN=Math.max(1,...counts);
   const RAMP=[[179,218,255],[173,182,250],[180,142,223],[187,102,176],[185,60,113],[172,1,26]];
   function densColour(t){                     /* t in 0..1 across the ramp */
@@ -1828,7 +1694,7 @@ JS = r"""
   if(dkMax) dkMax.textContent=maxN;
   card.querySelectorAll('.ba-num').forEach(t=>{
     const tile=BRAIN_TILES[t.dataset.tile];
-    if(tile&&(tile.signs.length+tile.findings.length)) t.classList.add('has');
+    if(tile&&tile.signs.length) t.classList.add('has');
   });
   const MARKS='.ba-hit,.ba-num,.deep-chip';
 
@@ -1861,15 +1727,13 @@ JS = r"""
     document.getElementById('bp-num').textContent=t.label;
     document.getElementById('bp-name').textContent=t.name;
     document.getElementById('bp-lobe').textContent=t.lobe;
-    const n=t.signs.length, nf=t.findings.length, total=n+nf;
-    const parts=[];
-    if(n) parts.push(n+(n===1?' sign':' signs'));
-    if(nf) parts.push(nf+(nf===1?' reviewed finding':' reviewed findings'));
-    document.getElementById('bp-count').textContent=parts.length?parts.join(' · '):'nothing assigned in the reviewed material';
+    const n=t.signs.length;
+    document.getElementById('bp-count').textContent=n?(n+(n===1?' sign':' signs')):'no signs in this dataset';
     hover.textContent=(t.bas.length?'BA '+t.label+' \u2014 ':'')+t.name;
     const list=document.getElementById('bp-list');
-    if(!total){list.innerHTML='<div class="bp-empty" style="padding:18px">The reviewed material currently has no sign or source finding assigned to this area.</div>';revealPanel();return;}
-    const signRows=t.signs.map(s=>{
+    if(!n){list.innerHTML='<div class="bp-empty" style="padding:18px">No sign in the current dataset is'+
+      ' localized to this area. That is a gap in the evidence collected here, not proof the area is silent.</div>';revealPanel();return;}
+    list.innerHTML=t.signs.map(s=>{
       const on=applies(s.lc);
       return '<button class="bp-row'+(on?'':' off')+'" data-sign="'+s.id+'">'+
         '<span class="bp-rname">'+esc(s.n)+
@@ -1882,15 +1746,6 @@ JS = r"""
         '</span>'+
         '<span class="bp-ev" style="background:'+(evColor[s.ev]||'#888')+'" title="Evidence '+s.ev+'">'+s.ev+'</span>'+
       '</button>';}).join('');
-    const findingRows=t.findings.map(f=>
-      '<button class="bp-row bp-source-row" data-finding-dom="'+f.dom+'">'+
-        '<span class="bp-rname">'+esc(f.n)+
-          '<span class="bp-chips"><span class="bp-chip" style="background:#e8f6f8;color:#0a7583">REVIEWED SOURCE</span>'+
-          '<span class="bp-chip" style="background:#eef2f7;color:#5a6478">'+esc(f.ph)+'</span></span>'+
-          '<span class="bp-side">'+esc(f.claim)+'</span><span class="bp-side">'+esc(f.source)+'</span>'+
-        '</span></button>').join('');
-    list.innerHTML=(n?'<div class="bp-group-label">Atlas signs</div>'+signRows:'')+
-      (nf?'<div class="bp-group-label">Reviewed source findings</div>'+findingRows:'');
     list.scrollTop=0;
     revealPanel();
   }
@@ -1989,8 +1844,8 @@ JS = r"""
     /* a traced set owns the caption; hovering past it must not steal the line */
     if(traced&&!hit.classList.contains('trace')) return;
     const t=BRAIN_TILES[hit.dataset.tile]; if(!t) return;
-    const n=t.signs.length, nf=t.findings.length, total=n+nf;
-    hover.textContent=(t.bas.length?'BA '+t.label+' — ':'')+t.name+(total?'  ·  '+total+(total===1?' item':' items'):'  ·  nothing assigned');
+    const n=t.signs.length;
+    hover.textContent=(t.bas.length?'BA '+t.label+' — ':'')+t.name+(n?'  ·  '+n+(n===1?' sign':' signs'):'  ·  no signs');
   });
   card.addEventListener('mouseleave',()=>{
     const t=traced&&BRAIN_SIGNS[traced];
@@ -2002,14 +1857,6 @@ JS = r"""
     if(e.target.closest('#bp-back')){ if(traced) traceSign(traced); return; }
     const trow=e.target.closest('.bt-row');
     if(trow){ render(trow.dataset.tile); return; }
-    const findingRow=e.target.closest('.bp-source-row');
-    if(findingRow){
-      const evidence=document.getElementById('evidence-'+findingRow.dataset.findingDom);
-      const library=document.querySelector('.evidence-library-details');
-      if(library) library.open=true;
-      if(evidence){ evidence.scrollIntoView({behavior:'smooth',block:'center'}); evidence.classList.add('match'); setTimeout(()=>evidence.classList.remove('match'),2200); }
-      return;
-    }
     const row=e.target.closest('.bp-row'); if(!row) return;
     const el=document.getElementById('sign-'+row.dataset.sign); if(!el) return;
     const sec=el.closest('.region-section'), sub=el.closest('.sub-block');
@@ -2273,7 +2120,6 @@ const fEvid=document.getElementById('filter-evid');
 const resultCount=document.getElementById('result-count');
 const noResults=document.getElementById('no-results');
 const signs=Array.from(document.querySelectorAll('.sign'));
-const totalAtlasItems=new Set(signs.map(item=>item.dataset.id)).size;
 const mapRefs=Array.from(document.querySelectorAll('.map-sign-ref'));
 const sections=Array.from(document.querySelectorAll('.region-section'));
 
@@ -2412,7 +2258,7 @@ function filterAll(){
     p.style.opacity=(sec && sec.style.display!=='none')?'1':'.4';
   });
 
-  resultCount.textContent=visibleIds.size+' of '+totalAtlasItems+' atlas items shown';
+  resultCount.textContent=visibleIds.size+' of '+signs.length+' signs shown';
   document.body.classList.toggle('filtering',
     !!(searchInput.value.trim()||fRegion.value||fPhase.value||fLat.value||fEvid.value));
   noResults.style.display=visibleIds.size===0?'block':'none';
@@ -2604,7 +2450,6 @@ HEAD = """<!DOCTYPE html>
           <option value="Parietal">Parietal</option>
           <option value="Occipital">Occipital</option>
           <option value="Insular">Insular</option>
-          <option value="Limbic">Limbic</option>
           <option value="Deep/Subcortical">Deep/Subcortical</option>
           <option value="Multiregional/Propagation">Multiregional</option>
         </select>
@@ -2656,7 +2501,6 @@ HEAD = """<!DOCTYPE html>
 
 <main>
 """ + brain_fold + """
-""" + meta_fold + """
   <div class="quiz-hint"><strong>Quiz mode on:</strong> lateralization &amp; evidence cues are hidden. Read each sign, predict its localization/lateralization, then expand to check yourself.</div>
 """ + sections_html + """
   <div id="no-results">No signs match the current search or filters. Try clearing them.</div>
@@ -2751,20 +2595,11 @@ assert h.count('class="sign"')==len(data), f'sign count {h.count(chr(34)+"class=
 assert h.count(chr(34).join(["class=","sign",""]))==len(data)
 assert 'id="quiz-mode"' in h
 assert 'id="expand-all"' in h and 'id="collapse-all"' in h
-assert '<button class="seg-b active" data-view="lateral"' in h
-assert '<svg class="brain-svg show" data-view="lateral"' in h
 _area_ref_count = sum(len(signs) for areas in area_signs_by_region.values() for signs in areas.values())
 assert h.count('class="map-sign-ref"') == _area_ref_count
-_regional_finding_count = sum(len(refs) for refs in finding_refs_by_region.values())
-_area_finding_count = sum(len(refs) for refs in finding_refs_by_area.values())
-assert h.count('class="sign source-finding-card"') == _regional_finding_count
-assert h.count('class="map-sign-ref source-finding-ref"') == _area_finding_count
-assert h.count("data-search=") == len(data) + _area_ref_count + _regional_finding_count + _area_finding_count
+assert h.count("data-search=") == len(data) + _area_ref_count
 assert 'class="detail"' in h
 assert '@media (max-width:760px)' in h
-assert h.count('class="pill"')==len(region_order)
-if META and META.get("by_sign"):
-    assert 'Evidence-weighted lateralizing reliability' in h
-    assert h.count('class="msign"') == 2 * len(META["by_sign"])
+assert h.count('class="pill"')==7
 assert 'body.quiz' in h
 print("All sanity checks passed.")
