@@ -511,7 +511,7 @@ def build_lateral(rows):
     return "\n".join(s)
 lateral_svg = build_lateral(LATERAL)
 
-# ---------- Weighted meta-analysis (the top foldable plot) ----------
+# ---------- Evidence-weighted lateralizing reliability ----------
 # Renders the deterministic output of tools/meta_analysis.py as two dense, compact,
 # directly-labelled nested views (by region; by semiology) with per-study
 # traceability one click away, plus a concise conflicting-evidence panel.
@@ -645,10 +645,10 @@ def build_meta(meta, flags):
     view_sign = "".join(row(s,"s") for s in meta["by_sign"])
 
     return f'''<details class="frontpage-fold meta-fold">
-<summary>Weighted meta-analysis &mdash; lateralizing reliability</summary>
+<summary>Evidence-weighted lateralizing reliability</summary>
 <div class="meta-wrap"><div class="meta-card">
   <div class="meta-head">
-    <p>Each sign's lateralization&nbsp;% pooled across its sources, weighted by evidence class and ground-truth directness (SEEG / post-op &gt; video-EEG &gt; review). Marker = weighted estimate, pale bar = range, pips = certainty. Tap a row for per-study values.</p>
+    <p>{esc(meta.get("method_explanation", ""))} The dot shows the weighted result, the pale bar shows the reported range, and the pips show how much supporting evidence contributed. Tap a row to see every study value and its weight.</p>
   </div>
   <div class="meta-tabs">
     <button class="mtab on" data-view="region">By region &rarr; gyrus (Brodmann) &rarr; sign</button>
@@ -684,71 +684,97 @@ meta_fold = build_meta(META, FLAGS)
 # here because they are population-specific and heterogeneous (they don't pool into
 # one model), but they are still fully accounted for and inspectable.
 def build_figures(corpus):
-    if not corpus or not corpus.get("papers"):
+    if not corpus or not corpus.get("sources"):
         return ""
-    mlabel = {"lateralization_pct":"Lateralization","frequency_pct":"Observed frequency",
-              "localization_pct":"Localization","ppv":"PPV","sensitivity":"Sensitivity",
-              "specificity":"Specificity","odds_ratio":"Odds ratio","other":"Other"}
-    mcolor = {"lateralization_pct":"#c0392b","frequency_pct":"#2471a3","localization_pct":"#8e44ad",
-              "ppv":"#0a7a8a","sensitivity":"#1a7a4a","specificity":"#1a7a4a","odds_ratio":"#95691a","other":"#6b7280"}
-    rows = []
-    counts = {}
-    for p in corpus["papers"]:
-        cite = p.get("cite") or "?"
-        cite_short = cite.split(".")[0][:46]
-        for f in p.get("findings", []):
-            m = f.get("metric", "other")
-            counts[m] = counts.get(m, 0) + 1
-            dirn = f.get("direction") or ""
-            region = f.get("lobe") or f.get("gyrus") or ""
-            ba = f.get("ba") or ""
-            v = f.get("value")
-            vt = f.get("value_text") or ""
-            if isinstance(v, (int, float)):
-                if m in ("lateralization_pct","frequency_pct","localization_pct","ppv","sensitivity","specificity"):
-                    val = f"{v:g}%"
-                elif m == "odds_ratio":
-                    val = f"OR {v:g}"
-                else:
-                    val = f"{v:g}"
-            else:
-                val = vt if len(vt) <= 40 else vt[:38] + "…"
-            val_full = vt or val
-            quote = f.get("quote") or ""
-            loc = f.get("locator") or ""
-            pop = f.get("population") or ""
-            searchable = " ".join([f.get("phenomenon",""), val, region, ba, pop, cite, quote, dirn, mlabel.get(m,m)]).lower().replace('"',"")
-            dchip = (f'<span class="fx-dir fx-{dirn}">{esc(dirn)}</span>' if dirn and dirn not in ("none","") else "")
-            rows.append(
-                f'<div class="fx-row" data-metric="{m}" data-fq="{esc(searchable)}">'
-                f'<span class="fx-m" style="background:{mcolor.get(m,"#888")}">{esc(mlabel.get(m,m))}</span>'
-                f'<span class="fx-ph">{esc(f.get("phenomenon",""))}{dchip}'
-                + (f'<span class="fx-reg">{esc(region)}{(" &middot; "+esc(ba)) if ba else ""}{(" &middot; "+esc(pop)) if pop else ""}</span>' if (region or pop) else '')
-                + f'</span>'
-                f'<span class="fx-val" title="{esc(val_full)}">{esc(val)}</span>'
-                f'<span class="fx-src">{esc(cite_short)}{(" &middot; "+esc(loc)) if loc else ""}</span>'
-                + (f'<span class="fx-q" title="{esc(quote)}">&ldquo;{esc(quote)}&rdquo;</span>' if quote else '')
-                + '</div>')
-    total = sum(counts.values())
-    order = ["lateralization_pct","localization_pct","frequency_pct","ppv","odds_ratio","sensitivity","specificity","other"]
-    btns = ['<button class="fxb on" data-f="all">All <i>'+str(total)+'</i></button>']
-    for m in order:
-        if counts.get(m):
-            btns.append(f'<button class="fxb" data-f="{m}">{esc(mlabel[m])} <i>{counts[m]}</i></button>')
+    labels = OrderedDict([
+        ("PERCENTAGE", "Percentage"), ("COUNT", "Count"), ("P_VALUE", "P value"),
+        ("OTHER", "Other"), ("RANGE", "Range"), ("MEAN", "Mean"), ("PPV", "PPV"),
+        ("MEDIAN", "Median"), ("KAPPA", "Kappa"), ("DURATION", "Duration"),
+        ("THRESHOLD", "Threshold"), ("ODDS_RATIO", "Odds ratio"),
+        ("HAZARD_RATIO", "Hazard ratio"), ("FREQUENCY", "Frequency"),
+        ("SENSITIVITY", "Sensitivity"), ("SPECIFICITY", "Specificity"),
+        ("NPV", "NPV"), ("CORRELATION", "Correlation"),
+    ])
+    colors = {
+        "PERCENTAGE":"#2471a3", "COUNT":"#5b6472", "P_VALUE":"#8e44ad", "OTHER":"#6b7280",
+        "RANGE":"#95691a", "MEAN":"#0a7a8a", "PPV":"#1a7a4a", "MEDIAN":"#0a7a8a",
+        "KAPPA":"#8e44ad", "DURATION":"#95691a", "THRESHOLD":"#95691a",
+        "ODDS_RATIO":"#c0392b", "HAZARD_RATIO":"#c0392b", "FREQUENCY":"#2471a3",
+        "SENSITIVITY":"#1a7a4a", "SPECIFICITY":"#1a7a4a", "NPV":"#1a7a4a",
+        "CORRELATION":"#8e44ad",
+    }
+    sign_by_id = {str(sign["id"]): sign for sign in data}
+    rows, counts = [], {}
+    for source in corpus["sources"]:
+        source_file = source["source_file"]
+        for finding in source["findings"]:
+            exact_names, related_names = [], []
+            for key, names in (("exact_sign_ids", exact_names), ("related_sign_ids", related_names)):
+                for sign_id in finding.get(key, []):
+                    sign = sign_by_id.get(str(sign_id))
+                    if sign and sign["sign"] not in names:
+                        names.append(sign["sign"])
+            sign_context = []
+            if exact_names:
+                sign_context.append("Linked sign: " + "; ".join(exact_names))
+            if related_names:
+                sign_context.append("Related sign: " + "; ".join(related_names))
+            for statistic in finding_statistics(finding):
+                metric = str(statistic.get("metric_type") or "OTHER").upper()
+                counts[metric] = counts.get(metric, 0) + 1
+                value = statistic_value(statistic)
+                locator = statistic.get("source_locator") or finding.get("locators") or ""
+                excerpt = statistic.get("source_excerpt") or finding.get("evidence_text") or ""
+                anatomy = statistic.get("anatomy_laterality_context") or finding.get("laterality_localization") or ""
+                details = list(sign_context)
+                for label, field in (
+                    ("Anatomy / side", anatomy), ("Who was studied", statistic.get("population") or finding.get("population")),
+                    ("Subgroup", statistic.get("subgroup")), ("Time", statistic.get("timepoint")),
+                    ("Outcome", statistic.get("endpoint")), ("What was counted", statistic.get("analysis_unit")),
+                    ("Compared with", statistic.get("comparator")),
+                ):
+                    if field and str(field).upper() not in {"NONE", "NOT_APPLICABLE", "NOT_REPORTED"}:
+                        details.append(f"{label}: {field}")
+                searchable = " ".join(" ".join(str(part or "").split()) for part in [
+                    metric, labels.get(metric, metric.replace("_", " ").title()), value,
+                    finding.get("source_term"), source_file, locator, excerpt, *details,
+                ]).lower()
+                context_html = "".join(f'<div><strong>{esc(item.split(":", 1)[0])}:</strong>{esc(item.split(":", 1)[1])}</div>'
+                                       if ":" in item else f'<div>{esc(item)}</div>' for item in details)
+                duplicate_note = "" if statistic.get("independent_evidence", finding.get("independent_evidence", True)) else \
+                    '<div><strong>Counting note:</strong> This restates a result reported elsewhere and is retained as a separate source record.</div>'
+                rows.append(
+                    f'<div class="fx-row stat-row" data-metric="{esc(metric)}" data-statistic-id="{esc(statistic.get("statistic_id", ""))}" data-fq="{esc(searchable)}">'
+                    f'<span class="fx-m" style="background:{colors.get(metric,"#6b7280")}">{esc(labels.get(metric, metric.replace("_", " ").title()))}</span>'
+                    f'<span class="fx-ph">{esc(finding.get("source_term", "Reported result"))}'
+                    + (f'<span class="fx-reg">{esc(" · ".join(sign_context))}</span>' if sign_context else '') + '</span>'
+                    f'<span class="fx-val">{esc(value)}</span>'
+                    f'<span class="fx-src">{esc(source_file)}<br>{esc(locator)}</span>'
+                    f'<span class="fx-q">&ldquo;{esc(excerpt)}&rdquo;</span>'
+                    '<details class="fx-context"><summary>Source and study details</summary>'
+                    f'{context_html}{duplicate_note}</details></div>')
+    total = len(rows)
+    buttons = [f'<button class="fxb on" data-f="all">All <i>{total}</i></button>']
+    for metric in list(labels) + sorted(set(counts) - set(labels)):
+        if counts.get(metric):
+            label = labels.get(metric, metric.replace("_", " ").title())
+            buttons.append(f'<button class="fxb" data-f="{esc(metric)}">{esc(label)} <i>{counts[metric]}</i></button>')
     return f'''<details class="frontpage-fold figures-fold">
-<summary>Source statistics &mdash; each extracted statistic per publication ({total} from {len(corpus["papers"])} papers)</summary>
-<div class="fx-wrap">
-  <div class="fx-intro">Every extracted statistic per publication (% Lateralization / % Localization / Observed Frequency / PPV / Specificity / Other Metrics), each displayed with its accompanying source text.</div>
+<summary>Source statistics &mdash; {total:,} reported results from {len(corpus["sources"])} source files</summary>
+<div class="fx-wrap" data-item-label="statistics">
+  <div class="fx-intro">Each row is one result exactly as catalogued from its source, with the linked sign, anatomical or lateralizing context, source passage, and study details. These rows are not pooled; the separate weighted-analysis panel explains and shows the approved weighted comparisons.</div>
   <div class="fx-tools">
-    <input type="text" id="fx-search" placeholder="Search signs, values, papers, quotes&hellip;">
-    <div class="fx-btns">{"".join(btns)}</div>
+    <input type="text" class="fx-search" placeholder="Search signs, values, sources, anatomy, or source text&hellip;">
+    <div class="fx-btns">{"".join(buttons)}</div>
   </div>
-  <div class="fx-count" id="fx-count"></div>
-  <div class="fx-table" id="fx-table">
+  <div class="fx-count"></div>
+  <div class="fx-table">
 {chr(10).join(rows)}
   </div>
 </div>
 </details>'''
+
+figures_fold = build_figures(CORPUS)
 def build_evidence_library(corpus):
     """Render every reviewed finding once in reader-facing language."""
     role_color = {
@@ -793,11 +819,11 @@ def build_evidence_library(corpus):
     return f'''<div class="lib evidence-library">
 <details class="lib-details evidence-library-details">
 <summary>Reviewed evidence library &mdash; {accounting["public_ledger_findings"]:,} findings</summary>
-<div class="fx-wrap">
+<div class="fx-wrap" data-item-label="findings">
   <div class="fx-intro"><strong>{accounting["owner_reviewed_findings"]:,} findings reviewed</strong> &middot; <strong>{accounting["public_ledger_findings"]:,} findings included</strong> &middot; <strong>{accounting["source_reported_statistics"]:,} reported statistics</strong> from {accounting["source_reports"]} source files. Results from each source are shown separately and are not combined across studies.</div>
-  <div class="fx-tools"><input type="text" id="fx-search" placeholder="Search signs, claims, measures, sources, locators&hellip;"><div class="fx-btns">{"".join(buttons)}</div></div>
-  <div class="fx-count" id="fx-count"></div>
-  <div class="fx-table" id="fx-table">{chr(10).join(rows)}</div>
+  <div class="fx-tools"><input type="text" class="fx-search" placeholder="Search signs, claims, measures, sources, locators&hellip;"><div class="fx-btns">{"".join(buttons)}</div></div>
+  <div class="fx-count"></div>
+  <div class="fx-table">{chr(10).join(rows)}</div>
 </div>
 </details>
 </div>'''
@@ -1583,8 +1609,8 @@ body.quiz .lib-chip{display:none}
 .fx-wrap{max-width:1180px;margin:0;background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden}
 .fx-intro{font-size:.78rem;line-height:1.55;color:#4a5568;padding:13px 16px;background:#fbfcfe;border-bottom:1px solid var(--line2)}
 .fx-tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:11px 16px 6px}
-#fx-search{flex:0 0 auto;width:270px;border:1px solid var(--line);border-radius:7px;padding:8px 11px;font-size:.84rem;outline:none}
-#fx-search:focus{border-color:var(--teal);box-shadow:0 0 0 3px rgba(14,157,176,.13)}
+.fx-search{flex:0 0 auto;width:270px;border:1px solid var(--line);border-radius:7px;padding:8px 11px;font-size:.84rem;outline:none}
+.fx-search:focus{border-color:var(--teal);box-shadow:0 0 0 3px rgba(14,157,176,.13)}
 .fx-btns{display:flex;gap:6px;flex-wrap:wrap}
 .fxb{border:1px solid var(--line);background:#fff;color:var(--navy);border-radius:16px;padding:5px 10px;font-size:.73rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:5px}
 .fxb:hover{border-color:var(--teal);color:var(--teal-d)}
@@ -1621,7 +1647,7 @@ body.quiz .lib-chip{display:none}
 @media (max-width:760px){
   .fx-row{grid-template-columns:1fr auto;grid-template-areas:"m val" "ph ph" "src src" "q q";gap:3px 8px}
   .fx-m{grid-area:m}.fx-ph{grid-area:ph}.fx-val{grid-area:val;text-align:right}.fx-src{grid-area:src}.fx-q{grid-area:q}.fx-context{grid-column:1 / -1}
-  #fx-search{width:100%}
+  .fx-search{width:100%}
 }
 
 /* probabilistic forest-plot section */
@@ -2436,33 +2462,34 @@ if(mSort){
   });
 }
 
-// ---- source-figures explorer: filter + search ----
-(function(){
-  const search=document.getElementById('fx-search');
-  const table=document.getElementById('fx-table');
-  const count=document.getElementById('fx-count');
-  if(!table) return;
+// ---- reviewed findings and source statistics: independently scoped filters ----
+document.querySelectorAll('.fx-wrap').forEach(wrap=>{
+  const search=wrap.querySelector('.fx-search');
+  const table=wrap.querySelector('.fx-table');
+  const count=wrap.querySelector('.fx-count');
+  if(!search||!table||!count) return;
   const rows=Array.from(table.querySelectorAll('.fx-row'));
+  const buttons=Array.from(wrap.querySelectorAll('.fxb'));
+  const label=wrap.dataset.itemLabel||'items';
   let mfilter='all';
   function apply(){
     const q=(search.value||'').toLowerCase().trim();
     let vis=0;
     rows.forEach(r=>{
-      const okM=(mfilter==='all')||r.dataset.metric===mfilter;
-      const okQ=!q||(r.dataset.fq||'').includes(q);
-      const show=okM&&okQ;
+      const show=((mfilter==='all')||r.dataset.metric===mfilter)&&(!q||(r.dataset.fq||'').includes(q));
       r.classList.toggle('fx-hidden',!show);
       if(show) vis++;
     });
-    count.textContent=vis+' of '+rows.length+' figures shown';
+    count.textContent=vis+' of '+rows.length+' '+label+' shown';
   }
-  document.querySelectorAll('.fxb').forEach(b=>b.addEventListener('click',()=>{
-    document.querySelectorAll('.fxb').forEach(x=>x.classList.toggle('on',x===b));
-    mfilter=b.dataset.f; apply();
+  buttons.forEach(b=>b.addEventListener('click',()=>{
+    buttons.forEach(x=>x.classList.toggle('on',x===b));
+    mfilter=b.dataset.f;
+    apply();
   }));
   search.addEventListener('input',apply);
   apply();
-})();
+});
 
 filterAll();
 """
@@ -2561,7 +2588,7 @@ HEAD = """<!DOCTYPE html>
        aria-label="Show search and filters">&#128269;<span class="tb-dot" aria-hidden="true"></span></label>
 
 <main>
-""" + brain_fold + """
+""" + brain_fold + meta_fold + figures_fold + """
   <div class="quiz-hint"><strong>Quiz mode on:</strong> lateralization &amp; evidence cues are hidden. Read each sign, predict its localization/lateralization, then expand to check yourself.</div>
 """ + sections_html + """
   <div id="no-results">No signs match the current search or filters. Try clearing them.</div>
