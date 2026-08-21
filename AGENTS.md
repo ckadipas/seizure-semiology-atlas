@@ -6,6 +6,7 @@ Read this file before changing the public atlas.
 
 - The repository owner is the final clinical and scientific authority.
 - The binding private review method is V30. Source PDFs, text, owner comments, review materials, dossiers, and audit artifacts remain only in `ckadipas/semiology_refs`.
+- Private evidence work must also follow `skills/curating-semiology-evidence/SKILL.md` and `protocol/CLASSIFICATION_AND_ATOMIC_LEDGER_CONTRACT.md` in that repository.
 - This public repository is a generated/redacted consumer. Its only active website data input is `data/atlas_bundle.json`, exported from the private canonical relational database after owner approval.
 - Legacy `data/`, `enrichment/`, and `corpus/` artifacts do not drive the build and are not evidence sources.
 
