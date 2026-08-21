@@ -314,7 +314,7 @@ def area_reference_blocks(region):
   <span class="map-ref-arrow">&#8250;</span>
   <span class="map-ref-name">{esc(d['sign'])}</span>
   <span class="head-chips">
-    <span class="chip phase-badge phase-{d['phase'].split('/')[0].lower()}">{esc(d['phase'])}</span>
+    <span class="chip phase-badge phase-{slug(d['phase'].split('/')[0])}">{esc(d['phase'])}</span>
     <span class="chip lat-chip" style="color:{latcolor.get(lc,'#333')};background:{latbg.get(lc,'#f7f7f7')};border-color:{latcolor.get(lc,'#333')}">{latlabel.get(lc,'?')}</span>
     <span class="chip evid-dot" style="background:{evidcolor.get(ec,'#888')}" title="Evidence level {ec}">{ec}</span>
   </span>
@@ -363,7 +363,7 @@ for r in region_order:
     <span class="chevron">&#8250;</span>
     <span class="sign-name">{esc(d['sign'])}</span>
     <span class="head-chips">
-      <span class="chip phase-badge phase-{d['phase'].split('/')[0].lower()}">{esc(d['phase'])}</span>
+      <span class="chip phase-badge phase-{slug(d['phase'].split('/')[0])}">{esc(d['phase'])}</span>
       <span class="chip lat-chip" style="color:{latcolor.get(lc,'#333')};background:{latbg.get(lc,'#f7f7f7')};border-color:{latcolor.get(lc,'#333')}">{latlabel.get(lc,'?')}</span>
       <span class="chip evid-dot" style="background:{evidcolor.get(ec,'#888')}" title="Evidence level {ec}">{ec}</span>
       {lib_chip}
