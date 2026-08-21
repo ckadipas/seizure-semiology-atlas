@@ -26,7 +26,8 @@ corpus = bundle["corpus"]
 sources = corpus["sources"]
 findings = [finding for source in sources for finding in source["findings"]]
 finding_refs = [finding["source_finding_ref"] for finding in findings]
-statistic_ids = [finding["source_statistic_id"] for finding in findings if finding["source_statistic_id"]]
+statistics = [statistic for finding in findings for statistic in finding["statistics"]]
+statistic_ids = [statistic["statistic_id"] for statistic in statistics]
 sign_ids = [str(sign["id"]) for sign in bundle["signs"]]
 areas = bundle["brodmann"]["areas"]
 
@@ -41,6 +42,7 @@ for source in sources:
     for finding in source["findings"]:
         require(finding["source_finding_ref"].startswith(f"{sha}:"), "finding/source identity mismatch")
         require(bool(finding["locators"] and finding["evidence_text"]), "finding lacks a source locator or evidence text")
+        require(len(finding["statistics"]) == len({statistic["statistic_id"] for statistic in finding["statistics"]}), "finding duplicates a statistic")
         for sign_id in finding["exact_sign_ids"] + finding["related_sign_ids"]:
             require(str(sign_id) in set(sign_ids), "finding references an absent public sign")
 
