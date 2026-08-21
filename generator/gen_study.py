@@ -2146,6 +2146,19 @@ signs.forEach(sign=>{
   sign.querySelector('.sign-head').addEventListener('click',()=>toggleSign(sign));
 });
 
+// Nested reviewed-source panels change a card's height after it has opened.
+// Keep the enclosing card synchronized so the added source text is not clipped.
+document.querySelectorAll('.sign .detail details').forEach(panel=>{
+  panel.addEventListener('toggle',()=>{
+    const sign=panel.closest('.sign');
+    if(!sign||!sign.classList.contains('open')) return;
+    requestAnimationFrame(()=>{
+      const detail=sign.querySelector('.detail');
+      detail.style.maxHeight=detail.scrollHeight+'px';
+    });
+  });
+});
+
 // region collapse
 sections.forEach(sec=>{
   sec.querySelector('.region-toggle').addEventListener('click',()=>{
