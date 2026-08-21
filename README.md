@@ -40,7 +40,7 @@ Scientific updates follow one path:
 5. The redacted bundle and generated website are updated deterministically.
 6. Deployment requires separate owner authorization.
 
-The public intake workflow only acknowledges or registers a request. It cannot download papers, invoke a model, edit scientific data, open a scientific pull request, or publish results.
+The public intake workflow only acknowledges or registers a request. It cannot download papers, perform source review, edit scientific data, open a scientific pull request, or publish results.
 
 ## Weighted analyses
 
