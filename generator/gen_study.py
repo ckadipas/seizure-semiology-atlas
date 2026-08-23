@@ -117,6 +117,53 @@ def statistic_search_text(row):
         ))
     return " ".join(str(value or "") for value in fields)
 
+_EMPTY_STAT_DETAIL = {"", "none", "null", "not_applicable", "not reported", "not_reported", "{}", "[]"}
+_STAT_DETAIL_LABEL = {
+    "confidence_interval": "Confidence interval", "p_value": "P value", "p_values": "P values",
+    "standard_deviation": "Standard deviation", "standard_error": "Standard error",
+    "test_statistic": "Test statistic", "heterogeneity_test": "Heterogeneity test",
+    "multiplicity_adjustment": "Multiple-comparison adjustment", "related_occurrence": "Related value",
+    "source_significance_convention": "Significance rule used by the paper",
+}
+
+def _clean_stat_detail(value):
+    if value is None:
+        return None
+    if isinstance(value, str):
+        value = value.strip()
+        if value.lower() in _EMPTY_STAT_DETAIL:
+            return None
+        if value[:1] in "[{":
+            try:
+                return _clean_stat_detail(json.loads(value))
+            except json.JSONDecodeError:
+                pass
+        return value
+    if isinstance(value, dict):
+        cleaned = {key: item for key, raw in value.items() if (item := _clean_stat_detail(raw)) is not None}
+        return cleaned or None
+    if isinstance(value, list):
+        cleaned = [item for raw in value if (item := _clean_stat_detail(raw)) is not None]
+        return cleaned or None
+    return value
+
+def _format_stat_detail(value):
+    if isinstance(value, dict):
+        return "; ".join(
+            f'{_STAT_DETAIL_LABEL.get(key, key.replace("_", " ").capitalize())}: {_format_stat_detail(item)}'
+            for key, item in value.items()
+        )
+    if isinstance(value, list):
+        return ", ".join(_format_stat_detail(item) for item in value)
+    if isinstance(value, bool):
+        return "Yes" if value else "No"
+    return str(value)
+
+def statistic_detail_text(statistic):
+    raw = statistic["uncertainty_json"] if "uncertainty_json" in statistic else statistic.get("uncertainty")
+    cleaned = _clean_stat_detail(raw)
+    return _format_stat_detail(cleaned) if cleaned is not None else ""
+
 def statistic_block(row):
     statistics = finding_statistics(row)
     if not statistics:
@@ -135,9 +182,9 @@ def statistic_block(row):
         numerator, denominator = statistic.get("numerator"), statistic.get("denominator")
         if numerator and denominator and str(numerator).upper() != "NOT_APPLICABLE" and str(denominator).upper() != "NOT_APPLICABLE":
             context.append(f'<span><strong>Counts:</strong> {esc(numerator)} / {esc(denominator)}</span>')
-        uncertainty = statistic.get("uncertainty")
-        if uncertainty and str(uncertainty).upper() not in {"NONE", "NOT_APPLICABLE", "NOT_REPORTED", "{}"}:
-            context.append(f'<span><strong>Statistical details:</strong> {esc(uncertainty)}</span>')
+        detail = statistic_detail_text(statistic)
+        if detail:
+            context.append(f'<span><strong>Statistical detail:</strong> {esc(detail)}</span>')
         items.append(
             f'<li><strong>{esc(statistic_value(statistic))}</strong> '
             f'<span class="ev-meta">{esc(metric)}</span>'
@@ -145,9 +192,9 @@ def statistic_block(row):
             + '</li>'
         )
     if len(items) == 1:
-        return f'<div class="ev-measure"><strong>Reported result:</strong><ul class="ev-stat-list">{items[0]}</ul></div>'
+        return f'<div class="ev-measure"><strong>Result reported in this paper:</strong><ul class="ev-stat-list">{items[0]}</ul></div>'
     return (
-        f'<details class="ev-stats"><summary>{len(items)} reported results</summary>'
+        f'<details class="ev-stats"><summary>{len(items)} results reported in this paper</summary>'
         f'<ol class="ev-stat-list">{"".join(items)}</ol></details>'
     )
 
@@ -416,19 +463,23 @@ def ledger_evidence_block(cid):
         search.extend([row["source_term"], row["claim"], statistic_search_text(row), row["citation"],
                        row["evidence_text"], row["source_finding_ref"]])
         measure = statistic_block(row)
+        source_role = ROLE_LABEL.get(row["evidence_role"], "Source information")
         items.append(
             '<li class="reviewed-card-evidence">'
-            f'<div><strong>{esc(row["source_term"])}</strong> &mdash; {esc(row["claim"])}</div>'
+            '<div class="ev-paper">'
+            f'<div><strong>Reviewed paper:</strong> <span class="ev-paper-file">{esc(source["source_file"])}</span> '
+            f'<span class="ev-paper-role">{esc(source_role)}</span></div>'
+            f'<div><strong>Location in paper:</strong> {esc(row["locators"])}</div>'
+            '</div>'
+            f'<div class="ev-finding"><strong>Finding: {esc(row["source_term"])}</strong> &mdash; {esc(row["claim"])}</div>'
             f'{measure}'
-            '<details class="ev-trace"><summary>Source and study details</summary>'
-            f'<div><strong>Source:</strong> {esc(source["source_file"])}</div>'
+            '<details class="ev-trace"><summary>Source text and study details</summary>'
             f'{cited_source_line(row)}'
-            f'<div><strong>Where to find it:</strong> {esc(row["locators"])}</div>'
             f'<div><strong>Relevant source text:</strong> {esc(row["evidence_text"])}</div>'
             f'<div><strong>Who was studied:</strong> {esc(row["population"])}</div>'
-            f'<div><strong>Source type:</strong> {esc(ROLE_LABEL.get(row["evidence_role"], "Source information"))}</div>'
+            f'<div><strong>Source type:</strong> {esc(source_role)}</div>'
             '</details></li>')
-    return ('<div class="d-row d-ev"><span class="d-label">Evidence from reviewed sources</span>'
+    return ('<div class="d-row d-ev"><span class="d-label">Findings from individually reviewed papers</span>'
             '<ul class="ev-list">'+"".join(items)+'</ul></div>', len(linked), " ".join(search))
 
 def area_reference_blocks(region):
@@ -525,8 +576,9 @@ for r in region_order:
         <span class="d-value">{esc(d['notes'])}</span>
       </div>
       <div class="d-row d-cite">
-        <span class="d-label">Key citations</span>
+        <span class="d-label">References for the summary above</span>
         <span class="d-value cite">{esc(d['cite'])}</span>
+        <span class="d-help">Each reviewed finding below identifies the paper from which it was taken.</span>
       </div>
       {ev_block}
       {sens_block}
@@ -1602,6 +1654,7 @@ main,.frontpage-fold,.callout{
 .metric-val{font-size:.9rem;font-weight:700;color:var(--navy);font-family:'SF Mono','Consolas',monospace}
 .evid-badge{display:inline-block;color:#fff;font-size:.72rem;font-weight:800;padding:2px 9px;border-radius:5px}
 .cite{color:var(--teal-d);font-style:italic;font-size:.82rem}
+.d-help{display:block;margin-top:5px;color:var(--muted);font-size:.74rem;line-height:1.4}
 
 @media (min-width:760px){
   .detail-inner{display:grid;grid-template-columns:1.5fr 1fr;grid-template-areas:"lat lat" "loc metrics" "map map" "notes notes" "cite cite" "ev ev";gap:0 20px;column-gap:24px}
@@ -1790,7 +1843,9 @@ body.quiz .lib-chip{display:none}
 .fx-context code,.ev-trace code{font-size:.66rem;overflow-wrap:anywhere}
 .ev-map{display:inline-block;font-size:.58rem;font-weight:800;border:1px solid currentColor;border-radius:4px;padding:1px 5px}
 .ev-map-exact{color:#1a7a4a}.ev-map-related{color:#95691a}
-.reviewed-card-evidence{margin-bottom:9px}.ev-measure,.ev-owner{margin:4px 0;color:#475569}
+.reviewed-card-evidence{margin-bottom:14px}.ev-measure,.ev-owner{margin:6px 0;color:#475569}
+.ev-paper{margin-bottom:7px;padding:7px 9px;border:1px solid #dbe4ee;border-radius:6px;background:#f7fafc;color:#475569;line-height:1.4}
+.ev-paper>div+div{margin-top:3px}.ev-paper-file{color:var(--navy);font-weight:700;overflow-wrap:anywhere}.ev-paper-role{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:4px;background:#e8f4f7;color:#0e6675;font-size:.72em;font-weight:700}.ev-finding{margin:5px 0 3px}
 .ev-stats{margin:7px 0}.ev-stats>summary{cursor:pointer;color:#0e7490;font-weight:700}.ev-stat-list{margin:5px 0 0;padding-left:22px}.ev-stat-list>li{margin:5px 0}.ev-stat-context{display:grid;gap:2px;margin-top:3px;color:#64748b;font-size:.9em}.ev-stat-context span{display:block}
 .ev-trace{margin-top:5px;border:1px solid var(--line2);border-radius:6px;padding:4px 7px;color:#475569}
 .ev-trace>summary{cursor:pointer;font-weight:700;color:var(--teal-d)}
