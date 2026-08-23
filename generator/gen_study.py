@@ -1,4 +1,4 @@
-import json, re, os, shutil, sys
+import hashlib, json, re, os, shutil, sys
 def _find_root(start):
     d = os.path.dirname(os.path.abspath(start))
     while True:
@@ -210,6 +210,11 @@ def sign_search_text(d, area_ids=None):
 
 SIGN_BASE_SEARCH_BY_ID = {d["id"]: sign_search_text(d, []) for d in data}
 SIGN_SEARCH_BY_ID = {d["id"]: sign_search_text(d) for d in data}
+sign_search_json = json.dumps(
+    {str(sign_id): value for sign_id, value in SIGN_SEARCH_BY_ID.items()},
+    ensure_ascii=False,
+    separators=(",", ":"),
+)
 region_counts = {r: sum(len(v) for v in grouped[r].values()) for r in region_order}
 
 classification_nodes = {row["node_id"]: row for row in CLASSIFICATIONS["nodes"]}
@@ -435,7 +440,7 @@ def area_reference_blocks(region):
         refs = []
         for d in signs:
             lc, ec = d["latcode"], d["evid"]
-            ref_search = f'{SIGN_BASE_SEARCH_BY_ID[d["id"]]} {area["name"]} {area["label"]} {area["lobe"]}'.lower()
+            ref_search = f'{area["name"]} {area["label"]} {area["lobe"]}'.lower()
             refs.append(f'''<button class="map-sign-ref" id="map-sign-{aid}-{d['id']}"
     data-id="{d['id']}" data-ba="{esc(aid)}" data-region="{esc(region)}"
     data-phase="{esc(d['phase'])}" data-latcode="{esc(lc)}" data-evid="{esc(ec)}"
@@ -462,6 +467,7 @@ def area_reference_blocks(region):
     return blocks
 
 # ---- build sections ----
+detail_fragments = {}
 sections = []
 for r in region_order:
     rc = region_colors[r]
@@ -487,21 +493,12 @@ for r in region_order:
             ev_block, _nsrc, ev_text = ledger_evidence_block(d.get("id"))
             lib_chip = (f'<span class="chip lib-chip" title="Reviewed source findings">&#128218; {_nsrc}</span>'
                         if _nsrc else '')
-            search_str = SIGN_SEARCH_BY_ID[d["id"]]
+            search_str = ""
             ppv_block = sens_block = ""
-            rows.append(f'''<div class="sign" id="sign-{slug(r)}-{d['id']}" data-id="{d['id']}" data-region="{esc(r)}" data-phase="{esc(d['phase'])}" data-latcode="{lc}" data-evid="{ec}" data-search="{esc(search_str)}" style="--accent:{accent}">
-  <button class="sign-head" aria-expanded="false">
-    <span class="chevron">&#8250;</span>
-    <span class="sign-name">{esc(d['sign'])}</span>
-    <span class="head-chips">
-      <span class="chip phase-badge phase-{slug(d['phase'].split('/')[0])}">{esc(d['phase'])}</span>
-      <span class="chip lat-chip" style="color:{latcolor.get(lc,'#333')};background:{latbg.get(lc,'#f7f7f7')};border-color:{latcolor.get(lc,'#333')}">{latlabel.get(lc,'?')}</span>
-      <span class="chip evid-dot" style="background:{evidcolor.get(ec,'#888')}" title="Evidence level {ec}">{ec}</span>
-      {lib_chip}
-    </span>
-  </button>
-  <div class="detail">
-    <div class="detail-inner">
+            detail_name = "sign-" + hashlib.sha256(str(d["id"]).encode("utf-8")).hexdigest()[:24] + ".html"
+            detail_path = "fragments/" + detail_name
+            if detail_name not in detail_fragments:
+                detail_fragments[detail_name] = f'''<div class="detail-inner">
       <div class="d-row d-lat">
         <span class="d-label">Lateralization</span>
         <span class="d-value"><span class="lat-badge" style="color:{latcolor.get(lc,'#333')};background:{latbg.get(lc,'#f7f7f7')};border-color:{latcolor.get(lc,'#333')}">{latlabel.get(lc,'?')}</span> {esc(d['lat'])}</span>
@@ -525,7 +522,20 @@ for r in region_order:
       {ev_block}
       {sens_block}
       {ppv_block}
-    </div>
+    </div>'''
+            rows.append(f'''<div class="sign" id="sign-{slug(r)}-{d['id']}" data-id="{d['id']}" data-region="{esc(r)}" data-phase="{esc(d['phase'])}" data-latcode="{lc}" data-evid="{ec}" data-search="{esc(search_str)}" style="--accent:{accent}">
+  <button class="sign-head" aria-expanded="false">
+    <span class="chevron">&#8250;</span>
+    <span class="sign-name">{esc(d['sign'])}</span>
+    <span class="head-chips">
+      <span class="chip phase-badge phase-{slug(d['phase'].split('/')[0])}">{esc(d['phase'])}</span>
+      <span class="chip lat-chip" style="color:{latcolor.get(lc,'#333')};background:{latbg.get(lc,'#f7f7f7')};border-color:{latcolor.get(lc,'#333')}">{latlabel.get(lc,'?')}</span>
+      <span class="chip evid-dot" style="background:{evidcolor.get(ec,'#888')}" title="Evidence level {ec}">{ec}</span>
+      {lib_chip}
+    </span>
+  </button>
+  <div class="detail" data-detail-path="{detail_path}">
+    <div class="detail-loading">Loading details&hellip;</div>
   </div>
 </div>''')
         block = f'''<div class="sub-block collapsed" data-sub="{esc(sub)}">
@@ -866,7 +876,17 @@ def build_figures(corpus):
 </div>
 </details>'''
 
-figures_fold = build_figures(CORPUS)
+deferred_fragments = {}
+
+def defer_details_body(html, filename):
+    """Keep a fold's banner in the main page and load its large body on demand."""
+    summary_end = html.index("</summary>") + len("</summary>")
+    details_end = html.rfind("</details>")
+    deferred_fragments[filename] = html[summary_end:details_end]
+    shell = html[:summary_end] + '<div class="lazy-fragment">Open this section to load its contents.</div>' + html[details_end:]
+    return shell.replace("<details ", f'<details data-fragment="fragments/{filename}" ', 1)
+
+figures_fold = defer_details_body(build_figures(CORPUS), "source-statistics.html")
 def build_evidence_library(corpus):
     """Render every reviewed finding once in reader-facing language."""
     role_color = {
@@ -918,7 +938,7 @@ def build_evidence_library(corpus):
 </details>
 </div>'''
 
-evidence_library_html = build_evidence_library(CORPUS)
+evidence_library_html = defer_details_body(build_evidence_library(CORPUS), "evidence-library.html")
 
 
 # ---------- Descriptive statistics: sensitivity by seizure-onset group ----------
@@ -1564,6 +1584,7 @@ main,.frontpage-fold,.callout{
 
 /* ---------- DETAIL (expandable) ---------- */
 .detail{max-height:0;overflow:hidden;transition:max-height .28s ease}
+.detail-loading,.lazy-fragment{padding:12px 16px;color:var(--muted);font-size:.78rem}
 .detail-inner{padding:4px 16px 16px 30px;border-top:1px solid var(--line2);background:#fbfcfe}
 .d-row{padding:9px 0;border-bottom:1px solid var(--line2)}
 .d-row:last-child{border-bottom:none}
@@ -1854,7 +1875,10 @@ body.quiz .lib-chip{display:none}
 }
 """
 
-JS = "const CLASSIFICATION_TREES=" + classification_trees_json + ";\n" + r"""
+JS = (
+    "const CLASSIFICATION_TREES=" + classification_trees_json + ";\n"
+    + "const SIGN_SEARCH=" + sign_search_json + ";\n"
+    + r"""
 /* ---------- Brodmann map ---------- */
 (function(){
   const card=document.querySelector('.brain-card');
@@ -2346,11 +2370,49 @@ const uniqueSignCount=canonicalSigns.size;
 let appliedQuery='';
 let builtBrowseMode='';
 
-function openSign(sign){
+const fragmentCache=new Map();
+function loadFragment(path){
+  if(!fragmentCache.has(path)){
+    fragmentCache.set(path,fetch(path,{cache:'force-cache'}).then(response=>{
+      if(!response.ok) throw new Error('HTTP '+response.status);
+      return response.text();
+    }));
+  }
+  return fragmentCache.get(path);
+}
+function bindDetailPanels(sign){
+  sign.querySelectorAll('.detail details').forEach(panel=>{
+    if(panel.dataset.heightBound) return;
+    panel.dataset.heightBound='true';
+    panel.addEventListener('toggle',()=>{
+      if(!sign.classList.contains('open')) return;
+      requestAnimationFrame(()=>{
+        const detail=sign.querySelector('.detail');
+        detail.style.maxHeight=detail.scrollHeight+'px';
+      });
+    });
+  });
+}
+async function ensureSignDetail(sign){
+  const d=sign.querySelector('.detail');
+  const path=d.dataset.detailPath;
+  if(!path||d.dataset.loaded==='true') return d;
+  try{
+    d.innerHTML=await loadFragment(path);
+    d.dataset.loaded='true';
+    bindDetailPanels(sign);
+  }catch(error){
+    d.innerHTML='<div class="detail-loading">Details could not be loaded. Reload the page and try again.</div>';
+  }
+  return d;
+}
+async function openSign(sign){
   const d=sign.querySelector('.detail');
   sign.classList.add('open');
   sign.querySelector('.sign-head').setAttribute('aria-expanded','true');
-  d.style.maxHeight=d.scrollHeight+'px';
+  d.style.maxHeight='48px';
+  await ensureSignDetail(sign);
+  if(sign.classList.contains('open')) d.style.maxHeight=d.scrollHeight+'px';
 }
 function closeSign(sign){
   const d=sign.querySelector('.detail');
@@ -2358,7 +2420,7 @@ function closeSign(sign){
   sign.querySelector('.sign-head').setAttribute('aria-expanded','false');
   d.style.maxHeight='0px';
 }
-function toggleSign(sign){ sign.classList.contains('open')?closeSign(sign):openSign(sign); }
+function toggleSign(sign){ sign.classList.contains('open')?closeSign(sign):void openSign(sign); }
 
 // row click
 signs.forEach(sign=>{
@@ -2366,17 +2428,7 @@ signs.forEach(sign=>{
 });
 
 // Nested reviewed-source panels change a card's height after it has opened.
-// Keep the enclosing card synchronized so the added source text is not clipped.
-document.querySelectorAll('.sign .detail details').forEach(panel=>{
-  panel.addEventListener('toggle',()=>{
-    const sign=panel.closest('.sign');
-    if(!sign||!sign.classList.contains('open')) return;
-    requestAnimationFrame(()=>{
-      const detail=sign.querySelector('.detail');
-      detail.style.maxHeight=detail.scrollHeight+'px';
-    });
-  });
-});
+signs.forEach(bindDetailPanels);
 
 // region collapse
 sections.forEach(sec=>{
@@ -2415,7 +2467,8 @@ function itemMatches(item){
   if(ph && !(item.dataset.phase||'').toLowerCase().includes(ph.toLowerCase())) return false;
   if(lat && item.dataset.latcode!==lat) return false;
   if(ev && item.dataset.evid!==ev) return false;
-  if(appliedQuery && !(item.dataset.search||'').includes(appliedQuery)) return false;
+  const searchable=(SIGN_SEARCH[String(item.dataset.id)]||'')+' '+(item.dataset.search||'');
+  if(appliedQuery && !searchable.includes(appliedQuery)) return false;
   return true;
 }
 
@@ -2635,16 +2688,24 @@ function setBrowseMode(mode){
   filterAll();
 }
 
-function toggleBrowseSign(row){
+async function toggleBrowseSign(row){
   const wrapper=row.closest('.browse-sign-wrap');
   const panel=wrapper.querySelector('.browse-detail');
   const opening=!wrapper.classList.contains('open');
   if(opening&&!panel.dataset.loaded){
     const source=canonicalSigns.get(String(row.dataset.id));
-    const detail=source.querySelector('.detail').cloneNode(true);
-    detail.querySelectorAll('[id]').forEach(node=>node.removeAttribute('id'));
-    detail.style.maxHeight='none';
-    panel.append(detail); panel.dataset.loaded='true';
+    const sourceDetail=source.querySelector('.detail');
+    const detail=document.createElement('div'); detail.className='detail'; detail.style.maxHeight='none';
+    try{
+      detail.innerHTML=sourceDetail.dataset.detailPath
+        ? await loadFragment(sourceDetail.dataset.detailPath)
+        : sourceDetail.innerHTML;
+      detail.querySelectorAll('[id]').forEach(node=>node.removeAttribute('id'));
+      panel.append(detail); panel.dataset.loaded='true';
+    }catch(error){
+      detail.innerHTML='<div class="detail-loading">Details could not be loaded. Reload the page and try again.</div>';
+      panel.append(detail);
+    }
   }
   wrapper.classList.toggle('open',opening);
   panel.hidden=!opening;
@@ -2667,7 +2728,7 @@ browseSections.addEventListener('click',event=>{
     toggle.setAttribute('aria-expanded',collapsed?'false':'true');
     return;
   }
-  const row=event.target.closest('.browse-sign'); if(row) toggleBrowseSign(row);
+  const row=event.target.closest('.browse-sign'); if(row) void toggleBrowseSign(row);
 });
 
 function applySearch(){ appliedQuery=searchInput.value.toLowerCase().trim(); filterAll(); }
@@ -2823,7 +2884,9 @@ mRegionSort.addEventListener('change',()=>mSortRegion(mRegionSort.value));
 mSignSort.addEventListener('change',()=>mSortFlat(mSignSort.value));
 
 // ---- reviewed findings and source statistics: independently scoped filters ----
-document.querySelectorAll('.fx-wrap').forEach(wrap=>{
+function bindFxWrap(wrap){
+  if(wrap.dataset.filterBound) return;
+  wrap.dataset.filterBound='true';
   const search=wrap.querySelector('.fx-search');
   const table=wrap.querySelector('.fx-table');
   const count=wrap.querySelector('.fx-count');
@@ -2849,10 +2912,27 @@ document.querySelectorAll('.fx-wrap').forEach(wrap=>{
   }));
   search.addEventListener('input',apply);
   apply();
+}
+document.querySelectorAll('.fx-wrap').forEach(bindFxWrap);
+document.querySelectorAll('details[data-fragment]').forEach(fold=>{
+  fold.addEventListener('toggle',async()=>{
+    if(!fold.open||fold.dataset.loaded==='true') return;
+    const host=fold.querySelector(':scope > .lazy-fragment');
+    if(!host) return;
+    host.textContent='Loading…';
+    try{
+      host.outerHTML=await loadFragment(fold.dataset.fragment);
+      fold.dataset.loaded='true';
+      fold.querySelectorAll('.fx-wrap').forEach(bindFxWrap);
+    }catch(error){
+      host.textContent='This section could not be loaded. Close it, reload the page, and try again.';
+    }
+  });
 });
 
 filterAll();
 """
+)
 
 HEAD = """<!DOCTYPE html>
 <html lang="en">
@@ -3027,8 +3107,15 @@ HEAD = """<!DOCTYPE html>
 </body>
 </html>"""
 
+fragments_dir = os.path.join(DOCS, "fragments")
+shutil.rmtree(fragments_dir, ignore_errors=True)
+os.makedirs(fragments_dir, exist_ok=True)
+for fragment_name, fragment_html in {**deferred_fragments, **detail_fragments}.items():
+    with open(os.path.join(fragments_dir, fragment_name), "w", encoding="utf-8") as fragment_file:
+        fragment_file.write(fragment_html)
+
 for name in ("seizure_semiology_localization.html", "index.html"):
-    with open(os.path.join(DOCS, name), "w") as f:
+    with open(os.path.join(DOCS, name), "w", encoding="utf-8") as f:
         f.write(HEAD)
 
 # Added to the Home Screen the page runs with no address bar or tab strip. A page
