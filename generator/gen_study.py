@@ -2425,7 +2425,7 @@ let builtBrowseMode='';
 const fragmentCache=new Map();
 function loadFragment(path){
   if(!fragmentCache.has(path)){
-    fragmentCache.set(path,fetch(path,{cache:'force-cache'}).then(response=>{
+    fragmentCache.set(path,fetch(path,{cache:'no-store'}).then(response=>{
       if(!response.ok) throw new Error('HTTP '+response.status);
       return response.text();
     }));
