@@ -432,7 +432,7 @@ def ledger_evidence_block(cid):
             '<ul class="ev-list">'+"".join(items)+'</ul></div>', len(linked), " ".join(search))
 
 def area_reference_blocks(region):
-    """Regional lookup rows generated from the same sign-id location join as the map."""
+    """Regional sign cards generated from the same sign-id location join as the map."""
     blocks = []
     for aid, signs in area_signs_by_region[region].items():
         area = BA.AREAS[aid]
@@ -441,19 +441,28 @@ def area_reference_blocks(region):
         for d in signs:
             lc, ec = d["latcode"], d["evid"]
             ref_search = f'{area["name"]} {area["label"]} {area["lobe"]}'.lower()
-            refs.append(f'''<button class="map-sign-ref" id="map-sign-{aid}-{d['id']}"
-    data-id="{d['id']}" data-ba="{esc(aid)}" data-region="{esc(region)}"
+            detail_name = "sign-" + hashlib.sha256(str(d["id"]).encode("utf-8")).hexdigest()[:24] + ".html"
+            _nsrc = len(ledger_evidence_by_cardid.get(d.get("id"), []))
+            lib_chip = (f'<span class="chip lib-chip" title="Reviewed source findings">&#128218; {_nsrc}</span>'
+                        if _nsrc else '')
+            refs.append(f'''<div class="sign" id="area-sign-{slug(region)}-{aid}-{d['id']}"
+    data-area-ref="true" data-id="{d['id']}" data-ba="{esc(aid)}" data-region="{esc(region)}"
     data-phase="{esc(d['phase'])}" data-latcode="{esc(lc)}" data-evid="{esc(ec)}"
-    data-search="{esc(ref_search)}" style="--accent:{latcolor.get(lc,'#999')}"
-    title="Show Brodmann {esc(area['label'])} on the map">
-  <span class="map-ref-arrow">&#8250;</span>
-  <span class="map-ref-name">{esc(d['sign'])}</span>
-  <span class="head-chips">
-    <span class="chip phase-badge phase-{slug(d['phase'].split('/')[0])}">{esc(d['phase'])}</span>
-    <span class="chip lat-chip" style="color:{latcolor.get(lc,'#333')};background:{latbg.get(lc,'#f7f7f7')};border-color:{latcolor.get(lc,'#333')}">{latlabel.get(lc,'?')}</span>
-    <span class="chip evid-dot" style="background:{evidcolor.get(ec,'#888')}" title="Evidence level {ec}">{ec}</span>
-  </span>
-</button>''')
+    data-search="{esc(ref_search)}" style="--accent:{latcolor.get(lc,'#999')}">
+  <button class="sign-head" aria-expanded="false">
+    <span class="chevron">&#8250;</span>
+    <span class="sign-name">{esc(d['sign'])}</span>
+    <span class="head-chips">
+      <span class="chip phase-badge phase-{slug(d['phase'].split('/')[0])}">{esc(d['phase'])}</span>
+      <span class="chip lat-chip" style="color:{latcolor.get(lc,'#333')};background:{latbg.get(lc,'#f7f7f7')};border-color:{latcolor.get(lc,'#333')}">{latlabel.get(lc,'?')}</span>
+      <span class="chip evid-dot" style="background:{evidcolor.get(ec,'#888')}" title="Evidence level {ec}">{ec}</span>
+      {lib_chip}
+    </span>
+  </button>
+  <div class="detail" data-detail-path="fragments/{detail_name}">
+    <div class="detail-loading">Loading details&hellip;</div>
+  </div>
+</div>''')
         blocks.append(f'''<div class="sub-block area-map-block collapsed" data-sub="{esc(title)}" data-map-area="{esc(aid)}">
   <button class="sub-toggle" aria-expanded="false">
     <span class="sub-chev">&#9656;</span>
@@ -1549,10 +1558,6 @@ main,.frontpage-fold,.callout{
 .sub-block.collapsed .sub-body{display:none}
 .area-map-block{display:none}
 .area-map-block .sub-toggle{color:var(--navy);text-transform:none;font-size:.76rem;letter-spacing:0}
-.map-sign-ref{width:100%;display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:8px;margin:6px 0;padding:9px 12px;cursor:pointer;text-align:left;font-family:inherit;transition:box-shadow .12s,border-color .12s}
-.map-sign-ref:hover{border-color:var(--teal);box-shadow:0 2px 9px rgba(15,30,61,.08)}
-.map-ref-arrow{font-size:1rem;color:var(--teal-d);flex:0 0 auto}
-.map-ref-name{flex:1;font-size:.84rem;font-weight:700;color:var(--navy);line-height:1.3}
 
 /* ---------- COLLAPSIBLE FRONT-PAGE FOLDS (chart + framework) ---------- */
 .frontpage-fold{max-width:1180px;margin:0 auto 12px;padding:0 16px}
@@ -2099,13 +2104,6 @@ JS = (
   /* entry from a sign card: "Show on map" traces the whole set, a single
      Brodmann chip traces the set and opens that one area */
   document.addEventListener('click',e=>{
-    const ref=e.target.closest('.map-sign-ref');
-    if(ref){
-      const f=card.closest('.brain-fold'); if(f&&!f.open) f.open=true;
-      render(ref.dataset.ba);
-      card.scrollIntoView({behavior:'smooth',block:'center'});
-      return;
-    }
     const jump=e.target.closest('.map-jump');
     if(jump){ traceSign(jump.dataset.sign,true); return; }
     const chip=e.target.closest('.ba-chip');
@@ -2353,7 +2351,6 @@ const semiologyView=document.getElementById('semiology-view');
 const browseSections=document.getElementById('browse-sections');
 const browseNote=document.getElementById('browse-note');
 const signs=Array.from(document.querySelectorAll('.sign'));
-const mapRefs=Array.from(document.querySelectorAll('.map-sign-ref'));
 const sections=Array.from(document.querySelectorAll('.region-section'));
 const signCopiesById=new Map();
 const totalRegionIds={};
@@ -2578,7 +2575,7 @@ function buildBrowseView(mode){
 
 function filterRegionView(){
   const active=!!(appliedQuery||fRegion.value||fPhase.value||fLat.value||fEvid.value);
-  const showMapRefs=!!(appliedQuery||fRegion.value);
+  const showAreaBlocks=!!(appliedQuery||fRegion.value);
   const visibleIds=new Set();
   const perRegionIds={};
   function record(item){
@@ -2593,20 +2590,15 @@ function filterRegionView(){
     sign.classList.toggle('match',show&&!!appliedQuery);
     if(show) record(sign); else closeSign(sign);
   });
-  mapRefs.forEach(ref=>{
-    const show=showMapRefs&&itemMatches(ref);
-    ref.style.display=show?'':'none';
-    if(show) record(ref);
-  });
   let openedSection=false;
   sections.forEach(sec=>{
     const blocks=Array.from(sec.querySelectorAll(':scope .region-body > .sub-block'));
     let openedBlock=false,sectionHas=false;
     blocks.forEach(sb=>{
       const isArea=sb.classList.contains('area-map-block');
-      const items=Array.from(sb.querySelectorAll(isArea?'.map-sign-ref':'.sign'));
+      const items=Array.from(sb.querySelectorAll('.sign'));
       const count=new Set(items.filter(item=>item.style.display!=='none').map(item=>String(item.dataset.id))).size;
-      const show=count>0&&(!isArea||showMapRefs);
+      const show=count>0&&(!isArea||showAreaBlocks);
       sb.style.display=show?(isArea?'block':''):'none';
       const counter=sb.querySelector('.sub-count'); if(counter) counter.textContent=count;
       const shouldOpen=active&&show&&!openedSection&&!openedBlock;
@@ -2790,7 +2782,7 @@ function setAll(open){
   });
   document.querySelectorAll('.sub-block').forEach(sb=>sb.classList.toggle('collapsed',!open));
   document.querySelectorAll('.sub-toggle').forEach(b=>b.setAttribute('aria-expanded',open));
-  if(open) signs.forEach(s=>{ if(s.style.display!=='none') openSign(s); });
+  if(open) signs.forEach(s=>{ if(s.style.display!=='none'&&s.closest('.sub-block')?.style.display!=='none') openSign(s); });
   else     signs.forEach(s=>closeSign(s));
 }
 document.getElementById('expand-all').addEventListener('click',()=>setAll(true));
@@ -3140,17 +3132,18 @@ for _icon in ("icon-180.png", "icon-512.png"):
         shutil.copyfile(_src, os.path.join(DOCS, _icon))
 
 _placement_count = sum(region_counts.values())
-print(f"Written: {len(HEAD)} chars, {len(data)} unique signs, {_placement_count} anatomical placements")
+_area_ref_count = sum(len(signs) for areas in area_signs_by_region.values() for signs in areas.values())
+_card_count = _placement_count + _area_ref_count
+print(f"Written: {len(HEAD)} chars, {len(data)} unique signs, {_card_count} anatomical placements")
 
 # ---- sanity checks ----
 h=HEAD
-assert h.count('class="sign"')==_placement_count
-assert h.count(chr(34).join(["class=","sign",""]))==_placement_count
+assert h.count('class="sign"')==_card_count
+assert h.count(chr(34).join(["class=","sign",""]))==_card_count
 assert 'id="quiz-mode"' in h
 assert 'id="expand-all"' in h and 'id="collapse-all"' in h
-_area_ref_count = sum(len(signs) for areas in area_signs_by_region.values() for signs in areas.values())
-assert h.count('class="map-sign-ref"') == _area_ref_count
-assert h.count("data-search=") == _placement_count + _area_ref_count
+assert h.count('data-area-ref="true"') == _area_ref_count
+assert h.count("data-search=") == _card_count
 assert 'class="detail"' in h
 assert '@media (max-width:760px)' in h
 assert h.count('class="pill"')==len(region_order)
