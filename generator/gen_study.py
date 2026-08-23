@@ -457,30 +457,87 @@ def ledger_evidence_block(cid):
     linked = ledger_evidence_by_cardid.get(cid, [])
     if not linked:
         return "", 0, ""
-    items, search = [], []
+    papers, search = {}, []
     for entry, relation in linked:
         source, row = entry["source"], entry["finding"]
+        paper = papers.setdefault(source["source_file"], {"source": source, "findings": []})
+        paper["findings"].append((row, relation))
         search.extend([row["source_term"], row["claim"], statistic_search_text(row), row["citation"],
                        row["evidence_text"], row["source_finding_ref"]])
-        measure = statistic_block(row)
-        source_role = ROLE_LABEL.get(row["evidence_role"], "Source information")
-        items.append(
-            '<li class="reviewed-card-evidence">'
+    paper_blocks = []
+    for paper in papers.values():
+        finding_blocks = []
+        for row, relation in paper["findings"]:
+            measure = statistic_block(row)
+            source_role = ROLE_LABEL.get(row["evidence_role"], "Source information")
+            relation_label = "Direct match" if relation == "EXACT" else "Related finding"
+            finding_blocks.append(
+                '<article class="reviewed-card-evidence">'
+                f'<div class="ev-finding"><span class="ev-map ev-map-{relation.lower()}">{relation_label}</span> '
+                f'<strong>{esc(row["source_term"])}</strong> &mdash; {esc(row["claim"])}</div>'
+                f'{measure}'
+                '<details class="ev-trace"><summary>Source text and study details</summary>'
+                f'<div><strong>Location in paper:</strong> {esc(row["locators"])}</div>'
+                f'{cited_source_line(row)}'
+                f'<div><strong>Relevant source text:</strong> {esc(row["evidence_text"])}</div>'
+                f'<div><strong>Who was studied:</strong> {esc(row["population"])}</div>'
+                f'<div><strong>Source type:</strong> {esc(source_role)}</div>'
+                '</details></article>')
+        paper_blocks.append(
+            '<li class="ev-paper-group">'
             '<div class="ev-paper">'
-            f'<div><strong>Reviewed paper:</strong> <span class="ev-paper-file">{esc(source["source_file"])}</span> '
-            f'<span class="ev-paper-role">{esc(source_role)}</span></div>'
-            f'<div><strong>Location in paper:</strong> {esc(row["locators"])}</div>'
+            f'<strong>Reviewed paper:</strong> <span class="ev-paper-file">{esc(paper["source"]["source_file"])}</span>'
+            f'<span class="ev-paper-count">{len(paper["findings"])} finding{"s" if len(paper["findings"]) != 1 else ""}</span>'
             '</div>'
-            f'<div class="ev-finding"><strong>Finding: {esc(row["source_term"])}</strong> &mdash; {esc(row["claim"])}</div>'
-            f'{measure}'
-            '<details class="ev-trace"><summary>Source text and study details</summary>'
-            f'{cited_source_line(row)}'
-            f'<div><strong>Relevant source text:</strong> {esc(row["evidence_text"])}</div>'
-            f'<div><strong>Who was studied:</strong> {esc(row["population"])}</div>'
-            f'<div><strong>Source type:</strong> {esc(source_role)}</div>'
-            '</details></li>')
-    return ('<div class="d-row d-ev"><span class="d-label">Findings from individually reviewed papers</span>'
-            '<ul class="ev-list">'+"".join(items)+'</ul></div>', len(linked), " ".join(search))
+            f'{"".join(finding_blocks)}</li>')
+    count_label = f'{len(linked)} finding{"s" if len(linked) != 1 else ""} from {len(papers)} reviewed paper{"s" if len(papers) != 1 else ""}'
+    return (
+        '<details class="d-row d-ev reviewed-evidence-shell">'
+        f'<summary><span>Reviewed evidence</span><span class="reviewed-evidence-count">{count_label}</span></summary>'
+        '<div class="reviewed-evidence-panel">'
+        '<div class="ev-toolbar"><button type="button" data-ev-action="expand">Expand all study details</button>'
+        '<button type="button" data-ev-action="collapse">Collapse all study details</button></div>'
+        '<div class="reviewed-evidence-scroll">'
+        f'<ul class="ev-list">{"".join(paper_blocks)}</ul></div></div></details>',
+        len(linked),
+        " ".join(search),
+    )
+
+def support_summary_block(d):
+    """Render a compact, reader-facing synthesis without replacing source rows."""
+    summary = str(d.get("evidence_summary") or "").strip()
+    basis = str(d.get("evidence_basis") or "").strip()
+    items = d.get("support_items") or []
+    if not summary and not basis and not items:
+        return ""
+    item_html = "".join(
+        f'<li>{esc(item.get("display", ""))}</li>'
+        for item in items if str(item.get("display") or "").strip()
+    )
+    basis_html = f'<div class="support-basis">{esc(basis)}</div>' if basis else ""
+    list_html = f'<ul class="support-list">{item_html}</ul>' if item_html else ""
+    return (
+        '<div class="d-row d-support">'
+        '<span class="d-label">Overall pattern in the reviewed evidence</span>'
+        f'{basis_html}<div class="support-summary">{esc(summary)}</div>{list_html}'
+        '</div>'
+    )
+
+def evidence_metric_block(ec):
+    if ec == "SRC":
+        return (
+            '<div class="metric"><span class="d-label">Evidence basis</span>'
+            '<span class="metric-val source-evidence-value">Reviewed sources</span></div>'
+        )
+    return (
+        '<div class="metric"><span class="d-label">Strength of evidence</span>'
+        f'<span class="metric-val"><span class="evid-badge" style="background:{evidcolor.get(ec,"#888")}">{esc(ec)}</span></span></div>'
+    )
+
+def evidence_header_chip(ec):
+    if ec == "SRC":
+        return '<span class="chip source-evidence-chip" title="Evidence summarized from reviewed sources">Reviewed sources</span>'
+    return f'<span class="chip evid-dot" style="background:{evidcolor.get(ec,"#888")}" title="Evidence level {esc(ec)}">{esc(ec)}</span>'
 
 def area_reference_blocks(region):
     """Regional sign cards generated from the same sign-id location join as the map."""
@@ -496,6 +553,7 @@ def area_reference_blocks(region):
             _nsrc = len(ledger_evidence_by_cardid.get(d.get("id"), []))
             lib_chip = (f'<span class="chip lib-chip" title="Reviewed source findings">&#128218; {_nsrc}</span>'
                         if _nsrc else '')
+            evid_chip = evidence_header_chip(ec)
             refs.append(f'''<div class="sign" id="area-sign-{slug(region)}-{aid}-{d['id']}"
     data-area-ref="true" data-id="{d['id']}" data-ba="{esc(aid)}" data-region="{esc(region)}"
     data-phase="{esc(d['phase'])}" data-latcode="{esc(lc)}" data-evid="{esc(ec)}"
@@ -506,7 +564,7 @@ def area_reference_blocks(region):
     <span class="head-chips">
       <span class="chip phase-badge phase-{slug(d['phase'].split('/')[0])}">{esc(d['phase'])}</span>
       <span class="chip lat-chip" style="color:{latcolor.get(lc,'#333')};background:{latbg.get(lc,'#f7f7f7')};border-color:{latcolor.get(lc,'#333')}">{latlabel.get(lc,'?')}</span>
-      <span class="chip evid-dot" style="background:{evidcolor.get(ec,'#888')}" title="Evidence level {ec}">{ec}</span>
+      {evid_chip}
       {lib_chip}
     </span>
   </button>
@@ -553,6 +611,16 @@ for r in region_order:
             ev_block, _nsrc, ev_text = ledger_evidence_block(d.get("id"))
             lib_chip = (f'<span class="chip lib-chip" title="Reviewed source findings">&#128218; {_nsrc}</span>'
                         if _nsrc else '')
+            evid_chip = evidence_header_chip(ec)
+            metric_block = evidence_metric_block(ec)
+            support_block = support_summary_block(d)
+            cite_help = ('<span class="d-help">Each reviewed finding below identifies the paper from which it was taken.</span>'
+                         if _nsrc else '')
+            cite_block = (f'''<div class="d-row d-cite">
+        <span class="d-label">References for the summary above</span>
+        <span class="d-value cite">{esc(d['cite'])}</span>
+        {cite_help}
+      </div>''' if str(d.get("cite") or "").strip() else '')
             search_str = ""
             ppv_block = sens_block = ""
             detail_name = "sign-" + hashlib.sha256(str(d["id"]).encode("utf-8")).hexdigest()[:24] + ".html"
@@ -569,17 +637,14 @@ for r in region_order:
       </div>
       {map_row}
       <div class="d-metrics">
-        <div class="metric"><span class="d-label">Strength of evidence</span><span class="metric-val"><span class="evid-badge" style="background:{evidcolor.get(ec,'#888')}">{ec}</span></span></div>
+        {metric_block}
       </div>
+      {support_block}
       <div class="d-row d-notes">
         <span class="d-label">Clinical notes &amp; mechanism</span>
         <span class="d-value">{esc(d['notes'])}</span>
       </div>
-      <div class="d-row d-cite">
-        <span class="d-label">References for the summary above</span>
-        <span class="d-value cite">{esc(d['cite'])}</span>
-        <span class="d-help">Each reviewed finding below identifies the paper from which it was taken.</span>
-      </div>
+      {cite_block}
       {ev_block}
       {sens_block}
       {ppv_block}
@@ -591,7 +656,7 @@ for r in region_order:
     <span class="head-chips">
       <span class="chip phase-badge phase-{slug(d['phase'].split('/')[0])}">{esc(d['phase'])}</span>
       <span class="chip lat-chip" style="color:{latcolor.get(lc,'#333')};background:{latbg.get(lc,'#f7f7f7')};border-color:{latcolor.get(lc,'#333')}">{latlabel.get(lc,'?')}</span>
-      <span class="chip evid-dot" style="background:{evidcolor.get(ec,'#888')}" title="Evidence level {ec}">{ec}</span>
+      {evid_chip}
       {lib_chip}
     </span>
   </button>
@@ -1633,6 +1698,7 @@ main,.frontpage-fold,.callout{
 .chip{font-size:.64rem;font-weight:800;padding:2px 7px;border-radius:4px;letter-spacing:.03em;white-space:nowrap}
 .lat-chip{border:1px solid currentColor}
 .evid-dot{color:#fff;min-width:20px;text-align:center;border-radius:5px}
+.source-evidence-chip{color:#0a6472;background:#e7f6f8;border:1px solid #9ed8df}
 .phase-badge.phase-aura{background:#e8f4fb;color:#0a5278}
 .phase-badge.phase-ictal{background:#fdf2f2;color:#7b1c1c}
 .phase-badge.phase-postictal{background:#eafaf1;color:#0e5a32}
@@ -1652,24 +1718,31 @@ main,.frontpage-fold,.callout{
 .metric{flex:1;min-width:110px;background:#fff;border:1px solid var(--line);border-radius:8px;padding:8px 11px}
 .metric .d-label{margin-bottom:5px}
 .metric-val{font-size:.9rem;font-weight:700;color:var(--navy);font-family:'SF Mono','Consolas',monospace}
+.source-evidence-value{font-family:inherit;color:#0a6472}
 .evid-badge{display:inline-block;color:#fff;font-size:.72rem;font-weight:800;padding:2px 9px;border-radius:5px}
 .cite{color:var(--teal-d);font-style:italic;font-size:.82rem}
 .d-help{display:block;margin-top:5px;color:var(--muted);font-size:.74rem;line-height:1.4}
+.d-support{background:#f5f9fc;border:1px solid #d8e5ee;border-radius:9px;padding:10px 12px;margin-top:6px}
+.d-support .d-label{color:#365d78}
+.support-basis{font-size:.7rem;font-weight:800;color:#0a6472;margin-bottom:4px}
+.support-summary{font-size:.82rem;line-height:1.5;color:#334155}
+.support-list{margin:7px 0 0;padding-left:18px;display:grid;gap:3px;color:#475569;font-size:.76rem;line-height:1.4}
 
 @media (min-width:760px){
-  .detail-inner{display:grid;grid-template-columns:1.5fr 1fr;grid-template-areas:"lat lat" "loc metrics" "map map" "notes notes" "cite cite" "ev ev";gap:0 20px;column-gap:24px}
+  .detail-inner{display:grid;grid-template-columns:1.5fr 1fr;grid-template-areas:"lat lat" "loc metrics" "map map" "support support" "notes notes" "cite cite" "ev ev";gap:0 20px;column-gap:24px}
   .d-lat{grid-area:lat}
   .d-loc{grid-area:loc}
   .d-map{grid-area:map}
   .d-metrics{grid-area:metrics;flex-direction:column;border-bottom:1px solid var(--line2)}
   .metric{min-width:0}
+  .d-support{grid-area:support}
   .d-notes{grid-area:notes}
   .d-cite{grid-area:cite}
   .d-ev{grid-area:ev}
 }
 
 /* ---------- QUIZ MODE ---------- */
-body.quiz .lat-chip,body.quiz .evid-dot{display:none}
+body.quiz .lat-chip,body.quiz .evid-dot,body.quiz .source-evidence-chip{display:none}
 body.quiz .sign{border-left-color:#cbd3e0}
 .quiz-hint{display:none;background:#f0fbfd;border:1px solid #b8e6ee;color:#0a5b68;font-size:.78rem;padding:8px 14px;border-radius:8px;margin:0 0 12px}
 body.quiz .quiz-hint{display:block}
@@ -1679,6 +1752,24 @@ body.quiz .quiz-hint{display:block}
 body.quiz .lib-chip{display:none}
 .d-ev{background:#fffaf2;border:1px solid #f0dcbd;border-radius:9px;padding:10px 12px !important;margin-top:6px}
 .d-ev .d-label{color:#a15c00;margin-bottom:7px}
+.reviewed-evidence-shell{padding:0!important;overflow:hidden}
+.reviewed-evidence-shell>summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;color:#8a4b00;font-size:.78rem;font-weight:800}
+.reviewed-evidence-shell>summary::-webkit-details-marker{display:none}
+.reviewed-evidence-shell>summary::before{content:'\25B6';font-size:.64rem;color:#b66c0a;transition:transform .15s}
+.reviewed-evidence-shell[open]>summary::before{transform:rotate(90deg)}
+.reviewed-evidence-shell[open]>summary{border-bottom:1px solid #f0dcbd}
+.reviewed-evidence-shell>summary>span:first-of-type{margin-right:auto;text-transform:uppercase;letter-spacing:.05em}
+.reviewed-evidence-count{color:#6b7280;font-size:.7rem;font-weight:700;text-transform:none;letter-spacing:0;text-align:right}
+.reviewed-evidence-panel{padding:0 10px 10px}
+.ev-toolbar{position:sticky;top:0;z-index:2;display:flex;gap:7px;justify-content:flex-end;padding:8px 2px;background:#fffaf2;border-bottom:1px solid #f4e5cd}
+.ev-toolbar button{border:1px solid #d7ad70;background:#fff;color:#8a4b00;border-radius:6px;padding:5px 8px;font-family:inherit;font-size:.68rem;font-weight:700;cursor:pointer}
+.ev-toolbar button:hover{background:#fff1dc;border-color:#b87927}
+.reviewed-evidence-scroll{max-height:clamp(280px,48vh,560px);overflow-y:auto;overscroll-behavior:contain;padding:8px 5px 4px 2px;scrollbar-gutter:stable}
+.ev-paper-group{padding-left:0!important;border-left:0!important}
+.ev-paper{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ev-paper-file{overflow-wrap:anywhere}
+.ev-paper-count{margin-left:auto;font-size:.68rem;font-weight:800;color:#0a6472;background:#e7f6f8;border-radius:999px;padding:2px 7px;white-space:nowrap}
+.reviewed-card-evidence{padding-left:10px;border-left:2px solid #e8b878}
 .ev-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
 .ev-list li{font-size:.82rem;line-height:1.5;color:#3a3a3a;padding-left:12px;border-left:2px solid #e8b878}
 .ev-src{font-weight:800;color:#8a4b00;display:inline-block;margin-right:4px}
@@ -1855,6 +1946,11 @@ body.quiz .lib-chip{display:none}
   .fx-row{grid-template-columns:1fr auto;grid-template-areas:"m val" "ph ph" "src src" "q q";gap:3px 8px}
   .fx-m{grid-area:m}.fx-ph{grid-area:ph}.fx-val{grid-area:val;text-align:right}.fx-src{grid-area:src}.fx-q{grid-area:q}.fx-context{grid-column:1 / -1}
   .fx-search{width:100%}
+  .reviewed-evidence-scroll{max-height:52vh}
+  .reviewed-evidence-shell>summary{align-items:flex-start}
+  .reviewed-evidence-count{max-width:54%}
+  .ev-toolbar{justify-content:stretch}
+  .ev-toolbar button{flex:1}
 }
 
 /* probabilistic forest-plot section */
@@ -2445,6 +2541,21 @@ function bindDetailPanels(sign){
     });
   });
 }
+document.addEventListener('click',event=>{
+  const control=event.target.closest('[data-ev-action]');
+  if(!control) return;
+  event.preventDefault();
+  event.stopPropagation();
+  const shell=control.closest('.reviewed-evidence-shell');
+  if(!shell) return;
+  const open=control.dataset.evAction==='expand';
+  shell.querySelectorAll('details.ev-trace,details.ev-stats').forEach(panel=>{ panel.open=open; });
+  const sign=control.closest('.sign');
+  if(sign&&sign.classList.contains('open')) requestAnimationFrame(()=>{
+    const detail=sign.querySelector('.detail');
+    detail.style.maxHeight=detail.scrollHeight+'px';
+  });
+});
 async function ensureSignDetail(sign){
   const d=sign.querySelector('.detail');
   const path=d.dataset.detailPath;
