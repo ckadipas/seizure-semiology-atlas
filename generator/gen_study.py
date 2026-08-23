@@ -176,8 +176,12 @@ for d in data:
     for region in d.get("regions") or [d["region"]]:
         if region not in grouped:
             continue
-        sub = d.get("subs_by_region", {}).get(region, d["sub"])
-        grouped[region].setdefault(sub, []).append(d)
+        sub_values = d.get("subsections_by_region", {}).get(region)
+        if not sub_values:
+            combined = d.get("subs_by_region", {}).get(region, d["sub"])
+            sub_values = [part.strip() for part in str(combined).split(";") if part.strip()]
+        for sub in dict.fromkeys(sub_values):
+            grouped[region].setdefault(sub, []).append(d)
 
 area_signs_by_region = OrderedDict((r, OrderedDict()) for r in region_order)
 for d in data:
