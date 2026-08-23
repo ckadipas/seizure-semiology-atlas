@@ -16,6 +16,7 @@ with open(os.path.join(ROOT,"data","atlas_bundle.json"), encoding="utf-8") as f:
     ATLAS = json.load(f)
 data = ATLAS["signs"]
 CORPUS = ATLAS["corpus"]
+CLASSIFICATIONS = ATLAS.get("classifications") or {"nodes": [], "sign_mappings": []}
 ACCOUNTING = CORPUS["integration_accounting"]
 EVID = {}; NEW_SIGNS = []; LATERAL = []
 ROLE_LABEL = {
@@ -195,8 +196,8 @@ def sign_search_text(d, area_ids=None):
     for entry, _relation in ledger_evidence_by_cardid.get(d["id"], []):
         row = entry["finding"]
         evidence_terms.extend([
-            row["source_term"], row["claim"], statistic_search_text(row), row["citation"],
-            row["evidence_text"], row["laterality_localization"],
+            row["source_term"], row["citation"], row["laterality_localization"],
+            entry["source"]["source_file"],
         ])
     return " ".join(str(x or "") for x in [
         d["sign"], d["phase"], d["region"], d["sub"], d["loc"], d["notes"], d["cite"],
@@ -206,6 +207,27 @@ def sign_search_text(d, area_ids=None):
 SIGN_BASE_SEARCH_BY_ID = {d["id"]: sign_search_text(d, []) for d in data}
 SIGN_SEARCH_BY_ID = {d["id"]: sign_search_text(d) for d in data}
 region_counts = {r: sum(len(v) for v in grouped[r].values()) for r in region_order}
+
+classification_nodes = {row["node_id"]: row for row in CLASSIFICATIONS["nodes"]}
+classification_groups = OrderedDict()
+for scheme_id in ("ILAE_SEIZURE_2025", "LUDERS_5D_2005"):
+    groups = OrderedDict(
+        (row["node_id"], {"label": row["label"], "sign_ids": []})
+        for row in CLASSIFICATIONS["nodes"] if row["scheme_id"] == scheme_id
+    )
+    for mapping in CLASSIFICATIONS["sign_mappings"]:
+        node = classification_nodes[mapping["node_id"]]
+        if node["scheme_id"] != scheme_id:
+            continue
+        sign_id = str(mapping["sign_id"])
+        if sign_id not in groups[mapping["node_id"]]["sign_ids"]:
+            groups[mapping["node_id"]]["sign_ids"].append(sign_id)
+    classification_groups[scheme_id] = [group for group in groups.values() if group["sign_ids"]]
+classification_groups_json = json.dumps(classification_groups, ensure_ascii=False, separators=(",", ":"))
+
+def is_lobe_level_subsection(label):
+    value = str(label).casefold()
+    return "lobe-level localization" in value or "reviewed source findings assigned to" in value
 
 # ---- build region-jump pills ----
 pills = []
@@ -384,8 +406,9 @@ def area_reference_blocks(region):
 sections = []
 for r in region_order:
     rc = region_colors[r]
+    lobe_level_blocks = []
     sub_blocks = []
-    for sub, signs in grouped[r].items():
+    for sub, signs in sorted(grouped[r].items(), key=lambda item: (not is_lobe_level_subsection(item[0]), str(item[0]).casefold())):
         rows = []
         for d in signs:
             lc, ec = d["latcode"], d["evid"]
@@ -446,7 +469,7 @@ for r in region_order:
     </div>
   </div>
 </div>''')
-        sub_blocks.append(f'''<div class="sub-block collapsed" data-sub="{esc(sub)}">
+        block = f'''<div class="sub-block collapsed" data-sub="{esc(sub)}">
   <button class="sub-toggle" aria-expanded="false">
     <span class="sub-chev">&#9656;</span>
     <span class="sub-name">{esc(sub)}</span>
@@ -455,7 +478,8 @@ for r in region_order:
   <div class="sub-body">
 {chr(10).join(rows)}
   </div>
-</div>''')
+</div>'''
+        (lobe_level_blocks if is_lobe_level_subsection(sub) else sub_blocks).append(block)
     sections.append(f'''<section class="region-section" id="sec-{slug(r)}" data-region="{esc(r)}">
   <button class="region-toggle" style="--rc:{rc}" aria-expanded="true">
     <span class="region-chev">&#9662;</span>
@@ -463,7 +487,7 @@ for r in region_order:
     <span class="region-count"><span data-region="{esc(r)}">{region_counts[r]}</span></span>
   </button>
   <div class="region-body">
-{chr(10).join(area_reference_blocks(r) + sub_blocks)}
+{chr(10).join(lobe_level_blocks + area_reference_blocks(r) + sub_blocks)}
   </div>
 </section>''')
 sections_html = "\n".join(sections)
@@ -1361,10 +1385,18 @@ body.filtering .tb-dot{display:block}
 .pill-count{background:#eef1f6;color:var(--muted);border-radius:10px;padding:0 6px;font-size:.66rem;font-weight:700}
 
 .toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:7px 14px}
-.search-wrap{position:relative;flex:1 1 220px;max-width:340px}
+.search-wrap{position:relative;display:flex;gap:5px;align-items:center;flex:1 1 330px;max-width:560px}
 .search-icon{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:#9aa3b2;font-size:.8rem;pointer-events:none}
-#search-input{width:100%;border:1px solid var(--line);border-radius:7px;padding:7px 10px 7px 30px;font-size:.84rem;color:var(--ink);outline:none;background:#fff}
+#search-input{min-width:90px;flex:1 1 auto;width:auto;border:1px solid var(--line);border-radius:7px;padding:7px 10px 7px 30px;font-size:.84rem;color:var(--ink);outline:none;background:#fff}
 #search-input:focus{border-color:var(--teal);box-shadow:0 0 0 3px rgba(14,157,176,.13)}
+.search-btn{border:1px solid var(--teal-d);background:var(--teal);color:#fff;border-radius:7px;padding:7px 11px;font-size:.76rem;font-weight:800;cursor:pointer}
+.search-btn:hover{background:var(--teal-d)}
+.search-clear{border-color:var(--line);background:#fff;color:var(--navy)}
+.search-clear:hover{border-color:var(--teal);background:#f0fbfd;color:var(--teal-d)}
+.browse-mode-field{display:flex;flex-direction:column;gap:2px;min-width:170px}
+.browse-mode-field select{border:1px solid var(--line);border-radius:6px;padding:5px 8px;font-size:.8rem;color:var(--ink);background:#fff;outline:none}
+.browse-mode-field select:focus{border-color:var(--teal)}
+body.alt-browse .region-nav{display:none}
 .filter-toggle{display:none;align-items:center;gap:6px;border:1px solid var(--line);background:#fff;color:var(--navy);border-radius:7px;padding:8px 12px;font-size:.84rem;font-weight:700;cursor:pointer}
 .filter-toggle .chev{font-size:.6rem;transition:transform .15s}
 .filter-toggle.open .chev{transform:rotate(180deg)}
@@ -1403,6 +1435,22 @@ main,.frontpage-fold,.callout{
 .region-count{font-size:.64rem;font-weight:700;opacity:.9;background:rgba(255,255,255,.2);padding:1px 7px;border-radius:9px;min-width:18px;text-align:center}
 .region-body{padding:7px 0 2px}
 .region-section.collapsed .region-body{display:none}
+
+#semiology-view[hidden],#region-view[hidden]{display:none}
+.browse-note{font-size:.76rem;line-height:1.5;color:#526077;background:#f4f8fb;border:1px solid var(--line);border-radius:8px;padding:8px 11px;margin:0 0 10px}
+.browse-section{margin-bottom:8px}
+.browse-toggle{width:100%;display:flex;align-items:center;gap:9px;background:var(--navy);color:#fff;border:none;border-left:3px solid var(--teal-d);border-radius:6px;padding:7px 12px;font-family:inherit;font-size:.76rem;font-weight:800;cursor:pointer;text-align:left}
+.browse-chev{font-size:.66rem;transition:transform .18s;opacity:.85}
+.browse-section.collapsed .browse-chev{transform:rotate(-90deg)}
+.browse-name{flex:1}
+.browse-count{font-size:.64rem;background:rgba(255,255,255,.2);padding:1px 7px;border-radius:9px}
+.browse-body{padding:5px 0 2px}
+.browse-section.collapsed .browse-body{display:none}
+.browse-sign{width:100%;display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--line);border-left:4px solid var(--accent,#8ca0b8);border-radius:8px;margin:6px 0;padding:9px 12px;text-align:left;font-family:inherit;cursor:pointer}
+.browse-sign:hover{border-color:var(--teal);box-shadow:0 2px 9px rgba(15,30,61,.08)}
+.browse-arrow{color:var(--teal-d);font-size:1rem}
+.browse-sign-name{flex:1;color:var(--navy);font-size:.86rem;font-weight:700;line-height:1.3}
+.browse-meta{font-size:.66rem;color:var(--muted);white-space:nowrap}
 
 .sub-block{margin:6px 0 8px}
 .sub-toggle{width:100%;display:flex;align-items:center;gap:9px;background:transparent;border:none;border-bottom:1px solid var(--line);border-radius:0;padding:5px 4px;cursor:pointer;text-align:left;font-family:inherit;font-size:.7rem;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:#7a8598;transition:color .12s}
@@ -1711,7 +1759,9 @@ body.quiz .lib-chip{display:none}
   .site-header{padding:14px 16px 12px}
   .site-header h1{font-size:1.12rem}
   .search-wrap{flex:1 1 55%;max-width:none}
-  #search-input{width:100%}
+  #search-input{width:auto}
+  .search-clear{display:none}
+  .browse-mode-field{flex:1 1 42%;min-width:150px}
   .filter-toggle{display:inline-flex;padding:6px 11px;font-size:.78rem}
   .filter-panel{display:none;flex:1 1 100%;width:100%;flex-direction:row;flex-wrap:wrap;gap:9px;padding-top:2px}
   .filter-panel.open{display:flex}
@@ -1738,7 +1788,7 @@ body.quiz .lib-chip{display:none}
 }
 """
 
-JS = r"""
+JS = "const CLASSIFICATION_GROUPS=" + classification_groups_json + ";\n" + r"""
 /* ---------- Brodmann map ---------- */
 (function(){
   const card=document.querySelector('.brain-card');
@@ -2199,15 +2249,36 @@ JS = r"""
 })();
 
 const searchInput=document.getElementById('search-input');
+const searchSubmit=document.getElementById('search-submit');
+const searchClear=document.getElementById('search-clear');
+const browseMode=document.getElementById('browse-mode');
 const fRegion=document.getElementById('filter-region');
 const fPhase=document.getElementById('filter-phase');
 const fLat=document.getElementById('filter-lat');
 const fEvid=document.getElementById('filter-evid');
 const resultCount=document.getElementById('result-count');
 const noResults=document.getElementById('no-results');
+const regionView=document.getElementById('region-view');
+const semiologyView=document.getElementById('semiology-view');
+const browseSections=document.getElementById('browse-sections');
+const browseNote=document.getElementById('browse-note');
 const signs=Array.from(document.querySelectorAll('.sign'));
 const mapRefs=Array.from(document.querySelectorAll('.map-sign-ref'));
 const sections=Array.from(document.querySelectorAll('.region-section'));
+const signCopiesById=new Map();
+const totalRegionIds={};
+signs.forEach(sign=>{
+  const id=String(sign.dataset.id);
+  if(!signCopiesById.has(id)) signCopiesById.set(id,[]);
+  signCopiesById.get(id).push(sign);
+  const region=sign.dataset.region;
+  if(!totalRegionIds[region]) totalRegionIds[region]=new Set();
+  totalRegionIds[region].add(id);
+});
+const canonicalSigns=new Map(Array.from(signCopiesById,([id,copies])=>[id,copies[0]]));
+const uniqueSignCount=canonicalSigns.size;
+let appliedQuery='';
+let builtBrowseMode='';
 
 function openSign(sign){
   const d=sign.querySelector('.detail');
@@ -2269,103 +2340,224 @@ document.querySelectorAll('.pill').forEach(p=>{
   });
 });
 
-// filtering
-function filterAll(){
-  const q=searchInput.value.toLowerCase().trim();
+// Filtering is deliberately submit-based. Typing does not touch the 2,312-sign
+// DOM; Search or Enter applies the completed query once, and no result card is
+// opened automatically.
+function itemMatches(item){
   const reg=fRegion.value,ph=fPhase.value,lat=fLat.value,ev=fEvid.value;
-  const active=!!(q||reg||ph||lat||ev);
-  const showMapRefs=!!(q||reg);
+  if(reg && item.dataset.region!==reg) return false;
+  if(ph && !(item.dataset.phase||'').toLowerCase().includes(ph.toLowerCase())) return false;
+  if(lat && item.dataset.latcode!==lat) return false;
+  if(ev && item.dataset.evid!==ev) return false;
+  if(appliedQuery && !(item.dataset.search||'').includes(appliedQuery)) return false;
+  return true;
+}
+
+function idMatches(id){
+  return (signCopiesById.get(String(id))||[]).some(itemMatches);
+}
+
+const signCollator=new Intl.Collator(undefined,{numeric:true,sensitivity:'base'});
+function signName(id){ return canonicalSigns.get(String(id)).querySelector('.sign-name').textContent.trim(); }
+function sortSignIds(ids,descending=false){
+  const values=Array.from(new Set(ids.map(String))).filter(id=>canonicalSigns.has(id));
+  values.sort((a,b)=>signCollator.compare(signName(a),signName(b)));
+  if(descending) values.reverse();
+  return values;
+}
+
+function browseGroups(mode){
+  if(mode==='az'||mode==='za'){
+    const descending=mode==='za';
+    const grouped=new Map();
+    sortSignIds(Array.from(canonicalSigns.keys()),descending).forEach(id=>{
+      const match=signName(id).match(/[A-Za-z0-9]/);
+      const key=match?match[0].toUpperCase():'#';
+      if(!grouped.has(key)) grouped.set(key,[]);
+      grouped.get(key).push(id);
+    });
+    const keys=Array.from(grouped.keys()).sort(signCollator.compare);
+    if(descending) keys.reverse();
+    return keys.map(label=>({label,sign_ids:grouped.get(label)}));
+  }
+  const scheme=mode==='ilae'?'ILAE_SEIZURE_2025':'LUDERS_5D_2005';
+  const mapped=new Set();
+  const groups=(CLASSIFICATION_GROUPS[scheme]||[]).map(group=>{
+    const ids=sortSignIds(group.sign_ids);
+    ids.forEach(id=>mapped.add(id));
+    return {label:group.label,sign_ids:ids};
+  }).filter(group=>group.sign_ids.length);
+  const unclassified=sortSignIds(Array.from(canonicalSigns.keys()).filter(id=>!mapped.has(id)));
+  if(unclassified.length) groups.push({label:'Not yet classified in this scheme',sign_ids:unclassified});
+  return groups;
+}
+
+function buildBrowseView(mode){
+  if(builtBrowseMode===mode) return;
+  builtBrowseMode=mode;
+  browseSections.replaceChildren();
+  browseNote.textContent=(mode==='az'||mode==='za')
+    ? 'Signs are alphabetized here. Each row opens the same ledger-linked sign shown in the regional view.'
+    : 'Confirmed classification relationships group the same ledger-linked signs shown elsewhere. Signs without a confirmed relationship remain visible under Not yet classified.';
+  const fragment=document.createDocumentFragment();
+  browseGroups(mode).forEach((group,index)=>{
+    const section=document.createElement('section');
+    section.className='browse-section'+(index?' collapsed':'');
+    const toggle=document.createElement('button');
+    toggle.className='browse-toggle'; toggle.type='button'; toggle.setAttribute('aria-expanded',index?'false':'true');
+    const chev=document.createElement('span'); chev.className='browse-chev'; chev.textContent='▼';
+    const name=document.createElement('span'); name.className='browse-name'; name.textContent=group.label;
+    const count=document.createElement('span'); count.className='browse-count'; count.textContent=group.sign_ids.length;
+    toggle.append(chev,name,count);
+    const body=document.createElement('div'); body.className='browse-body';
+    group.sign_ids.forEach(id=>{
+      const source=canonicalSigns.get(id);
+      const row=document.createElement('button'); row.type='button'; row.className='browse-sign'; row.dataset.id=id;
+      row.style.setProperty('--accent',source.style.getPropertyValue('--accent')||'#8ca0b8');
+      const arrow=document.createElement('span'); arrow.className='browse-arrow'; arrow.textContent='›';
+      const label=document.createElement('span'); label.className='browse-sign-name'; label.textContent=signName(id);
+      const meta=document.createElement('span'); meta.className='browse-meta';
+      meta.textContent=(source.dataset.phase||'')+' · '+(source.dataset.region||'');
+      row.append(arrow,label,meta); body.append(row);
+    });
+    section.append(toggle,body); fragment.append(section);
+  });
+  browseSections.append(fragment);
+}
+
+function filterRegionView(){
+  const active=!!(appliedQuery||fRegion.value||fPhase.value||fLat.value||fEvid.value);
+  const showMapRefs=!!(appliedQuery||fRegion.value);
   const visibleIds=new Set();
   const perRegionIds={};
-
   function record(item){
-    visibleIds.add(item.dataset.id);
-    const r=item.dataset.region;
-    if(!perRegionIds[r]) perRegionIds[r]=new Set();
-    perRegionIds[r].add(item.dataset.id);
+    const id=String(item.dataset.id),region=item.dataset.region;
+    visibleIds.add(id);
+    if(!perRegionIds[region]) perRegionIds[region]=new Set();
+    perRegionIds[region].add(id);
   }
-
-  function matches(item){
-    if(reg && item.dataset.region!==reg) return false;
-    if(ph && !(item.dataset.phase||'').toLowerCase().includes(ph.toLowerCase())) return false;
-    if(lat && item.dataset.latcode!==lat) return false;
-    if(ev && item.dataset.evid!==ev) return false;
-    if(q && !(item.dataset.search||'').includes(q)) return false;
-    return true;
-  }
-
-  if(q.length>=1){ sections.forEach(s=>s.classList.remove('collapsed')); }
-
   signs.forEach(sign=>{
-    const show=matches(sign);
-    sign.classList.toggle('hidden-sign',!show);
+    const show=itemMatches(sign);
     sign.style.display=show?'':'none';
-    if(show){
-      record(sign);
-      // auto-expand matches on active search
-      if(q.length>=2){ sign.classList.add('match'); openSign(sign); }
-      else { sign.classList.remove('match'); if(!q) closeSign(sign); }
-    } else {
-      sign.classList.remove('match');
-      closeSign(sign);
-    }
+    sign.classList.toggle('match',show&&!!appliedQuery);
+    if(show) record(sign); else closeSign(sign);
   });
-
   mapRefs.forEach(ref=>{
-    const show=showMapRefs&&matches(ref);
-    ref.classList.toggle('hidden-sign',!show);
+    const show=showMapRefs&&itemMatches(ref);
     ref.style.display=show?'':'none';
     if(show) record(ref);
   });
-
-  // hide empty sub-blocks; when a search/filter is active, reveal matching
-  // subregions so results are visible, otherwise restore the collapsed default
-  document.querySelectorAll('.sub-block').forEach(sb=>{
-    const isArea=sb.classList.contains('area-map-block');
-    const selector=isArea?'.map-sign-ref':'.sign';
-    const any=Array.from(sb.querySelectorAll(selector)).some(s=>s.style.display!=='none');
-    const show=any&&(!isArea||showMapRefs);
-    sb.style.display=show?(isArea?'block':''):'none';
-    const t=sb.querySelector('.sub-toggle');
-    if(active){ if(show){ sb.classList.remove('collapsed'); if(t) t.setAttribute('aria-expanded','true'); } }
-    else { sb.classList.add('collapsed'); if(t) t.setAttribute('aria-expanded','false'); }
-  });
-  // matched signs were opened while their sub-block may have been hidden;
-  // recompute their heights now that the sub-block is revealed
-  if(active){
-    document.querySelectorAll('.sub-block:not(.collapsed) .sign.open').forEach(s=>{
-      const d=s.querySelector('.detail'); d.style.maxHeight=d.scrollHeight+'px';
-    });
-  }
-  // hide empty sections + update counts
+  let openedSection=false;
   sections.forEach(sec=>{
-    const r=sec.dataset.region;
-    const c=perRegionIds[r]?perRegionIds[r].size:0;
-    sec.style.display=c>0?'':'none';
-    sec.querySelectorAll('.region-count [data-region], .region-count span[data-region]').forEach(()=>{});
+    const blocks=Array.from(sec.querySelectorAll(':scope .region-body > .sub-block'));
+    let openedBlock=false,sectionHas=false;
+    blocks.forEach(sb=>{
+      const isArea=sb.classList.contains('area-map-block');
+      const items=Array.from(sb.querySelectorAll(isArea?'.map-sign-ref':'.sign'));
+      const count=new Set(items.filter(item=>item.style.display!=='none').map(item=>String(item.dataset.id))).size;
+      const show=count>0&&(!isArea||showMapRefs);
+      sb.style.display=show?(isArea?'block':''):'none';
+      const counter=sb.querySelector('.sub-count'); if(counter) counter.textContent=count;
+      const shouldOpen=active&&show&&!openedSection&&!openedBlock;
+      sb.classList.toggle('collapsed',!shouldOpen);
+      const toggle=sb.querySelector('.sub-toggle'); if(toggle) toggle.setAttribute('aria-expanded',shouldOpen?'true':'false');
+      if(shouldOpen) openedBlock=true;
+      if(show) sectionHas=true;
+    });
+    if(!active){
+      blocks.forEach(sb=>{
+        const isArea=sb.classList.contains('area-map-block');
+        sb.style.display=isArea?'none':'';
+        sb.classList.add('collapsed');
+        const toggle=sb.querySelector('.sub-toggle'); if(toggle) toggle.setAttribute('aria-expanded','false');
+      });
+      sectionHas=true;
+    }
+    sec.style.display=sectionHas?'':'none';
+    const shouldOpen=!active||(sectionHas&&!openedSection);
+    sec.classList.toggle('collapsed',!shouldOpen);
+    sec.querySelector('.region-toggle').setAttribute('aria-expanded',shouldOpen?'true':'false');
+    if(active&&sectionHas&&!openedSection) openedSection=true;
   });
-  // update region + pill counts
   document.querySelectorAll('[data-region]').forEach(el=>{
-    if(el.tagName==='SPAN' && (el.closest('.region-count')||el.closest('.pill-count'))){
+    if(el.tagName==='SPAN'&&(el.closest('.region-count')||el.closest('.pill-count'))){
       const ids=perRegionIds[el.dataset.region];
-      el.textContent=ids?ids.size:0;
+      el.textContent=active?(ids?ids.size:0):(totalRegionIds[el.dataset.region]?.size||0);
     }
   });
   document.querySelectorAll('.pill').forEach(p=>{
-    const target=p.dataset.target;
-    const sec=document.getElementById(target);
-    p.style.opacity=(sec && sec.style.display!=='none')?'1':'.4';
+    const sec=document.getElementById(p.dataset.target);
+    p.style.opacity=(sec&&sec.style.display!=='none')?'1':'.4';
   });
-
-  resultCount.textContent=visibleIds.size+' of '+signs.length+' signs shown';
-  document.body.classList.toggle('filtering',
-    !!(searchInput.value.trim()||fRegion.value||fPhase.value||fLat.value||fEvid.value));
-  noResults.style.display=visibleIds.size===0?'block':'none';
+  return visibleIds.size;
 }
 
-[searchInput,fRegion,fPhase,fLat,fEvid].forEach(el=>{
-  el.addEventListener(el.tagName==='INPUT'?'input':'change',filterAll);
+function filterBrowseView(){
+  const active=!!(appliedQuery||fRegion.value||fPhase.value||fLat.value||fEvid.value);
+  const visibleIds=new Set();
+  let opened=false;
+  browseSections.querySelectorAll('.browse-section').forEach(section=>{
+    let count=0;
+    section.querySelectorAll('.browse-sign').forEach(row=>{
+      const show=idMatches(row.dataset.id);
+      row.style.display=show?'':'none';
+      if(show){ count++; visibleIds.add(String(row.dataset.id)); }
+    });
+    section.style.display=count?'':'none';
+    section.querySelector('.browse-count').textContent=count;
+    const shouldOpen=count>0&&(!active?!opened:!opened);
+    section.classList.toggle('collapsed',!shouldOpen);
+    section.querySelector('.browse-toggle').setAttribute('aria-expanded',shouldOpen?'true':'false');
+    if(shouldOpen) opened=true;
+  });
+  return visibleIds.size;
+}
+
+function filterAll(){
+  const visible=browseMode.value==='region'?filterRegionView():filterBrowseView();
+  const active=!!(appliedQuery||fRegion.value||fPhase.value||fLat.value||fEvid.value);
+  resultCount.textContent=visible+' of '+uniqueSignCount+' signs shown';
+  document.body.classList.toggle('filtering',active);
+  noResults.style.display=visible===0?'block':'none';
+}
+
+function setBrowseMode(mode){
+  const regional=mode==='region';
+  regionView.hidden=!regional; semiologyView.hidden=regional;
+  document.body.classList.toggle('alt-browse',!regional);
+  if(!regional) buildBrowseView(mode);
+  filterAll();
+}
+
+function openCanonicalSign(id){
+  const source=canonicalSigns.get(String(id)); if(!source) return;
+  appliedQuery=''; searchInput.value='';
+  [fRegion,fPhase,fLat,fEvid].forEach(field=>field.value='');
+  browseMode.value='region'; setBrowseMode('region');
+  const section=source.closest('.region-section'),sub=source.closest('.sub-block');
+  if(section){ section.classList.remove('collapsed'); section.querySelector('.region-toggle').setAttribute('aria-expanded','true'); }
+  if(sub){ sub.style.display=''; sub.classList.remove('collapsed'); sub.querySelector('.sub-toggle').setAttribute('aria-expanded','true'); }
+  openSign(source);
+  requestAnimationFrame(()=>source.scrollIntoView({behavior:'smooth',block:'center'}));
+}
+
+browseSections.addEventListener('click',event=>{
+  const toggle=event.target.closest('.browse-toggle');
+  if(toggle){
+    const section=toggle.closest('.browse-section');
+    const collapsed=section.classList.toggle('collapsed');
+    toggle.setAttribute('aria-expanded',collapsed?'false':'true');
+    return;
+  }
+  const row=event.target.closest('.browse-sign'); if(row) openCanonicalSign(row.dataset.id);
 });
+
+function applySearch(){ appliedQuery=searchInput.value.toLowerCase().trim(); filterAll(); }
+searchSubmit.addEventListener('click',applySearch);
+searchInput.addEventListener('keydown',event=>{ if(event.key==='Enter'){ event.preventDefault(); applySearch(); } });
+searchClear.addEventListener('click',()=>{ searchInput.value=''; appliedQuery=''; filterAll(); searchInput.focus(); });
+[fRegion,fPhase,fLat,fEvid].forEach(el=>el.addEventListener('change',filterAll));
+browseMode.addEventListener('change',()=>setBrowseMode(browseMode.value));
 
 /* ---------- collapsing the toolbar ---------- */
 (function(){
@@ -2399,6 +2591,14 @@ function filterAll(){
    region banners, the sub-region banners and the cards. Collapse all used to leave
    the regions and the panels open, so on a phone it barely shortened the page. */
 function setAll(open){
+  if(browseMode.value!=='region'){
+    browseSections.querySelectorAll('.browse-section').forEach(section=>{
+      if(section.style.display==='none') return;
+      section.classList.toggle('collapsed',!open);
+      section.querySelector('.browse-toggle').setAttribute('aria-expanded',open?'true':'false');
+    });
+    return;
+  }
   document.querySelectorAll('.frontpage-fold').forEach(d=>{ d.open=open; });
   document.querySelectorAll('.region-section').forEach(sec=>{
     sec.classList.toggle('collapsed',!open);
@@ -2563,8 +2763,19 @@ HEAD = """<!DOCTYPE html>
   <div class="toolbar">
     <div class="search-wrap">
       <span class="search-icon">&#128269;</span>
-      <input type="text" id="search-input" placeholder="Search signs, mechanisms, citations...">
+      <input type="text" id="search-input" placeholder="Search signs, anatomy, or sources...">
+      <button class="search-btn" id="search-submit" type="button">Search</button>
+      <button class="search-btn search-clear" id="search-clear" type="button">Clear</button>
     </div>
+    <label class="browse-mode-field"><span class="ctrl-label">Organize signs by</span>
+      <select id="browse-mode">
+        <option value="region">Brain region</option>
+        <option value="az">Semiology A&ndash;Z</option>
+        <option value="za">Semiology Z&ndash;A</option>
+        <option value="ilae">ILAE 2025 classification</option>
+        <option value="luders">L&uuml;ders 5D classification</option>
+      </select>
+    </label>
     <button class="filter-toggle" id="filter-toggle" aria-expanded="false"><span>Filters</span><span class="chev">&#9660;</span></button>
     <div class="filter-panel" id="filter-panel">
       <div class="filter-field"><span class="ctrl-label">Region</span>
@@ -2627,7 +2838,13 @@ HEAD = """<!DOCTYPE html>
 <main>
 """ + brain_fold + meta_fold + figures_fold + """
   <div class="quiz-hint"><strong>Quiz mode on:</strong> lateralization &amp; evidence cues are hidden. Read each sign, predict its localization/lateralization, then expand to check yourself.</div>
+  <div id="region-view">
 """ + sections_html + """
+  </div>
+  <div id="semiology-view" hidden>
+    <p class="browse-note" id="browse-note"></p>
+    <div id="browse-sections"></div>
+  </div>
   <div id="no-results">No signs match the current search or filters. Try clearing them.</div>
 </main>
 

@@ -17,7 +17,7 @@ def require(condition, message):
 
 bundle = json.loads(BUNDLE.read_text(encoding="utf-8"))
 require(
-    set(bundle) == {"brodmann", "corpus", "finding_locations", "schema_version", "semantic_digest", "signs", "source_digests", "weighted_analysis"},
+    set(bundle) == {"brodmann", "classifications", "corpus", "finding_locations", "schema_version", "semantic_digest", "signs", "source_digests", "weighted_analysis"},
     "unexpected top-level bundle contract",
 )
 require(re.fullmatch(r"[0-9a-f]{64}", bundle["semantic_digest"]) is not None, "invalid semantic digest")
@@ -30,11 +30,20 @@ statistics = [statistic for finding in findings for statistic in finding["statis
 statistic_ids = [statistic["statistic_id"] for statistic in statistics]
 sign_ids = [str(sign["id"]) for sign in bundle["signs"]]
 areas = bundle["brodmann"]["areas"]
+classifications = bundle["classifications"]
+classification_schemes = {row["scheme_id"] for row in classifications["schemes"]}
+classification_nodes = {row["node_id"]: row for row in classifications["nodes"]}
 
 require(len(finding_refs) == len(set(finding_refs)), "duplicate finding identity")
 require(len(statistic_ids) == len(set(statistic_ids)), "duplicate statistic identity")
 require(len(sign_ids) == len(set(sign_ids)), "duplicate sign identity")
 require(len({source["source_sha256"] for source in sources}) == len(sources), "duplicate source identity")
+require(classification_schemes == {"LUDERS_5D_2005", "ILAE_SEIZURE_2025"}, "classification schemes changed")
+require(all(row["scheme_id"] in classification_schemes for row in classification_nodes.values()), "classification node references an absent scheme")
+require(
+    all(str(row["sign_id"]) in set(sign_ids) and row["node_id"] in classification_nodes for row in classifications["sign_mappings"]),
+    "classification mapping references an absent sign or node",
+)
 for source in sources:
     sha = source["source_sha256"]
     require(re.fullmatch(r"[0-9a-f]{64}", sha) is not None, "invalid source digest")
