@@ -614,13 +614,10 @@ for r in region_order:
             evid_chip = evidence_header_chip(ec)
             metric_block = evidence_metric_block(ec)
             support_block = support_summary_block(d)
-            cite_help = ('<span class="d-help">Each reviewed finding below identifies the paper from which it was taken.</span>'
-                         if _nsrc else '')
-            cite_block = (f'''<div class="d-row d-cite">
-        <span class="d-label">References for the summary above</span>
-        <span class="d-value cite">{esc(d['cite'])}</span>
-        {cite_help}
-      </div>''' if str(d.get("cite") or "").strip() else '')
+            source_status_block = ('' if _nsrc else '''<div class="d-row d-cite source-review-pending">
+        <span class="d-label">Source review pending</span>
+        <span class="d-value">This summary does not yet have an individually reviewed paper linked to it.</span>
+      </div>''')
             search_str = ""
             ppv_block = sens_block = ""
             detail_name = "sign-" + hashlib.sha256(str(d["id"]).encode("utf-8")).hexdigest()[:24] + ".html"
@@ -644,7 +641,7 @@ for r in region_order:
         <span class="d-label">Clinical notes &amp; mechanism</span>
         <span class="d-value">{esc(d['notes'])}</span>
       </div>
-      {cite_block}
+      {source_status_block}
       {ev_block}
       {sens_block}
       {ppv_block}
