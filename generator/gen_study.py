@@ -209,21 +209,79 @@ SIGN_SEARCH_BY_ID = {d["id"]: sign_search_text(d) for d in data}
 region_counts = {r: sum(len(v) for v in grouped[r].values()) for r in region_order}
 
 classification_nodes = {row["node_id"]: row for row in CLASSIFICATIONS["nodes"]}
-classification_groups = OrderedDict()
-for scheme_id in ("ILAE_SEIZURE_2025", "LUDERS_5D_2005"):
-    groups = OrderedDict(
-        (row["node_id"], {"label": row["label"], "sign_ids": []})
-        for row in CLASSIFICATIONS["nodes"] if row["scheme_id"] == scheme_id
-    )
-    for mapping in CLASSIFICATIONS["sign_mappings"]:
-        node = classification_nodes[mapping["node_id"]]
-        if node["scheme_id"] != scheme_id:
+classification_roots = {
+    "ILAE_SEIZURE_2025": "ILAE2025:DESC",
+    "LUDERS_5D_2005": "LUDERS5D:D2",
+}
+
+def classification_tree(scheme_id, root_id):
+    children = {}
+    for node in CLASSIFICATIONS["nodes"]:
+        if node["scheme_id"] == scheme_id:
+            children.setdefault(node.get("parent_node_id"), []).append(node["node_id"])
+    included = set()
+    pending = [root_id]
+    excluded_roots = {"ILAE2025:DESC:OBSERVABILITY", "ILAE2025:DESC:SOMATOTOPIC"}
+    while pending:
+        node_id = pending.pop()
+        if node_id in included or node_id in excluded_roots:
             continue
-        sign_id = str(mapping["sign_id"])
-        if sign_id not in groups[mapping["node_id"]]["sign_ids"]:
-            groups[mapping["node_id"]]["sign_ids"].append(sign_id)
-    classification_groups[scheme_id] = [group for group in groups.values() if group["sign_ids"]]
-classification_groups_json = json.dumps(classification_groups, ensure_ascii=False, separators=(",", ":"))
+        included.add(node_id)
+        pending.extend(children.get(node_id, []))
+
+    mapped_by_sign = {}
+    for mapping in CLASSIFICATIONS["sign_mappings"]:
+        node_id = mapping["node_id"]
+        if node_id in included:
+            mapped_by_sign.setdefault(str(mapping["sign_id"]), set()).add(node_id)
+
+    def is_ancestor(candidate, node_id):
+        parent = classification_nodes[node_id].get("parent_node_id")
+        while parent in included:
+            if parent == candidate:
+                return True
+            parent = classification_nodes[parent].get("parent_node_id")
+        return False
+
+    direct = {node_id: [] for node_id in included}
+    for sign_id, mapped_nodes in mapped_by_sign.items():
+        deepest = {
+            node_id for node_id in mapped_nodes
+            if not any(node_id != other and is_ancestor(node_id, other) for other in mapped_nodes)
+        }
+        for node_id in deepest:
+            direct[node_id].append(sign_id)
+
+    def build(node_id):
+        row = classification_nodes[node_id]
+        child_rows = [build(child_id) for child_id in sorted(
+            (child for child in children.get(node_id, []) if child in included),
+            key=lambda child: (
+                classification_nodes[child].get("ordinal") or 9999,
+                classification_nodes[child]["label"].casefold(),
+            ),
+        )]
+        child_rows = [child for child in child_rows if child["all_sign_ids"]]
+        all_sign_ids = list(OrderedDict.fromkeys(
+            direct[node_id] + [sign_id for child in child_rows for sign_id in child["all_sign_ids"]]
+        ))
+        return {
+            "node_id": node_id,
+            "label": row["label"],
+            "node_kind": row.get("node_kind", ""),
+            "sign_ids": direct[node_id],
+            "all_sign_ids": all_sign_ids,
+            "children": child_rows,
+        }
+
+    root = build(root_id)
+    return {"root_id": root_id, "root_label": root["label"], "groups": root["children"]}
+
+classification_trees = OrderedDict(
+    (scheme_id, classification_tree(scheme_id, root_id))
+    for scheme_id, root_id in classification_roots.items()
+)
+classification_trees_json = json.dumps(classification_trees, ensure_ascii=False, separators=(",", ":"))
 
 def is_lobe_level_subsection(label):
     value = str(label).casefold()
@@ -349,8 +407,6 @@ def ledger_evidence_block(cid):
         search.extend([row["source_term"], row["claim"], statistic_search_text(row), row["citation"],
                        row["evidence_text"], row["source_finding_ref"]])
         measure = statistic_block(row)
-        counting_note = ('' if row["independent_evidence"] else
-                         '<div><strong>Counting note:</strong> This repeats information from another source and is not counted as a separate result.</div>')
         items.append(
             '<li class="reviewed-card-evidence">'
             f'<div><strong>{esc(row["source_term"])}</strong> &mdash; {esc(row["claim"])}</div>'
@@ -362,7 +418,6 @@ def ledger_evidence_block(cid):
             f'<div><strong>Relevant source text:</strong> {esc(row["evidence_text"])}</div>'
             f'<div><strong>Who was studied:</strong> {esc(row["population"])}</div>'
             f'<div><strong>Source type:</strong> {esc(ROLE_LABEL.get(row["evidence_role"], "Source information"))}</div>'
-            f'{counting_note}'
             '</details></li>')
     return ('<div class="d-row d-ev"><span class="d-label">Evidence from reviewed sources</span>'
             '<ul class="ev-list">'+"".join(items)+'</ul></div>', len(linked), " ".join(search))
@@ -776,8 +831,6 @@ def build_figures(corpus):
                 ]).lower()
                 context_html = "".join(f'<div><strong>{esc(item.split(":", 1)[0])}:</strong>{esc(item.split(":", 1)[1])}</div>'
                                        if ":" in item else f'<div>{esc(item)}</div>' for item in details)
-                duplicate_note = "" if statistic.get("independent_evidence", finding.get("independent_evidence", True)) else \
-                    '<div><strong>Counting note:</strong> This restates a result reported elsewhere and is retained as a separate source record.</div>'
                 rows.append(
                     f'<div class="fx-row stat-row" data-metric="{esc(metric)}" data-statistic-id="{esc(statistic.get("statistic_id", ""))}" data-fq="{esc(searchable)}">'
                     f'<span class="fx-m" style="background:{colors.get(metric,"#6b7280")}">{esc(labels.get(metric, metric.replace("_", " ").title()))}</span>'
@@ -787,7 +840,7 @@ def build_figures(corpus):
                     f'<span class="fx-src">{esc(source_file)}<br>{esc(locator)}</span>'
                     f'<span class="fx-q">&ldquo;{esc(excerpt)}&rdquo;</span>'
                     '<details class="fx-context"><summary>Source and study details</summary>'
-                    f'{context_html}{duplicate_note}</details></div>')
+                    f'{context_html}</details></div>')
     total = len(rows)
     buttons = [f'<button class="fxb on" data-f="all">All <i>{total}</i></button>']
     for metric in list(labels) + sorted(set(counts) - set(labels)):
@@ -829,8 +882,6 @@ def build_evidence_library(corpus):
                 source["source_file"], ROLE_LABEL.get(role, ""),
             ]).lower().replace('"', "")
             measure = statistic_block(row)
-            counting_note = ("" if row["independent_evidence"] else
-                             '<div><strong>Counting note:</strong> This repeats information from another source and is not counted as a separate result.</div>')
             rows.append(
                 f'<div class="fx-row evidence-row" data-metric="{role}" data-fq="{esc(search)}">'
                 f'<span class="fx-m" style="background:{role_color.get(role,"#6b7280")}">{esc(ROLE_LABEL.get(role,"Source information"))}</span>'
@@ -844,7 +895,7 @@ def build_evidence_library(corpus):
                 f'<div><strong>What the finding suggests:</strong> {esc(row["laterality_localization"])}</div>'
                 f'<div><strong>Important cautions:</strong> {esc(row["limitations"])}</div>'
                 f'{cited_source_line(row)}'
-                f'{counting_note}</details></div>')
+                '</details></div>')
     total = len(rows)
     buttons = [f'<button class="fxb on" data-f="all">All <i>{total}</i></button>']
     for role in ROLE_LABEL:
@@ -1446,11 +1497,22 @@ main,.frontpage-fold,.callout{
 .browse-count{font-size:.64rem;background:rgba(255,255,255,.2);padding:1px 7px;border-radius:9px}
 .browse-body{padding:5px 0 2px}
 .browse-section.collapsed .browse-body{display:none}
-.browse-sign{width:100%;display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--line);border-left:4px solid var(--accent,#8ca0b8);border-radius:8px;margin:6px 0;padding:9px 12px;text-align:left;font-family:inherit;cursor:pointer}
+.browse-subsection{margin:6px 0 6px 14px;border-left:2px solid #d8e1eb;padding-left:8px}
+.browse-subtoggle{width:100%;display:flex;align-items:center;gap:8px;background:#f4f7fa;color:var(--navy);border:1px solid var(--line);border-radius:6px;padding:6px 9px;font-family:inherit;font-size:.72rem;font-weight:800;cursor:pointer;text-align:left}
+.browse-subtoggle:hover{border-color:var(--teal);background:#f0fbfd}
+.browse-subsection.collapsed>.browse-subbody{display:none}
+.browse-subsection.collapsed>.browse-subtoggle .browse-chev{transform:rotate(-90deg)}
+.browse-subtoggle .browse-count{margin-left:auto;background:#e1e7ef;color:#536078}
+.browse-subbody{padding-top:1px}
+.browse-sign-wrap{margin:6px 0;border-radius:8px}
+.browse-sign{width:100%;display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--line);border-left:4px solid var(--accent,#8ca0b8);border-radius:8px;padding:9px 12px;text-align:left;font-family:inherit;cursor:pointer}
 .browse-sign:hover{border-color:var(--teal);box-shadow:0 2px 9px rgba(15,30,61,.08)}
+.browse-sign-wrap.open .browse-sign{border-color:var(--teal);border-radius:8px 8px 0 0}
 .browse-arrow{color:var(--teal-d);font-size:1rem}
 .browse-sign-name{flex:1;color:var(--navy);font-size:.86rem;font-weight:700;line-height:1.3}
 .browse-meta{font-size:.66rem;color:var(--muted);white-space:nowrap}
+.browse-detail{background:#fff;border:1px solid var(--teal);border-top:0;border-radius:0 0 8px 8px;padding:0 12px 10px}
+.browse-detail>.detail{max-height:none!important;overflow:visible;padding-top:7px}
 
 .sub-block{margin:6px 0 8px}
 .sub-toggle{width:100%;display:flex;align-items:center;gap:9px;background:transparent;border:none;border-bottom:1px solid var(--line);border-radius:0;padding:5px 4px;cursor:pointer;text-align:left;font-family:inherit;font-size:.7rem;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:#7a8598;transition:color .12s}
@@ -1788,7 +1850,7 @@ body.quiz .lib-chip{display:none}
 }
 """
 
-JS = "const CLASSIFICATION_GROUPS=" + classification_groups_json + ";\n" + r"""
+JS = "const CLASSIFICATION_TREES=" + classification_trees_json + ";\n" + r"""
 /* ---------- Brodmann map ---------- */
 (function(){
   const card=document.querySelector('.brain-card');
@@ -2340,8 +2402,8 @@ document.querySelectorAll('.pill').forEach(p=>{
   });
 });
 
-// Filtering is deliberately submit-based. Typing does not touch the 2,312-sign
-// DOM; Search or Enter applies the completed query once, and no result card is
+// Filtering is deliberately submit-based. Typing does not touch the full sign
+// list; Search or Enter applies the completed query once, and no result card is
 // opened automatically.
 function itemMatches(item){
   const reg=fRegion.value,ph=fPhase.value,lat=fLat.value,ev=fEvid.value;
@@ -2381,15 +2443,51 @@ function browseGroups(mode){
     return keys.map(label=>({label,sign_ids:grouped.get(label)}));
   }
   const scheme=mode==='ilae'?'ILAE_SEIZURE_2025':'LUDERS_5D_2005';
+  const tree=CLASSIFICATION_TREES[scheme]||{groups:[]};
   const mapped=new Set();
-  const groups=(CLASSIFICATION_GROUPS[scheme]||[]).map(group=>{
-    const ids=sortSignIds(group.sign_ids);
+  const groups=(tree.groups||[]).filter(group=>{
+    const ids=sortSignIds(group.all_sign_ids||group.sign_ids||[]);
     ids.forEach(id=>mapped.add(id));
-    return {label:group.label,sign_ids:ids};
-  }).filter(group=>group.sign_ids.length);
+    return ids.length;
+  });
   const unclassified=sortSignIds(Array.from(canonicalSigns.keys()).filter(id=>!mapped.has(id)));
-  if(unclassified.length) groups.push({label:'Not yet classified in this scheme',sign_ids:unclassified});
+  if(unclassified.length) groups.push({
+    node_id:scheme+':UNCLASSIFIED',label:'Not yet classified in this scheme',
+    sign_ids:unclassified,all_sign_ids:unclassified,children:[]
+  });
   return groups;
+}
+
+function appendBrowseSign(parent,id){
+  const source=canonicalSigns.get(String(id));
+  if(!source) return;
+  const wrapper=document.createElement('div'); wrapper.className='browse-sign-wrap'; wrapper.dataset.id=id;
+  const row=document.createElement('button'); row.type='button'; row.className='browse-sign'; row.dataset.id=id;
+  row.setAttribute('aria-expanded','false');
+  wrapper.style.setProperty('--accent',source.style.getPropertyValue('--accent')||'#8ca0b8');
+  const arrow=document.createElement('span'); arrow.className='browse-arrow'; arrow.textContent='›';
+  const label=document.createElement('span'); label.className='browse-sign-name'; label.textContent=signName(String(id));
+  const meta=document.createElement('span'); meta.className='browse-meta';
+  meta.textContent=(source.dataset.phase||'')+' · '+(source.dataset.region||'');
+  const detail=document.createElement('div'); detail.className='browse-detail'; detail.hidden=true;
+  row.append(arrow,label,meta); wrapper.append(row,detail); parent.append(wrapper);
+}
+
+function appendClassificationNode(parent,node){
+  const direct=sortSignIds(node.sign_ids||[]);
+  const children=(node.children||[]).filter(child=>sortSignIds(child.all_sign_ids||child.sign_ids||[]).length);
+  const subsection=document.createElement('div'); subsection.className='browse-subsection collapsed';
+  const toggle=document.createElement('button');
+  toggle.className='browse-subtoggle'; toggle.type='button'; toggle.setAttribute('aria-expanded','false');
+  const chev=document.createElement('span'); chev.className='browse-chev'; chev.textContent='▼';
+  const name=document.createElement('span'); name.className='browse-name'; name.textContent=node.label;
+  const count=document.createElement('span'); count.className='browse-count';
+  count.textContent=sortSignIds(node.all_sign_ids||node.sign_ids||[]).length;
+  const body=document.createElement('div'); body.className='browse-subbody';
+  toggle.append(chev,name,count); subsection.append(toggle,body);
+  direct.forEach(id=>appendBrowseSign(body,id));
+  children.forEach(child=>appendClassificationNode(body,child));
+  parent.append(subsection);
 }
 
 function buildBrowseView(mode){
@@ -2397,8 +2495,8 @@ function buildBrowseView(mode){
   builtBrowseMode=mode;
   browseSections.replaceChildren();
   browseNote.textContent=(mode==='az'||mode==='za')
-    ? 'Signs are alphabetized here. Each row opens the same ledger-linked sign shown in the regional view.'
-    : 'Confirmed classification relationships group the same ledger-linked signs shown elsewhere. Signs without a confirmed relationship remain visible under Not yet classified.';
+    ? 'Signs are alphabetized here. Each row opens the same evidence-backed sign shown in the regional view.'
+    : 'The same signs are grouped using the selected classification. Signs that are not yet assigned remain visible under Not yet classified.';
   const fragment=document.createDocumentFragment();
   browseGroups(mode).forEach((group,index)=>{
     const section=document.createElement('section');
@@ -2407,19 +2505,15 @@ function buildBrowseView(mode){
     toggle.className='browse-toggle'; toggle.type='button'; toggle.setAttribute('aria-expanded',index?'false':'true');
     const chev=document.createElement('span'); chev.className='browse-chev'; chev.textContent='▼';
     const name=document.createElement('span'); name.className='browse-name'; name.textContent=group.label;
-    const count=document.createElement('span'); count.className='browse-count'; count.textContent=group.sign_ids.length;
+    const groupIds=sortSignIds(group.all_sign_ids||group.sign_ids||[]);
+    const count=document.createElement('span'); count.className='browse-count'; count.textContent=groupIds.length;
     toggle.append(chev,name,count);
     const body=document.createElement('div'); body.className='browse-body';
-    group.sign_ids.forEach(id=>{
-      const source=canonicalSigns.get(id);
-      const row=document.createElement('button'); row.type='button'; row.className='browse-sign'; row.dataset.id=id;
-      row.style.setProperty('--accent',source.style.getPropertyValue('--accent')||'#8ca0b8');
-      const arrow=document.createElement('span'); arrow.className='browse-arrow'; arrow.textContent='›';
-      const label=document.createElement('span'); label.className='browse-sign-name'; label.textContent=signName(id);
-      const meta=document.createElement('span'); meta.className='browse-meta';
-      meta.textContent=(source.dataset.phase||'')+' · '+(source.dataset.region||'');
-      row.append(arrow,label,meta); body.append(row);
-    });
+    if(mode==='az'||mode==='za') groupIds.forEach(id=>appendBrowseSign(body,id));
+    else {
+      sortSignIds(group.sign_ids||[]).forEach(id=>appendBrowseSign(body,id));
+      (group.children||[]).forEach(child=>appendClassificationNode(body,child));
+    }
     section.append(toggle,body); fragment.append(section);
   });
   browseSections.append(fragment);
@@ -2500,11 +2594,19 @@ function filterBrowseView(){
     let count=0;
     section.querySelectorAll('.browse-sign').forEach(row=>{
       const show=idMatches(row.dataset.id);
-      row.style.display=show?'':'none';
+      const wrapper=row.closest('.browse-sign-wrap');
+      wrapper.style.display=show?'':'none';
+      if(!show&&wrapper.classList.contains('open')) toggleBrowseSign(row);
       if(show){ count++; visibleIds.add(String(row.dataset.id)); }
     });
     section.style.display=count?'':'none';
     section.querySelector('.browse-count').textContent=count;
+    Array.from(section.querySelectorAll('.browse-subsection')).reverse().forEach(subsection=>{
+      const subcount=Array.from(subsection.querySelectorAll('.browse-sign-wrap')).filter(wrapper=>wrapper.style.display!=='none').length;
+      subsection.style.display=subcount?'':'none';
+      const counter=subsection.querySelector(':scope > .browse-subtoggle .browse-count');
+      if(counter) counter.textContent=subcount;
+    });
     const shouldOpen=count>0&&(!active?!opened:!opened);
     section.classList.toggle('collapsed',!shouldOpen);
     section.querySelector('.browse-toggle').setAttribute('aria-expanded',shouldOpen?'true':'false');
@@ -2529,19 +2631,31 @@ function setBrowseMode(mode){
   filterAll();
 }
 
-function openCanonicalSign(id){
-  const source=canonicalSigns.get(String(id)); if(!source) return;
-  appliedQuery=''; searchInput.value='';
-  [fRegion,fPhase,fLat,fEvid].forEach(field=>field.value='');
-  browseMode.value='region'; setBrowseMode('region');
-  const section=source.closest('.region-section'),sub=source.closest('.sub-block');
-  if(section){ section.classList.remove('collapsed'); section.querySelector('.region-toggle').setAttribute('aria-expanded','true'); }
-  if(sub){ sub.style.display=''; sub.classList.remove('collapsed'); sub.querySelector('.sub-toggle').setAttribute('aria-expanded','true'); }
-  openSign(source);
-  requestAnimationFrame(()=>source.scrollIntoView({behavior:'smooth',block:'center'}));
+function toggleBrowseSign(row){
+  const wrapper=row.closest('.browse-sign-wrap');
+  const panel=wrapper.querySelector('.browse-detail');
+  const opening=!wrapper.classList.contains('open');
+  if(opening&&!panel.dataset.loaded){
+    const source=canonicalSigns.get(String(row.dataset.id));
+    const detail=source.querySelector('.detail').cloneNode(true);
+    detail.querySelectorAll('[id]').forEach(node=>node.removeAttribute('id'));
+    detail.style.maxHeight='none';
+    panel.append(detail); panel.dataset.loaded='true';
+  }
+  wrapper.classList.toggle('open',opening);
+  panel.hidden=!opening;
+  row.setAttribute('aria-expanded',opening?'true':'false');
+  row.querySelector('.browse-arrow').textContent=opening?'⌄':'›';
 }
 
 browseSections.addEventListener('click',event=>{
+  const subtoggle=event.target.closest('.browse-subtoggle');
+  if(subtoggle){
+    const subsection=subtoggle.closest('.browse-subsection');
+    const collapsed=subsection.classList.toggle('collapsed');
+    subtoggle.setAttribute('aria-expanded',collapsed?'false':'true');
+    return;
+  }
   const toggle=event.target.closest('.browse-toggle');
   if(toggle){
     const section=toggle.closest('.browse-section');
@@ -2549,7 +2663,7 @@ browseSections.addEventListener('click',event=>{
     toggle.setAttribute('aria-expanded',collapsed?'false':'true');
     return;
   }
-  const row=event.target.closest('.browse-sign'); if(row) openCanonicalSign(row.dataset.id);
+  const row=event.target.closest('.browse-sign'); if(row) toggleBrowseSign(row);
 });
 
 function applySearch(){ appliedQuery=searchInput.value.toLowerCase().trim(); filterAll(); }
@@ -2596,6 +2710,11 @@ function setAll(open){
       if(section.style.display==='none') return;
       section.classList.toggle('collapsed',!open);
       section.querySelector('.browse-toggle').setAttribute('aria-expanded',open?'true':'false');
+    });
+    browseSections.querySelectorAll('.browse-subsection').forEach(subsection=>{
+      if(subsection.style.display==='none') return;
+      subsection.classList.toggle('collapsed',!open);
+      subsection.querySelector(':scope > .browse-subtoggle').setAttribute('aria-expanded',open?'true':'false');
     });
     return;
   }
