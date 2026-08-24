@@ -3,6 +3,7 @@
 docs/*.html
 docs/*.png
 docs/manifest.webmanifest
+docs/fragments/
 
 # --- working corpus: copyrighted source material stays LOCAL, never committed ---
 corpus/pdfs/*

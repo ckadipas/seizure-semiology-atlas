@@ -30,6 +30,19 @@ ROLE_LABEL = {
 
 EVIDENCE_INDEX = {}
 META = ATLAS.get("weighted_analysis") or None
+EVIDENCE_SYNTHESIS = ATLAS.get("evidence_synthesis") or {}
+SYNTHESIS_CARDS = EVIDENCE_SYNTHESIS.get("axis_summaries") or []
+SYNTHESIS_CARD_BY_ID = {row["synthesis_id"]: row for row in SYNTHESIS_CARDS}
+SYNTHESIS_CARDS_BY_SIGN = {
+    str(sign_id): [SYNTHESIS_CARD_BY_ID[item_id] for item_id in item_ids]
+    for sign_id, item_ids in (EVIDENCE_SYNTHESIS.get("cards_by_sign") or {}).items()
+}
+DESCRIPTIVE_FAMILIES = EVIDENCE_SYNTHESIS.get("descriptive_families") or []
+DESCRIPTIVE_FAMILY_BY_ID = {row["analysis_id"]: row for row in DESCRIPTIVE_FAMILIES}
+DESCRIPTIVE_FAMILIES_BY_SIGN = {
+    str(sign_id): [DESCRIPTIVE_FAMILY_BY_ID[item_id] for item_id in item_ids]
+    for sign_id, item_ids in (EVIDENCE_SYNTHESIS.get("families_by_sign") or {}).items()
+}
 FLAGS = None
 
 PAPERS = []
@@ -503,6 +516,104 @@ def ledger_evidence_block(cid):
         " ".join(search),
     )
 
+def readable_term(value):
+    replacements = {
+        "nondominant": "non-dominant",
+        "contra": "contralateral",
+        "ipsi": "ipsilateral",
+        "NOT_REPORTED": "not reported",
+    }
+    text = replacements.get(str(value), str(value))
+    return text.replace("_", " ").strip()
+
+
+def descriptive_family_row(family):
+    endpoint = family.get("endpoint") or "Reported result"
+    metric = readable_term(family.get("metric_type") or "result").title()
+    phase = family.get("phase") or "Timing not reported"
+    population = family.get("population") or "Population not reported"
+    comparator = family.get("comparator") or "No comparator reported"
+    exact = family.get("exact_estimates") or []
+    estimate_rows = "".join(
+        '<li><strong>{}</strong><span>{}</span></li>'.format(
+            esc(item.get("value_text") or "Reported value"),
+            esc(item.get("source_file") or "Source file not reported"),
+        )
+        for item in exact
+    )
+    estimate_block = (
+        f'<ul class="syn-estimates">{estimate_rows}</ul>' if estimate_rows else
+        '<p class="syn-empty">No exact numerator and denominator were reported for this result.</p>'
+    )
+    summary = family.get("descriptive_proportion_summary") or {}
+    range_text = ""
+    if summary.get("estimate_count"):
+        values = [summary.get("minimum"), summary.get("median"), summary.get("maximum")]
+        if all(value is not None for value in values):
+            range_text = (
+                f'<span class="syn-range">Observed proportions: {values[0] * 100:.1f}%–'
+                f'{values[2] * 100:.1f}% (median {values[1] * 100:.1f}%)</span>'
+            )
+    searchable = " ".join(str(value or "") for value in [
+        endpoint, metric, phase, population, comparator, family.get("subgroup"),
+        *[item.get("source_file") for item in exact],
+        *[item.get("value_text") for item in exact],
+    ]).lower()
+    return f'''<details class="syn-family fx-row" data-metric="{esc(family.get('metric_type') or 'OTHER')}" data-fq="{esc(searchable)}">
+  <summary><span>{esc(endpoint)}</span><span class="syn-family-meta">{esc(metric)} · {family.get('source_work_count', 0)} paper(s)</span></summary>
+  <div class="syn-family-body">
+    <div><strong>When:</strong> {esc(phase)}</div>
+    <div><strong>Who was studied:</strong> {esc(population)}</div>
+    <div><strong>Compared with:</strong> {esc(comparator)}</div>
+    {range_text}
+    {estimate_block}
+  </div>
+</details>'''
+
+
+def evidence_synthesis_block(sign_id):
+    cards = SYNTHESIS_CARDS_BY_SIGN.get(str(sign_id), [])
+    families = DESCRIPTIVE_FAMILIES_BY_SIGN.get(str(sign_id), [])
+    if not cards and not families:
+        return ""
+    card_rows = []
+    for card in sorted(cards, key=lambda row: row.get("axis", "")):
+        sources = "".join(f'<li>{esc(source)}</li>' for source in card.get("source_files") or [])
+        relationships = "".join(
+            '<li><strong>{}</strong>: {}</li>'.format(
+                esc("; ".join(readable_term(value) for value in rel.get("contexts") or []) or "Reported context"),
+                esc(", ".join(readable_term(value) for value in rel.get("targets") or []) or "not reported"),
+            )
+            for rel in card.get("primary_relationships") or []
+        )
+        relationship_block = f'<ul class="syn-relationships">{relationships}</ul>' if relationships else ""
+        source_block = (
+            '<details class="syn-sources"><summary>Sources used in this summary</summary>'
+            f'<ul>{sources}</ul></details>' if sources else ""
+        )
+        card_rows.append(f'''<section class="syn-axis-card">
+  <div class="syn-axis-head"><strong>{esc(card.get('axis', '').title())}</strong><span>{esc(card.get('pattern_label') or '')}</span></div>
+  <p>{esc(card.get('plain_summary') or '')}</p>
+  {relationship_block}
+  <div class="syn-counts">{card.get('source_work_count', 0)} papers · {card.get('evidence_finding_count', 0)} findings · {len(card.get('supporting_statistic_ids') or [])} reported numbers</div>
+  {source_block}
+</section>''')
+    family_block = ""
+    if families:
+        family_rows = "".join(descriptive_family_row(row) for row in families)
+        family_block = f'''<details class="d-row syn-family-shell">
+  <summary><span>Study results used in this summary</span><span>{len(families)} result groups</span></summary>
+  <div class="syn-family-panel">
+    <div class="reviewed-evidence-actions"><button type="button" data-syn-action="expand">Expand all study results</button><button type="button" data-syn-action="collapse">Collapse all study results</button></div>
+    <div class="syn-family-scroll">{family_rows}</div>
+  </div>
+</details>'''
+    return (
+        '<div class="d-row d-support syn-summary"><span class="d-label">Overall pattern in the reviewed evidence</span>'
+        f'<div class="syn-axis-grid">{"".join(card_rows)}</div></div>{family_block}'
+    )
+
+
 def support_summary_block(d):
     """Render a compact, reader-facing synthesis without replacing source rows."""
     summary = str(d.get("evidence_summary") or "").strip()
@@ -613,7 +724,7 @@ for r in region_order:
                         if _nsrc else '')
             evid_chip = evidence_header_chip(ec)
             metric_block = evidence_metric_block(ec)
-            support_block = support_summary_block(d)
+            support_block = evidence_synthesis_block(d.get("id")) or support_summary_block(d)
             source_status_block = ('' if _nsrc else '''<div class="d-row d-cite source-review-pending">
         <span class="d-label">Source review pending</span>
         <span class="d-value">This summary does not yet have an individually reviewed paper linked to it.</span>
@@ -1010,6 +1121,37 @@ def defer_details_body(html, filename):
     return shell.replace("<details ", f'<details data-fragment="fragments/{filename}" ', 1)
 
 figures_fold = defer_details_body(build_figures(CORPUS), "source-statistics.html")
+
+
+def build_descriptive_family_library(families):
+    if not families:
+        return ""
+    counts = {}
+    for family in families:
+        metric = family.get("metric_type") or "OTHER"
+        counts[metric] = counts.get(metric, 0) + 1
+    buttons = [f'<button class="fxb on" data-f="all">All <i>{len(families):,}</i></button>']
+    for metric, count in sorted(counts.items()):
+        buttons.append(
+            f'<button class="fxb" data-f="{esc(metric)}">{esc(readable_term(metric).title())} <i>{count:,}</i></button>'
+        )
+    rows = "".join(descriptive_family_row(family) for family in families)
+    method_note = (EVIDENCE_SYNTHESIS.get("release") or {}).get("method_note") or ""
+    return f'''<details class="frontpage-fold synthesis-family-fold">
+<summary>Study-by-study statistical summaries &mdash; {len(families):,} result groups</summary>
+<div class="fx-wrap" data-item-label="result groups">
+  <div class="fx-intro">{esc(method_note)}</div>
+  <div class="fx-tools"><input type="text" class="fx-search" placeholder="Search signs, outcomes, populations, values, or sources&hellip;"><div class="fx-btns">{"".join(buttons)}</div></div>
+  <div class="fx-count"></div>
+  <div class="fx-table syn-global-table">{rows}</div>
+</div>
+</details>'''
+
+
+synthesis_families_fold = defer_details_body(
+    build_descriptive_family_library(DESCRIPTIVE_FAMILIES), "study-statistical-summaries.html"
+)
+
 def build_evidence_library(corpus):
     """Render every reviewed finding once in reader-facing language."""
     role_color = {
@@ -1724,6 +1866,39 @@ main,.frontpage-fold,.callout{
 .support-basis{font-size:.7rem;font-weight:800;color:#0a6472;margin-bottom:4px}
 .support-summary{font-size:.82rem;line-height:1.5;color:#334155}
 .support-list{margin:7px 0 0;padding-left:18px;display:grid;gap:3px;color:#475569;font-size:.76rem;line-height:1.4}
+.syn-summary{display:block}
+.syn-axis-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:8px}
+.syn-axis-card{background:#fff;border:1px solid #d8e5ee;border-radius:8px;padding:9px 10px}
+.syn-axis-head{display:flex;align-items:center;justify-content:space-between;gap:8px;color:#17314f;font-size:.78rem}
+.syn-axis-head span{font-size:.68rem;color:#0a6472;background:#e7f6f8;border-radius:12px;padding:2px 8px;text-align:right}
+.syn-axis-card p{margin:7px 0;font-size:.8rem;line-height:1.48;color:#334155}
+.syn-counts{font-size:.68rem;color:#64748b;margin-top:6px}
+.syn-relationships{margin:5px 0;padding-left:18px;font-size:.72rem;line-height:1.4;color:#475569}
+.syn-sources{margin-top:7px;font-size:.7rem;color:#475569}
+.syn-sources summary{cursor:pointer;color:#0a6472;font-weight:700}
+.syn-sources ul{margin:5px 0 0;padding-left:18px}
+.syn-family-shell{grid-column:1/-1;padding:0!important;overflow:hidden;background:#fff;border:1px solid #d8e5ee;border-radius:9px;margin-top:7px}
+.syn-family-shell>summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;gap:10px;padding:9px 11px;font-size:.74rem;font-weight:800;color:#365d78}
+.syn-family-shell>summary::-webkit-details-marker{display:none}
+.syn-family-shell>summary::before{content:'\25B6';font-size:.6rem;color:var(--teal-d);transition:transform .15s}
+.syn-family-shell[open]>summary::before{transform:rotate(90deg)}
+.syn-family-shell>summary span:first-of-type{margin-right:auto;text-transform:uppercase;letter-spacing:.04em}
+.syn-family-panel{padding:0 9px 9px;border-top:1px solid #d8e5ee}
+.syn-family-scroll{max-height:clamp(260px,45vh,520px);overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;padding:6px 2px}
+.syn-family{display:block!important;background:#fff;border:1px solid var(--line);border-radius:7px;margin:6px 0;padding:0}
+.syn-family>summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 10px;font-size:.75rem;font-weight:700;color:#17314f}
+.syn-family>summary::-webkit-details-marker{display:none}
+.syn-family>summary::before{content:'\25B8';font-size:.6rem;color:var(--teal-d)}
+.syn-family[open]>summary::before{transform:rotate(90deg)}
+.syn-family>summary>span:first-of-type{margin-right:auto}
+.syn-family-meta{font-size:.64rem;color:#64748b;font-weight:600;text-align:right}
+.syn-family-body{display:grid;gap:4px;padding:8px 12px 10px;border-top:1px solid var(--line2);font-size:.7rem;line-height:1.4;color:#475569}
+.syn-estimates{margin:4px 0 0;padding:0;list-style:none;display:grid;gap:4px}
+.syn-estimates li{display:grid;grid-template-columns:minmax(150px,1fr) minmax(160px,1fr);gap:8px;padding:5px 7px;background:#f8fafc;border-radius:5px}
+.syn-estimates li span{color:#64748b;text-align:right;overflow-wrap:anywhere}
+.syn-range{font-weight:700;color:#0a6472}
+.syn-empty{margin:3px 0;color:#64748b;font-style:italic}
+.syn-global-table{padding:6px 9px;max-height:65vh;overflow-y:auto;scrollbar-gutter:stable}
 
 @media (min-width:760px){
   .detail-inner{display:grid;grid-template-columns:1.5fr 1fr;grid-template-areas:"lat lat" "loc metrics" "map map" "support support" "notes notes" "cite cite" "ev ev";gap:0 20px;column-gap:24px}
@@ -2553,6 +2728,21 @@ document.addEventListener('click',event=>{
     detail.style.maxHeight=detail.scrollHeight+'px';
   });
 });
+document.addEventListener('click',event=>{
+  const control=event.target.closest('[data-syn-action]');
+  if(!control) return;
+  event.preventDefault();
+  event.stopPropagation();
+  const shell=control.closest('.syn-family-shell');
+  if(!shell) return;
+  const open=control.dataset.synAction==='expand';
+  shell.querySelectorAll('details.syn-family').forEach(panel=>{panel.open=open;});
+  const sign=control.closest('.sign');
+  if(sign&&sign.classList.contains('open')) requestAnimationFrame(()=>{
+    const detail=sign.querySelector('.detail');
+    detail.style.maxHeight=detail.scrollHeight+'px';
+  });
+});
 async function ensureSignDetail(sign){
   const d=sign.querySelector('.detail');
   const path=d.dataset.detailPath;
@@ -3194,7 +3384,7 @@ HEAD = """<!DOCTYPE html>
        aria-label="Show search and filters">&#128269;<span class="tb-dot" aria-hidden="true"></span></label>
 
 <main>
-""" + brain_fold + meta_fold + figures_fold + """
+""" + brain_fold + meta_fold + synthesis_families_fold + figures_fold + """
   <div class="quiz-hint"><strong>Quiz mode on:</strong> lateralization &amp; evidence cues are hidden. Read each sign, predict its localization/lateralization, then expand to check yourself.</div>
   <div id="region-view">
 """ + sections_html + """
