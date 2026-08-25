@@ -81,7 +81,14 @@ class CompactRendererTest(unittest.TestCase):
         filename = "sign-" + hashlib.sha256(sign_id.encode()).hexdigest()[:24] + ".html"
         fragment = self.render["detail_fragments"][filename]
         self.assertIn("No reliable lateralization", fragment)
-        self.assertIn("Predominantly temporal", fragment)
+        self.assertIn(
+            "Evidence is context-dependent rather than establishing one predominant localizer",
+            fragment,
+        )
+        self.assertIn("posterior-frontal localization", fragment)
+        self.assertNotIn(
+            "Localization depends on the described subtype or context.", fragment
+        )
         self.assertNotIn("Predominant, with exceptions", fragment)
         self.assertNotIn("Open the evidence for the balance and exceptions", fragment)
 

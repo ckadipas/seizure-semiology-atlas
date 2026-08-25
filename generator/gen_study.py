@@ -65,6 +65,19 @@ for _source in CORPUS["sources"]:
         for _cid in _row["related_sign_ids"]:
             ledger_evidence_by_cardid.setdefault(_cid, []).append((_entry, "RELATED"))
 
+# The completed axis audit identified source findings that supported a synthesis
+# card but were absent from its visible source history. Link those existing
+# findings to the public sign without changing their source-native mappings.
+for _card in SYNTHESIS_CARDS:
+    _raw_sid = str(_card.get("sign_id") or "")
+    _sid = int(_raw_sid) if _raw_sid.isdigit() else _raw_sid
+    _linked = ledger_evidence_by_cardid.setdefault(_sid, [])
+    _seen_refs = {entry["finding"]["source_finding_ref"] for entry, _ in _linked}
+    for _finding_ref in _card.get("audit_cited_finding_refs") or []:
+        if _finding_ref in ledger_by_ref and _finding_ref not in _seen_refs:
+            _linked.append((ledger_by_ref[_finding_ref], "EXACT"))
+            _seen_refs.add(_finding_ref)
+
 # assign ids to new signs and append
 _nextid = max(int(x["id"]) for x in data if str(x["id"]).isdigit()) + 1
 for ns in NEW_SIGNS:
@@ -706,13 +719,23 @@ def lateralization_target_chips(sign_id):
 
 
 def axis_synthesis(sign_id, axis):
-    return next(
-        (
-            card
-            for card in SYNTHESIS_CARDS_BY_SIGN.get(str(sign_id), [])
-            if card.get("axis") == axis
+    candidates = [
+        card for card in SYNTHESIS_CARDS_BY_SIGN.get(str(sign_id), [])
+        if card.get("axis") == axis
+    ]
+    if not candidates:
+        return None
+    # Multiple source-native groups may intentionally resolve to one public sign.
+    # Use the best-supported card for the compact public summary; all group-level
+    # cards and their provenance remain available in the private ledger.
+    return max(
+        candidates,
+        key=lambda card: (
+            len(card.get("supporting_finding_refs") or []),
+            len(card.get("supporting_statistic_ids") or []),
+            int(card.get("source_document_count") or 0),
+            str(card.get("synthesis_id") or ""),
         ),
-        None,
     )
 
 
