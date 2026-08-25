@@ -37,6 +37,9 @@ finding_refs = [finding["source_finding_ref"] for finding in findings]
 statistics = [statistic for finding in findings for statistic in finding["statistics"]]
 statistic_ids = [statistic["statistic_id"] for statistic in statistics]
 sign_ids = [str(sign["id"]) for sign in bundle["signs"]]
+finding_ref_set = set(finding_refs)
+statistic_id_set = set(statistic_ids)
+sign_id_set = set(sign_ids)
 areas = bundle["brodmann"]["areas"]
 classifications = bundle["classifications"]
 classification_schemes = {row["scheme_id"] for row in classifications["schemes"]}
@@ -46,6 +49,9 @@ require(len(finding_refs) == len(set(finding_refs)), "duplicate finding identity
 require(len(statistic_ids) == len(set(statistic_ids)), "duplicate statistic identity")
 require(len(sign_ids) == len(set(sign_ids)), "duplicate sign identity")
 require(len({source["source_sha256"] for source in sources}) == len(sources), "duplicate source identity")
+require(len(sources) == 77, "current public source-document count changed")
+require(len(finding_refs) == 4119, "current public finding count changed")
+require(len(statistic_ids) == 4514, "current public statistic count changed")
 require(classification_schemes == {"LUDERS_5D_2005", "ILAE_SEIZURE_2025"}, "classification schemes changed")
 require(all(row["scheme_id"] in classification_schemes for row in classification_nodes.values()), "classification node references an absent scheme")
 require(
@@ -101,6 +107,23 @@ require(all(str(row["sign_id"]) in set(sign_ids) for row in cards), "synthesis c
 require(all(str(sign_id) in set(sign_ids) for row in families for sign_id in row["sign_ids"]), "descriptive family references an absent sign")
 require(all(item_id in card_ids for item_ids in synthesis["cards_by_sign"].values() for item_id in item_ids), "sign references an absent synthesis card")
 require(all(item_id in family_ids for item_ids in synthesis["families_by_sign"].values() for item_id in item_ids), "sign references an absent descriptive family")
+for card in cards:
+    support_refs = card.get("supporting_finding_refs", [])
+    audit_refs = card.get("audit_cited_finding_refs", [])
+    support_statistics = card.get("supporting_statistic_ids", [])
+    require(bool(card.get("plain_summary")), "synthesis card has no clinical summary")
+    require(len(support_refs) == len(set(support_refs)), "synthesis card duplicates a finding reference")
+    require(len(audit_refs) == len(set(audit_refs)), "synthesis card duplicates an audit citation")
+    require(len(support_statistics) == len(set(support_statistics)), "synthesis card duplicates a statistic link")
+    require(set(support_refs) <= finding_ref_set, "synthesis card references an absent finding")
+    require(set(audit_refs) <= finding_ref_set, "axis audit references an absent finding")
+    require(set(support_statistics) <= statistic_id_set, "synthesis card references an absent statistic")
+    require(card.get("evidence_finding_count") == len(support_refs), "synthesis evidence count differs from its provenance set")
+    if support_refs:
+        require(bool(card.get("source_files")), "evidence-backed synthesis has no source list")
+    else:
+        require(card.get("pattern_status") == "NOT_REPORTED", "unsupported synthesis is not explicitly NOT_REPORTED")
+        require(not audit_refs, "unsupported synthesis has unexplained audit citations")
 
 serialized = json.dumps(bundle, sort_keys=True).lower()
 for private_marker in (

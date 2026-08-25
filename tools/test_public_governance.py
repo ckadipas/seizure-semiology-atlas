@@ -26,6 +26,18 @@ class PublicGovernanceTests(unittest.TestCase):
             text = (ROOT / ".github" / "workflows" / workflow).read_text(encoding="utf-8")
             self.assertIn("python3 tools/test_public_governance.py", text)
 
+    def test_public_ci_runs_ui_regressions_and_live_hash_verification(self) -> None:
+        validate = (ROOT / ".github" / "workflows" / "validate.yml").read_text(
+            encoding="utf-8"
+        )
+        deploy = (ROOT / ".github" / "workflows" / "build-deploy.yml").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("python3 tools/test_compact_renderer.py", validate)
+        self.assertIn("python3 tools/test_compact_renderer.py", deploy)
+        self.assertIn("sha256sum docs/index.html", deploy)
+        self.assertIn("Live release hash matches generated index", deploy)
+
 
 if __name__ == "__main__":
     unittest.main()

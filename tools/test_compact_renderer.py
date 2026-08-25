@@ -154,6 +154,12 @@ class CompactRendererTest(unittest.TestCase):
         )
 
     def test_every_public_axis_has_a_visible_specific_value(self):
+        generic_labels = (
+            "Consistent",
+            "Depends on subtype or context",
+            "Predominant, with exceptions",
+            "Tendency, with uncertainty",
+        )
         for sign in self.render["data"]:
             for axis, function in (
                 ("lateralization", self.render["lateralization_display"]),
@@ -161,6 +167,18 @@ class CompactRendererTest(unittest.TestCase):
             ):
                 text = re.sub(r"<[^>]+>", " ", function(sign)).strip()
                 self.assertTrue(text, f"{sign['sign']} has a blank {axis} display")
+                for label in generic_labels:
+                    self.assertNotIn(label, text, f"{sign['sign']} exposes {label}")
+
+    def test_deepest_banner_is_bounded_but_remains_readable(self):
+        css = self.render["h"]
+        self.assertIn(".browse-sign{width:100%", css)
+        self.assertIn(
+            ".browse-subsection>.browse-subbody>.browse-sign-wrap>.browse-sign",
+            css,
+        )
+        self.assertIn("font-size:.75rem", css)
+        self.assertNotRegex(css, r"\.browse-sign-name\{[^}]*font-size:\.(?:[0-5]\d)rem")
 
 
 if __name__ == "__main__":

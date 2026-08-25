@@ -9,6 +9,7 @@ help:
 
 validate:
 	python3 tools/validate_atlas_bundle.py
+	python3 tools/test_compact_renderer.py
 
 build: validate
 	python3 generator/gen_study.py

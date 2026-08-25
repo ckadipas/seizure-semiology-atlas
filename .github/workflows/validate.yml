@@ -22,5 +22,7 @@ jobs:
         run: python3 tools/test_public_governance.py
       - name: Validate generated atlas bundle
         run: python3 tools/validate_atlas_bundle.py
+      - name: Validate clinical hierarchy and compact display
+        run: python3 tools/test_compact_renderer.py
       - name: Build website
         run: python3 generator/gen_study.py

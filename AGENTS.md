@@ -27,8 +27,14 @@ Never mint, renumber, reuse, or change the meaning of a `sign_id`, source findin
 
 Every submission follows: owner Gate A → private V30 source review → owner adjudication packet → owner Gate B for the exact integration diff → deterministic integration → separately authorized deployment.
 
+These intake gates do not block direct repository work that the owner explicitly instructs and approves in the active task. Record that exact scope once; do not request the same integration, correction, commit, push, merge, or deployment approval again.
+
 The public intake workflow may only acknowledge or register a request for private Gate-A preparation. It may not download source files, perform source review, write scientific content, create a scientific pull request, or publish output.
 
 ## Build and validation
 
-Run `make validate` and `make build`. The validator checks only the generated public bundle; the generator reads only that bundle. Do not revive the legacy enrichment/review pipeline, and never hand-edit generated HTML.
+Run `make validate`, `python3 tools/test_compact_renderer.py`, and `make build`. The validator checks only the generated public bundle; the generator reads only that bundle. Do not revive the legacy enrichment/review pipeline, and never hand-edit generated HTML.
+
+The generated display must use clinical hierarchy rather than the flat storage table: region → Aura/Seizure/Lateralizing signs/Diagnostic signs → selected ordering → primary feature → sign, or published classification order → category → alphabetical primary feature → sign. Summary and evidence history use the same provenance set. Public cards show the concrete direction/anatomy and basic counts instead of generic interpretation labels; evidence history is closed by default; technical identifiers remain in advanced provenance; nested banners remain inside their parents and readable; desktop uses available width and mobile stacks.
+
+Deployment is not proved by a successful workflow, HTTP 200, or screenshot alone. Rebuild from the published commit and require the production `index.html` byte hash to match that generated file.
