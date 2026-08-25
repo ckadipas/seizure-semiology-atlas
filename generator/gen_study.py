@@ -214,6 +214,21 @@ def statistic_block(row):
 def slug(s):
     return re.sub(r'[^a-z0-9]+','-', s.lower()).strip('-')
 
+
+def public_browse_regions(d):
+    localization_card = next(
+        (
+            card for card in SYNTHESIS_CARDS_BY_SIGN.get(str(d.get("id")), [])
+            if card.get("axis") == "LOCALIZATION"
+        ),
+        None,
+    )
+    if str((localization_card or {}).get("pattern_status") or "") in {
+        "NOT_REPORTED", "NON_LOCALIZING"
+    }:
+        return ["No localization stated"]
+    return list(OrderedDict.fromkeys(d.get("regions") or [d.get("region")]))
+
 # Resolve each sign's location relationship once by immutable sign id.  Every
 # presentation below (cards, regional search references, and map) consumes this
 # same joined view; none of them carries an independently edited location copy.
@@ -233,7 +248,7 @@ grouped = OrderedDict()
 for r in region_order:
     grouped[r] = OrderedDict()
 for d in data:
-    for region in d.get("regions") or [d["region"]]:
+    for region in public_browse_regions(d):
         if region not in grouped:
             continue
         sub_values = d.get("subsections_by_region", {}).get(region)
@@ -647,9 +662,22 @@ def concise_axis_sentence(card):
         return "No reliable hemispheric lateralization."
     if status == "NON_LOCALIZING":
         return "No reliable anatomical localization."
-    if status == "CONTEXT_SUBTYPE_DEPENDENT":
-        return f"{axis.title()} depends on the described subtype or context."
     return text.replace("The embedded evidence ", "The reviewed evidence ")
+
+
+def relationship_targets(card):
+    values = []
+    for relation in (card or {}).get("primary_relationships") or []:
+        raw_targets = relation.get("targets")
+        if raw_targets is None:
+            raw_targets = [relation.get("target")]
+        elif not isinstance(raw_targets, list):
+            raw_targets = [raw_targets]
+        for target in raw_targets:
+            value = str(target or "").strip()
+            if value and value not in values:
+                values.append(value)
+    return values
 
 
 def lateralization_target_chips(sign_id):
@@ -658,17 +686,18 @@ def lateralization_target_chips(sign_id):
         "nondominant": "Non-dominant", "non-dominant": "Non-dominant",
         "contra": "Contralateral", "contralateral": "Contralateral",
         "ipsi": "Ipsilateral", "ipsilateral": "Ipsilateral",
-        "bilateral": "Bilateral", "non-lateralizing": "Non-lateralizing",
+        "bilateral": "Bilateral", "same-side": "Same side",
+        "same side": "Same side", "nonlat": "No reliable lateralization",
+        "non-lateralizing": "No reliable lateralization",
     }
     values = []
     for card in SYNTHESIS_CARDS_BY_SIGN.get(str(sign_id), []):
         if card.get("axis") != "LATERALIZATION":
             continue
-        for relation in card.get("primary_relationships") or []:
-            for target in relation.get("targets") or []:
-                key = str(target).strip().lower().replace("_", "-")
-                if key in labels and labels[key] not in values:
-                    values.append(labels[key])
+        for target in relationship_targets(card):
+            key = target.lower().replace("_", "-")
+            if key in labels and labels[key] not in values:
+                values.append(labels[key])
     visible = values[:5]
     chips = "".join(f'<span class="axis-chip">{esc(value)}</span>' for value in visible)
     if len(values) > len(visible):
@@ -690,34 +719,75 @@ def axis_synthesis(sign_id, axis):
 def axis_pattern_badge(d, axis):
     card = axis_synthesis(d.get("id"), axis)
     if card:
-        label = str(card.get("pattern_label") or "Reviewed evidence").strip()
-        return f'<span class="axis-pattern">{esc(label)}</span>'
-    if axis == "LATERALIZATION" and d.get("latcode") == "variable":
-        return '<span class="axis-pattern">More than one reported relationship</span>'
+        status = str(card.get("pattern_status") or "").strip()
+        labels = {
+            "NOT_REPORTED": f'No reported {axis.lower()} relationship',
+            "NON_LATERALIZING": "No reliable lateralization",
+            "NON_LOCALIZING": "No reliable localization",
+        }
+        label = labels.get(status)
+        if label:
+            return f'<span class="axis-state">{esc(label)}</span>'
     return ""
 
 
 def lateralization_display(d):
-    note = ""
-    if not axis_synthesis(d.get("id"), "LATERALIZATION"):
-        note = f'<span class="axis-note">{esc(d.get("lat", ""))}</span>'
-    return f'{axis_pattern_badge(d, "LATERALIZATION")}{lateralization_target_chips(d.get("id"))}{note}'
+    card = axis_synthesis(d.get("id"), "LATERALIZATION")
+    state = axis_pattern_badge(d, "LATERALIZATION")
+    status = str((card or {}).get("pattern_status") or "")
+    if status in {"NOT_REPORTED", "NON_LATERALIZING"}:
+        return state
+    targets = lateralization_target_chips(d.get("id"))
+    note = "" if card else f'<span class="axis-note">{esc(d.get("lat", ""))}</span>'
+    display = f'{targets}{state}{note}'
+    if not display and card:
+        summary = limited_sentences(card.get("plain_summary"), 1)
+        display = f'<span class="axis-note">{esc(summary)}</span>'
+    return display
 
 
 def localization_display(d):
-    regions = list(OrderedDict.fromkeys(d.get("regions") or [d.get("region")]))
-    if len(regions) > 1:
-        regions = [region for region in regions if region != "No localization stated"]
+    card = axis_synthesis(d.get("id"), "LOCALIZATION")
+    state = axis_pattern_badge(d, "LOCALIZATION")
+    status = str((card or {}).get("pattern_status") or "")
+    if status in {"NOT_REPORTED", "NON_LOCALIZING"}:
+        return state
+    region_labels = {
+        "reg:temporal": "Temporal", "temporal": "Temporal",
+        "reg:frontal": "Frontal", "frontal": "Frontal",
+        "reg:parietal": "Parietal", "parietal": "Parietal",
+        "reg:occipital": "Occipital", "occipital": "Occipital",
+        "reg:insular": "Insular", "insular": "Insular",
+        "reg:limbic": "Limbic", "limbic": "Limbic",
+        "reg:deep_subcortical": "Deep/Subcortical",
+        "deep/subcortical": "Deep/Subcortical",
+        "reg:multiregional": "Multiregional",
+    }
+    regions = []
+    if card:
+        for target in relationship_targets(card):
+            region = region_labels.get(target.strip().lower())
+            if region and region not in regions:
+                regions.append(region)
+    else:
+        regions = list(OrderedDict.fromkeys(d.get("regions") or [d.get("region")]))
+        if len(regions) > 1:
+            regions = [region for region in regions if region != "No localization stated"]
     chips = "".join(
         f'<span class="region-chip" style="--region-chip:{region_colors.get(region, "#7b8494")}">{esc(region)}</span>'
         for region in regions if region
     )
-    loc_text = str(d.get("loc") or "").strip()
+    loc_text = "" if card else str(d.get("loc") or "").strip()
     listed = [part.strip() for part in loc_text.split(";") if part.strip()]
     if listed and all(part in set(regions) | {"No localization stated"} for part in listed):
         loc_text = ""
     text = f'<span class="location-note">{esc(loc_text)}</span>' if loc_text else ""
-    return f'{axis_pattern_badge(d, "LOCALIZATION")}<span class="region-chips">{chips}</span>{text}'
+    region_block = f'<span class="region-chips">{chips}</span>' if chips else ""
+    display = f'{region_block}{state}{text}'
+    if not display and card:
+        summary = limited_sentences(card.get("plain_summary"), 1)
+        display = f'<span class="axis-note">{esc(summary)}</span>'
+    return display
 
 
 def compact_evidence_overview(d):
@@ -822,7 +892,7 @@ def area_reference_blocks(region):
             phase_search = "|".join(d.get("phase_values") or [d["phase"]])
             refs.append(f'''<div class="sign" id="area-sign-{slug(region)}-{aid}-{d['id']}"
     data-area-ref="true" data-id="{d['id']}" data-ba="{esc(aid)}" data-region="{esc(region)}"
-    data-regions="{esc('|'.join(d.get('regions') or [region]))}"
+    data-regions="{esc('|'.join(public_browse_regions(d)))}"
     data-phase="{esc(d['phase'])}" data-phase-search="{esc(phase_search)}" data-latcode="{esc(lc)}" data-evid="{esc(ec)}"
     data-search="{esc(ref_search)}" style="--accent:{latcolor.get(lc,'#999')}">
   <button class="sign-head" aria-expanded="false">
@@ -908,7 +978,7 @@ for r in region_order:
       {ppv_block}
     </div>'''
             phase_search = "|".join(d.get("phase_values") or [d["phase"]])
-            rows.append(f'''<div class="sign" id="sign-{slug(r)}-{d['id']}" data-id="{d['id']}" data-region="{esc(r)}" data-regions="{esc('|'.join(d.get('regions') or [r]))}" data-phase="{esc(d['phase'])}" data-phase-search="{esc(phase_search)}" data-latcode="{lc}" data-evid="{ec}" data-search="{esc(search_str)}" style="--accent:{accent}">
+            rows.append(f'''<div class="sign" id="sign-{slug(r)}-{d['id']}" data-id="{d['id']}" data-region="{esc(r)}" data-regions="{esc('|'.join(public_browse_regions(d)))}" data-phase="{esc(d['phase'])}" data-phase-search="{esc(phase_search)}" data-latcode="{lc}" data-evid="{ec}" data-search="{esc(search_str)}" style="--accent:{accent}">
   <button class="sign-head" aria-expanded="false">
     <span class="chevron">&#8250;</span>
     <span class="sign-name">{esc(d['sign'])}</span>
@@ -2017,10 +2087,11 @@ main,.frontpage-fold,.callout{
 .lat-badge{display:inline-block;font-size:.66rem;font-weight:800;padding:2px 7px;border-radius:4px;border:1px solid currentColor;letter-spacing:.03em;vertical-align:middle}
 .axis-chips,.region-chips{display:inline-flex;gap:5px;align-items:center;flex-wrap:wrap;margin-left:7px}
 .axis-chip,.region-chip{display:inline-flex;align-items:center;border-radius:999px;padding:2px 8px;font-size:.66rem;font-weight:750;line-height:1.35;white-space:nowrap}
-.axis-pattern{display:inline-flex;align-items:center;border-radius:999px;padding:3px 9px;color:#0a6472;background:#e7f6f8;border:1px solid #b3dfe5;font-size:.67rem;font-weight:800;line-height:1.35}
+.axis-state{display:inline-flex;align-items:center;border-radius:999px;padding:3px 9px;color:#5f6878;background:#f3f5f8;border:1px solid #cdd4df;font-size:.67rem;font-weight:750;line-height:1.35}
 .axis-chip{color:#475569;background:#eef2f7;border:1px solid #d7dee8}
 .axis-chip-more{color:#0a6472;background:#e7f6f8;border-color:#b3dfe5}
 .region-chip{color:var(--region-chip);background:color-mix(in srgb,var(--region-chip) 10%,white);border:1px solid color-mix(in srgb,var(--region-chip) 45%,white)}
+.axis-display-note{max-width:1180px;margin:0 auto 8px;padding:0 18px;color:#6b7280;font-size:.68rem;text-align:right}
 .axis-note,.location-note{display:block;margin-top:6px;color:#334155;font-size:.8rem;line-height:1.42}
 .d-metrics{display:flex;gap:10px;padding:11px 0;border-bottom:1px solid var(--line2);flex-wrap:wrap}
 .metric{flex:1;min-width:110px;background:#fff;border:1px solid var(--line);border-radius:8px;padding:8px 11px}
@@ -3747,6 +3818,7 @@ HEAD = """<!DOCTYPE html>
 <main>
 """ + brain_fold + meta_fold + synthesis_families_fold + figures_fold + """
   <div class="quiz-hint"><strong>Quiz mode on:</strong> lateralization &amp; evidence cues are hidden. Read each sign, predict its localization/lateralization, then expand to check yourself.</div>
+  <p class="axis-display-note">Region colors identify anatomy only; they do not indicate evidence strength.</p>
   <div id="source-sign-store" hidden>
 """ + sections_html + """
   </div>

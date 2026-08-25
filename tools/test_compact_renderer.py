@@ -2,6 +2,7 @@
 """Focused regression checks for the compact classification browser."""
 
 import hashlib
+import re
 import runpy
 import unittest
 from pathlib import Path
@@ -79,8 +80,9 @@ class CompactRendererTest(unittest.TestCase):
         sign_id = "SGRP:f39e29bedd8219a01713"
         filename = "sign-" + hashlib.sha256(sign_id.encode()).hexdigest()[:24] + ".html"
         fragment = self.render["detail_fragments"][filename]
-        self.assertIn("Does not lateralize", fragment)
-        self.assertIn("Predominant, with exceptions", fragment)
+        self.assertIn("No reliable lateralization", fragment)
+        self.assertIn("Predominantly temporal", fragment)
+        self.assertNotIn("Predominant, with exceptions", fragment)
         self.assertNotIn("Open the evidence for the balance and exceptions", fragment)
 
     def test_late_forced_head_version_names_the_frontal_eye_field_network(self):
@@ -100,6 +102,58 @@ class CompactRendererTest(unittest.TestCase):
         self.assertIn("frontal eye field", fragment.casefold())
         self.assertIn("occipital eye field", fragment.casefold())
         self.assertNotIn("Localization depends on the described subtype or context", fragment)
+
+    def test_singular_relationship_target_is_shown_as_clinical_direction(self):
+        chips = self.render["lateralization_target_chips"](
+            "SGRP:0644ef162d6917366ad7"
+        )
+        self.assertIn(">Right<", chips)
+
+    def test_internal_synthesis_labels_are_not_the_public_axis_value(self):
+        rapid_recovery = next(
+            row for row in self.render["data"] if row["sign"] == "Rapid postictal recovery"
+        )
+        display = self.render["lateralization_display"](rapid_recovery)
+        self.assertIn(">Right<", display)
+        self.assertNotIn("Consistent", display)
+
+    def test_context_dependent_summary_uses_the_specific_source_relationship(self):
+        sign_id = "SGRP:76a39c9569c7472d08d2"
+        filename = "sign-" + hashlib.sha256(sign_id.encode()).hexdigest()[:24] + ".html"
+        fragment = self.render["detail_fragments"][filename]
+        self.assertIn("contralateral lateralization for mesial frontal cortex", fragment)
+        self.assertIn("mesial temporal/insular cortex", fragment)
+        self.assertNotIn("depends on the described subtype or context", fragment)
+
+    def test_nonlocalizing_card_does_not_show_context_regions_as_localizers(self):
+        spasms = next(row for row in self.render["data"] if row["sign"] == "Epileptic spasms")
+        display = self.render["localization_display"](spasms)
+        self.assertIn("No reliable localization", display)
+        self.assertNotIn(">Temporal<", display)
+        self.assertNotIn(">Occipital<", display)
+        self.assertNotIn(">Deep/Subcortical<", display)
+
+    def test_nonlocalizing_sign_is_browsed_only_as_unlocalized(self):
+        spasms = next(row for row in self.render["data"] if row["sign"] == "Epileptic spasms")
+        self.assertEqual(
+            ["No localization stated"],
+            self.render["public_browse_regions"](spasms),
+        )
+
+    def test_region_color_legend_disclaims_evidence_strength(self):
+        self.assertIn(
+            "Region colors identify anatomy only; they do not indicate evidence strength",
+            self.render["h"],
+        )
+
+    def test_every_public_axis_has_a_visible_specific_value(self):
+        for sign in self.render["data"]:
+            for axis, function in (
+                ("lateralization", self.render["lateralization_display"]),
+                ("localization", self.render["localization_display"]),
+            ):
+                text = re.sub(r"<[^>]+>", " ", function(sign)).strip()
+                self.assertTrue(text, f"{sign['sign']} has a blank {axis} display")
 
 
 if __name__ == "__main__":
