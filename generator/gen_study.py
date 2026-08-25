@@ -278,6 +278,7 @@ sign_search_json = json.dumps(
 region_counts = {r: sum(len(v) for v in grouped[r].values()) for r in region_order}
 
 classification_nodes = {row["node_id"]: row for row in CLASSIFICATIONS["nodes"]}
+sign_labels_by_id = {str(row["id"]): row["sign"] for row in data}
 classification_roots = {
     "ILAE_SEIZURE_2025": "ILAE2025:DESC",
     "LUDERS_5D_2005": "LUDERS5D:D2",
@@ -314,6 +315,16 @@ def classification_tree(scheme_id, root_id):
 
     direct = {node_id: [] for node_id in included}
     for sign_id, mapped_nodes in mapped_by_sign.items():
+        # The registry retains both broad category links and the more specific
+        # term link.  The browser should use the specific term when one exists;
+        # showing every retained parent link duplicates a sign across unrelated
+        # branches without changing any underlying mapping.
+        term_nodes = {
+            node_id for node_id in mapped_nodes
+            if classification_nodes[node_id].get("node_kind") == "TERM"
+        }
+        if term_nodes:
+            mapped_nodes = term_nodes
         deepest = {
             node_id for node_id in mapped_nodes
             if not any(node_id != other and is_ancestor(node_id, other) for other in mapped_nodes)
@@ -331,14 +342,35 @@ def classification_tree(scheme_id, root_id):
             ),
         )]
         child_rows = [child for child in child_rows if child["all_sign_ids"]]
+        visible_children = []
+        node_sign_ids = list(direct[node_id]) if row.get("node_kind") == "TERM" else []
+        broad_sign_ids = [] if row.get("node_kind") == "TERM" else list(direct[node_id])
+        for child in child_rows:
+            child_ids = child["all_sign_ids"]
+            exact_single_leaf = (
+                child["node_kind"] == "TERM"
+                and not child["is_family"]
+                and len(child_ids) == 1
+                and sign_labels_by_id.get(str(child_ids[0]), "").casefold() == child["label"].casefold()
+            )
+            if exact_single_leaf:
+                node_sign_ids.extend(child["all_sign_ids"])
+            else:
+                visible_children.append(child)
+        child_rows = visible_children
+        node_sign_ids = list(OrderedDict.fromkeys(node_sign_ids))
+        broad_sign_ids = list(OrderedDict.fromkeys(broad_sign_ids))
         all_sign_ids = list(OrderedDict.fromkeys(
-            direct[node_id] + [sign_id for child in child_rows for sign_id in child["all_sign_ids"]]
+            node_sign_ids + broad_sign_ids
+            + [sign_id for child in child_rows for sign_id in child["all_sign_ids"]]
         ))
         return {
             "node_id": node_id,
             "label": row["label"],
             "node_kind": row.get("node_kind", ""),
-            "sign_ids": direct[node_id],
+            "is_family": bool([child for child in children.get(node_id, []) if child in included]),
+            "sign_ids": node_sign_ids,
+            "broad_sign_ids": broad_sign_ids,
             "all_sign_ids": all_sign_ids,
             "children": child_rows,
         }
@@ -465,10 +497,14 @@ def top_sens(cid):
     best = max(blk["conditions"], key=lambda c: c["high"])
     return f'{best["mean"]:g}% in {best["cond"]}'
 
-def ledger_evidence_block(cid):
-    """Render reviewed findings linked to this sign without exposing audit metadata."""
+def ledger_evidence_block(cid, notes=""):
+    """Render source history behind one compact sign summary."""
     linked = ledger_evidence_by_cardid.get(cid, [])
-    if not linked:
+    families = DESCRIPTIVE_FAMILIES_BY_SIGN.get(str(cid), [])
+    informative_notes = str(notes or "").strip()
+    if informative_notes == "Reviewed source evidence is shown below.":
+        informative_notes = ""
+    if not linked and not families and not informative_notes:
         return "", 0, ""
     papers, search = {}, []
     for entry, relation in linked:
@@ -503,15 +539,35 @@ def ledger_evidence_block(cid):
             f'<span class="ev-paper-count">{len(paper["findings"])} finding{"s" if len(paper["findings"]) != 1 else ""}</span>'
             '</div>'
             f'{"".join(finding_blocks)}</li>')
-    count_label = f'{len(linked)} finding{"s" if len(linked) != 1 else ""} from {len(papers)} reviewed paper{"s" if len(papers) != 1 else ""}'
+    family_block = ""
+    if families:
+        family_rows = "".join(descriptive_family_row(row) for row in families)
+        family_block = (
+            '<details class="history-results">'
+            f'<summary>Reported study results <span>{len(families)} groups</span></summary>'
+            f'<div class="syn-family-scroll">{family_rows}</div></details>'
+        )
+    note_block = (
+        f'<div class="history-note"><strong>Clinical context</strong><span>{esc(informative_notes)}</span></div>'
+        if informative_notes else ""
+    )
+    counts = []
+    if papers:
+        counts.append(f'{len(papers)} paper{"s" if len(papers) != 1 else ""}')
+    if linked:
+        counts.append(f'{len(linked)} finding{"s" if len(linked) != 1 else ""}')
+    if families:
+        counts.append(f'{len(families)} result group{"s" if len(families) != 1 else ""}')
+    count_label = " · ".join(counts) or "Background"
     return (
-        '<details class="d-row d-ev reviewed-evidence-shell">'
-        f'<summary><span>Reviewed evidence</span><span class="reviewed-evidence-count">{count_label}</span></summary>'
+        '<details class="d-row d-ev evidence-history-shell">'
+        f'<summary><span>Evidence history</span><span class="reviewed-evidence-count">{count_label}</span></summary>'
         '<div class="reviewed-evidence-panel">'
-        '<div class="ev-toolbar"><button type="button" data-ev-action="expand">Expand all study details</button>'
-        '<button type="button" data-ev-action="collapse">Collapse all study details</button></div>'
+        '<div class="ev-toolbar"><button type="button" data-ev-action="expand">Expand source details</button>'
+        '<button type="button" data-ev-action="collapse">Collapse source details</button></div>'
+        f'{note_block}'
         '<div class="reviewed-evidence-scroll">'
-        f'<ul class="ev-list">{"".join(paper_blocks)}</ul></div></div></details>',
+        f'<ul class="ev-list">{"".join(paper_blocks)}</ul>{family_block}</div></div></details>',
         len(linked),
         " ".join(search),
     )
@@ -571,46 +627,144 @@ def descriptive_family_row(family):
 </details>'''
 
 
-def evidence_synthesis_block(sign_id):
-    cards = SYNTHESIS_CARDS_BY_SIGN.get(str(sign_id), [])
-    families = DESCRIPTIVE_FAMILIES_BY_SIGN.get(str(sign_id), [])
-    if not cards and not families:
-        return ""
-    card_rows = []
-    for card in sorted(cards, key=lambda row: row.get("axis", "")):
-        sources = "".join(f'<li>{esc(source)}</li>' for source in card.get("source_files") or [])
-        relationships = "".join(
-            '<li><strong>{}</strong>: {}</li>'.format(
-                esc("; ".join(readable_term(value) for value in rel.get("contexts") or []) or "Reported context"),
-                esc(", ".join(readable_term(value) for value in rel.get("targets") or []) or "not reported"),
-            )
-            for rel in card.get("primary_relationships") or []
-        )
-        relationship_block = f'<ul class="syn-relationships">{relationships}</ul>' if relationships else ""
-        source_block = (
-            '<details class="syn-sources"><summary>Sources used in this summary</summary>'
-            f'<ul>{sources}</ul></details>' if sources else ""
-        )
-        card_rows.append(f'''<section class="syn-axis-card">
-  <div class="syn-axis-head"><strong>{esc(card.get('axis', '').title())}</strong><span>{esc(card.get('pattern_label') or '')}</span></div>
-  <p>{esc(card.get('plain_summary') or '')}</p>
-  {relationship_block}
-  <div class="syn-counts">{card.get('source_work_count', 0)} papers · {card.get('evidence_finding_count', 0)} findings · {len(card.get('supporting_statistic_ids') or [])} reported numbers</div>
-  {source_block}
-</section>''')
-    family_block = ""
-    if families:
-        family_rows = "".join(descriptive_family_row(row) for row in families)
-        family_block = f'''<details class="d-row syn-family-shell">
-  <summary><span>Study results used in this summary</span><span>{len(families)} result groups</span></summary>
-  <div class="syn-family-panel">
-    <div class="reviewed-evidence-actions"><button type="button" data-syn-action="expand">Expand all study results</button><button type="button" data-syn-action="collapse">Collapse all study results</button></div>
-    <div class="syn-family-scroll">{family_rows}</div>
-  </div>
-</details>'''
+def limited_sentences(value, limit=2):
+    sentences = [part.strip() for part in re.split(r'(?<=[.!?])\s+', str(value or "").strip()) if part.strip()]
+    return " ".join(sentences[:limit])
+
+
+def concise_axis_sentence(card):
+    text = limited_sentences(card.get("plain_summary"), 1)
+    axis = str(card.get("axis") or "finding").lower()
+    status = card.get("pattern_status")
+    if status == "PREDOMINANT_WITH_EXCEPTIONS":
+        if re.search(r"\bpredominantly\b", text, flags=re.I):
+            return text
+        match = re.search(r':\s*(.+?)[.]?$', text)
+        if match:
+            value = re.sub(r'\b(?:relationship|localization)\b', '', match.group(1), flags=re.I).strip(' .')
+            return f"Predominantly {value}."
+    if status == "NON_LATERALIZING":
+        return "No reliable hemispheric lateralization."
+    if status == "NON_LOCALIZING":
+        return "No reliable anatomical localization."
+    if status == "CONTEXT_SUBTYPE_DEPENDENT":
+        return f"{axis.title()} depends on the described subtype or context."
+    return text.replace("The embedded evidence ", "The reviewed evidence ")
+
+
+def lateralization_target_chips(sign_id):
+    labels = {
+        "right": "Right", "left": "Left", "dominant": "Dominant",
+        "nondominant": "Non-dominant", "non-dominant": "Non-dominant",
+        "contra": "Contralateral", "contralateral": "Contralateral",
+        "ipsi": "Ipsilateral", "ipsilateral": "Ipsilateral",
+        "bilateral": "Bilateral", "non-lateralizing": "Non-lateralizing",
+    }
+    values = []
+    for card in SYNTHESIS_CARDS_BY_SIGN.get(str(sign_id), []):
+        if card.get("axis") != "LATERALIZATION":
+            continue
+        for relation in card.get("primary_relationships") or []:
+            for target in relation.get("targets") or []:
+                key = str(target).strip().lower().replace("_", "-")
+                if key in labels and labels[key] not in values:
+                    values.append(labels[key])
+    visible = values[:5]
+    chips = "".join(f'<span class="axis-chip">{esc(value)}</span>' for value in visible)
+    if len(values) > len(visible):
+        chips += f'<span class="axis-chip axis-chip-more">+{len(values) - len(visible)}</span>'
+    return f'<span class="axis-chips">{chips}</span>' if chips else ""
+
+
+def axis_synthesis(sign_id, axis):
+    return next(
+        (
+            card
+            for card in SYNTHESIS_CARDS_BY_SIGN.get(str(sign_id), [])
+            if card.get("axis") == axis
+        ),
+        None,
+    )
+
+
+def axis_pattern_badge(d, axis):
+    card = axis_synthesis(d.get("id"), axis)
+    if card:
+        label = str(card.get("pattern_label") or "Reviewed evidence").strip()
+        return f'<span class="axis-pattern">{esc(label)}</span>'
+    if axis == "LATERALIZATION" and d.get("latcode") == "variable":
+        return '<span class="axis-pattern">More than one reported relationship</span>'
+    return ""
+
+
+def lateralization_display(d):
+    note = ""
+    if not axis_synthesis(d.get("id"), "LATERALIZATION"):
+        note = f'<span class="axis-note">{esc(d.get("lat", ""))}</span>'
+    return f'{axis_pattern_badge(d, "LATERALIZATION")}{lateralization_target_chips(d.get("id"))}{note}'
+
+
+def localization_display(d):
+    regions = list(OrderedDict.fromkeys(d.get("regions") or [d.get("region")]))
+    if len(regions) > 1:
+        regions = [region for region in regions if region != "No localization stated"]
+    chips = "".join(
+        f'<span class="region-chip" style="--region-chip:{region_colors.get(region, "#7b8494")}">{esc(region)}</span>'
+        for region in regions if region
+    )
+    loc_text = str(d.get("loc") or "").strip()
+    listed = [part.strip() for part in loc_text.split(";") if part.strip()]
+    if listed and all(part in set(regions) | {"No localization stated"} for part in listed):
+        loc_text = ""
+    text = f'<span class="location-note">{esc(loc_text)}</span>' if loc_text else ""
+    return f'{axis_pattern_badge(d, "LOCALIZATION")}<span class="region-chips">{chips}</span>{text}'
+
+
+def compact_evidence_overview(d):
+    cards = SYNTHESIS_CARDS_BY_SIGN.get(str(d["id"]), [])
+    sources = set()
+    findings = set()
+    statistics = set()
+    for card in cards:
+        sources.update(card.get("source_files") or [])
+        findings.update(card.get("supporting_finding_refs") or [])
+        statistics.update(card.get("supporting_statistic_ids") or [])
+    raw_summary = limited_sentences(d.get("evidence_summary"), 2)
+    summary = raw_summary
+    if d.get("support_items") and raw_summary:
+        first_sentence = limited_sentences(raw_summary, 1)
+        if ":" in first_sentence:
+            lead = first_sentence.split(":", 1)[0].strip()
+            if len(lead.split()) >= 5:
+                summary = lead.rstrip(".") + "."
+        elif ";" in first_sentence:
+            summary = first_sentence.split(";", 1)[0].rstrip(".") + "."
+    if not summary:
+        summaries = [concise_axis_sentence(card) for card in sorted(cards, key=lambda row: row.get("axis", ""))]
+        summary = " ".join(OrderedDict.fromkeys(value for value in summaries if value))
+    if not summary:
+        summary = limited_sentences(d.get("notes"), 2)
+    count_items = [
+        (len(sources), "paper"),
+        (len(findings), "finding"),
+        (len(statistics), "reported result"),
+    ]
+    counts = "".join(
+        f'<span><strong>{count}</strong> {label}{"s" if count != 1 else ""}</span>'
+        for count, label in count_items if count
+    )
+    basis = "Reviewed sources" if d.get("evid") == "SRC" else f'Evidence level {d.get("evid")}'
+    counts += f'<span class="evidence-basis-chip">{esc(basis)}</span>'
+    key_numbers = [
+        str(item.get("display") or "").strip()
+        for item in d.get("support_items") or []
+        if str(item.get("display") or "").strip()
+    ][:2]
+    numbers = "".join(f'<li>{esc(value)}</li>' for value in key_numbers)
+    numbers_block = f'<ul class="key-numbers">{numbers}</ul>' if numbers else ""
     return (
-        '<div class="d-row d-support syn-summary"><span class="d-label">Overall pattern in the reviewed evidence</span>'
-        f'<div class="syn-axis-grid">{"".join(card_rows)}</div></div>{family_block}'
+        '<div class="d-row evidence-overview"><span class="d-label">Summary</span>'
+        f'<p>{esc(summary)}</p><div class="evidence-counts">{counts}</div>{numbers_block}</div>'
     )
 
 
@@ -665,9 +819,11 @@ def area_reference_blocks(region):
             lib_chip = (f'<span class="chip lib-chip" title="Reviewed source findings">&#128218; {_nsrc}</span>'
                         if _nsrc else '')
             evid_chip = evidence_header_chip(ec)
+            phase_search = "|".join(d.get("phase_values") or [d["phase"]])
             refs.append(f'''<div class="sign" id="area-sign-{slug(region)}-{aid}-{d['id']}"
     data-area-ref="true" data-id="{d['id']}" data-ba="{esc(aid)}" data-region="{esc(region)}"
-    data-phase="{esc(d['phase'])}" data-latcode="{esc(lc)}" data-evid="{esc(ec)}"
+    data-regions="{esc('|'.join(d.get('regions') or [region]))}"
+    data-phase="{esc(d['phase'])}" data-phase-search="{esc(phase_search)}" data-latcode="{esc(lc)}" data-evid="{esc(ec)}"
     data-search="{esc(ref_search)}" style="--accent:{latcolor.get(lc,'#999')}">
   <button class="sign-head" aria-expanded="false">
     <span class="chevron">&#8250;</span>
@@ -719,12 +875,13 @@ for r in region_order:
                            f'<span class="d-value"><span class="ba-chips">{_chips}</span>'
                            f'<button class="map-jump" data-sign="{d["id"]}" '
                            f'title="{esc(_why)}">Show on map &#8599;</button></span></div>')
-            ev_block, _nsrc, ev_text = ledger_evidence_block(d.get("id"))
+            ev_block, _nsrc, ev_text = ledger_evidence_block(d.get("id"), d.get("notes"))
             lib_chip = (f'<span class="chip lib-chip" title="Reviewed source findings">&#128218; {_nsrc}</span>'
                         if _nsrc else '')
             evid_chip = evidence_header_chip(ec)
-            metric_block = evidence_metric_block(ec)
-            support_block = evidence_synthesis_block(d.get("id")) or support_summary_block(d)
+            overview_block = compact_evidence_overview(d)
+            lat_targets = lateralization_target_chips(d.get("id"))
+            loc_display = localization_display(d)
             source_status_block = ('' if _nsrc else '''<div class="d-row d-cite source-review-pending">
         <span class="d-label">Source review pending</span>
         <span class="d-value">This summary does not yet have an individually reviewed paper linked to it.</span>
@@ -737,27 +894,21 @@ for r in region_order:
                 detail_fragments[detail_name] = f'''<div class="detail-inner">
       <div class="d-row d-lat">
         <span class="d-label">Lateralization</span>
-        <span class="d-value"><span class="lat-badge" style="color:{latcolor.get(lc,'#333')};background:{latbg.get(lc,'#f7f7f7')};border-color:{latcolor.get(lc,'#333')}">{latlabel.get(lc,'?')}</span> {esc(d['lat'])}</span>
+        <span class="d-value">{lateralization_display(d)}</span>
       </div>
       <div class="d-row d-loc">
         <span class="d-label">Anatomical localization</span>
-        <span class="d-value">{esc(d['loc'])}</span>
+        <span class="d-value">{loc_display}</span>
       </div>
       {map_row}
-      <div class="d-metrics">
-        {metric_block}
-      </div>
-      {support_block}
-      <div class="d-row d-notes">
-        <span class="d-label">Clinical notes &amp; mechanism</span>
-        <span class="d-value">{esc(d['notes'])}</span>
-      </div>
+      {overview_block}
       {source_status_block}
       {ev_block}
       {sens_block}
       {ppv_block}
     </div>'''
-            rows.append(f'''<div class="sign" id="sign-{slug(r)}-{d['id']}" data-id="{d['id']}" data-region="{esc(r)}" data-phase="{esc(d['phase'])}" data-latcode="{lc}" data-evid="{ec}" data-search="{esc(search_str)}" style="--accent:{accent}">
+            phase_search = "|".join(d.get("phase_values") or [d["phase"]])
+            rows.append(f'''<div class="sign" id="sign-{slug(r)}-{d['id']}" data-id="{d['id']}" data-region="{esc(r)}" data-regions="{esc('|'.join(d.get('regions') or [r]))}" data-phase="{esc(d['phase'])}" data-phase-search="{esc(phase_search)}" data-latcode="{lc}" data-evid="{ec}" data-search="{esc(search_str)}" style="--accent:{accent}">
   <button class="sign-head" aria-expanded="false">
     <span class="chevron">&#8250;</span>
     <span class="sign-name">{esc(d['sign'])}</span>
@@ -1776,7 +1927,7 @@ main,.frontpage-fold,.callout{
 .region-body{padding:7px 0 2px}
 .region-section.collapsed .region-body{display:none}
 
-#semiology-view[hidden],#region-view[hidden]{display:none}
+#semiology-view[hidden],#region-view[hidden],#region-order-field[hidden],#source-sign-store{display:none!important}
 .browse-note{font-size:.76rem;line-height:1.5;color:#526077;background:#f4f8fb;border:1px solid var(--line);border-radius:8px;padding:8px 11px;margin:0 0 10px}
 .browse-section{margin-bottom:8px}
 .browse-toggle{width:100%;display:flex;align-items:center;gap:9px;background:var(--navy);color:#fff;border:none;border-left:3px solid var(--teal-d);border-radius:6px;padding:7px 12px;font-family:inherit;font-size:.76rem;font-weight:800;cursor:pointer;text-align:left}
@@ -1793,13 +1944,24 @@ main,.frontpage-fold,.callout{
 .browse-subsection.collapsed>.browse-subtoggle .browse-chev{transform:rotate(-90deg)}
 .browse-subtoggle .browse-count{margin-left:auto;background:#e1e7ef;color:#536078}
 .browse-subbody{padding-top:1px}
+.region-category{margin:7px 0 9px 8px;border-left-width:3px}
+.region-category>.browse-subtoggle{background:#eef3f8;font-size:.76rem}
+.region-category>.browse-subbody{padding:2px 0 2px 4px}
 .browse-sign-wrap{margin:6px 0;border-radius:8px}
 .browse-sign{width:100%;display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--line);border-left:4px solid var(--accent,#8ca0b8);border-radius:8px;padding:9px 12px;text-align:left;font-family:inherit;cursor:pointer}
 .browse-sign:hover{border-color:var(--teal);box-shadow:0 2px 9px rgba(15,30,61,.08)}
 .browse-sign-wrap.open .browse-sign{border-color:var(--teal);border-radius:8px 8px 0 0}
 .browse-arrow{color:var(--teal-d);font-size:1rem}
 .browse-sign-name{flex:1;color:var(--navy);font-size:.86rem;font-weight:700;line-height:1.3}
-.browse-meta{font-size:.66rem;color:var(--muted);white-space:nowrap}
+.browse-meta{display:flex;align-items:center;justify-content:flex-end;gap:4px;flex-wrap:wrap;font-size:.64rem;color:var(--muted)}
+.browse-meta-chip{display:inline-flex;align-items:center;background:#f2f5f8;border:1px solid #dce3eb;border-radius:999px;padding:2px 7px;white-space:nowrap}
+.browse-meta-chip.region{color:#0a6472;background:#edf8fa;border-color:#c4e5e9}
+.browse-subsection>.browse-subbody>.browse-sign-wrap{margin:4px 8px 4px 10px;border-radius:6px}
+.browse-subsection>.browse-subbody>.browse-sign-wrap>.browse-sign{gap:7px;border-left-width:3px;border-radius:6px;padding:4px 8px}
+.browse-subsection>.browse-subbody>.browse-sign-wrap>.browse-sign .browse-arrow{font-size:.82rem}
+.browse-subsection>.browse-subbody>.browse-sign-wrap>.browse-sign .browse-sign-name{font-size:.75rem;line-height:1.25}
+.browse-subsection>.browse-subbody>.browse-sign-wrap>.browse-sign .browse-meta{font-size:.6rem}
+.browse-subsection>.browse-subbody>.browse-sign-wrap>.browse-sign .browse-meta-chip{padding:1px 5px}
 .browse-detail{background:#fff;border:1px solid var(--teal);border-top:0;border-radius:0 0 8px 8px;padding:0 12px 10px}
 .browse-detail>.detail{max-height:none!important;overflow:visible;padding-top:7px}
 
@@ -1853,6 +2015,13 @@ main,.frontpage-fold,.callout{
 .d-label{display:block;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#8a93a5;margin-bottom:4px}
 .d-value{font-size:.86rem;color:var(--ink);line-height:1.5}
 .lat-badge{display:inline-block;font-size:.66rem;font-weight:800;padding:2px 7px;border-radius:4px;border:1px solid currentColor;letter-spacing:.03em;vertical-align:middle}
+.axis-chips,.region-chips{display:inline-flex;gap:5px;align-items:center;flex-wrap:wrap;margin-left:7px}
+.axis-chip,.region-chip{display:inline-flex;align-items:center;border-radius:999px;padding:2px 8px;font-size:.66rem;font-weight:750;line-height:1.35;white-space:nowrap}
+.axis-pattern{display:inline-flex;align-items:center;border-radius:999px;padding:3px 9px;color:#0a6472;background:#e7f6f8;border:1px solid #b3dfe5;font-size:.67rem;font-weight:800;line-height:1.35}
+.axis-chip{color:#475569;background:#eef2f7;border:1px solid #d7dee8}
+.axis-chip-more{color:#0a6472;background:#e7f6f8;border-color:#b3dfe5}
+.region-chip{color:var(--region-chip);background:color-mix(in srgb,var(--region-chip) 10%,white);border:1px solid color-mix(in srgb,var(--region-chip) 45%,white)}
+.axis-note,.location-note{display:block;margin-top:6px;color:#334155;font-size:.8rem;line-height:1.42}
 .d-metrics{display:flex;gap:10px;padding:11px 0;border-bottom:1px solid var(--line2);flex-wrap:wrap}
 .metric{flex:1;min-width:110px;background:#fff;border:1px solid var(--line);border-radius:8px;padding:8px 11px}
 .metric .d-label{margin-bottom:5px}
@@ -1866,6 +2035,15 @@ main,.frontpage-fold,.callout{
 .support-basis{font-size:.7rem;font-weight:800;color:#0a6472;margin-bottom:4px}
 .support-summary{font-size:.82rem;line-height:1.5;color:#334155}
 .support-list{margin:7px 0 0;padding-left:18px;display:grid;gap:3px;color:#475569;font-size:.76rem;line-height:1.4}
+.evidence-overview{background:#f5f9fc;border:1px solid #d8e5ee;border-radius:9px;padding:10px 12px;margin-top:7px}
+.evidence-overview .d-label{color:#365d78}
+.evidence-overview p{margin:0;color:#334155;font-size:.82rem;line-height:1.45}
+.evidence-counts{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:8px}
+.evidence-counts>span{display:inline-flex;align-items:center;gap:3px;background:#fff;border:1px solid #d8e5ee;border-radius:999px;padding:3px 8px;color:#526276;font-size:.68rem}
+.evidence-counts strong{color:#17314f}
+.evidence-counts .evidence-basis-chip{color:#0a6472;background:#e7f6f8;border-color:#b3dfe5;font-weight:750}
+.key-numbers{display:flex;flex-wrap:wrap;gap:5px;margin:8px 0 0;padding:0;list-style:none}
+.key-numbers li{max-width:100%;background:#fff8e8;border:1px solid #ecd6a8;border-radius:6px;padding:4px 7px;color:#6e4b12;font-size:.7rem;line-height:1.35}
 .syn-summary{display:block}
 .syn-axis-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:8px}
 .syn-axis-card{background:#fff;border:1px solid #d8e5ee;border-radius:8px;padding:9px 10px}
@@ -1901,14 +2079,11 @@ main,.frontpage-fold,.callout{
 .syn-global-table{padding:6px 9px;max-height:65vh;overflow-y:auto;scrollbar-gutter:stable}
 
 @media (min-width:760px){
-  .detail-inner{display:grid;grid-template-columns:1.5fr 1fr;grid-template-areas:"lat lat" "loc metrics" "map map" "support support" "notes notes" "cite cite" "ev ev";gap:0 20px;column-gap:24px}
+  .detail-inner{display:grid;grid-template-columns:1fr 1fr;grid-template-areas:"lat loc" "map map" "overview overview" "cite cite" "ev ev";gap:0 20px;column-gap:24px}
   .d-lat{grid-area:lat}
   .d-loc{grid-area:loc}
   .d-map{grid-area:map}
-  .d-metrics{grid-area:metrics;flex-direction:column;border-bottom:1px solid var(--line2)}
-  .metric{min-width:0}
-  .d-support{grid-area:support}
-  .d-notes{grid-area:notes}
+  .evidence-overview{grid-area:overview}
   .d-cite{grid-area:cite}
   .d-ev{grid-area:ev}
 }
@@ -1924,15 +2099,23 @@ body.quiz .quiz-hint{display:block}
 body.quiz .lib-chip{display:none}
 .d-ev{background:#fffaf2;border:1px solid #f0dcbd;border-radius:9px;padding:10px 12px !important;margin-top:6px}
 .d-ev .d-label{color:#a15c00;margin-bottom:7px}
-.reviewed-evidence-shell{padding:0!important;overflow:hidden}
-.reviewed-evidence-shell>summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;color:#8a4b00;font-size:.78rem;font-weight:800}
-.reviewed-evidence-shell>summary::-webkit-details-marker{display:none}
-.reviewed-evidence-shell>summary::before{content:'\25B6';font-size:.64rem;color:#b66c0a;transition:transform .15s}
-.reviewed-evidence-shell[open]>summary::before{transform:rotate(90deg)}
-.reviewed-evidence-shell[open]>summary{border-bottom:1px solid #f0dcbd}
-.reviewed-evidence-shell>summary>span:first-of-type{margin-right:auto;text-transform:uppercase;letter-spacing:.05em}
+.evidence-history-shell{padding:0!important;overflow:hidden}
+.evidence-history-shell>summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;color:#8a4b00;font-size:.78rem;font-weight:800}
+.evidence-history-shell>summary::-webkit-details-marker{display:none}
+.evidence-history-shell>summary::before{content:'\25B6';font-size:.64rem;color:#b66c0a;transition:transform .15s}
+.evidence-history-shell[open]>summary::before{transform:rotate(90deg)}
+.evidence-history-shell[open]>summary{border-bottom:1px solid #f0dcbd}
+.evidence-history-shell>summary>span:first-of-type{margin-right:auto;text-transform:uppercase;letter-spacing:.05em}
 .reviewed-evidence-count{color:#6b7280;font-size:.7rem;font-weight:700;text-transform:none;letter-spacing:0;text-align:right}
 .reviewed-evidence-panel{padding:0 10px 10px}
+.history-note{display:grid;grid-template-columns:minmax(90px,auto) 1fr;gap:8px;padding:8px 3px;border-bottom:1px solid #f4e5cd;color:#5c4b32;font-size:.74rem;line-height:1.4}
+.history-note strong{color:#8a4b00}
+.history-results{margin-top:10px;border:1px solid #ecd6b4;border-radius:7px;background:#fff}
+.history-results>summary{display:flex;justify-content:space-between;gap:10px;list-style:none;cursor:pointer;padding:8px 10px;color:#8a4b00;font-size:.72rem;font-weight:800}
+.history-results>summary::-webkit-details-marker{display:none}
+.history-results>summary::before{content:'\25B8';font-size:.62rem;margin-right:6px}
+.history-results[open]>summary::before{transform:rotate(90deg)}
+.history-results>summary span{margin-left:auto;color:#64748b}
 .ev-toolbar{position:sticky;top:0;z-index:2;display:flex;gap:7px;justify-content:flex-end;padding:8px 2px;background:#fffaf2;border-bottom:1px solid #f4e5cd}
 .ev-toolbar button{border:1px solid #d7ad70;background:#fff;color:#8a4b00;border-radius:6px;padding:5px 8px;font-family:inherit;font-size:.68rem;font-weight:700;cursor:pointer}
 .ev-toolbar button:hover{background:#fff1dc;border-color:#b87927}
@@ -2119,7 +2302,7 @@ body.quiz .lib-chip{display:none}
   .fx-m{grid-area:m}.fx-ph{grid-area:ph}.fx-val{grid-area:val;text-align:right}.fx-src{grid-area:src}.fx-q{grid-area:q}.fx-context{grid-column:1 / -1}
   .fx-search{width:100%}
   .reviewed-evidence-scroll{max-height:52vh}
-  .reviewed-evidence-shell>summary{align-items:flex-start}
+  .evidence-history-shell>summary{align-items:flex-start}
   .reviewed-evidence-count{max-width:54%}
   .ev-toolbar{justify-content:stretch}
   .ev-toolbar button{flex:1}
@@ -2413,6 +2596,24 @@ JS = (
     const trow=e.target.closest('.bt-row');
     if(trow){ render(trow.dataset.tile); return; }
     const row=e.target.closest('.bp-row'); if(!row) return;
+    const browseRow=Array.from(document.querySelectorAll((browseMode.value==='region'?'#region-browse-sections':'#browse-sections')+' .browse-sign')).find(node=>String(node.dataset.id)===String(row.dataset.sign));
+    if(browseRow){
+      const wrapper=browseRow.closest('.browse-sign-wrap');
+      const regionSection=wrapper.closest('.region-section');
+      if(regionSection){regionSection.classList.remove('collapsed');regionSection.querySelector('.region-toggle').setAttribute('aria-expanded','true');}
+      let ancestor=wrapper.parentElement;
+      while(ancestor){
+        if(ancestor.classList&&ancestor.classList.contains('browse-subsection')){
+          ancestor.classList.remove('collapsed');
+          ancestor.querySelector(':scope > .browse-subtoggle')?.setAttribute('aria-expanded','true');
+        }
+        if(ancestor===regionBrowseSections||ancestor===browseSections)break;
+        ancestor=ancestor.parentElement;
+      }
+      if(!wrapper.classList.contains('open'))void toggleBrowseSign(browseRow);
+      wrapper.scrollIntoView({behavior:'smooth',block:'center'});
+      return;
+    }
     const el=Array.from(document.querySelectorAll('.sign')).find(node=>String(node.dataset.id)===String(row.dataset.sign)); if(!el) return;
     const sec=el.closest('.region-section'), sub=el.closest('.sub-block');
     if(sec) sec.classList.remove('collapsed');
@@ -2431,8 +2632,8 @@ JS = (
     if(jump){ traceSign(jump.dataset.sign,true); return; }
     const chip=e.target.closest('.ba-chip');
     if(chip){
-      const s=chip.closest('.sign');
-      if(s&&traceSign(s.dataset.id,true)) render(chip.dataset.ba);
+      const source=chip.closest('.sign,.browse-sign-wrap');
+      if(source&&traceSign(source.dataset.id,true)) render(chip.dataset.ba);
     }
   });
 
@@ -2663,6 +2864,8 @@ const searchInput=document.getElementById('search-input');
 const searchSubmit=document.getElementById('search-submit');
 const searchClear=document.getElementById('search-clear');
 const browseMode=document.getElementById('browse-mode');
+const regionOrderMode=document.getElementById('region-order-mode');
+const regionOrderField=document.getElementById('region-order-field');
 const fRegion=document.getElementById('filter-region');
 const fPhase=document.getElementById('filter-phase');
 const fLat=document.getElementById('filter-lat');
@@ -2670,11 +2873,13 @@ const fEvid=document.getElementById('filter-evid');
 const resultCount=document.getElementById('result-count');
 const noResults=document.getElementById('no-results');
 const regionView=document.getElementById('region-view');
+const regionBrowseSections=document.getElementById('region-browse-sections');
 const semiologyView=document.getElementById('semiology-view');
 const browseSections=document.getElementById('browse-sections');
 const browseNote=document.getElementById('browse-note');
-const signs=Array.from(document.querySelectorAll('.sign'));
-const sections=Array.from(document.querySelectorAll('.region-section'));
+const sourceSignStore=document.getElementById('source-sign-store');
+const signs=Array.from(sourceSignStore.querySelectorAll('.sign'));
+const sections=Array.from(sourceSignStore.querySelectorAll('.region-section'));
 const signCopiesById=new Map();
 const totalRegionIds={};
 signs.forEach(sign=>{
@@ -2689,6 +2894,7 @@ const canonicalSigns=new Map(Array.from(signCopiesById,([id,copies])=>[id,copies
 const uniqueSignCount=canonicalSigns.size;
 let appliedQuery='';
 let builtBrowseMode='';
+let builtRegionMode='';
 
 const fragmentCache=new Map();
 function loadFragment(path){
@@ -2718,10 +2924,10 @@ document.addEventListener('click',event=>{
   if(!control) return;
   event.preventDefault();
   event.stopPropagation();
-  const shell=control.closest('.reviewed-evidence-shell');
+  const shell=control.closest('.evidence-history-shell');
   if(!shell) return;
   const open=control.dataset.evAction==='expand';
-  shell.querySelectorAll('details.ev-trace,details.ev-stats').forEach(panel=>{ panel.open=open; });
+  shell.querySelectorAll('details.ev-trace,details.ev-stats,details.history-results,details.syn-family').forEach(panel=>{ panel.open=open; });
   const sign=control.closest('.sign');
   if(sign&&sign.classList.contains('open')) requestAnimationFrame(()=>{
     const detail=sign.querySelector('.detail');
@@ -2803,7 +3009,8 @@ document.querySelectorAll('.sub-toggle').forEach(btn=>{
 // region-jump pills
 document.querySelectorAll('.pill').forEach(p=>{
   p.addEventListener('click',()=>{
-    const sec=document.getElementById(p.dataset.target);
+    if(browseMode.value!=='region') setBrowseMode('region');
+    const sec=document.getElementById('browse-'+p.dataset.target);
     if(sec){ sec.classList.remove('collapsed'); sec.scrollIntoView({behavior:'smooth',block:'start'}); }
   });
 });
@@ -2814,7 +3021,7 @@ document.querySelectorAll('.pill').forEach(p=>{
 function itemMatches(item){
   const reg=fRegion.value,ph=fPhase.value,lat=fLat.value,ev=fEvid.value;
   if(reg && item.dataset.region!==reg) return false;
-  if(ph && !(item.dataset.phase||'').toLowerCase().includes(ph.toLowerCase())) return false;
+  if(ph && !((item.dataset.phaseSearch||item.dataset.phase||'').toLowerCase().includes(ph.toLowerCase()))) return false;
   if(lat && item.dataset.latcode!==lat) return false;
   if(ev && item.dataset.evid!==ev) return false;
   const searchable=(SIGN_SEARCH[String(item.dataset.id)]||'')+' '+(item.dataset.search||'');
@@ -2827,7 +3034,12 @@ function idMatches(id){
 }
 
 const signCollator=new Intl.Collator(undefined,{numeric:true,sensitivity:'base'});
-function signName(id){ return canonicalSigns.get(String(id)).querySelector('.sign-name').textContent.trim(); }
+function visibleSignName(value){
+  const original=String(value||'').trim();
+  const stripped=original.replace(/^Focal\s+/i,'').trim();
+  return stripped===original||!stripped?original:stripped.charAt(0).toLocaleUpperCase()+stripped.slice(1);
+}
+function signName(id){ return visibleSignName(canonicalSigns.get(String(id)).querySelector('.sign-name').textContent.trim()); }
 function sortSignIds(ids,descending=false){
   const values=Array.from(new Set(ids.map(String))).filter(id=>canonicalSigns.has(id));
   values.sort((a,b)=>signCollator.compare(signName(a),signName(b)));
@@ -2865,36 +3077,101 @@ function browseGroups(mode){
   return groups;
 }
 
-function appendBrowseSign(parent,id){
+function appendBrowseSign(parent,id,parentLabel='',contextRegion=''){
   const source=canonicalSigns.get(String(id));
   if(!source) return;
   const wrapper=document.createElement('div'); wrapper.className='browse-sign-wrap'; wrapper.dataset.id=id;
+  if(contextRegion) wrapper.dataset.contextRegion=contextRegion;
   const row=document.createElement('button'); row.type='button'; row.className='browse-sign'; row.dataset.id=id;
   row.setAttribute('aria-expanded','false');
   wrapper.style.setProperty('--accent',source.style.getPropertyValue('--accent')||'#8ca0b8');
   const arrow=document.createElement('span'); arrow.className='browse-arrow'; arrow.textContent='›';
-  const label=document.createElement('span'); label.className='browse-sign-name'; label.textContent=signName(String(id));
+  const label=document.createElement('span'); label.className='browse-sign-name';
+  const originalName=signName(String(id));
+  const lowerName=originalName.toLocaleLowerCase();
+  const lowerParent=String(parentLabel||'').toLocaleLowerCase();
+  label.textContent=lowerName===lowerParent
+    ? 'General '+lowerParent+' findings'
+    : (lowerParent==='aura'&&lowerName==='aura present'?'Presence of a preceding aura':originalName);
   const meta=document.createElement('span'); meta.className='browse-meta';
-  meta.textContent=(source.dataset.phase||'')+' · '+(source.dataset.region||'');
+  const phase=source.dataset.phaseSearch||source.dataset.phase||'';
+  compactPhaseLabels(phase).forEach(value=>{
+    const phaseChip=document.createElement('span'); phaseChip.className='browse-meta-chip'; phaseChip.textContent=value;
+    meta.append(phaseChip);
+  });
+  const regions=Array.from(new Set((source.dataset.regions||source.dataset.region||'').split('|').filter(Boolean)));
+  regions.slice(0,2).forEach(region=>{
+    const chip=document.createElement('span'); chip.className='browse-meta-chip region'; chip.textContent=region;
+    meta.append(chip);
+  });
+  if(regions.length>2){
+    const more=document.createElement('span'); more.className='browse-meta-chip region'; more.textContent='+'+(regions.length-2);
+    meta.append(more);
+  }
   const detail=document.createElement('div'); detail.className='browse-detail'; detail.hidden=true;
   row.append(arrow,label,meta); wrapper.append(row,detail); parent.append(wrapper);
 }
 
-function appendClassificationNode(parent,node){
-  const direct=sortSignIds(node.sign_ids||[]);
-  const children=(node.children||[]).filter(child=>sortSignIds(child.all_sign_ids||child.sign_ids||[]).length);
+function compactPhaseLabels(value){
+  const text=String(value||'').toLocaleLowerCase();
+  if(!text||text==='multiple phases') return [];
+  const labels=[];
+  const add=label=>{if(!labels.includes(label)) labels.push(label);};
+  const isPre=text.includes('preictal')||text.includes('pre-ictal');
+  const isPost=text.includes('postictal')||text.includes('post-ictal');
+  const isInter=text.includes('interictal');
+  if(text.includes('aura')) add('Aura');
+  if(isPre) add('Preictal');
+  if(isPost) add('Postictal');
+  if(isInter) add('Interictal');
+  if(!isPre&&!isPost&&!isInter&&(text.includes('ictal')||text.includes('seizure onset'))) add('Ictal');
+  return labels.slice(0,2);
+}
+
+function eligibleIds(ids,allowed,seen,take=false){
+  const values=sortSignIds(ids||[]).filter(id=>(!allowed||allowed.has(id))&&(!seen||!seen.has(id)));
+  if(take&&seen) values.forEach(id=>seen.add(id));
+  return values;
+}
+
+function appendClassificationNode(parent,node,allowed=null,seen=null,contextRegion=''){
+  const nodeIds=eligibleIds(node.all_sign_ids||node.sign_ids||[],allowed,seen);
+  if(!nodeIds.length) return;
+  const direct=node.sign_ids||[];
+  const broad=node.broad_sign_ids||[];
+  const children=(node.children||[]).filter(child=>eligibleIds(child.all_sign_ids||child.sign_ids||[],allowed,seen).length);
   const subsection=document.createElement('div'); subsection.className='browse-subsection collapsed';
   const toggle=document.createElement('button');
   toggle.className='browse-subtoggle'; toggle.type='button'; toggle.setAttribute('aria-expanded','false');
   const chev=document.createElement('span'); chev.className='browse-chev'; chev.textContent='▼';
   const name=document.createElement('span'); name.className='browse-name'; name.textContent=node.label;
   const count=document.createElement('span'); count.className='browse-count';
-  count.textContent=sortSignIds(node.all_sign_ids||node.sign_ids||[]).length;
+  count.textContent=nodeIds.length;
   const body=document.createElement('div'); body.className='browse-subbody';
   toggle.append(chev,name,count); subsection.append(toggle,body);
-  direct.forEach(id=>appendBrowseSign(body,id));
-  children.forEach(child=>appendClassificationNode(body,child));
+  children.forEach(child=>appendClassificationNode(body,child,allowed,seen,contextRegion));
+  const general=eligibleIds([...direct,...broad],allowed,seen,true);
+  general.forEach(id=>appendBrowseSign(body,id,node.label,contextRegion));
   parent.append(subsection);
+}
+
+function appendSignBucket(parent,label,ids,contextRegion='',extraClass=''){
+  const values=sortSignIds(ids||[]);
+  if(!values.length) return;
+  const subsection=document.createElement('div'); subsection.className=('browse-subsection broad-only collapsed '+extraClass).trim();
+  const toggle=document.createElement('button');
+  toggle.className='browse-subtoggle'; toggle.type='button'; toggle.setAttribute('aria-expanded','false');
+  const chev=document.createElement('span'); chev.className='browse-chev'; chev.textContent='▼';
+  const name=document.createElement('span'); name.className='browse-name';
+  name.textContent=label;
+  const count=document.createElement('span'); count.className='browse-count'; count.textContent=values.length;
+  const body=document.createElement('div'); body.className='browse-subbody';
+  values.forEach(id=>appendBrowseSign(body,id,label,contextRegion));
+  toggle.append(chev,name,count); subsection.append(toggle,body); parent.append(subsection);
+}
+
+function appendBroadClassificationBucket(parent,label,ids,contextRegion=''){
+  appendSignBucket(parent,'General or source-wide '+String(label||'').toLocaleLowerCase()+' findings',ids,contextRegion,'broad-mappings');
 }
 
 function buildBrowseView(mode){
@@ -2902,8 +3179,8 @@ function buildBrowseView(mode){
   builtBrowseMode=mode;
   browseSections.replaceChildren();
   browseNote.textContent=(mode==='az'||mode==='za')
-    ? 'Signs are alphabetized here. Each row opens the same evidence-backed sign shown in the regional view.'
-    : 'The same signs are grouped using the selected classification. Signs that are not yet assigned remain visible under Not yet classified.';
+    ? 'Alphabetical view of the same evidence-backed signs.'
+    : 'Grouped by the selected classification; unassigned signs remain visible.';
   const fragment=document.createDocumentFragment();
   browseGroups(mode).forEach((group,index)=>{
     const section=document.createElement('section');
@@ -2918,62 +3195,121 @@ function buildBrowseView(mode){
     const body=document.createElement('div'); body.className='browse-body';
     if(mode==='az'||mode==='za') groupIds.forEach(id=>appendBrowseSign(body,id));
     else {
-      sortSignIds(group.sign_ids||[]).forEach(id=>appendBrowseSign(body,id));
-      (group.children||[]).forEach(child=>appendClassificationNode(body,child));
+      const seen=new Set();
+      (group.children||[]).forEach(child=>appendClassificationNode(body,child,null,seen));
+      const general=eligibleIds([...(group.sign_ids||[]),...(group.broad_sign_ids||[])],null,seen,true);
+      appendBroadClassificationBucket(body,group.label,general);
     }
     section.append(toggle,body); fragment.append(section);
   });
   browseSections.append(fragment);
 }
 
+function ludersRegionCategories(regionIds){
+  const tree=CLASSIFICATION_TREES.LUDERS_5D_2005||{groups:[]};
+  const preferred=['Aura','Seizure','Lateralizing signs','Diagnostic signs'];
+  const ordered=preferred.map(label=>(tree.groups||[]).find(group=>group.label===label)).filter(Boolean);
+  const used=new Set();
+  const categories=[];
+  ordered.forEach(group=>{
+    const ids=sortSignIds(group.all_sign_ids||group.sign_ids||[]).filter(id=>regionIds.has(id));
+    if(!ids.length) return;
+    ids.forEach(id=>used.add(id));
+    categories.push({label:group.label,group,ids});
+  });
+  const other=sortSignIds(Array.from(regionIds).filter(id=>!used.has(id)));
+  if(other.length) categories.push({label:'Other signs',group:null,ids:other});
+  return categories;
+}
+
+function appendRegionCategoryContent(parent,category,mode,region){
+  const allowed=new Set(category.ids),seen=new Set();
+  if(mode==='az'||!category.group){
+    category.ids.forEach(id=>appendBrowseSign(parent,id,category.label,region));
+    return;
+  }
+  if(mode==='luders'){
+    (category.group.children||[]).forEach(child=>appendClassificationNode(parent,child,allowed,seen,region));
+    const general=eligibleIds([...(category.group.sign_ids||[]),...(category.group.broad_sign_ids||[])],allowed,seen,true);
+    appendBroadClassificationBucket(parent,category.label,general,region);
+  }else{
+    const ilae=CLASSIFICATION_TREES.ILAE_SEIZURE_2025||{groups:[]};
+    (ilae.groups||[]).forEach(group=>appendClassificationNode(parent,group,allowed,seen,region));
+  }
+  const remaining=eligibleIds(category.ids,allowed,seen,true);
+  if(mode==='luders') appendSignBucket(parent,'Not yet placed within Lüders 5D',remaining,region,'unclassified-mappings');
+  else if(mode==='ilae') appendSignBucket(parent,'Not yet placed within ILAE 2025',remaining,region,'unclassified-mappings');
+  else remaining.forEach(id=>appendBrowseSign(parent,id,category.label,region));
+}
+
+function buildRegionBrowseView(mode){
+  if(builtRegionMode===mode) return;
+  builtRegionMode=mode;
+  regionBrowseSections.replaceChildren();
+  const fragment=document.createDocumentFragment();
+  sections.forEach((sourceSection,index)=>{
+    const region=sourceSection.dataset.region;
+    const regionIds=totalRegionIds[region]||new Set();
+    if(!regionIds.size) return;
+    const section=document.createElement('section');
+    section.className='region-section'+(index?' collapsed':'');
+    section.id='browse-'+sourceSection.id;
+    section.dataset.region=region;
+    const sourceToggle=sourceSection.querySelector('.region-toggle');
+    const toggle=document.createElement('button');toggle.className='region-toggle';toggle.type='button';
+    toggle.style.setProperty('--rc',sourceToggle.style.getPropertyValue('--rc'));
+    toggle.setAttribute('aria-expanded',index?'false':'true');
+    const chev=document.createElement('span');chev.className='region-chev';chev.textContent='▼';
+    const name=document.createElement('span');name.className='region-name';name.textContent=region.toLocaleUpperCase();
+    const count=document.createElement('span');count.className='region-count';count.textContent=regionIds.size;
+    toggle.append(chev,name,count);
+    const body=document.createElement('div');body.className='region-body';
+    ludersRegionCategories(regionIds).forEach(category=>{
+      const subsection=document.createElement('div');subsection.className='browse-subsection region-category collapsed';
+      const subToggle=document.createElement('button');subToggle.className='browse-subtoggle';subToggle.type='button';subToggle.setAttribute('aria-expanded','false');
+      const subChev=document.createElement('span');subChev.className='browse-chev';subChev.textContent='▼';
+      const subName=document.createElement('span');subName.className='browse-name';subName.textContent=category.label;
+      const subCount=document.createElement('span');subCount.className='browse-count';subCount.textContent=category.ids.length;
+      const subBody=document.createElement('div');subBody.className='browse-subbody';
+      appendRegionCategoryContent(subBody,category,mode,region);
+      subToggle.append(subChev,subName,subCount);subsection.append(subToggle,subBody);body.append(subsection);
+    });
+    section.append(toggle,body);fragment.append(section);
+  });
+  regionBrowseSections.append(fragment);
+}
+
 function filterRegionView(){
+  buildRegionBrowseView(regionOrderMode.value);
   const active=!!(appliedQuery||fRegion.value||fPhase.value||fLat.value||fEvid.value);
-  const showAreaBlocks=!!(appliedQuery||fRegion.value);
   const visibleIds=new Set();
   const perRegionIds={};
-  function record(item){
-    const id=String(item.dataset.id),region=item.dataset.region;
-    visibleIds.add(id);
-    if(!perRegionIds[region]) perRegionIds[region]=new Set();
-    perRegionIds[region].add(id);
-  }
-  signs.forEach(sign=>{
-    const show=itemMatches(sign);
-    sign.style.display=show?'':'none';
-    sign.classList.toggle('match',show&&!!appliedQuery);
-    if(show) record(sign); else closeSign(sign);
-  });
-  let openedSection=false;
-  sections.forEach(sec=>{
-    const blocks=Array.from(sec.querySelectorAll(':scope .region-body > .sub-block'));
-    let openedBlock=false,sectionHas=false;
-    blocks.forEach(sb=>{
-      const isArea=sb.classList.contains('area-map-block');
-      const items=Array.from(sb.querySelectorAll('.sign'));
-      const count=new Set(items.filter(item=>item.style.display!=='none').map(item=>String(item.dataset.id))).size;
-      const show=count>0&&(!isArea||showAreaBlocks);
-      sb.style.display=show?(isArea?'block':''):'none';
-      const counter=sb.querySelector('.sub-count'); if(counter) counter.textContent=count;
-      const shouldOpen=active&&show&&!openedSection&&!openedBlock;
-      sb.classList.toggle('collapsed',!shouldOpen);
-      const toggle=sb.querySelector('.sub-toggle'); if(toggle) toggle.setAttribute('aria-expanded',shouldOpen?'true':'false');
-      if(shouldOpen) openedBlock=true;
-      if(show) sectionHas=true;
-    });
-    if(!active){
-      blocks.forEach(sb=>{
-        const isArea=sb.classList.contains('area-map-block');
-        sb.style.display=isArea?'none':'';
-        sb.classList.add('collapsed');
-        const toggle=sb.querySelector('.sub-toggle'); if(toggle) toggle.setAttribute('aria-expanded','false');
-      });
-      sectionHas=true;
+  regionBrowseSections.querySelectorAll('.browse-sign-wrap').forEach(wrapper=>{
+    const id=String(wrapper.dataset.id),region=wrapper.dataset.contextRegion;
+    const show=(signCopiesById.get(id)||[]).some(item=>item.dataset.region===region&&itemMatches(item));
+    wrapper.style.display=show?'':'none';
+    if(show){
+      visibleIds.add(id);
+      if(!perRegionIds[region]) perRegionIds[region]=new Set();
+      perRegionIds[region].add(id);
+    }else if(wrapper.classList.contains('open')){
+      wrapper.classList.remove('open');wrapper.querySelector('.browse-detail').hidden=true;
     }
-    sec.style.display=sectionHas?'':'none';
-    const shouldOpen=!active||(sectionHas&&!openedSection);
+  });
+  Array.from(regionBrowseSections.querySelectorAll('.browse-subsection')).reverse().forEach(subsection=>{
+    const count=new Set(Array.from(subsection.querySelectorAll('.browse-sign-wrap')).filter(row=>row.style.display!=='none').map(row=>row.dataset.id)).size;
+    subsection.style.display=count?'':'none';
+    const counter=subsection.querySelector(':scope > .browse-subtoggle .browse-count');if(counter)counter.textContent=count;
+  });
+  let opened=false;
+  regionBrowseSections.querySelectorAll('.region-section').forEach(sec=>{
+    const ids=perRegionIds[sec.dataset.region];const count=ids?ids.size:0;
+    sec.style.display=count?'':'none';
+    sec.querySelector('.region-count').textContent=count;
+    const shouldOpen=count&&(!active? !opened:!opened);
     sec.classList.toggle('collapsed',!shouldOpen);
     sec.querySelector('.region-toggle').setAttribute('aria-expanded',shouldOpen?'true':'false');
-    if(active&&sectionHas&&!openedSection) openedSection=true;
+    if(shouldOpen)opened=true;
   });
   document.querySelectorAll('[data-region]').forEach(el=>{
     if(el.tagName==='SPAN'&&(el.closest('.region-count')||el.closest('.pill-count'))){
@@ -2982,7 +3318,7 @@ function filterRegionView(){
     }
   });
   document.querySelectorAll('.pill').forEach(p=>{
-    const sec=document.getElementById(p.dataset.target);
+    const sec=document.getElementById('browse-'+p.dataset.target);
     p.style.opacity=(sec&&sec.style.display!=='none')?'1':'.4';
   });
   return visibleIds.size;
@@ -3027,9 +3363,12 @@ function filterAll(){
 
 function setBrowseMode(mode){
   const regional=mode==='region';
+  browseMode.value=mode;
   regionView.hidden=!regional; semiologyView.hidden=regional;
+  regionOrderField.hidden=!regional;
   document.body.classList.toggle('alt-browse',!regional);
-  if(!regional) buildBrowseView(mode);
+  if(regional) buildRegionBrowseView(regionOrderMode.value);
+  else buildBrowseView(mode);
   filterAll();
 }
 
@@ -3058,7 +3397,14 @@ async function toggleBrowseSign(row){
   row.querySelector('.browse-arrow').textContent=opening?'⌄':'›';
 }
 
-browseSections.addEventListener('click',event=>{
+function handleBrowseContainerClick(event){
+  const regionToggle=event.target.closest('.region-toggle');
+  if(regionToggle){
+    const section=regionToggle.closest('.region-section');
+    const collapsed=section.classList.toggle('collapsed');
+    regionToggle.setAttribute('aria-expanded',collapsed?'false':'true');
+    return;
+  }
   const subtoggle=event.target.closest('.browse-subtoggle');
   if(subtoggle){
     const subsection=subtoggle.closest('.browse-subsection');
@@ -3074,7 +3420,9 @@ browseSections.addEventListener('click',event=>{
     return;
   }
   const row=event.target.closest('.browse-sign'); if(row) void toggleBrowseSign(row);
-});
+}
+browseSections.addEventListener('click',handleBrowseContainerClick);
+regionBrowseSections.addEventListener('click',handleBrowseContainerClick);
 
 function applySearch(){ appliedQuery=searchInput.value.toLowerCase().trim(); filterAll(); }
 searchSubmit.addEventListener('click',applySearch);
@@ -3082,6 +3430,11 @@ searchInput.addEventListener('keydown',event=>{ if(event.key==='Enter'){ event.p
 searchClear.addEventListener('click',()=>{ searchInput.value=''; appliedQuery=''; filterAll(); searchInput.focus(); });
 [fRegion,fPhase,fLat,fEvid].forEach(el=>el.addEventListener('change',filterAll));
 browseMode.addEventListener('change',()=>setBrowseMode(browseMode.value));
+regionOrderMode.addEventListener('change',()=>{
+  builtRegionMode='';
+  buildRegionBrowseView(regionOrderMode.value);
+  filterAll();
+});
 
 /* ---------- collapsing the toolbar ---------- */
 (function(){
@@ -3129,14 +3482,15 @@ function setAll(open){
     return;
   }
   document.querySelectorAll('.frontpage-fold').forEach(d=>{ d.open=open; });
-  document.querySelectorAll('.region-section').forEach(sec=>{
+  regionBrowseSections.querySelectorAll('.region-section').forEach(sec=>{
     sec.classList.toggle('collapsed',!open);
     const t=sec.querySelector('.region-toggle'); if(t) t.setAttribute('aria-expanded',open);
   });
-  document.querySelectorAll('.sub-block').forEach(sb=>sb.classList.toggle('collapsed',!open));
-  document.querySelectorAll('.sub-toggle').forEach(b=>b.setAttribute('aria-expanded',open));
-  if(open) signs.forEach(s=>{ if(s.style.display!=='none'&&s.closest('.sub-block')?.style.display!=='none') openSign(s); });
-  else     signs.forEach(s=>closeSign(s));
+  regionBrowseSections.querySelectorAll('.browse-subsection').forEach(subsection=>{
+    subsection.classList.toggle('collapsed',!open);
+    subsection.querySelector(':scope > .browse-subtoggle')?.setAttribute('aria-expanded',open?'true':'false');
+  });
+  if(!open) regionBrowseSections.querySelectorAll('.browse-sign-wrap.open .browse-sign').forEach(row=>void toggleBrowseSign(row));
 }
 document.getElementById('expand-all').addEventListener('click',()=>setAll(true));
 document.getElementById('collapse-all').addEventListener('click',()=>setAll(false));
@@ -3324,6 +3678,13 @@ HEAD = """<!DOCTYPE html>
         <option value="luders">L&uuml;ders 5D classification</option>
       </select>
     </label>
+    <label class="browse-mode-field" id="region-order-field"><span class="ctrl-label">Within each region</span>
+      <select id="region-order-mode">
+        <option value="luders">L&uuml;ders 5D</option>
+        <option value="ilae">ILAE 2025</option>
+        <option value="az">A&ndash;Z</option>
+      </select>
+    </label>
     <button class="filter-toggle" id="filter-toggle" aria-expanded="false"><span>Filters</span><span class="chev">&#9660;</span></button>
     <div class="filter-panel" id="filter-panel">
       <div class="filter-field"><span class="ctrl-label">Region</span>
@@ -3386,8 +3747,12 @@ HEAD = """<!DOCTYPE html>
 <main>
 """ + brain_fold + meta_fold + synthesis_families_fold + figures_fold + """
   <div class="quiz-hint"><strong>Quiz mode on:</strong> lateralization &amp; evidence cues are hidden. Read each sign, predict its localization/lateralization, then expand to check yourself.</div>
-  <div id="region-view">
+  <div id="source-sign-store" hidden>
 """ + sections_html + """
+  </div>
+  <div id="region-view">
+    <p class="browse-note">Each region is organized first by Aura, Seizure, lateralizing signs, and diagnostic signs; choose the ordering within those sections above.</p>
+    <div id="region-browse-sections"></div>
   </div>
   <div id="semiology-view" hidden>
     <p class="browse-note" id="browse-note"></p>
