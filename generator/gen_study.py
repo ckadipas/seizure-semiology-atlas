@@ -48,6 +48,7 @@ FLAGS = None
 PAPERS = []
 ledger_by_ref = {}
 ledger_evidence_by_cardid = {}
+STATISTIC_CONTEXT_BY_ID = {}
 for _source in CORPUS["sources"]:
     _nstat = sum(len(_row.get("statistics", [])) for _row in _source["findings"])
     PAPERS.append((
@@ -60,10 +61,59 @@ for _source in CORPUS["sources"]:
     for _row in _source["findings"]:
         _entry = {"source": _source, "finding": _row}
         ledger_by_ref[_row["source_finding_ref"]] = _entry
+        for _statistic in _row.get("statistics", []):
+            _statistic_id = str(_statistic.get("statistic_id") or "")
+            if _statistic_id:
+                STATISTIC_CONTEXT_BY_ID[_statistic_id] = {
+                    "source": _source, "finding": _row, "statistic": _statistic,
+                }
         for _cid in _row["exact_sign_ids"]:
             ledger_evidence_by_cardid.setdefault(_cid, []).append((_entry, "EXACT"))
         for _cid in _row["related_sign_ids"]:
             ledger_evidence_by_cardid.setdefault(_cid, []).append((_entry, "RELATED"))
+
+# A reported number can support more than one descriptive result group, but it
+# must have one visible home in the library. Preserve every relationship here,
+# then assign the number to the first canonical family in release order. Any
+# additional memberships remain visible as cross-links on that same number.
+_FAMILY_BY_STRING_ID = {
+    str(_family["analysis_id"]): _family for _family in DESCRIPTIVE_FAMILIES
+}
+STATISTIC_FAMILY_IDS = {}
+for _family in DESCRIPTIVE_FAMILIES:
+    _family_id = str(_family["analysis_id"])
+    _family_statistic_ids = list(_family.get("statistic_ids") or [])
+    _family_statistic_ids.extend(
+        _item.get("statistic_id") for _item in (_family.get("exact_estimates") or [])
+    )
+    for _statistic_id in _family_statistic_ids:
+        _statistic_id = str(_statistic_id or "")
+        if _statistic_id:
+            _memberships = STATISTIC_FAMILY_IDS.setdefault(_statistic_id, [])
+            if _family_id not in _memberships:
+                _memberships.append(_family_id)
+
+FAMILY_PRIMARY_STATISTIC_IDS = {
+    str(_family["analysis_id"]): [] for _family in DESCRIPTIVE_FAMILIES
+}
+FAMILY_LINKED_STATISTIC_IDS = {
+    str(_family["analysis_id"]): [] for _family in DESCRIPTIVE_FAMILIES
+}
+PRIMARY_FAMILY_BY_STATISTIC_ID = {}
+UNASSIGNED_STATISTIC_IDS = []
+for _statistic_id in STATISTIC_CONTEXT_BY_ID:
+    _family_ids = [
+        _family_id for _family_id in STATISTIC_FAMILY_IDS.get(_statistic_id, [])
+        if _family_id in _FAMILY_BY_STRING_ID
+    ]
+    for _family_id in _family_ids:
+        FAMILY_LINKED_STATISTIC_IDS[_family_id].append(_statistic_id)
+    if _family_ids:
+        _primary_family_id = _family_ids[0]
+        PRIMARY_FAMILY_BY_STATISTIC_ID[_statistic_id] = _primary_family_id
+        FAMILY_PRIMARY_STATISTIC_IDS[_primary_family_id].append(_statistic_id)
+    else:
+        UNASSIGNED_STATISTIC_IDS.append(_statistic_id)
 
 # The completed axis audit identified source findings that supported a synthesis
 # card but were absent from its visible source history. Link those existing
@@ -206,7 +256,13 @@ def statistic_block(row):
             if value and str(value).upper() not in {"NONE", "NOT_APPLICABLE", "NOT_REPORTED"}:
                 context.append(f'<span><strong>{label}:</strong> {esc(value)}</span>')
         numerator, denominator = statistic.get("numerator"), statistic.get("denominator")
-        if numerator and denominator and str(numerator).upper() != "NOT_APPLICABLE" and str(denominator).upper() != "NOT_APPLICABLE":
+        has_counts = all(
+            value is not None and str(value).strip().upper() not in {
+                "", "NONE", "NOT_APPLICABLE", "NOT_REPORTED",
+            }
+            for value in (numerator, denominator)
+        )
+        if has_counts:
             context.append(f'<span><strong>Counts:</strong> {esc(numerator)} / {esc(denominator)}</span>')
         detail = statistic_detail_text(statistic)
         if detail:
@@ -611,46 +667,287 @@ def readable_term(value):
     return text.replace("_", " ").strip()
 
 
-def descriptive_family_row(family):
-    endpoint = family.get("endpoint") or "Reported result"
-    metric = readable_term(family.get("metric_type") or "result").title()
-    phase = family.get("phase") or "Timing not reported"
-    population = family.get("population") or "Population not reported"
-    comparator = family.get("comparator") or "No comparator reported"
-    exact = family.get("exact_estimates") or []
-    estimate_rows = "".join(
-        '<li><strong>{}</strong><span>{}</span></li>'.format(
-            esc(item.get("value_text") or "Reported value"),
-            esc(item.get("source_file") or "Source file not reported"),
+METRIC_LABELS = OrderedDict([
+    ("PERCENTAGE", "Percentage"), ("PROPORTION", "Proportion"), ("COUNT", "Count"),
+    ("P_VALUE", "P value"), ("RATE", "Rate"), ("RATE_RANGE", "Rate range"),
+    ("RATIO", "Ratio"), ("RANGE", "Range"), ("MEAN", "Mean"),
+    ("MEDIAN", "Median"), ("KAPPA", "Kappa"), ("DURATION", "Duration"),
+    ("THRESHOLD", "Threshold"), ("ODDS_RATIO", "Odds ratio"),
+    ("HAZARD_RATIO", "Hazard ratio"), ("FREQUENCY", "Frequency"),
+    ("SENSITIVITY", "Sensitivity"), ("SPECIFICITY", "Specificity"),
+    ("PPV", "Positive predictive value"), ("NPV", "Negative predictive value"),
+    ("CORRELATION", "Correlation"), ("UPPER_BOUND_PERCENTAGE", "Upper-bound percentage"),
+    ("OTHER", "Other reported result"),
+])
+PROPORTION_METRICS = {"PERCENTAGE", "PROPORTION", "SENSITIVITY", "SPECIFICITY", "PPV", "NPV"}
+_MISSING_PUBLIC_VALUES = {
+    "", "NONE", "NULL", "NOT_APPLICABLE", "NOT_REPORTED", "NONE_REPORTED", "NOT_QUANTITATIVE",
+}
+PUBLIC_SIGN_BY_ID = {str(row["id"]): row for row in data}
+
+
+def public_value(value, fallback=""):
+    if value is None:
+        return fallback
+    text = str(value).strip()
+    return fallback if text.upper() in _MISSING_PUBLIC_VALUES else text
+
+
+def public_context_value(value, fallback=""):
+    text = public_value(value, fallback)
+    if text and re.fullmatch(r"[A-Z][A-Z0-9_/-]*", text) and "_" in text:
+        return readable_term(text).capitalize()
+    return text
+
+
+def metric_label(value):
+    key = str(value or "OTHER").upper()
+    return METRIC_LABELS.get(key, readable_term(key).title())
+
+
+def family_sign_labels(family):
+    labels = []
+    for sign_id in family.get("sign_ids") or []:
+        sign = PUBLIC_SIGN_BY_ID.get(str(sign_id))
+        label = public_value((sign or {}).get("sign"))
+        if label and label not in labels:
+            labels.append(label)
+    return labels
+
+
+def statistic_ratio(statistic):
+    for numerator_key, denominator_key in (
+        ("numerator", "denominator"), ("numerator_numeric", "denominator_numeric"),
+    ):
+        numerator, denominator = statistic.get(numerator_key), statistic.get(denominator_key)
+        if all(
+            value is not None and str(value).strip().upper() not in _MISSING_PUBLIC_VALUES
+            for value in (numerator, denominator)
+        ):
+            return f"{numerator}/{denominator}"
+    return ""
+
+
+def estimate_context(item):
+    context = STATISTIC_CONTEXT_BY_ID.get(str(item.get("statistic_id") or "")) or {}
+    return context, context.get("source") or {}, context.get("finding") or {}, context.get("statistic") or {}
+
+
+def estimate_citation(item):
+    _context, _source, finding, statistic = estimate_context(item)
+    return public_value(statistic.get("citation")) or public_value(finding.get("citation"))
+
+
+def estimate_search_text(item):
+    _context, source, finding, statistic = estimate_context(item)
+    return " ".join(str(value or "") for value in (
+        item.get("value_text"), statistic_ratio(statistic),
+        metric_label(statistic.get("metric_type")), estimate_citation(item),
+        item.get("source_file") or source.get("source_file"),
+        statistic.get("source_locator") or finding.get("locators"),
+        finding.get("source_term"), statistic.get("population") or finding.get("population"),
+        statistic.get("subgroup"), statistic.get("comparator"),
+        statistic.get("phase") or finding.get("phase"), statistic.get("analysis_unit"),
+    ))
+
+
+def statistic_item(statistic_id):
+    context = STATISTIC_CONTEXT_BY_ID.get(str(statistic_id)) or {}
+    source = context.get("source") or {}
+    statistic = context.get("statistic") or {}
+    return {
+        "statistic_id": str(statistic_id),
+        "value_text": statistic_value(statistic),
+        "source_file": source.get("source_file"),
+        "work_id": source.get("work_id"),
+    }
+
+
+def family_reference_label(family):
+    axis = readable_term(family.get("axis") or "result").title()
+    signs = family_sign_labels(family)
+    semiology = "; ".join(signs) if signs else "General or contextual result"
+    endpoint = public_value(family.get("endpoint"), "Reported outcome")
+    return f"{axis} · {semiology} · {endpoint}"
+
+
+def descriptive_estimate_row(item, family):
+    _context, source, finding, statistic = estimate_context(item)
+    statistic_id = str(item.get("statistic_id") or "")
+    value = public_value(item.get("value_text")) or public_value(statistic_value(statistic), "Reported value")
+    metric = metric_label(statistic.get("metric_type") or family.get("metric_type"))
+    ratio = statistic_ratio(statistic)
+    population = public_context_value(statistic.get("population")) or public_context_value(finding.get("population"))
+    subgroup = public_context_value(statistic.get("subgroup")) or public_context_value(family.get("subgroup"))
+    comparator = public_context_value(statistic.get("comparator")) or public_context_value(family.get("comparator"))
+    phase = public_context_value(statistic.get("phase")) or public_context_value(finding.get("phase")) or public_context_value(family.get("phase"))
+    analysis_unit = public_context_value(statistic.get("analysis_unit")) or public_context_value(family.get("analysis_unit"))
+    citation = estimate_citation(item)
+    source_file = public_value(item.get("source_file")) or public_value(source.get("source_file"), "Source file not reported")
+    locator = public_value(statistic.get("source_locator")) or public_value(finding.get("locators"), "Locator not reported")
+    quote = public_value(statistic.get("source_excerpt")) or public_value(finding.get("evidence_text"))
+    limitations = public_value(finding.get("limitations"))
+    uncertainty = statistic_detail_text(statistic)
+    chips = []
+    if ratio:
+        chips.append(f'<span><strong>n/N</strong> {esc(ratio)}</span>')
+    for label, value_text in (
+        ("Population", population), ("Subgroup", subgroup), ("Comparator", comparator),
+        ("Phase", phase), ("Analysis unit", analysis_unit),
+    ):
+        if value_text:
+            chips.append(f'<span><strong>{label}</strong> {esc(value_text)}</span>')
+    provenance = []
+    if quote:
+        provenance.append(f'<div><strong>Source passage:</strong> &ldquo;{esc(quote)}&rdquo;</div>')
+    if uncertainty:
+        provenance.append(f'<div><strong>Uncertainty or statistical detail:</strong> {esc(uncertainty)}</div>')
+    if limitations:
+        provenance.append(f'<div><strong>Limitations:</strong> {esc(limitations)}</div>')
+    linked_family_labels = []
+    primary_family_id = PRIMARY_FAMILY_BY_STATISTIC_ID.get(statistic_id)
+    for family_id in STATISTIC_FAMILY_IDS.get(statistic_id, []):
+        if family_id == primary_family_id:
+            continue
+        linked_family = _FAMILY_BY_STRING_ID.get(family_id)
+        if linked_family:
+            label = family_reference_label(linked_family)
+            if label not in linked_family_labels:
+                linked_family_labels.append(label)
+    if linked_family_labels:
+        provenance.append(
+            '<div><strong>Also linked to:</strong> '
+            + esc("; ".join(linked_family_labels)) + '</div>'
         )
-        for item in exact
+    provenance_block = (
+        '<details class="evidence-stat-provenance"><summary>Quote, uncertainty, and provenance</summary>'
+        + "".join(provenance) + '</details>'
+        if provenance else ""
     )
+    return f'''<div class="evidence-statistic" data-statistic-id="{esc(statistic_id)}">
+  <div class="evidence-statistic-head"><strong>{esc(value)}</strong><span>{esc(metric)}</span></div>
+  {f'<div class="evidence-stat-chips">{"".join(chips)}</div>' if chips else ''}
+  {f'<div class="evidence-stat-citation"><strong>Citation:</strong> {esc(citation)}</div>' if citation else ''}
+  <div class="evidence-stat-source"><strong>Source file:</strong> {esc(source_file)} <span>&middot;</span> <strong>Locator:</strong> {esc(locator)}</div>
+  {provenance_block}
+</div>'''
+
+
+def descriptive_family_row(family, statistic_ids=None, count_as_family=True):
+    family_id = str(family.get("analysis_id") or "")
+    endpoint = public_value(family.get("endpoint"), "Reported outcome")
+    metric_key = str(family.get("metric_type") or "OTHER").upper()
+    metric = metric_label(metric_key)
+    phase = public_context_value(family.get("phase"))
+    population = public_context_value(family.get("population"))
+    comparator = public_context_value(family.get("comparator"))
+    subgroup = public_context_value(family.get("subgroup"))
+    analysis_unit = public_context_value(family.get("analysis_unit"))
+    reference_standard = public_context_value(family.get("reference_standard"))
+    sign_labels = family_sign_labels(family)
+    assigned_statistic_ids = (
+        FAMILY_PRIMARY_STATISTIC_IDS.get(family_id, [])
+        if statistic_ids is None else list(statistic_ids)
+    )
+    exact = [statistic_item(statistic_id) for statistic_id in assigned_statistic_ids]
+    linked_statistic_ids = (
+        FAMILY_LINKED_STATISTIC_IDS.get(family_id, [])
+        if statistic_ids is None else assigned_statistic_ids
+    )
+    cross_linked_elsewhere = max(0, len(linked_statistic_ids) - len(exact))
+    studies = OrderedDict()
+    for item in exact:
+        context, source, _finding, _statistic = estimate_context(item)
+        work_id = public_value(item.get("work_id")) or public_value(source.get("work_id"))
+        source_file = public_value(item.get("source_file")) or public_value(source.get("source_file"))
+        citation = estimate_citation(item)
+        study_key = work_id or source_file or citation or f"study-{len(studies) + 1}"
+        study = studies.setdefault(study_key, {"citation": citation, "source_file": source_file, "items": []})
+        if not study["citation"] and citation:
+            study["citation"] = citation
+        if not study["source_file"] and source_file:
+            study["source_file"] = source_file
+        study["items"].append(item)
+    study_rows = []
+    for study in studies.values():
+        study_label = study["citation"] or study["source_file"] or "Catalogued study"
+        statistic_word = "result" if len(study["items"]) == 1 else "results"
+        study_rows.append(
+            '<details class="evidence-study"><summary><span>{}</span><span>{} {}</span></summary><div>{}</div></details>'.format(
+                esc(study_label), len(study["items"]), statistic_word,
+                "".join(descriptive_estimate_row(item, family) for item in study["items"]),
+            )
+        )
     estimate_block = (
-        f'<ul class="syn-estimates">{estimate_rows}</ul>' if estimate_rows else
-        '<p class="syn-empty">No exact numerator and denominator were reported for this result.</p>'
+        f'<div class="evidence-study-list">{"".join(study_rows)}</div>' if study_rows else
+        '<p class="syn-empty">No separate reported number was assigned to this result group.</p>'
+    )
+    cross_link_note = (
+        '<p class="syn-cross-link-note">'
+        f'{cross_linked_elsewhere:,} additional reported '
+        f'{"number is" if cross_linked_elsewhere == 1 else "numbers are"} cross-linked to this group '
+        'and shown once under their primary result group.</p>'
+        if cross_linked_elsewhere else ""
     )
     summary = family.get("descriptive_proportion_summary") or {}
     range_text = ""
-    if summary.get("estimate_count"):
+    if metric_key in PROPORTION_METRICS and summary.get("estimate_count"):
         values = [summary.get("minimum"), summary.get("median"), summary.get("maximum")]
         if all(value is not None for value in values):
             range_text = (
-                f'<span class="syn-range">Observed proportions: {values[0] * 100:.1f}%–'
-                f'{values[2] * 100:.1f}% (median {values[1] * 100:.1f}%)</span>'
+                f'<div class="syn-range"><strong>Study-reported range:</strong> {values[0] * 100:.1f}%–'
+                f'{values[2] * 100:.1f}% (median {values[1] * 100:.1f}%). This is descriptive, not a pooled estimate.</div>'
             )
+    context_rows = []
+    for label, value in (
+        ("Axis", readable_term(family.get("axis") or "" ).title()),
+        ("Linked semiology", "; ".join(sign_labels)), ("Phase", phase),
+        ("Population", population), ("Subgroup", subgroup), ("Comparator", comparator),
+        ("Analysis unit", analysis_unit), ("Reference standard", reference_standard),
+    ):
+        if value:
+            context_rows.append(f'<div><strong>{esc(label)}:</strong> {esc(value)}</div>')
     searchable = " ".join(str(value or "") for value in [
-        endpoint, metric, phase, population, comparator, family.get("subgroup"),
-        *[item.get("source_file") for item in exact],
-        *[item.get("value_text") for item in exact],
+        endpoint, metric, family.get("axis"), phase, population, comparator, subgroup,
+        analysis_unit, reference_standard, *sign_labels,
+        *[estimate_search_text(item) for item in exact],
+        *[
+            family_reference_label(_FAMILY_BY_STRING_ID[linked_family_id])
+            for statistic_id in FAMILY_PRIMARY_STATISTIC_IDS.get(family_id, [])
+            for linked_family_id in STATISTIC_FAMILY_IDS.get(statistic_id, [])
+            if linked_family_id in _FAMILY_BY_STRING_ID
+        ],
     ]).lower()
     sign_ids = "|".join(sorted(str(sign_id) for sign_id in (family.get("sign_ids") or [])))
-    return f'''<details class="syn-family fx-row" data-metric="{esc(family.get('metric_type') or 'OTHER')}" data-sign-ids="{esc(sign_ids)}" data-fq="{esc(searchable)}">
-  <summary><span>{esc(endpoint)}</span><span class="syn-family-meta">{esc(metric)} · {family.get('source_work_count', 0)} paper(s)</span></summary>
+    study_count = family.get("source_work_count") or len(studies)
+    study_word = "study" if study_count == 1 else "studies"
+    number_count = len(exact)
+    if number_count:
+        number_meta = f'{number_count} {"number" if number_count == 1 else "numbers"}'
+    elif cross_linked_elsewhere:
+        number_meta = f'{cross_linked_elsewhere} cross-linked {"number" if cross_linked_elsewhere == 1 else "numbers"}'
+    else:
+        number_meta = "No separate number"
+    summary_context_parts = []
+    for value in (phase, subgroup, comparator):
+        if value and value.casefold() not in {item.casefold() for item in summary_context_parts}:
+            summary_context_parts.append(value)
+        if len(summary_context_parts) == 2:
+            break
+    summary_context = " · ".join(summary_context_parts)
+    title_markup = (
+        f'<span class="syn-family-title"><strong>{esc(endpoint)}</strong>'
+        + (f'<small>{esc(summary_context)}</small>' if summary_context else "")
+        + '</span>'
+    )
+    count_attribute = "true" if count_as_family else "false"
+    return f'''<details class="syn-family fx-row" data-count-item="{count_attribute}" data-metric="{esc(metric_key)}" data-sign-ids="{esc(sign_ids)}" data-fq="{esc(searchable)}">
+  <summary>{title_markup}<span class="syn-family-meta">{esc(metric)} &middot; {study_count} {study_word} &middot; {number_meta}</span></summary>
   <div class="syn-family-body">
-    <div><strong>When:</strong> {esc(phase)}</div>
-    <div><strong>Who was studied:</strong> {esc(population)}</div>
-    <div><strong>Compared with:</strong> {esc(comparator)}</div>
+    <div class="syn-family-context">{"".join(context_rows)}</div>
+    <p class="syn-no-pool">Source-specific descriptive results; no pooled estimate is implied.</p>
     {range_text}
+    {cross_link_note}
     {estimate_block}
   </div>
 </details>'''
@@ -1259,102 +1556,6 @@ def build_meta(meta, flags):
 </details>'''
 meta_fold = build_meta(META, FLAGS)
 
-# ---------- Source-figures explorer (every extracted data point) ----------
-# Renders ALL findings from enrichment/corpus_findings.json as a compact, filterable,
-# searchable table so every figure the corpus reading produced is on the page and
-# checkable against its verbatim quote - not only the lateralization figures that
-# feed the pooled plot. Frequency / localization / PPV / odds-ratio figures live
-# here because they are population-specific and heterogeneous (they don't pool into
-# one model), but they are still fully accounted for and inspectable.
-def build_figures(corpus):
-    if not corpus or not corpus.get("sources"):
-        return ""
-    labels = OrderedDict([
-        ("PERCENTAGE", "Percentage"), ("COUNT", "Count"), ("P_VALUE", "P value"),
-        ("OTHER", "Other"), ("RANGE", "Range"), ("MEAN", "Mean"), ("PPV", "PPV"),
-        ("MEDIAN", "Median"), ("KAPPA", "Kappa"), ("DURATION", "Duration"),
-        ("THRESHOLD", "Threshold"), ("ODDS_RATIO", "Odds ratio"),
-        ("HAZARD_RATIO", "Hazard ratio"), ("FREQUENCY", "Frequency"),
-        ("SENSITIVITY", "Sensitivity"), ("SPECIFICITY", "Specificity"),
-        ("NPV", "NPV"), ("CORRELATION", "Correlation"),
-    ])
-    colors = {
-        "PERCENTAGE":"#2471a3", "COUNT":"#5b6472", "P_VALUE":"#8e44ad", "OTHER":"#6b7280",
-        "RANGE":"#95691a", "MEAN":"#0a7a8a", "PPV":"#1a7a4a", "MEDIAN":"#0a7a8a",
-        "KAPPA":"#8e44ad", "DURATION":"#95691a", "THRESHOLD":"#95691a",
-        "ODDS_RATIO":"#c0392b", "HAZARD_RATIO":"#c0392b", "FREQUENCY":"#2471a3",
-        "SENSITIVITY":"#1a7a4a", "SPECIFICITY":"#1a7a4a", "NPV":"#1a7a4a",
-        "CORRELATION":"#8e44ad",
-    }
-    sign_by_id = {str(sign["id"]): sign for sign in data}
-    rows, counts = [], {}
-    for source in corpus["sources"]:
-        source_file = source["source_file"]
-        for finding in source["findings"]:
-            exact_names, related_names = [], []
-            for key, names in (("exact_sign_ids", exact_names), ("related_sign_ids", related_names)):
-                for sign_id in finding.get(key, []):
-                    sign = sign_by_id.get(str(sign_id))
-                    if sign and sign["sign"] not in names:
-                        names.append(sign["sign"])
-            sign_context = []
-            if exact_names:
-                sign_context.append("Linked sign: " + "; ".join(exact_names))
-            if related_names:
-                sign_context.append("Related sign: " + "; ".join(related_names))
-            for statistic in finding_statistics(finding):
-                metric = str(statistic.get("metric_type") or "OTHER").upper()
-                counts[metric] = counts.get(metric, 0) + 1
-                value = statistic_value(statistic)
-                locator = statistic.get("source_locator") or finding.get("locators") or ""
-                excerpt = statistic.get("source_excerpt") or finding.get("evidence_text") or ""
-                anatomy = statistic.get("anatomy_laterality_context") or finding.get("laterality_localization") or ""
-                details = list(sign_context)
-                for label, field in (
-                    ("Anatomy / side", anatomy), ("Who was studied", statistic.get("population") or finding.get("population")),
-                    ("Subgroup", statistic.get("subgroup")), ("Time", statistic.get("timepoint")),
-                    ("Outcome", statistic.get("endpoint")), ("What was counted", statistic.get("analysis_unit")),
-                    ("Compared with", statistic.get("comparator")),
-                ):
-                    if field and str(field).upper() not in {"NONE", "NOT_APPLICABLE", "NOT_REPORTED"}:
-                        details.append(f"{label}: {field}")
-                searchable = " ".join(" ".join(str(part or "").split()) for part in [
-                    metric, labels.get(metric, metric.replace("_", " ").title()), value,
-                    finding.get("source_term"), source_file, locator, excerpt, *details,
-                ]).lower()
-                context_html = "".join(f'<div><strong>{esc(item.split(":", 1)[0])}:</strong>{esc(item.split(":", 1)[1])}</div>'
-                                       if ":" in item else f'<div>{esc(item)}</div>' for item in details)
-                rows.append(
-                    f'<div class="fx-row stat-row" data-metric="{esc(metric)}" data-statistic-id="{esc(statistic.get("statistic_id", ""))}" data-fq="{esc(searchable)}">'
-                    f'<span class="fx-m" style="background:{colors.get(metric,"#6b7280")}">{esc(labels.get(metric, metric.replace("_", " ").title()))}</span>'
-                    f'<span class="fx-ph">{esc(finding.get("source_term", "Reported result"))}'
-                    + (f'<span class="fx-reg">{esc(" · ".join(sign_context))}</span>' if sign_context else '') + '</span>'
-                    f'<span class="fx-val">{esc(value)}</span>'
-                    f'<span class="fx-src">{esc(source_file)}<br>{esc(locator)}</span>'
-                    f'<span class="fx-q">&ldquo;{esc(excerpt)}&rdquo;</span>'
-                    '<details class="fx-context"><summary>Source and study details</summary>'
-                    f'{context_html}</details></div>')
-    total = len(rows)
-    buttons = [f'<button class="fxb on" data-f="all">All <i>{total}</i></button>']
-    for metric in list(labels) + sorted(set(counts) - set(labels)):
-        if counts.get(metric):
-            label = labels.get(metric, metric.replace("_", " ").title())
-            buttons.append(f'<button class="fxb" data-f="{esc(metric)}">{esc(label)} <i>{counts[metric]}</i></button>')
-    return f'''<details class="frontpage-fold figures-fold">
-<summary>Source statistics &mdash; {total:,} reported results from {len(corpus["sources"])} source files</summary>
-<div class="fx-wrap" data-item-label="statistics">
-  <div class="fx-intro">Each row is one result exactly as catalogued from its source, with the linked sign, anatomical or lateralizing context, source passage, and study details. These rows are not pooled; the separate weighted-analysis panel explains and shows the approved weighted comparisons.</div>
-  <div class="fx-tools">
-    <input type="text" class="fx-search" placeholder="Search signs, values, sources, anatomy, or source text&hellip;">
-    <div class="fx-btns">{"".join(buttons)}</div>
-  </div>
-  <div class="fx-count"></div>
-  <div class="fx-table">
-{chr(10).join(rows)}
-  </div>
-</div>
-</details>'''
-
 deferred_fragments = {}
 
 def defer_details_body(html, filename):
@@ -1365,39 +1566,162 @@ def defer_details_body(html, filename):
     shell = html[:summary_end] + '<div class="lazy-fragment">Open this section to load its contents.</div>' + html[details_end:]
     return shell.replace("<details ", f'<details data-fragment="fragments/{filename}" ', 1)
 
-figures_fold = defer_details_body(build_figures(CORPUS), "source-statistics.html")
+
+def build_unassigned_statistic_section(statistic_ids):
+    if not statistic_ids:
+        return ""
+    sign_groups = {}
+    for statistic_id in statistic_ids:
+        context = STATISTIC_CONTEXT_BY_ID.get(str(statistic_id)) or {}
+        source = context.get("source") or {}
+        finding = context.get("finding") or {}
+        statistic = context.get("statistic") or {}
+        endpoint = public_value(finding.get("source_term"), "General or contextual result")
+        metric_key = str(statistic.get("metric_type") or "OTHER").upper()
+        sign_ids = []
+        sign_labels = []
+        for sign_id in [*(finding.get("exact_sign_ids") or []), *(finding.get("related_sign_ids") or [])]:
+            sign_id = str(sign_id)
+            label = public_value((PUBLIC_SIGN_BY_ID.get(sign_id) or {}).get("sign"))
+            if label and sign_id not in sign_ids:
+                sign_ids.append(sign_id)
+                sign_labels.append(label)
+        if len(sign_labels) == 1:
+            sign_group_key = (0, sign_labels[0].casefold(), sign_labels[0])
+        elif len(sign_labels) > 1:
+            sign_group_key = (1, "multiple linked semiologies", "Multiple linked semiologies")
+        else:
+            sign_group_key = (2, "general or contextual outcomes", "General or contextual outcomes")
+        sign_group = sign_groups.setdefault(sign_group_key, {"groups": {}, "statistic_count": 0})
+        sign_group["statistic_count"] += 1
+        group = sign_group["groups"].setdefault(
+            (endpoint.casefold(), metric_key),
+            {"endpoint": endpoint, "metric_type": metric_key, "statistic_ids": [], "sign_ids": [], "works": set()},
+        )
+        group["statistic_ids"].append(str(statistic_id))
+        for sign_id in sign_ids:
+            if sign_id not in group["sign_ids"]:
+                group["sign_ids"].append(sign_id)
+        work_key = public_value(source.get("work_id")) or public_value(source.get("source_file"))
+        if work_key:
+            group["works"].add(work_key)
+    sign_sections = []
+    for sign_group_key in sorted(sign_groups):
+        sign_group = sign_groups[sign_group_key]
+        rows = []
+        for group_key in sorted(sign_group["groups"]):
+            group = sign_group["groups"][group_key]
+            pseudo_family = {
+                "analysis_id": "",
+                "axis": "",
+                "endpoint": group["endpoint"],
+                "metric_type": group["metric_type"],
+                "sign_ids": group["sign_ids"],
+                "source_work_count": len(group["works"]),
+            }
+            rows.append(
+                descriptive_family_row(
+                    pseudo_family,
+                    statistic_ids=group["statistic_ids"],
+                    count_as_family=False,
+                )
+            )
+        outcome_word = "outcome" if len(rows) == 1 else "outcomes"
+        number_count = sign_group["statistic_count"]
+        number_word = "number" if number_count == 1 else "numbers"
+        sign_sections.append(
+            '<details class="evidence-sign-group" data-fx-group>'
+            f'<summary><span>{esc(sign_group_key[2])}</span>'
+            f'<span>{len(rows):,} {outcome_word} &middot; {number_count:,} {number_word}</span></summary>'
+            f'<div class="evidence-sign-results">{"".join(rows)}</div>'
+            '</details>'
+        )
+    number_word = "number" if len(statistic_ids) == 1 else "numbers"
+    return (
+        '<section class="evidence-axis-group evidence-contextual-results" data-fx-group>'
+        '<div class="evidence-axis-heading"><span>General or contextual results</span>'
+        f'<span>{len(statistic_ids):,} reported {number_word}</span></div>'
+        f'{"".join(sign_sections)}</section>'
+    )
 
 
-def build_descriptive_family_library(families):
+def build_descriptive_family_panel(families):
     if not families:
         return ""
     counts = {}
     for family in families:
-        metric = family.get("metric_type") or "OTHER"
+        metric = str(family.get("metric_type") or "OTHER").upper()
         counts[metric] = counts.get(metric, 0) + 1
     buttons = [f'<button class="fxb on" data-f="all">All <i>{len(families):,}</i></button>']
     for metric, count in sorted(counts.items()):
         buttons.append(
-            f'<button class="fxb" data-f="{esc(metric)}">{esc(readable_term(metric).title())} <i>{count:,}</i></button>'
+            f'<button class="fxb" data-f="{esc(metric)}">{esc(metric_label(metric))} <i>{count:,}</i></button>'
         )
-    rows = "".join(descriptive_family_row(family) for family in families)
+    families_by_axis = OrderedDict((axis, []) for axis in ("LATERALIZATION", "LOCALIZATION"))
+    for family in families:
+        axis = str(family.get("axis") or "OTHER").upper()
+        families_by_axis.setdefault(axis, []).append(family)
+    axis_sections = []
+    for axis, axis_families in families_by_axis.items():
+        if not axis_families:
+            continue
+        sign_groups = {}
+        for family in axis_families:
+            labels = family_sign_labels(family)
+            if len(labels) == 1:
+                group_key = (0, labels[0].casefold(), labels[0])
+            elif len(labels) > 1:
+                group_key = (1, "multiple linked semiologies", "Multiple linked semiologies")
+            else:
+                group_key = (2, "general or contextual outcomes", "General or contextual outcomes")
+            sign_groups.setdefault(group_key, []).append(family)
+        sign_sections = []
+        for group_key in sorted(sign_groups):
+            group_label = group_key[2]
+            group_families = sorted(sign_groups[group_key], key=lambda family: (
+                str(family.get("endpoint") or "").casefold(),
+                str(family.get("metric_type") or "").casefold(),
+                str(family.get("phase") or "").casefold(),
+                str(family.get("analysis_id") or ""),
+            ))
+            outcome_word = "outcome" if len(group_families) == 1 else "outcomes"
+            sign_sections.append(
+                '<details class="evidence-sign-group" data-fx-group>'
+                f'<summary><span>{esc(group_label)}</span><span><i data-fx-group-count>{len(group_families):,}</i> {outcome_word}</span></summary>'
+                f'<div class="evidence-sign-results">{"".join(descriptive_family_row(family) for family in group_families)}</div>'
+                '</details>'
+            )
+        axis_label = readable_term(axis).title()
+        axis_sections.append(
+            '<section class="evidence-axis-group" data-fx-group>'
+            f'<div class="evidence-axis-heading"><span>{esc(axis_label)}</span><span><i data-fx-group-count>{len(axis_families):,}</i> result groups</span></div>'
+            f'{"".join(sign_sections)}</section>'
+        )
+    rendered_statistic_ids = [
+        statistic_id
+        for family in families
+        for statistic_id in FAMILY_PRIMARY_STATISTIC_IDS.get(str(family.get("analysis_id") or ""), [])
+    ] + list(UNASSIGNED_STATISTIC_IDS)
+    if (
+        len(rendered_statistic_ids) != len(set(rendered_statistic_ids))
+        or set(rendered_statistic_ids) != set(STATISTIC_CONTEXT_BY_ID)
+    ):
+        raise RuntimeError("The evidence library must render every reported number exactly once.")
+    unassigned_section = build_unassigned_statistic_section(UNASSIGNED_STATISTIC_IDS)
     method_note = (EVIDENCE_SYNTHESIS.get("release") or {}).get("method_note") or ""
-    return f'''<details class="frontpage-fold synthesis-family-fold">
-<summary>Study-by-study statistical summaries &mdash; <span class="fx-summary-count">{len(families):,}</span> result groups</summary>
-<div class="fx-wrap" data-item-label="result groups" data-global-sign-filter="true">
-  <div class="fx-intro">{esc(method_note)}</div>
-  <div class="fx-tools"><input type="text" class="fx-search" placeholder="Search signs, outcomes, populations, values, or sources&hellip;"><div class="fx-btns">{"".join(buttons)}</div></div>
-  <div class="fx-count"></div>
-  <div class="fx-table syn-global-table">{rows}</div>
-</div>
-</details>'''
+    method_details = (
+        '<details class="evidence-method-note"><summary>How result groups were constructed</summary>'
+        f'<p>{esc(method_note)}</p></details>' if public_value(method_note) else ""
+    )
+    return f'''<div class="fx-wrap study-results-panel" data-item-label="result groups" data-global-sign-filter="true">
+  <div class="fx-intro">Result groups and their exact reported numbers are organized together: axis &rarr; semiology &rarr; outcome &rarr; study &rarr; reported number. Values remain source-specific and are not pooled. Ungrouped values remain under <strong>General or contextual results</strong>. {method_details}</div>
+  <div class="fx-tools"><input type="text" class="fx-search" placeholder="Search signs, outcomes, populations, values, or sources&hellip;"><button type="button" class="fx-reset">Reset</button><div class="fx-btns">{"".join(buttons)}</div></div>
+  <div class="evidence-result-counts"><span class="fx-count"></span><span class="fx-secondary-count"></span></div>
+  <div class="fx-table syn-global-table">{"".join(axis_sections)}{unassigned_section}</div>
+</div>'''
 
 
-synthesis_families_fold = defer_details_body(
-    build_descriptive_family_library(DESCRIPTIVE_FAMILIES), "study-statistical-summaries.html"
-)
-
-def build_evidence_library(corpus):
+def build_reviewed_findings_panel(corpus):
     """Render every reviewed finding once in reader-facing language."""
     role_color = {
         "PRIMARY_RESULT": "#1a7a4a", "REVIEW_SYNTHESIS": "#2471a3",
@@ -1409,7 +1733,19 @@ def build_evidence_library(corpus):
         for row in source["findings"]:
             role = row["evidence_role"]
             counts[role] = counts.get(role, 0) + 1
-            is_stat = bool(finding_statistics(row))
+            statistics = finding_statistics(row)
+            if len(statistics) == 1:
+                row_value = statistic_value(statistics[0])
+            elif statistics:
+                row_value = f'{len(statistics)} reported results'
+            else:
+                row_value = ""
+            citation = public_value(row.get("citation"))
+            sign_ids = list(OrderedDict.fromkeys(
+                str(sign_id) for sign_id in [
+                    *(row.get("exact_sign_ids") or []), *(row.get("related_sign_ids") or []),
+                ]
+            ))
             search = " ".join(str(x or "") for x in [
                 row["source_term"], row["claim"], statistic_search_text(row), row["citation"], row["locators"],
                 row["evidence_text"], row["population"], row["laterality_localization"],
@@ -1417,11 +1753,11 @@ def build_evidence_library(corpus):
             ]).lower().replace('"', "")
             measure = statistic_block(row)
             rows.append(
-                f'<div class="fx-row evidence-row" data-metric="{role}" data-fq="{esc(search)}">'
+                f'<div class="fx-row evidence-row" data-metric="{role}" data-sign-ids="{esc("|".join(sign_ids))}" data-fq="{esc(search)}">'
                 f'<span class="fx-m" style="background:{role_color.get(role,"#6b7280")}">{esc(ROLE_LABEL.get(role,"Source information"))}</span>'
                 f'<span class="fx-ph">{esc(row["source_term"])}<span class="fx-reg">{esc(row["phase"])}</span></span>'
-                f'<span class="fx-val">{"Reported number" if is_stat else "Description"}</span>'
-                f'<span class="fx-src">{esc(source["source_file"])}<br>{esc(row["locators"])}</span>'
+                f'<span class="fx-val">{esc(row_value)}</span>'
+                f'<span class="fx-src">{f"<strong>{esc(citation)}</strong><br>" if citation else ""}{esc(source["source_file"])}<br>{esc(row["locators"] or "Locator not reported")}</span>'
                 f'<span class="fx-q"><strong>{esc(row["claim"])}</strong>{measure}</span>'
                 '<details class="fx-context"><summary>Source and study details</summary>'
                 f'<div><strong>Relevant source text:</strong> {esc(row["evidence_text"])}</div>'
@@ -1435,19 +1771,37 @@ def build_evidence_library(corpus):
     for role in ROLE_LABEL:
         if counts.get(role):
             buttons.append(f'<button class="fxb" data-f="{role}">{esc(ROLE_LABEL[role])} <i>{counts[role]}</i></button>')
-    accounting = corpus["integration_accounting"]
-    return f'''<div class="lib evidence-library">
-<details class="lib-details evidence-library-details">
-<summary>Reviewed evidence library &mdash; {accounting["public_ledger_findings"]:,} findings</summary>
-<div class="fx-wrap" data-item-label="findings">
-  <div class="fx-intro"><strong>{accounting["owner_reviewed_findings"]:,} findings reviewed</strong> &middot; <strong>{accounting["public_ledger_findings"]:,} findings included</strong> &middot; <strong>{accounting["source_reported_statistics"]:,} reported statistics</strong> from {accounting["source_reports"]} source files. Results from each source are shown separately and are not combined across studies.</div>
-  <div class="fx-tools"><input type="text" class="fx-search" placeholder="Search signs, claims, measures, sources, locators&hellip;"><div class="fx-btns">{"".join(buttons)}</div></div>
+    return f'''<div class="fx-wrap" data-item-label="findings" data-global-sign-filter="true">
+  <div class="fx-intro">Every reviewed finding appears once with its claim, exact citation when catalogued, source filename, locator, and expandable source context.</div>
+  <div class="fx-tools"><input type="text" class="fx-search" placeholder="Search signs, claims, measures, sources, locators&hellip;"><button type="button" class="fx-reset">Reset</button><div class="fx-btns">{"".join(buttons)}</div></div>
   <div class="fx-count"></div>
   <div class="fx-table">{chr(10).join(rows)}</div>
-</div>
+</div>'''
+
+
+def build_evidence_library(corpus):
+    accounting = corpus["integration_accounting"]
+    finding_count = accounting["public_ledger_findings"]
+    family_count = len(DESCRIPTIVE_FAMILIES)
+    statistic_count = accounting["source_reported_statistics"]
+    source_count = accounting["source_reports"]
+    return f'''<div class="lib evidence-library">
+<details class="lib-details evidence-library-details">
+  <summary><span>Reviewed Evidence Library</span><span class="evidence-library-summary">{finding_count:,} findings &middot; {family_count:,} study-result groups &middot; {statistic_count:,} reported numbers &middot; {source_count} source files</span></summary>
+  <div class="evidence-library-body">
+    <p class="evidence-library-overview">Two connected views of the same canonical ledger. Study results contain their exact reported numbers, citations, and source locations; no new pooling, mapping, or interpretation is added.</p>
+    <div class="evidence-view-tabs" role="tablist" aria-label="Reviewed evidence views">
+      <button type="button" class="evidence-view-tab on" role="tab" aria-selected="true" data-evidence-view="findings">Reviewed findings <i>{finding_count:,}</i></button>
+      <button type="button" class="evidence-view-tab" role="tab" aria-selected="false" data-evidence-view="studies">Study results <i>{family_count:,} groups &middot; {statistic_count:,} numbers</i></button>
+    </div>
+    <section class="evidence-view-panel" role="tabpanel" data-evidence-panel="findings" data-fragment="fragments/reviewed-findings.html"><div class="lazy-fragment">Loading reviewed findings&hellip;</div></section>
+    <section class="evidence-view-panel" role="tabpanel" data-evidence-panel="studies" data-fragment="fragments/study-results.html" hidden><div class="lazy-fragment">Open this view to load study results.</div></section>
+  </div>
 </details>
 </div>'''
 
+deferred_fragments["reviewed-findings.html"] = build_reviewed_findings_panel(CORPUS)
+deferred_fragments["study-results.html"] = build_descriptive_family_panel(DESCRIPTIVE_FAMILIES)
 evidence_library_html = defer_details_body(build_evidence_library(CORPUS), "evidence-library.html")
 
 
@@ -2159,19 +2513,62 @@ main,.frontpage-fold,.callout{
 .syn-family-panel{padding:0 9px 9px;border-top:1px solid #d8e5ee}
 .syn-family-scroll{max-height:clamp(260px,45vh,520px);overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;padding:6px 2px}
 .syn-family{display:block!important;background:#fff;border:1px solid var(--line);border-radius:7px;margin:6px 0;padding:0}
-.syn-family>summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 10px;font-size:.75rem;font-weight:700;color:#17314f}
+.syn-family>summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:40px;box-sizing:border-box;padding:8px 10px;font-size:.78rem;font-weight:750;color:#17314f}
 .syn-family>summary::-webkit-details-marker{display:none}
 .syn-family>summary::before{content:'\25B8';font-size:.6rem;color:var(--teal-d)}
 .syn-family[open]>summary::before{transform:rotate(90deg)}
 .syn-family>summary>span:first-of-type{margin-right:auto}
-.syn-family-meta{font-size:.64rem;color:#64748b;font-weight:600;text-align:right}
-.syn-family-body{display:grid;gap:4px;padding:8px 12px 10px;border-top:1px solid var(--line2);font-size:.7rem;line-height:1.4;color:#475569}
+.syn-family-title{display:grid;gap:2px;min-width:0}
+.syn-family-title strong{font-size:inherit;overflow-wrap:anywhere}
+.syn-family-title small{color:#64748b;font-size:.68rem;font-weight:600;line-height:1.3;overflow-wrap:anywhere}
+.syn-family-meta{font-size:.68rem;color:#64748b;font-weight:650;text-align:right}
+.syn-family-body{display:grid;gap:5px;padding:9px 12px 11px;border-top:1px solid var(--line2);font-size:.73rem;line-height:1.45;color:#475569}
 .syn-estimates{margin:4px 0 0;padding:0;list-style:none;display:grid;gap:4px}
 .syn-estimates li{display:grid;grid-template-columns:minmax(150px,1fr) minmax(160px,1fr);gap:8px;padding:5px 7px;background:#f8fafc;border-radius:5px}
 .syn-estimates li span{color:#64748b;text-align:right;overflow-wrap:anywhere}
 .syn-range{font-weight:700;color:#0a6472}
 .syn-empty{margin:3px 0;color:#64748b;font-style:italic}
 .syn-global-table{padding:6px 9px;max-height:65vh;overflow-y:auto;scrollbar-gutter:stable}
+.syn-family-context{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 12px}
+.syn-no-pool{margin:5px 0;padding:5px 7px;border-left:3px solid var(--teal);background:#f2fafb;color:#365d78;font-weight:650}
+.syn-cross-link-note{margin:4px 0;padding:5px 7px;border-radius:5px;background:#f8fafc;color:#526276}
+.evidence-axis-group{margin:7px 0 12px;border:1px solid #d5e0eb;border-radius:9px;overflow:hidden;background:#f8fafc}
+.evidence-axis-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 11px;background:linear-gradient(120deg,#17314f,#1a5262);color:#fff;font-size:.82rem;font-weight:800;letter-spacing:.035em;text-transform:uppercase}
+.evidence-axis-heading span:last-child{font-size:.68rem;font-weight:650;letter-spacing:0;text-transform:none;opacity:.86}
+.evidence-axis-heading i,.evidence-sign-group>summary i{font-style:normal}
+.evidence-sign-group{margin:7px;background:#fff;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.evidence-sign-group>summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:40px;box-sizing:border-box;padding:8px 10px;color:#17314f;font-size:.8rem;font-weight:750}
+.evidence-sign-group>summary::-webkit-details-marker{display:none}
+.evidence-sign-group>summary::before{content:'\25B8';font-size:.62rem;color:var(--teal-d);transition:transform .15s}
+.evidence-sign-group[open]>summary::before{transform:rotate(90deg)}
+.evidence-sign-group>summary>span:first-of-type{margin-right:auto}
+.evidence-sign-group>summary>span:last-child{color:#64748b;font-size:.68rem;font-weight:650}
+.evidence-sign-results{padding:1px 7px 7px;border-top:1px solid var(--line2)}
+.evidence-study-list{display:grid;gap:6px;margin-top:3px}
+.evidence-study{border:1px solid #dbe4ee;border-radius:7px;background:#fff;overflow:hidden}
+.evidence-study>summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:38px;box-sizing:border-box;padding:7px 9px;color:#17314f;font-size:.74rem;font-weight:750}
+.evidence-study>summary::-webkit-details-marker{display:none}
+.evidence-study>summary::before{content:'\25B8';color:var(--teal-d);font-size:.6rem}
+.evidence-study[open]>summary::before{transform:rotate(90deg)}
+.evidence-study>summary>span:first-of-type{margin-right:auto;overflow-wrap:anywhere}
+.evidence-study>summary>span:last-child{color:#64748b;white-space:nowrap;font-weight:650}
+.evidence-study>div{border-top:1px solid var(--line2)}
+.evidence-statistic{padding:8px 10px;background:#fbfcfe}
+.evidence-statistic+.evidence-statistic{border-top:1px solid var(--line2)}
+.evidence-statistic-head{display:flex;justify-content:space-between;gap:10px;color:#17314f}
+.evidence-statistic-head>strong{font-size:.82rem;font-variant-numeric:tabular-nums}
+.evidence-statistic-head>span{font-size:.67rem;color:#0a6472;background:#e7f6f8;border:1px solid #b3dfe5;border-radius:999px;padding:2px 7px;white-space:nowrap}
+.evidence-stat-chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.evidence-stat-chips span{font-size:.67rem;color:#526276;background:#fff;border:1px solid #dbe4ee;border-radius:999px;padding:2px 7px}
+.evidence-stat-citation,.evidence-stat-source{margin-top:5px;color:#526276;font-size:.69rem;line-height:1.45;overflow-wrap:anywhere}
+.evidence-stat-source span{padding:0 3px;color:#9aa3b2}
+.evidence-stat-provenance{margin-top:6px;border-top:1px dotted #dbe4ee;padding-top:5px;color:#526276;font-size:.69rem}
+.evidence-result-counts{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:0 16px 8px;color:#64748b;font-size:.7rem}
+.evidence-result-counts .fx-count{padding:0}
+.evidence-contextual-results{border-color:#dccda8}
+.evidence-contextual-results>.evidence-axis-heading{background:linear-gradient(120deg,#5b4a2d,#78643d)}
+.evidence-stat-provenance>summary{cursor:pointer;color:#0a6472;font-weight:750}
+.evidence-stat-provenance>div{margin-top:5px;line-height:1.45}
 
 @media (min-width:760px){
   .detail-inner{display:grid;grid-template-columns:1fr 1fr;grid-template-areas:"lat loc" "map map" "overview overview" "cite cite" "ev ev";gap:0 20px;column-gap:24px}
@@ -2354,9 +2751,14 @@ body.quiz .lib-chip{display:none}
 .ds-spec{font-size:.78rem;line-height:1.55;color:#7a4a06;background:#fff7ec;border-top:1px solid #f0dcbd;padding:12px 16px;margin:0}
 .fx-wrap{max-width:1180px;margin:0;background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden}
 .fx-intro{font-size:.78rem;line-height:1.55;color:#4a5568;padding:13px 16px;background:#fbfcfe;border-bottom:1px solid var(--line2)}
+.evidence-method-note{display:inline-block;margin-left:5px}
+.evidence-method-note>summary{cursor:pointer;color:#0a6472;font-weight:750}
+.evidence-method-note>p{margin:6px 0 0;padding:7px 9px;border:1px solid #d8e5ee;border-radius:6px;background:#fff;line-height:1.45}
 .fx-tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:11px 16px 6px}
-.fx-search{flex:0 0 auto;width:270px;border:1px solid var(--line);border-radius:7px;padding:8px 11px;font-size:.84rem;outline:none}
+.fx-search{flex:1 1 320px;width:auto;max-width:430px;border:1px solid var(--line);border-radius:7px;padding:8px 11px;font-size:.84rem;outline:none}
 .fx-search:focus{border-color:var(--teal);box-shadow:0 0 0 3px rgba(14,157,176,.13)}
+.fx-reset{border:1px solid var(--line);background:#fff;color:#526276;border-radius:7px;padding:7px 10px;font-family:inherit;font-size:.7rem;font-weight:700;cursor:pointer}
+.fx-reset:hover{border-color:var(--teal);color:var(--teal-d)}
 .fx-btns{display:flex;gap:6px;flex-wrap:wrap}
 .fxb{border:1px solid var(--line);background:#fff;color:var(--navy);border-radius:16px;padding:5px 10px;font-size:.73rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:5px}
 .fxb:hover{border-color:var(--teal);color:var(--teal-d)}
@@ -2373,6 +2775,7 @@ body.quiz .lib-chip{display:none}
 .fx-dir.fx-contra{color:#c0392b}.fx-dir.fx-ipsi{color:#2471a3}.fx-dir.fx-dominant{color:#8e44ad}.fx-dir.fx-nondominant{color:#1a7a4a}.fx-dir.fx-variable{color:#95691a}
 .fx-reg{display:block;font-size:.66rem;font-weight:600;color:#8a93a5;margin-top:1px}
 .fx-val{grid-column:3;font-weight:800;color:var(--ink);font-variant-numeric:tabular-nums;font-size:.76rem}
+.fx-val small{display:block;margin-top:2px;color:#64748b;font-size:.62rem;font-weight:650}
 .fx-src{grid-column:4;font-size:.7rem;color:#5a6478;line-height:1.35}
 .fx-src b{color:#b5470b}
 .fx-q{grid-column:2 / -1;font-size:.72rem;color:#6b7280;font-style:italic;line-height:1.4;padding-top:3px;border-top:1px dotted var(--line2);margin-top:3px}
@@ -2391,11 +2794,18 @@ body.quiz .lib-chip{display:none}
 .ev-trace{margin-top:5px;border:1px solid var(--line2);border-radius:6px;padding:4px 7px;color:#475569}
 .ev-trace>summary{cursor:pointer;font-weight:700;color:var(--teal-d)}
 .ev-trace>div{margin-top:4px;line-height:1.4}
-.fx-row.fx-hidden{display:none!important}
+.fx-row.fx-hidden,[data-fx-group].fx-hidden{display:none!important}
 @media (max-width:760px){
   .fx-row{grid-template-columns:1fr auto;grid-template-areas:"m val" "ph ph" "src src" "q q";gap:3px 8px}
   .fx-m{grid-area:m}.fx-ph{grid-area:ph}.fx-val{grid-area:val;text-align:right}.fx-src{grid-area:src}.fx-q{grid-area:q}.fx-context{grid-column:1 / -1}
   .fx-search{width:100%}
+  .evidence-method-note{display:block;margin:5px 0 0}
+  .syn-family-context{grid-template-columns:1fr}
+  .evidence-axis-heading,.evidence-sign-group>summary,.syn-family>summary,.evidence-study>summary{align-items:flex-start}
+  .syn-family>summary{flex-wrap:wrap}
+  .syn-family-meta{flex:1 1 100%;padding-left:13px;text-align:left}
+  .evidence-result-counts{align-items:flex-start;flex-direction:column;gap:2px}
+  .evidence-statistic-head{align-items:flex-start;flex-direction:column}
   .reviewed-evidence-scroll{max-height:52vh}
   .evidence-history-shell>summary{align-items:flex-start}
   .reviewed-evidence-count{max-width:54%}
@@ -2423,6 +2833,18 @@ body.quiz .lib-chip{display:none}
 .lib-details>summary::before{content:"\25B6";font-size:.6rem;color:var(--teal);transition:transform .15s}
 .lib-details[open]>summary::before{transform:rotate(90deg)}
 .lib-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:10px;padding:0 18px 18px}
+.evidence-library-details>summary{text-transform:none;letter-spacing:0;flex-wrap:wrap}
+.evidence-library-details>summary>span:first-of-type{margin-right:auto}
+.evidence-library-summary{color:#64748b;font-size:.68rem;font-weight:650;text-align:right}
+.evidence-library-body{border-top:1px solid var(--line2);padding:12px 14px 14px;background:#f8fafc}
+.evidence-library-overview{margin:0 0 10px;color:#475569;font-size:.76rem;line-height:1.5}
+.evidence-view-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:9px}
+.evidence-view-tab{border:1px solid #cdd8e5;border-radius:999px;background:#fff;color:#17314f;padding:6px 10px;font-family:inherit;font-size:.72rem;font-weight:750;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.evidence-view-tab:hover{border-color:var(--teal);color:var(--teal-d)}
+.evidence-view-tab.on{background:#17314f;border-color:#17314f;color:#fff}
+.evidence-view-tab i{font-style:normal;font-size:.62rem;opacity:.75}
+.evidence-view-panel[hidden]{display:none}
+.evidence-view-panel>.fx-wrap{max-width:none}
 .paper{border:1px solid var(--line2);border-radius:9px;padding:11px 13px;background:#fbfcfe}
 .paper .p-cite{font-weight:800;color:var(--navy);font-size:.82rem}
 .paper .p-jrnl{font-style:italic;color:var(--teal-d);font-size:.74rem;margin:1px 0 4px}
@@ -2465,6 +2887,12 @@ body.quiz .lib-chip{display:none}
   .region-section{scroll-margin-top:118px}
   .sign-name{font-size:.9rem}
   .detail-inner{padding:4px 14px 14px 20px}
+  .lib-grid{grid-template-columns:1fr}
+  .evidence-library-details>summary{align-items:flex-start}
+  .evidence-library-summary{flex:1 1 100%;text-align:left;padding-left:15px;line-height:1.45}
+  .evidence-library-body{padding:10px 8px}
+  .evidence-view-tabs{display:grid;grid-template-columns:1fr}
+  .evidence-view-tab{justify-content:space-between;border-radius:7px;min-height:38px}
 }
 @media (max-width:420px){
   .filter-field{flex:1 1 100%}
@@ -3688,6 +4116,8 @@ function bindFxWrap(wrap){
   const search=wrap.querySelector('.fx-search');
   const table=wrap.querySelector('.fx-table');
   const count=wrap.querySelector('.fx-count');
+  const secondaryCount=wrap.querySelector('.fx-secondary-count');
+  const reset=wrap.querySelector('.fx-reset');
   if(!search||!table||!count) return;
   const rows=Array.from(table.querySelectorAll('.fx-row'));
   const buttons=Array.from(wrap.querySelectorAll('.fxb'));
@@ -3697,24 +4127,39 @@ function bindFxWrap(wrap){
   let mfilter='all';
   function apply(){
     const q=(search.value||'').toLowerCase().trim();
-    const available=[];
+    const availableCounted=[];
     let vis=0;
+    let availableSecondary=0;
+    let visibleSecondary=0;
     rows.forEach(r=>{
       const linked=(r.dataset.signIds||'').split('|').filter(Boolean);
       const globallyMatched=!inheritSignFilter||!activeStudySignIds||linked.some(id=>activeStudySignIds.has(id));
       const locallyMatched=!q||(r.dataset.fq||'').includes(q);
-      if(globallyMatched&&locallyMatched) available.push(r);
+      const counted=r.dataset.countItem!=='false';
+      const secondaryItems=r.querySelectorAll('[data-statistic-id]').length;
+      if(globallyMatched&&locallyMatched){
+        if(counted) availableCounted.push(r);
+        availableSecondary+=secondaryItems;
+      }
       const show=globallyMatched&&locallyMatched&&((mfilter==='all')||r.dataset.metric===mfilter);
       r.classList.toggle('fx-hidden',!show);
-      if(show) vis++;
+      if(show&&counted) vis++;
+      if(show) visibleSecondary+=secondaryItems;
+    });
+    table.querySelectorAll('[data-fx-group]').forEach(group=>{
+      const visibleRows=Array.from(group.querySelectorAll('.fx-row')).filter(row=>!row.classList.contains('fx-hidden'));
+      group.classList.toggle('fx-hidden',visibleRows.length===0);
+      const badge=group.querySelector('[data-fx-group-count]');
+      if(badge) badge.textContent=visibleRows.filter(row=>row.dataset.countItem!=='false').length.toLocaleString();
     });
     buttons.forEach(button=>{
       const metric=button.dataset.f;
-      const metricCount=metric==='all'?available.length:available.filter(row=>row.dataset.metric===metric).length;
+      const metricCount=metric==='all'?availableCounted.length:availableCounted.filter(row=>row.dataset.metric===metric).length;
       const badge=button.querySelector('i');
       if(badge) badge.textContent=metricCount.toLocaleString();
     });
-    count.textContent=vis.toLocaleString()+' of '+available.length.toLocaleString()+' '+label+' shown';
+    count.textContent=vis.toLocaleString()+' of '+availableCounted.length.toLocaleString()+' '+label+' shown';
+    if(secondaryCount) secondaryCount.textContent=visibleSecondary.toLocaleString()+' of '+availableSecondary.toLocaleString()+' reported numbers shown';
     if(summaryCount) summaryCount.textContent=vis.toLocaleString();
   }
   buttons.forEach(b=>b.addEventListener('click',()=>{
@@ -3723,10 +4168,57 @@ function bindFxWrap(wrap){
     apply();
   }));
   search.addEventListener('input',apply);
+  reset?.addEventListener('click',()=>{
+    search.value='';
+    mfilter='all';
+    buttons.forEach(button=>button.classList.toggle('on',button.dataset.f==='all'));
+    apply();
+    search.focus();
+  });
   wrap.applyCurrentFilters=apply;
   apply();
 }
 document.querySelectorAll('.fx-wrap').forEach(bindFxWrap);
+
+async function ensureEvidencePanel(panel){
+  if(!panel||panel.dataset.loaded==='true') return;
+  if(panel.fragmentPromise) return panel.fragmentPromise;
+  const host=panel.querySelector(':scope > .lazy-fragment');
+  if(!host) return;
+  host.textContent='Loading…';
+  panel.fragmentPromise=(async()=>{
+    try{
+      host.outerHTML=await loadFragment(panel.dataset.fragment);
+      panel.dataset.loaded='true';
+      panel.querySelectorAll('.fx-wrap').forEach(bindFxWrap);
+    }catch(error){
+      host.textContent='This view could not be loaded. Reload the page and try again.';
+    }finally{
+      delete panel.fragmentPromise;
+    }
+  })();
+  return panel.fragmentPromise;
+}
+
+function bindEvidenceLibrary(library){
+  const tabs=Array.from(library.querySelectorAll('.evidence-view-tab'));
+  const panels=Array.from(library.querySelectorAll('.evidence-view-panel'));
+  if(!tabs.length||!panels.length||library.dataset.evidenceBound) return;
+  library.dataset.evidenceBound='true';
+  async function activate(tab){
+    const view=tab.dataset.evidenceView;
+    tabs.forEach(item=>{
+      const active=item===tab;
+      item.classList.toggle('on',active);
+      item.setAttribute('aria-selected',String(active));
+    });
+    panels.forEach(panel=>panel.hidden=panel.dataset.evidencePanel!==view);
+    await ensureEvidencePanel(panels.find(panel=>panel.dataset.evidencePanel===view));
+  }
+  tabs.forEach(tab=>tab.addEventListener('click',()=>void activate(tab)));
+  void activate(tabs.find(tab=>tab.classList.contains('on'))||tabs[0]);
+}
+document.querySelectorAll('.evidence-library-details').forEach(bindEvidenceLibrary);
 
 async function ensureDeferredFold(fold){
   if(!fold||fold.dataset.loaded==='true') return;
@@ -3739,6 +4231,8 @@ async function ensureDeferredFold(fold){
       host.outerHTML=await loadFragment(fold.dataset.fragment);
       fold.dataset.loaded='true';
       fold.querySelectorAll('.fx-wrap').forEach(bindFxWrap);
+      if(fold.matches('.evidence-library-details')) bindEvidenceLibrary(fold);
+      fold.querySelectorAll('.evidence-library-details').forEach(bindEvidenceLibrary);
     }catch(error){
       host.textContent='This section could not be loaded. Close it, reload the page, and try again.';
     }finally{
@@ -3750,13 +4244,8 @@ async function ensureDeferredFold(fold){
 
 function refreshStudyFamilyFilter(visibleIds,active){
   activeStudySignIds=active?new Set(Array.from(visibleIds,String)):null;
-  const fold=document.querySelector('.synthesis-family-fold');
-  if(!fold) return;
-  if(fold.dataset.loaded==='true'){
-    fold.querySelectorAll('.fx-wrap').forEach(wrap=>wrap.applyCurrentFilters?.());
-  }else if(active){
-    void ensureDeferredFold(fold);
-  }
+  document.querySelectorAll('.evidence-library-details .fx-wrap[data-global-sign-filter="true"]')
+    .forEach(wrap=>wrap.applyCurrentFilters?.());
 }
 
 document.querySelectorAll('details[data-fragment]').forEach(fold=>{
@@ -3881,7 +4370,7 @@ HEAD = """<!DOCTYPE html>
        aria-label="Show search and filters">&#128269;<span class="tb-dot" aria-hidden="true"></span></label>
 
 <main>
-""" + brain_fold + meta_fold + synthesis_families_fold + figures_fold + """
+""" + brain_fold + meta_fold + """
   <div class="quiz-hint"><strong>Quiz mode on:</strong> lateralization &amp; evidence cues are hidden. Read each sign, predict its localization/lateralization, then expand to check yourself.</div>
   <p class="axis-display-note">Region colors identify anatomy only; they do not indicate evidence strength.</p>
   <div id="source-sign-store" hidden>
