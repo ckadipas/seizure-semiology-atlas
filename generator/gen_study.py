@@ -2254,6 +2254,7 @@ def build_weighted_evidence(cards):
     def card_row(card, axis, analysis, order):
         source_label = public_value(card.get("preferred_label"), "Unnamed semiology")
         label = display_sign_label(source_label)
+        sign_id = str(card.get("sign_id") or "")
         finding_refs = unique_strings(card.get("supporting_finding_refs"))
         statistic_ids = set(unique_strings(card.get("supporting_statistic_ids")))
         manuscripts = analysis["work_count"]
@@ -2261,15 +2262,17 @@ def build_weighted_evidence(cards):
         statistics = len(statistic_ids)
         groups = source_groups(card)
         summary = public_value(card.get("plain_summary"), "Reviewed evidence summary available below.")
+        nonassociation_only = all(target["key"] == "nonassoc" for target in analysis["targets"])
         chips, segments = [], []
         for index, target in enumerate(analysis["targets"]):
             is_nonassoc = target["key"] == "nonassoc"
-            prefix = "" if is_nonassoc else ("Predominant: " if index == 0 else "Also reported: ")
+            prefix = ("" if nonassociation_only else "Also reported: ") if is_nonassoc else ("Predominant: " if index == 0 else "Also reported: ")
             chip_class = "lr-nonassoc" if is_nonassoc else ("lr-primary" if index == 0 else "lr-secondary")
             percent = share_text(target["share"])
             color = target_color(axis, target)
+            chip_value = "" if nonassociation_only else f" <b>{percent}%</b>"
             chips.append(
-                f'<span class="lr-direction {chip_class}" style="color:{color};border-color:{color}">{esc(prefix + target["label"])} <b>{percent}%</b></span>'
+                f'<span class="lr-direction {chip_class}" style="color:{color};border-color:{color}">{esc(prefix + target["label"])}{chip_value}</span>'
             )
             segments.append(
                 f'<span class="{chip_class}" style="width:{target["share"]:.4f}%;background:{color};opacity:{1 if index == 0 else .56}" '
@@ -2293,7 +2296,7 @@ def build_weighted_evidence(cards):
         weighted_units = f'{analysis["total_weight"]:.2f}'.rstrip("0").rstrip(".")
         source_count = len(groups)
         leading_target = analysis["targets"][0]
-        reliability = leading_target["share"]
+        reliability = -1.0 if nonassociation_only else leading_target["share"]
         reliability_text = share_text(reliability)
         reliability_color = target_color(axis, leading_target)
         reliability_marker = min(98.0, max(2.0, reliability))
@@ -2303,6 +2306,11 @@ def build_weighted_evidence(cards):
             for index in range(3)
         )
         reliability_html = (
+            '<span class="lr-reliability lr-no-directional" style="--rel-color:#6b7280" '
+            f'title="All weighted evidence reports no {"lateralizing" if axis == "LATERALIZATION" else "localizing"} association; this is not a directional reliability score.">'
+            '<span class="lr-no-directional-label">No directional estimate</span>'
+            f'<span class="lr-cert">{support_pips}</span></span>'
+            if nonassociation_only else
             f'<span class="lr-reliability" style="--rel-color:{reliability_color};--rel-position:{reliability_marker:.2f}%" '
             f'title="{esc(leading_target["label"])}: {reliability_text}% predominant weighted share; {support_points} evidence-support point{"s" if support_points != 1 else ""}">'
             '<span class="lr-rel-track"><i class="lr-rel-fill"></i><i class="lr-rel-dot"></i></span>'
@@ -2318,7 +2326,7 @@ def build_weighted_evidence(cards):
             " ".join(groups.keys()), axis,
         ]).casefold()
         return (
-            f'<details class="lr-row" data-bucket="{bucket_of(card)}" data-name="{esc(label.casefold())}" '
+            f'<details class="lr-row" data-sign-id="{esc(sign_id)}" data-bucket="{bucket_of(card)}" data-name="{esc(label.casefold())}" '
             f'data-weight="{analysis["total_weight"]:.6f}" data-reliability="{reliability:.6f}" data-cert="{support_points}" data-manuscripts="{manuscripts}" '
             f'data-findings="{findings}" data-statistics="{statistics}" data-order="{order}" '
             f'data-search="{esc(search_text)}">'
@@ -2381,10 +2389,10 @@ def build_weighted_evidence(cards):
       <button type="button" class="lr-filter" data-filter="nonassoc">{esc(config["nonassoc"])} <i>{nonassoc_count:,}</i></button>
     </div>
     <label class="lr-sort-label">Order
-      <select class="lr-sort"><option value="reliability">Reliability (predominant share) &darr;</option><option value="certainty">Evidence support (certainty) &darr;</option><option value="name">Semiology A&ndash;Z</option><option value="manuscripts">Most manuscripts</option><option value="statistics">Most reported results</option></select>
+      <select class="lr-sort"><option value="page">Match page organization</option><option value="reliability">Reliability (directional share) &darr;</option><option value="certainty">Evidence support (certainty) &darr;</option><option value="name">Semiology A&ndash;Z</option><option value="manuscripts">Most manuscripts</option><option value="statistics">Most reported results</option></select>
     </label>
   </div>
-  <div class="lr-visual-legend"><span><strong>Reliability</strong> = predominant weighted share</span><span class="lr-legend-scale"><i>0%</i><i>50%</i><i>100%</i></span><span class="lr-legend-pips"><i class="on"></i><i class="on"></i><i class="on"></i> evidence support (manuscripts &amp; weight)</span></div>
+  <div class="lr-visual-legend"><span><strong>Directional reliability</strong> = predominant directional weighted share</span><span class="lr-legend-scale"><i>0%</i><i>50%</i><i>100%</i></span><span class="lr-legend-pips"><i class="on"></i><i class="on"></i><i class="on"></i> evidence support (manuscripts &amp; weight)</span><span class="lr-neutral-note">Nonassociation is shown separately, not as a 100% directional score.</span></div>
   <div class="lr-visible-count"></div>
   <div class="lr-list">{rows}</div>
   <details class="lr-unreported">
@@ -3379,6 +3387,14 @@ body.quiz .lib-chip{display:none}
 .lr-legend-pips,.lr-cert{display:inline-flex;align-items:center;gap:3px}.lr-legend-pips i,.lr-cert i{display:inline-block;width:6px;height:6px;border-radius:50%;background:#c8d0da}.lr-legend-pips i.on,.lr-cert i.on{background:#52647b}.lr-cert i.on{background:var(--rel-color)}
 .lr-visible-count{padding:2px 16px 8px;color:#788396;font-size:.7rem;font-style:italic}
 .lr-list{border-top:1px solid var(--line2)}
+.lr-page-group{border-bottom:1px solid #d9e2eb;background:#fff}
+.lr-page-group>summary{list-style:none;display:flex;align-items:center;gap:8px;padding:8px 13px;background:#edf3f7;color:#173a54;border-left:4px solid var(--group-color,#0e9db0);cursor:pointer;font-size:.75rem;font-weight:850;text-transform:uppercase;letter-spacing:.035em}
+.lr-page-group>summary::-webkit-details-marker{display:none}
+.lr-page-group>summary::before{content:'›';font-size:1rem;color:var(--group-color,#0e9db0);transition:transform .15s}
+.lr-page-group[open]>summary::before{transform:rotate(90deg)}
+.lr-page-group-count{margin-left:auto;background:#dce7ef;color:#526579;border-radius:11px;padding:1px 7px;font-size:.64rem;letter-spacing:0}
+.lr-page-subgroup-title{margin:0;padding:6px 14px 5px 34px;background:#f7f9fb;border-top:1px solid #e2e8ef;border-bottom:1px solid #e8edf2;color:#56667a;font-size:.66rem;font-weight:800;text-transform:uppercase;letter-spacing:.03em}
+.lr-neutral-note{color:#626e7e;font-style:italic}
 .lr-row{border-bottom:1px solid var(--line2)}
 .lr-row[hidden]{display:none}
 .lr-row-head{list-style:none;display:grid;grid-template-columns:16px minmax(165px,.8fr) minmax(210px,1.15fr) minmax(150px,.65fr) auto;align-items:center;gap:9px;padding:8px 12px;cursor:pointer;color:var(--navy)}
@@ -3397,6 +3413,8 @@ body.quiz .lib-chip{display:none}
 .lr-right,.lr-left,.lr-bilateral{color:#5c4a87;background:#f7f4fc}.lr-nonlat{color:#5d6878;background:#f5f6f8}
 .lr-other{color:#7b5a18;background:#fff8e9}.lr-unreported{color:#687386;background:#f5f7fa}
 .lr-reliability{display:grid;grid-template-columns:minmax(86px,1fr) auto auto;align-items:center;gap:6px;min-width:145px}
+.lr-no-directional{grid-template-columns:minmax(112px,1fr) auto;color:#667284}
+.lr-no-directional-label{font-size:.68rem;font-weight:800;white-space:nowrap}
 .lr-rel-track{position:relative;height:8px;border-radius:999px;background:linear-gradient(to right,transparent 49.5%,#cbd4df 49.5%,#cbd4df 50.5%,transparent 50.5%),linear-gradient(to right,transparent 74.5%,#d7dee7 74.5%,#d7dee7 75.5%,transparent 75.5%),#e7ecf2}
 .lr-rel-fill{position:absolute;inset:0 auto 0 0;width:var(--rel-position);border-radius:999px;background:var(--rel-color);opacity:.28}
 .lr-rel-dot{position:absolute;left:var(--rel-position);top:50%;width:9px;height:9px;border-radius:50%;transform:translate(-50%,-50%);background:var(--rel-color);border:1.5px solid #fff;box-shadow:0 0 0 1px color-mix(in srgb,var(--rel-color) 40%,transparent)}
@@ -4878,6 +4896,7 @@ function bindLedgerReliability(wrap){
   const count=wrap.querySelector('.lr-visible-count');
   const filters=Array.from(wrap.querySelectorAll('.lr-filter'));
   const rows=Array.from(wrap.querySelectorAll('.lr-row'));
+  const rowsBySign=new Map(rows.filter(row=>row.dataset.signId).map(row=>[String(row.dataset.signId),row]));
   const unreported=Array.from(wrap.querySelectorAll('.lr-unreported-sign'));
   const unreportedCount=wrap.querySelector('.lr-unreported-count');
   let active='all';
@@ -4900,23 +4919,98 @@ function bindLedgerReliability(wrap){
       || (+b.dataset.manuscripts)-(+a.dataset.manuscripts)
       || a.dataset.name.localeCompare(b.dataset.name);
   }
+  function pageOrganizationLabel(){
+    if(!browseMode) return 'page organization';
+    if(browseMode.value==='region'){
+      const within=regionOrderMode?.selectedOptions?.[0]?.textContent?.trim()||'A–Z';
+      return 'brain region → '+within;
+    }
+    return browseMode.selectedOptions?.[0]?.textContent?.trim()||'page organization';
+  }
+  function pageGroups(){
+    const regional=browseMode?.value==='region';
+    const container=regional?regionBrowseSections:browseSections;
+    const sectionSelector=regional?':scope > .region-section':':scope > .browse-section';
+    const seen=new Set(),groups=[];
+    Array.from(container?.querySelectorAll(sectionSelector)||[]).forEach(section=>{
+      const label=regional
+        ? String(section.dataset.region||'Region')
+        : (section.querySelector(':scope > .browse-toggle .browse-name')?.textContent?.trim()||'Other signs');
+      const color=regional
+        ? (section.querySelector(':scope > .region-toggle')?.style.getPropertyValue('--rc')||'#0e9db0')
+        : '#0e9db0';
+      const subgroupMap=new Map();
+      section.querySelectorAll('.browse-sign').forEach(item=>{
+        const row=rowsBySign.get(String(item.dataset.id||''));
+        if(!row||seen.has(row)) return;
+        seen.add(row);
+        let subgroup='';
+        if(regional){
+          const category=item.closest('.region-category');
+          if(category&&section.contains(category)) subgroup=category.querySelector(':scope > .browse-subtoggle .browse-name')?.textContent?.trim()||'';
+        }
+        if(!subgroupMap.has(subgroup)) subgroupMap.set(subgroup,[]);
+        subgroupMap.get(subgroup).push(row);
+      });
+      const subgroups=Array.from(subgroupMap,([label,groupRows])=>({label,rows:groupRows}));
+      if(subgroups.length) groups.push({label,color,subgroups});
+    });
+    const remaining=rows.filter(row=>!seen.has(row)).sort((a,b)=>a.dataset.name.localeCompare(b.dataset.name));
+    if(remaining.length) groups.push({label:'Other evidence-bearing signs',color:'#7b8798',subgroups:[{label:'',rows:remaining}]});
+    return groups;
+  }
+  function renderPageGroups(query){
+    const openKeys=new Set(Array.from(list.querySelectorAll('.lr-page-group[open]')).map(group=>group.dataset.key));
+    list.replaceChildren();
+    let opened=false;
+    pageGroups().forEach((group,index)=>{
+      const details=document.createElement('details');
+      details.className='lr-page-group';details.dataset.key=group.label;
+      details.style.setProperty('--group-color',group.color);
+      const summary=document.createElement('summary');
+      const name=document.createElement('span');name.textContent=group.label;
+      const badge=document.createElement('span');badge.className='lr-page-group-count';
+      summary.append(name,badge);
+      const body=document.createElement('div');body.className='lr-page-group-body';
+      let groupVisible=0;
+      group.subgroups.forEach(subgroup=>{
+        const section=document.createElement('section');section.className='lr-page-subgroup';
+        const subgroupVisible=subgroup.rows.filter(row=>!row.hidden).length;
+        if(subgroup.label){
+          const heading=document.createElement('h4');heading.className='lr-page-subgroup-title';
+          heading.textContent=subgroup.label;heading.hidden=subgroupVisible===0;section.append(heading);
+        }
+        subgroup.rows.forEach(row=>section.append(row));
+        section.hidden=subgroupVisible===0;groupVisible+=subgroupVisible;body.append(section);
+      });
+      badge.textContent=groupVisible.toLocaleString();details.hidden=groupVisible===0;
+      details.open=groupVisible>0&&(query?true:(openKeys.size?openKeys.has(group.label):!opened));
+      if(details.open) opened=true;
+      details.append(summary,body);list.append(details);
+    });
+  }
   function apply(){
     const query=search.value.trim().toLowerCase();
     let visible=0;
-    rows.sort(compare).forEach(row=>{
-      list.appendChild(row);
+    rows.forEach(row=>{
       const show=(active==='all'||row.dataset.bucket===active)
         &&(!query||row.dataset.search.includes(query));
       row.hidden=!show;
       if(show) visible++;
     });
+    if(sort.value==='page') renderPageGroups(query);
+    else{
+      list.replaceChildren();
+      rows.sort(compare).forEach(row=>list.append(row));
+    }
     let visibleUnreported=0;
     unreported.forEach(item=>{
       const show=!query||item.dataset.search.includes(query);
       item.hidden=!show;
       if(show) visibleUnreported++;
     });
-    count.textContent=visible.toLocaleString()+' of '+rows.length.toLocaleString()+' evidence-bearing summaries shown';
+    count.textContent=visible.toLocaleString()+' of '+rows.length.toLocaleString()+' evidence-bearing summaries shown'
+      +(sort.value==='page'?' · organized by '+pageOrganizationLabel():'');
     if(unreportedCount) unreportedCount.textContent=visibleUnreported.toLocaleString();
   }
   filters.forEach(button=>button.addEventListener('click',()=>{
@@ -4926,12 +5020,16 @@ function bindLedgerReliability(wrap){
   }));
   search.addEventListener('input',apply);
   sort.addEventListener('change',apply);
+  [browseMode,regionOrderMode].forEach(control=>control?.addEventListener('change',()=>{
+    if(sort.value==='page') setTimeout(apply,0);
+  }));
   reset.addEventListener('click',()=>{
-    search.value=''; active='all'; sort.value='evidence';
+    search.value=''; active='all'; sort.value='page';
     filters.forEach(button=>button.classList.toggle('on',button.dataset.filter==='all'));
     apply(); search.focus();
   });
   apply();
+  setTimeout(apply,0);
 }
 document.querySelectorAll('.lr-wrap').forEach(bindLedgerReliability);
 
