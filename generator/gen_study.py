@@ -2391,7 +2391,7 @@ body.quiz .lib-chip{display:none}
 .ev-trace{margin-top:5px;border:1px solid var(--line2);border-radius:6px;padding:4px 7px;color:#475569}
 .ev-trace>summary{cursor:pointer;font-weight:700;color:var(--teal-d)}
 .ev-trace>div{margin-top:4px;line-height:1.4}
-.fx-row.fx-hidden{display:none}
+.fx-row.fx-hidden{display:none!important}
 @media (max-width:760px){
   .fx-row{grid-template-columns:1fr auto;grid-template-areas:"m val" "ph ph" "src src" "q q";gap:3px 8px}
   .fx-m{grid-area:m}.fx-ph{grid-area:ph}.fx-val{grid-area:val;text-align:right}.fx-src{grid-area:src}.fx-q{grid-area:q}.fx-context{grid-column:1 / -1}
