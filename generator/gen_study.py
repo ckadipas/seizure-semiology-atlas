@@ -1,4 +1,4 @@
-import hashlib, json, re, os, shutil, sys
+import hashlib, json, math, re, os, shutil, sys
 def _find_root(start):
     d = os.path.dirname(os.path.abspath(start))
     while True:
@@ -32,6 +32,11 @@ EVIDENCE_INDEX = {}
 META = ATLAS.get("weighted_analysis") or None
 EVIDENCE_SYNTHESIS = ATLAS.get("evidence_synthesis") or {}
 SYNTHESIS_CARDS = EVIDENCE_SYNTHESIS.get("axis_summaries") or []
+FINDING_AXES = EVIDENCE_SYNTHESIS.get("finding_axes") or []
+FINDING_AXIS_BY_REF = {
+    (str(row.get("finding_ref") or ""), str(row.get("axis") or "").upper()): row
+    for row in FINDING_AXES
+}
 SYNTHESIS_CARD_BY_ID = {row["synthesis_id"]: row for row in SYNTHESIS_CARDS}
 SYNTHESIS_CARDS_BY_SIGN = {
     str(sign_id): [SYNTHESIS_CARD_BY_ID[item_id] for item_id in item_ids]
@@ -1693,9 +1698,9 @@ def build_descriptive_family_panel(families):
             )
         axis_label = readable_term(axis).title()
         axis_sections.append(
-            '<section class="evidence-axis-group" data-fx-group>'
-            f'<div class="evidence-axis-heading"><span>{esc(axis_label)}</span><span><i data-fx-group-count>{len(axis_families):,}</i> result groups</span></div>'
-            f'{"".join(sign_sections)}</section>'
+            '<details class="evidence-axis-group" data-fx-group>'
+            f'<summary class="evidence-axis-heading"><span>{esc(axis_label)}</span><span><i data-fx-group-count>{len(axis_families):,}</i> result groups</span></summary>'
+            f'{"".join(sign_sections)}</details>'
         )
     rendered_statistic_ids = [
         statistic_id
@@ -1805,90 +1810,44 @@ deferred_fragments["study-results.html"] = build_descriptive_family_panel(DESCRI
 evidence_library_html = defer_details_body(build_evidence_library(CORPUS), "evidence-library.html")
 
 
-# ---------- Comprehensive ledger-derived lateralization evidence ----------
-# This panel is an inventory of the current canonical synthesis, not a new
-# meta-analysis. It exposes the source-supported direction, evidence counts,
-# manuscript links, findings, and reported numbers already present in the
-# release. Source-defined values remain separate and are never pooled here.
-def build_ledger_lateralization(cards, historical_html):
-    lateral_cards = [row for row in cards if str(row.get("axis") or "").upper() == "LATERALIZATION"]
-    if not lateral_cards:
-        return historical_html
-
-    status_labels = {
-        "CONSISTENT": "Consistent direction in the reviewed evidence",
-        "PREDOMINANT_WITH_EXCEPTIONS": "Predominant direction with documented exceptions",
-        "TENDENCY_WITH_UNCERTAINTY": "Directional tendency; uncertainty remains",
-        "CONTEXT_SUBTYPE_DEPENDENT": "Direction differs by subtype or clinical context",
-        "GENUINELY_MIXED": "Mixed directions in the reviewed evidence",
-        "NON_LATERALIZING": "No reliable hemispheric direction",
-        "NOT_REPORTED": "No lateralization relationship reported",
+# ---------- Evidence-weighted lateralization and localization ----------
+# Every eligible card is derived from the current ledger. One canonical work
+# contributes once per sign/axis, and a work's weight is divided across multiple
+# reported targets so a manuscript cannot inflate itself by listing more places
+# or directions. Source-specific numeric estimates remain unpooled.
+def build_weighted_evidence(cards):
+    axis_config = {
+        "LATERALIZATION": {
+            "tab": "Lateralization", "reported": "Direction reported",
+            "nonassoc": "Does not lateralize", "missing": "No lateralization relationship reported",
+            "placeholder": "Search semiology, direction, summary, or manuscript…",
+        },
+        "LOCALIZATION": {
+            "tab": "Localization", "reported": "Region reported",
+            "nonassoc": "Does not localize", "missing": "No localization relationship reported",
+            "placeholder": "Search semiology, region, summary, or manuscript…",
+        },
+    }
+    reference_weight = {
+        "SEEG": 1.50, "STEREO_EEG": 1.50, "SURGICAL_OUTCOME": 1.50,
+        "INTRACRANIAL_EEG": 1.35, "ECOG": 1.35, "VIDEO_EEG": 1.20,
+        "IMAGING": 1.15, "LESION_LOCATION": 1.15, "ICTAL_EEG": 1.10,
+        "CLINICAL_SEMIOLOGY": 1.00, "NOT_REPORTED": 1.00,
+    }
+    location_labels = {
+        "REG:TEMPORAL": "Temporal", "REG:FRONTAL": "Frontal",
+        "REG:PARIETAL": "Parietal", "REG:OCCIPITAL": "Occipital",
+        "REG:INSULAR": "Insular", "REG:LIMBIC": "Limbic",
+        "REG:DEEP_SUBCORTICAL": "Deep/Subcortical",
+        "REG:MULTIREGIONAL_PROPAGATION": "Multiregional/Propagation",
     }
 
     def status_of(card):
         return str(card.get("pattern_status") or card.get("pattern_label") or "NOT_REPORTED").upper()
 
-    def bucket_of(card):
-        status = status_of(card)
-        if status == "NON_LATERALIZING":
-            return "nonlat"
-        if status in {"CONTEXT_SUBTYPE_DEPENDENT", "GENUINELY_MIXED"}:
-            return "mixed"
-        if status == "NOT_REPORTED":
-            return "unreported"
-        return "directional"
-
-    def relationship_parts(card):
-        status = status_of(card)
-        if status == "NON_LATERALIZING":
-            return [("No reliable direction", "nonlat")]
-        if status == "NOT_REPORTED":
-            return [("Not reported", "unreported")]
-        parts = []
-        for relationship in card.get("primary_relationships") or []:
-            dispositions = [str(value).upper() for value in relationship.get("evidence_dispositions") or []]
-            if dispositions and "SUPPORTED_EVIDENCE" not in dispositions:
-                continue
-            for target in relationship.get("targets") or []:
-                if isinstance(target, dict):
-                    raw = public_value(target.get("label") or target.get("name") or target.get("target"))
-                else:
-                    raw = public_value(target)
-                token = raw.casefold().replace("_", " ").replace("-", " ")
-                items = []
-                if "contra" in token or "opposite side" in token:
-                    items.append(("Contralateral", "contra"))
-                if "ipsi" in token:
-                    items.append(("Ipsilateral", "ipsi"))
-                elif "same side" in token:
-                    items.append(("Same side as seizure onset", "ipsi"))
-                is_nondominant = "non dominant" in token or "nondominant" in token
-                if is_nondominant:
-                    items.append(("Non-dominant hemisphere", "nondominant"))
-                elif "dominant" in token:
-                    items.append(("Dominant hemisphere", "dominant"))
-                if "bilateral" in token:
-                    items.append(("Bilateral", "bilateral"))
-                if re.search(r"(^|\W)right($|\W)", token):
-                    items.append(("Right hemisphere", "right"))
-                if re.search(r"(^|\W)left($|\W)", token):
-                    items.append(("Left hemisphere", "left"))
-                if token.strip() == "nonlat" or "non lateral" in token or "nonlateral" in token or "does not lateral" in token:
-                    items.append(("Does not lateralize", "nonlat"))
-                if "variable" in token or "mixed" in token:
-                    items.append(("Variable direction", "other"))
-                if not items and raw:
-                    items.append((public_context_value(raw), "other"))
-                for item in items:
-                    if item not in parts:
-                        parts.append(item)
-        if not parts:
-            parts.append(("See evidence summary", "other"))
-        return parts
-
     def count_value(card, field, fallback):
-        value = card.get(field)
         try:
+            value = card.get(field)
             return int(value) if value is not None else int(fallback)
         except (TypeError, ValueError):
             return int(fallback)
@@ -1897,8 +1856,125 @@ def build_ledger_lateralization(cards, historical_html):
         return list(OrderedDict.fromkeys(str(value) for value in values or [] if str(value or "").strip()))
 
     def display_sign_label(value):
-        label = public_value(value, "Unnamed semiology")
-        return re.sub(r"^Focal\s+", "", label, flags=re.IGNORECASE)
+        return re.sub(r"^Focal\s+", "", public_value(value, "Unnamed semiology"), flags=re.IGNORECASE)
+
+    def flatten_values(value):
+        if isinstance(value, dict):
+            flattened = []
+            for item in value.values():
+                flattened.extend(flatten_values(item))
+            return flattened
+        if isinstance(value, (list, tuple, set)):
+            flattened = []
+            for item in value:
+                flattened.extend(flatten_values(item))
+            return flattened
+        text = str(value or "").strip()
+        if text.startswith("[") and text.endswith("]"):
+            try:
+                return flatten_values(json.loads(text))
+            except (TypeError, ValueError, json.JSONDecodeError):
+                pass
+        return [text] if text else []
+
+    def lateral_target(value):
+        raw = public_value(value)
+        token = re.sub(r"[^a-z0-9]+", " ", raw.casefold()).strip()
+        if not token:
+            return None
+        if "non dominant" in token or "nondominant" in token:
+            return ("nondominant", "Non-dominant hemisphere")
+        if token == "dominant" or "dominant hemisphere" in token:
+            return ("dominant", "Dominant hemisphere")
+        if "contralateral" in token or token == "contra" or "opposite side" in token:
+            return ("contra", "Contralateral")
+        if "ipsilateral" in token or token == "ipsi" or "same side" in token:
+            return ("ipsi", "Ipsilateral")
+        if token in {"bilateral", "bilateral hemisphere", "bilateral hemispheres"}:
+            return ("bilateral", "Bilateral")
+        if token in {"right", "right hemisphere"}:
+            return ("right", "Right hemisphere")
+        if token in {"left", "left hemisphere"}:
+            return ("left", "Left hemisphere")
+        if token in {"nonlat", "non lateralizing", "non lateralising", "does not lateralize", "does not lateralise"}:
+            return ("nonassoc", "Does not lateralize")
+        return None
+
+    def localization_target(value):
+        raw = public_value(value)
+        if not raw:
+            return None
+        if raw in location_labels:
+            return (raw, location_labels[raw])
+        token = raw.upper().replace("-", "_").replace(" ", "_")
+        if token in location_labels:
+            return (token, location_labels[token])
+        if raw.startswith("REG:"):
+            return (raw, readable_term(raw[4:]).title())
+        return None
+
+    def target_from_value(axis, value):
+        return lateral_target(value) if axis == "LATERALIZATION" else localization_target(value)
+
+    def nonassociation_target(axis):
+        return ("nonassoc", axis_config[axis]["nonassoc"])
+
+    def card_targets(card, axis):
+        status = status_of(card)
+        if status in {"NON_LATERALIZING", "NON_LOCALIZING"}:
+            return [nonassociation_target(axis)]
+        targets = []
+        for relationship in card.get("primary_relationships") or []:
+            dispositions = [str(value).upper() for value in relationship.get("evidence_dispositions") or []]
+            if dispositions and "SUPPORTED_EVIDENCE" not in dispositions:
+                continue
+            for value in relationship.get("targets") or []:
+                if isinstance(value, dict):
+                    value = value.get("label") or value.get("name") or value.get("target")
+                target = target_from_value(axis, value)
+                if target and target not in targets:
+                    targets.append(target)
+        return targets
+
+    def axis_targets_for_finding(finding_ref, axis):
+        row = FINDING_AXIS_BY_REF.get((finding_ref, axis)) or {}
+        if str(row.get("disposition") or "").upper() != "SUPPORTED_EVIDENCE":
+            return []
+        values = (
+            row.get("normalized_values") or []
+            if axis == "LATERALIZATION"
+            else row.get("region_ids") or []
+        )
+        targets = []
+        for value in values:
+            target = target_from_value(axis, value)
+            if target and target not in targets:
+                targets.append(target)
+        return targets
+
+    def family_targets_for_work(card, axis, work_id):
+        targets = []
+        sign_id = str(card.get("sign_id") or "")
+        for family in DESCRIPTIVE_FAMILIES_BY_SIGN.get(sign_id, []):
+            if str(family.get("axis") or "").upper() != axis:
+                continue
+            if work_id not in [str(value) for value in family.get("source_work_ids") or []]:
+                continue
+            axis_targets = family.get("axis_targets") or {}
+            if isinstance(axis_targets, dict):
+                values = (
+                    axis_targets.get("normalized_values") or []
+                    if axis == "LATERALIZATION"
+                    else axis_targets.get("region_ids") or []
+                )
+                values = values or axis_targets.get("source_native_targets") or []
+            else:
+                values = axis_targets
+            for value in flatten_values(values):
+                target = target_from_value(axis, value)
+                if target and target not in targets:
+                    targets.append(target)
+        return targets
 
     def source_groups(card):
         groups = OrderedDict()
@@ -1914,13 +1990,116 @@ def build_ledger_lateralization(cards, historical_html):
                 group_for(source)["findings"][finding_ref] = finding
         for statistic_id in unique_strings(card.get("supporting_statistic_ids")):
             context = STATISTIC_CONTEXT_BY_ID.get(statistic_id) or {}
-            source, finding, statistic = (
-                context.get("source") or {}, context.get("finding") or {}, context.get("statistic") or {}
-            )
+            source, finding, statistic = context.get("source") or {}, context.get("finding") or {}, context.get("statistic") or {}
             if source or statistic:
-                group = group_for(source)
-                group["statistics"][statistic_id] = (finding, statistic)
+                group_for(source)["statistics"][statistic_id] = (finding, statistic)
         return groups
+
+    def work_groups(card):
+        groups = OrderedDict()
+
+        def group_for(source):
+            key = public_value(source.get("work_id")) or public_value(source.get("source_sha256")) or public_value(source.get("source_file"))
+            return groups.setdefault(key, {"source": source, "finding_refs": OrderedDict(), "statistics": OrderedDict()})
+
+        for finding_ref in unique_strings(card.get("supporting_finding_refs")):
+            context = ledger_by_ref.get(finding_ref) or {}
+            source, finding = context.get("source") or {}, context.get("finding") or {}
+            if source or finding:
+                group_for(source)["finding_refs"][finding_ref] = finding
+        for statistic_id in unique_strings(card.get("supporting_statistic_ids")):
+            context = STATISTIC_CONTEXT_BY_ID.get(statistic_id) or {}
+            source, finding, statistic = context.get("source") or {}, context.get("finding") or {}, context.get("statistic") or {}
+            if source or statistic:
+                group_for(source)["statistics"][statistic_id] = (finding, statistic)
+        return groups
+
+    def exact_denominator(statistic):
+        for key in ("denominator_numeric", "denominator"):
+            value = statistic.get(key)
+            if value is None:
+                continue
+            try:
+                number = float(str(value).replace(",", "").strip())
+                if number > 0:
+                    return number
+            except (TypeError, ValueError):
+                continue
+        return None
+
+    def work_weight(card, axis, work_id, group):
+        standards = []
+        for family in DESCRIPTIVE_FAMILIES_BY_SIGN.get(str(card.get("sign_id") or ""), []):
+            if str(family.get("axis") or "").upper() != axis:
+                continue
+            if work_id not in [str(value) for value in family.get("source_work_ids") or []]:
+                continue
+            standards.extend(flatten_values(family.get("reference_standard")))
+        normalized_standards = [
+            str(value).upper().replace("-", "_").replace(" ", "_")
+            for value in standards if str(value or "").strip()
+        ]
+        standard_multiplier = max(
+            [reference_weight.get(value, 1.0) for value in normalized_standards] or [1.0]
+        )
+        denominators = [
+            exact_denominator(statistic) for _finding, statistic in group["statistics"].values()
+        ]
+        denominators = [value for value in denominators if value is not None]
+        denominator = max(denominators) if denominators else None
+        size_multiplier = min(2.0, 1.0 + math.log10(denominator) / 2.0) if denominator else 1.0
+        return standard_multiplier * size_multiplier, standard_multiplier, size_multiplier, denominator
+
+    def weighted_distribution(card, axis):
+        status = status_of(card)
+        fallback_targets = card_targets(card, axis)
+        totals, works_by_target, contributions = OrderedDict(), {}, []
+        for work_id, group in work_groups(card).items():
+            targets = []
+            if status in {"NON_LATERALIZING", "NON_LOCALIZING"}:
+                targets = [nonassociation_target(axis)]
+            else:
+                for finding_ref in group["finding_refs"]:
+                    for target in axis_targets_for_finding(finding_ref, axis):
+                        if target not in targets:
+                            targets.append(target)
+                if not targets:
+                    targets = family_targets_for_work(card, axis, work_id)
+                if not targets and len(fallback_targets) == 1:
+                    targets = fallback_targets
+            if not targets:
+                continue
+            weight, standard_multiplier, size_multiplier, denominator = work_weight(card, axis, work_id, group)
+            divided_weight = weight / len(targets)
+            for key, label in targets:
+                totals.setdefault(key, {"key": key, "label": label, "weight": 0.0, "first": len(totals)})
+                totals[key]["weight"] += divided_weight
+                works_by_target.setdefault(key, set()).add(work_id)
+            contributions.append({
+                "work_id": work_id, "weight": weight, "targets": targets,
+                "standard_multiplier": standard_multiplier, "size_multiplier": size_multiplier,
+                "denominator": denominator,
+            })
+        total_weight = sum(item["weight"] for item in totals.values())
+        if not total_weight:
+            return {"targets": [], "total_weight": 0.0, "work_count": 0, "contributions": []}
+        preferred_order = {target[0]: index for index, target in enumerate(fallback_targets)}
+        targets = sorted(
+            totals.values(),
+            key=lambda item: (
+                item["key"] == "nonassoc",
+                -item["weight"],
+                preferred_order.get(item["key"], 10**6),
+                item["first"],
+            ),
+        )
+        for item in targets:
+            item["share"] = item["weight"] / total_weight * 100.0
+            item["work_count"] = len(works_by_target.get(item["key"], set()))
+        return {
+            "targets": targets, "total_weight": total_weight,
+            "work_count": len(contributions), "contributions": contributions,
+        }
 
     def source_block(source_file, group):
         source = group["source"]
@@ -1943,7 +2122,6 @@ def build_ledger_lateralization(cards, historical_html):
         statistic_rows = []
         for finding, statistic in statistics:
             value = statistic_value(statistic) or "Reported result"
-            metric = metric_label(statistic.get("metric_type"))
             endpoint = public_value(finding.get("source_term"), "Study result")
             locator = public_value(statistic.get("source_locator")) or public_value(finding.get("locators"), "Source location not stated")
             ratio = statistic_ratio(statistic)
@@ -1955,7 +2133,7 @@ def build_ledger_lateralization(cards, historical_html):
             statistic_rows.append(
                 '<li><span class="lr-stat-value">'+esc(value)+'</span>'
                 +f'<span class="lr-item-title">{esc(endpoint)}</span>'
-                +f'<span class="lr-stat-meta">{esc(metric)}{(" · n/N " + esc(ratio)) if ratio else ""}{(" · " + esc(context)) if context else ""}</span>'
+                +f'<span class="lr-stat-meta">{esc(metric_label(statistic.get("metric_type")))}{(" · n/N " + esc(ratio)) if ratio else ""}{(" · " + esc(context)) if context else ""}</span>'
                 +f'<span class="lr-locator">{esc(locator)}</span></li>'
             )
         counts = []
@@ -1974,11 +2152,25 @@ def build_ledger_lateralization(cards, historical_html):
             +'</details>'
         )
 
-    def family_block(card, statistic_ids):
-        sign_id = str(card.get("sign_id") or "")
+    def family_target_labels(family, axis):
+        targets = family.get("axis_targets") or {}
+        if isinstance(targets, dict):
+            values = targets.get("normalized_values") if axis == "LATERALIZATION" else targets.get("region_ids")
+            values = values or targets.get("source_native_targets") or []
+        else:
+            values = targets
+        labels = []
+        for value in flatten_values(values):
+            target = target_from_value(axis, value)
+            label = target[1] if target else public_context_value(value)
+            if label and label not in labels:
+                labels.append(label)
+        return labels
+
+    def family_block(card, axis, statistic_ids):
         families = []
-        for family in DESCRIPTIVE_FAMILIES_BY_SIGN.get(sign_id, []):
-            if str(family.get("axis") or "").upper() != "LATERALIZATION":
+        for family in DESCRIPTIVE_FAMILIES_BY_SIGN.get(str(card.get("sign_id") or ""), []):
+            if str(family.get("axis") or "").upper() != axis:
                 continue
             family_statistics = set(unique_strings(family.get("statistic_ids")))
             family_statistics.update(
@@ -1991,16 +2183,17 @@ def build_ledger_lateralization(cards, historical_html):
             return ""
         rows = []
         for family in families:
-            targets = [public_context_value(value) for value in family.get("axis_targets") or [] if public_value(value)]
-            title = " / ".join(targets) or public_context_value(family.get("endpoint"), "Source-defined result group")
+            title = " / ".join(family_target_labels(family, axis)) or public_context_value(family.get("endpoint"), "Source-defined result group")
             proportion = family.get("descriptive_proportion_summary") or {}
             minimum, maximum, median = proportion.get("minimum"), proportion.get("maximum"), proportion.get("median")
             observed = "Source-defined values retained separately"
             if minimum is not None and maximum is not None:
                 if float(minimum) == float(maximum):
-                    observed = f'Observed proportion {float(minimum):g}%'
+                    observed = f'Observed proportion {float(minimum) * 100:.1f}%'
                 else:
-                    observed = f'Observed proportion range {float(minimum):g}–{float(maximum):g}% (median {float(median):g}%)' if median is not None else f'Observed proportion range {float(minimum):g}–{float(maximum):g}%'
+                    observed = f'Observed proportion range {float(minimum) * 100:.1f}–{float(maximum) * 100:.1f}%'
+                    if median is not None:
+                        observed += f' (median {float(median) * 100:.1f}%)'
             context = " · ".join(filter(None, [
                 public_context_value(family.get("subgroup")),
                 public_context_value(family.get("comparator")),
@@ -2019,124 +2212,145 @@ def build_ledger_lateralization(cards, historical_html):
             +f'<span>{len(rows)}</span></summary><div>{"".join(rows)}</div></details>'
         )
 
-    def card_row(card, order):
+    def share_text(value):
+        return f"{value:.1f}".rstrip("0").rstrip(".")
+
+    def bucket_of(card):
         status = status_of(card)
+        if status in {"NON_LATERALIZING", "NON_LOCALIZING"}:
+            return "nonassoc"
+        if status in {"CONTEXT_SUBTYPE_DEPENDENT", "GENUINELY_MIXED"}:
+            return "mixed"
+        return "association"
+
+    def card_row(card, axis, analysis, order):
         source_label = public_value(card.get("preferred_label"), "Unnamed semiology")
         label = display_sign_label(source_label)
-        directions = relationship_parts(card)
         finding_refs = unique_strings(card.get("supporting_finding_refs"))
         statistic_ids = set(unique_strings(card.get("supporting_statistic_ids")))
         manuscripts = count_value(card, "source_work_count", card.get("source_document_count") or 0)
         findings = count_value(card, "supported_finding_count", len(finding_refs))
         statistics = len(statistic_ids)
         groups = source_groups(card)
-        summary = public_value(card.get("plain_summary"), status_labels.get(status, "Reviewed evidence summary available below."))
-        summary_lower = summary.casefold()
-        direction_terms = {
-            "contra": ("contralateral", "opposite side"), "ipsi": ("ipsilateral", "same side"),
-            "dominant": ("dominant",), "nondominant": ("non-dominant", "nondominant"),
-            "right": ("right",), "left": ("left",), "bilateral": ("bilateral",),
-        }
-        ranked_directions = []
-        for index, (_direction, kind) in enumerate(directions):
-            positions = [summary_lower.find(term) for term in direction_terms.get(kind, ()) if term in summary_lower]
-            ranked_directions.append((min(positions) if positions else 10**6, index))
-        primary_index = min(ranked_directions)[1] if ranked_directions else 0
-        direction_html_parts = []
-        for index, (direction, kind) in enumerate(directions):
-            prefix = ""
-            is_explicit_direction = kind in {"contra", "ipsi", "dominant", "nondominant", "right", "left", "bilateral"}
-            if is_explicit_direction and index == primary_index and status == "PREDOMINANT_WITH_EXCEPTIONS":
-                prefix = "Predominant: "
-            elif is_explicit_direction and index == primary_index and status == "TENDENCY_WITH_UNCERTAINTY":
-                prefix = "Tendency: "
-            elif is_explicit_direction and index != primary_index and status == "PREDOMINANT_WITH_EXCEPTIONS":
-                prefix = "Also reported: "
-            direction_html_parts.append(f'<span class="lr-direction lr-{kind}">{esc(prefix + direction)}</span>')
-        direction_html = "".join(direction_html_parts)
+        summary = public_value(card.get("plain_summary"), "Reviewed evidence summary available below.")
+        chips, segments = [], []
+        for index, target in enumerate(analysis["targets"]):
+            is_nonassoc = target["key"] == "nonassoc"
+            prefix = "" if is_nonassoc else ("Predominant: " if index == 0 else "Also reported: ")
+            chip_class = "lr-nonassoc" if is_nonassoc else ("lr-primary" if index == 0 else "lr-secondary")
+            percent = share_text(target["share"])
+            chips.append(
+                f'<span class="lr-direction {chip_class}">{esc(prefix + target["label"])} <b>{percent}%</b></span>'
+            )
+            segments.append(
+                f'<span class="{chip_class}" style="width:{target["share"]:.4f}%" '
+                f'title="{esc(target["label"])}: {percent}% of weighted evidence"></span>'
+            )
         source_html = "".join(source_block(source_file, group) for source_file, group in groups.items())
         exceptions = card.get("exceptions") or []
         if isinstance(exceptions, str):
             exceptions = [exceptions]
         exception_rows = [esc(value) for value in exceptions if isinstance(value, str) and value.strip()]
         exception_html = (
-            '<div class="lr-exceptions"><strong>Documented exceptions</strong><ul>'
-            +"".join(f'<li>{value}</li>' for value in exception_rows)+'</ul></div>'
+            '<details class="lr-exceptions"><summary>Documented exceptions '
+            +f'<span>{len(exception_rows)}</span></summary><ul>'
+            +"".join(f'<li>{value}</li>' for value in exception_rows)+'</ul></details>'
             if exception_rows else ""
         )
+        weighted_units = f'{analysis["total_weight"]:.2f}'.rstrip("0").rstrip(".")
         source_count = len(groups)
         search_text = " ".join([
-            source_label, label, summary, status_labels.get(status, ""), " ".join(item[0] for item in directions),
-            " ".join(groups.keys()),
+            source_label, label, summary, " ".join(target["label"] for target in analysis["targets"]),
+            " ".join(groups.keys()), axis,
         ]).casefold()
         return (
             f'<details class="lr-row" data-bucket="{bucket_of(card)}" data-name="{esc(label.casefold())}" '
-            f'data-manuscripts="{manuscripts}" data-findings="{findings}" data-statistics="{statistics}" '
-            f'data-order="{order}" data-search="{esc(search_text)}">'
+            f'data-weight="{analysis["total_weight"]:.6f}" data-manuscripts="{manuscripts}" '
+            f'data-findings="{findings}" data-statistics="{statistics}" data-order="{order}" '
+            f'data-search="{esc(search_text)}">'
             '<summary class="lr-row-head"><span class="lr-name">'+esc(label)+'</span>'
-            +f'<span class="lr-directions">{direction_html}</span>'
-            +f'<span class="lr-evidence-counts"><b>{manuscripts}</b> manuscript{"s" if manuscripts != 1 else ""} <i>·</i> <b>{findings}</b> direct finding{"s" if findings != 1 else ""} <i>·</i> <b>{statistics}</b> reported result{"s" if statistics != 1 else ""}</span></summary>'
+            +f'<span class="lr-directions">{"".join(chips)}</span>'
+            +f'<span class="lr-evidence-counts"><b>{analysis["work_count"]}</b> weighted manuscript{"s" if analysis["work_count"] != 1 else ""} <i>·</i> <b>{findings}</b> direct finding{"s" if findings != 1 else ""} <i>·</i> <b>{statistics}</b> reported result{"s" if statistics != 1 else ""}</span></summary>'
             +'<div class="lr-row-body">'
+            +'<div class="lr-weighted"><div><strong>Weighted evidence distribution</strong>'
+            +f'<span>{weighted_units} weighted units across {analysis["work_count"]} manuscript{"s" if analysis["work_count"] != 1 else ""}</span></div>'
+            +f'<div class="lr-weightbar">{"".join(segments)}</div></div>'
             +f'<p class="lr-summary">{esc(summary)}</p>'
-            +family_block(card, statistic_ids)
+            +family_block(card, axis, statistic_ids)
             +exception_html
             +('<div class="lr-sources"><div class="lr-section-title">Evidence by contributing manuscript</div>'+source_html+'</div>' if source_html else '<p class="lr-empty">No source linkage is available for this synthesis record.</p>')
-            +f'<div class="lr-linkage-note">{source_count} linked manuscript record{"s" if source_count != 1 else ""}; source-defined results are shown separately and are not pooled.</div>'
+            +f'<div class="lr-linkage-note">{source_count} linked manuscript record{"s" if source_count != 1 else ""}; source-defined numbers remain separate and are not pooled.</div>'
             +'</div></details>'
         )
 
-    evidence_cards = [card for card in lateral_cards if status_of(card) != "NOT_REPORTED"]
-    unreported_cards = [card for card in lateral_cards if status_of(card) == "NOT_REPORTED"]
-    evidence_cards.sort(key=lambda card: (
-        -count_value(card, "supported_finding_count", len(card.get("supporting_finding_refs") or [])),
-        -count_value(card, "source_work_count", card.get("source_document_count") or 0),
-        public_value(card.get("preferred_label")).casefold(),
-    ))
-    evidence_rows = "".join(card_row(card, order) for order, card in enumerate(evidence_cards))
-    unreported_rows = "".join(
-        f'<span class="lr-unreported-sign" data-search="{esc(public_value(card.get("preferred_label"), "Unnamed semiology").casefold())}">{esc(display_sign_label(card.get("preferred_label")))}</span>'
-        for card in sorted(unreported_cards, key=lambda row: public_value(row.get("preferred_label")).casefold())
-    )
-    directional_count = sum(bucket_of(card) == "directional" for card in evidence_cards)
-    mixed_count = sum(bucket_of(card) == "mixed" for card in evidence_cards)
-    nonlat_count = sum(bucket_of(card) == "nonlat" for card in evidence_cards)
-    source_count = len(CORPUS.get("sources") or [])
-    return f'''<details class="frontpage-fold reliability-fold">
-<summary>Lateralizing evidence across the current ledger &mdash; {len(lateral_cards):,} summaries</summary>
-<div class="lr-wrap">
-  <div class="lr-intro">
-    <strong>Complete current-ledger view.</strong> {len(evidence_cards):,} summaries contain a reviewed lateralization relationship and {len(unreported_cards):,} report none. Each row is generated from the current synthesis card, linked findings, reported numbers, and {source_count} contributing manuscripts. No new score or pooled percentage is created.
-  </div>
+    def axis_panel(axis):
+        config = axis_config[axis]
+        axis_cards = [card for card in cards if str(card.get("axis") or "").upper() == axis]
+        weighted_cards, omitted_cards = [], []
+        for card in axis_cards:
+            analysis = weighted_distribution(card, axis)
+            if analysis["targets"]:
+                weighted_cards.append((card, analysis))
+            else:
+                omitted_cards.append(card)
+        weighted_cards.sort(key=lambda item: (
+            -item[1]["total_weight"], -item[1]["work_count"],
+            public_value(item[0].get("preferred_label")).casefold(),
+        ))
+        rows = "".join(card_row(card, axis, analysis, order) for order, (card, analysis) in enumerate(weighted_cards))
+        association_count = sum(bucket_of(card) == "association" for card, _analysis in weighted_cards)
+        mixed_count = sum(bucket_of(card) == "mixed" for card, _analysis in weighted_cards)
+        nonassoc_count = sum(bucket_of(card) == "nonassoc" for card, _analysis in weighted_cards)
+        omitted_rows = "".join(
+            f'<span class="lr-unreported-sign" data-search="{esc((display_sign_label(card.get("preferred_label")) + " " + status_of(card)).casefold())}">'
+            f'{esc(display_sign_label(card.get("preferred_label")))}</span>'
+            for card in sorted(omitted_cards, key=lambda row: public_value(row.get("preferred_label")).casefold())
+        )
+        hidden = "" if axis == "LATERALIZATION" else " hidden"
+        return f'''<section class="weighted-axis-panel" data-axis-panel="{axis}"{hidden}>
+<div class="lr-wrap" data-axis="{axis}">
+  <div class="lr-intro"><strong>{len(weighted_cards):,} evidence-weighted summaries.</strong> Each canonical manuscript contributes once per sign and axis. Its weight is divided across multiple reported targets. Percentages show the distribution of weighted evidence, not pooled sensitivity, specificity, or diagnostic accuracy.</div>
+  <details class="lr-method"><summary>How weighting works</summary><div>
+    <p>Reference-standard multipliers preserve the prior atlas method: SEEG or surgical outcome 1.50; intracranial EEG 1.35; video-EEG 1.20; imaging or lesion location 1.15; ictal EEG 1.10; other or unreported 1.00. An exact denominator adds the existing capped size factor (maximum 2.00). Restatements and overlap records remain visible but do not add another independent manuscript.</p>
+    <p>When one manuscript reports several directions or regions, its single weight is divided among them. Incompatible study percentages remain source-specific and are never pooled.</p>
+  </div></details>
   <div class="lr-tools">
-    <input class="lr-search" type="search" placeholder="Search semiology, direction, summary, or manuscript&hellip;" aria-label="Search lateralizing evidence">
+    <input class="lr-search" type="search" placeholder="{esc(config["placeholder"])}" aria-label="Search {axis.casefold()} evidence">
     <button type="button" class="lr-reset">Reset</button>
-    <div class="lr-filters" role="group" aria-label="Filter lateralization summaries">
-      <button type="button" class="lr-filter on" data-filter="all">All evidence <i>{len(evidence_cards):,}</i></button>
-      <button type="button" class="lr-filter" data-filter="directional">Direction reported <i>{directional_count:,}</i></button>
+    <div class="lr-filters" role="group" aria-label="Filter {axis.casefold()} summaries">
+      <button type="button" class="lr-filter on" data-filter="all">All weighted <i>{len(weighted_cards):,}</i></button>
+      <button type="button" class="lr-filter" data-filter="association">{esc(config["reported"])} <i>{association_count:,}</i></button>
       <button type="button" class="lr-filter" data-filter="mixed">Mixed or context-specific <i>{mixed_count:,}</i></button>
-      <button type="button" class="lr-filter" data-filter="nonlat">No reliable direction <i>{nonlat_count:,}</i></button>
+      <button type="button" class="lr-filter" data-filter="nonassoc">{esc(config["nonassoc"])} <i>{nonassoc_count:,}</i></button>
     </div>
     <label class="lr-sort-label">Order
-      <select class="lr-sort"><option value="evidence">Most direct evidence</option><option value="name">Semiology A&ndash;Z</option><option value="manuscripts">Most manuscripts</option><option value="statistics">Most reported results</option></select>
+      <select class="lr-sort"><option value="evidence">Highest weighted support</option><option value="name">Semiology A&ndash;Z</option><option value="manuscripts">Most manuscripts</option><option value="statistics">Most reported results</option></select>
     </label>
   </div>
   <div class="lr-visible-count"></div>
-  <div class="lr-list">{evidence_rows}</div>
+  <div class="lr-list">{rows}</div>
   <details class="lr-unreported">
-    <summary>No lateralization relationship reported <span class="lr-unreported-count">{len(unreported_cards):,}</span></summary>
-    <p>These signs remain visible because absence of a reported relationship is different from evidence that a sign does not lateralize.</p>
-    <div class="lr-unreported-grid">{unreported_rows}</div>
+    <summary>Not included in the weighted distribution <span class="lr-unreported-count">{len(omitted_cards):,}</span></summary>
+    <p>{esc(config["missing"])} or the reviewed evidence does not contain a usable source-level target. These signs remain visible and are not treated as evidence for absence.</p>
+    <div class="lr-unreported-grid">{omitted_rows}</div>
   </details>
-  <div class="lr-historical">
-    <p>The prior 19-sign weighted display is preserved below for provenance. It is not used as a substitute for the complete current-ledger view above.</p>
-    {historical_html}
-  </div>
+</div></section>'''
+
+    tabs = "".join(
+        f'<button type="button" class="weighted-axis-tab{" on" if axis == "LATERALIZATION" else ""}" '
+        f'data-axis-tab="{axis}" aria-selected="{"true" if axis == "LATERALIZATION" else "false"}">{config["tab"]}</button>'
+        for axis, config in axis_config.items()
+    )
+    return f'''<details class="frontpage-fold reliability-fold">
+<summary>Weighted-Evidence Summary</summary>
+<div class="weighted-evidence-shell">
+  <div class="weighted-axis-tabs" role="tablist" aria-label="Weighted evidence axis">{tabs}</div>
+  {"".join(axis_panel(axis) for axis in axis_config)}
 </div>
 </details>'''
 
 
-historical_meta_fold = build_meta(META, FLAGS)
-meta_fold = build_ledger_lateralization(SYNTHESIS_CARDS, historical_meta_fold)
+meta_fold = build_weighted_evidence(SYNTHESIS_CARDS)
 
 
 # ---------- Descriptive statistics: sensitivity by seizure-onset group ----------
@@ -2870,6 +3084,11 @@ main,.frontpage-fold,.callout{
 .evidence-axis-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 11px;background:linear-gradient(120deg,#17314f,#1a5262);color:#fff;font-size:.82rem;font-weight:800;letter-spacing:.035em;text-transform:uppercase}
 .evidence-axis-heading span:last-child{font-size:.68rem;font-weight:650;letter-spacing:0;text-transform:none;opacity:.86}
 .evidence-axis-heading i,.evidence-sign-group>summary i{font-style:normal}
+.evidence-axis-group>summary.evidence-axis-heading{list-style:none;cursor:pointer}
+.evidence-axis-group>summary.evidence-axis-heading::-webkit-details-marker{display:none}
+.evidence-axis-group>summary.evidence-axis-heading::before{content:'\25B8';font-size:.62rem;color:#a7e3ec;transition:transform .15s}
+.evidence-axis-group[open]>summary.evidence-axis-heading::before{transform:rotate(90deg)}
+.evidence-axis-group>summary.evidence-axis-heading>span:first-of-type{margin-right:auto}
 .evidence-sign-group{margin:7px;background:#fff;border:1px solid var(--line);border-radius:8px;overflow:hidden}
 .evidence-sign-group>summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:40px;box-sizing:border-box;padding:8px 10px;color:#17314f;font-size:.8rem;font-weight:750}
 .evidence-sign-group>summary::-webkit-details-marker{display:none}
@@ -3066,12 +3285,24 @@ body.quiz .lib-chip{display:none}
   .mdetail-in{padding:10px 10px 12px 16px}
 }
 
-/* ---------- CURRENT-LEDGER LATERALIZATION EVIDENCE ---------- */
+/* ---------- CURRENT-LEDGER WEIGHTED EVIDENCE ---------- */
 .reliability-fold>summary{background:linear-gradient(120deg,#0c2036,#123a52);color:#eaf3f8;border-color:#123a52}
 .reliability-fold>summary::before{color:#7fd4e6}
+.weighted-evidence-shell{max-width:1180px;margin:0 auto}
+.weighted-axis-tabs{display:flex;gap:6px;margin-bottom:7px;padding:0 2px}
+.weighted-axis-tab{border:1px solid #b9c9d8;border-radius:999px;background:#fff;color:#29445f;padding:7px 13px;font:inherit;font-size:.72rem;font-weight:800;cursor:pointer}
+.weighted-axis-tab.on{background:#123a52;border-color:#123a52;color:#fff}
+.weighted-axis-panel[hidden]{display:none}
 .lr-wrap{max-width:1180px;background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden}
 .lr-intro{padding:12px 16px;background:#f5f9fc;border-bottom:1px solid #dce7ef;color:#405269;font-size:.78rem;line-height:1.55}
 .lr-intro strong{color:#0b5062}
+.lr-method{margin:8px 13px 0;border:1px solid #d8e5ee;border-radius:8px;background:#fbfdff;color:#405269;font-size:.7rem}
+.lr-method>summary{list-style:none;cursor:pointer;padding:7px 9px;color:#15576a;font-weight:800}
+.lr-method>summary::-webkit-details-marker{display:none}
+.lr-method>summary::before{content:'\25B8';display:inline-block;margin-right:7px;font-size:.6rem;transition:transform .15s}
+.lr-method[open]>summary::before{transform:rotate(90deg)}
+.lr-method>div{padding:0 10px 8px;border-top:1px solid #e2eaf0;line-height:1.5}
+.lr-method p{margin:7px 0 0}
 .lr-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:11px 14px 7px;border-bottom:1px solid var(--line2)}
 .lr-search{flex:1 1 300px;max-width:430px;border:1px solid var(--line);border-radius:8px;padding:8px 11px;font:inherit;font-size:.8rem;color:var(--navy);outline:none}
 .lr-search:focus{border-color:var(--teal);box-shadow:0 0 0 3px rgba(14,157,176,.12)}
@@ -3095,6 +3326,9 @@ body.quiz .lib-chip{display:none}
 .lr-name{font-size:.82rem;font-weight:800;line-height:1.25}
 .lr-directions{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
 .lr-direction{display:inline-flex;border:1px solid currentColor;border-radius:12px;padding:2px 7px;font-size:.6rem;font-weight:800;white-space:nowrap}
+.lr-direction b{margin-left:4px;font-variant-numeric:tabular-nums}
+.lr-primary{color:#123a52;background:#edf4f8}.lr-secondary{color:#0b7180;background:#eff9fa}
+.lr-nonassoc{color:#5d6878;background:#f5f6f8}
 .lr-contra{color:#b9362a;background:#fff4f2}.lr-ipsi{color:#246b9b;background:#f0f7fc}
 .lr-dominant{color:#8240a3;background:#faf3fd}.lr-nondominant{color:#167546;background:#eff9f3}
 .lr-right,.lr-left,.lr-bilateral{color:#5c4a87;background:#f7f4fc}.lr-nonlat{color:#5d6878;background:#f5f6f8}
@@ -3102,14 +3336,25 @@ body.quiz .lib-chip{display:none}
 .lr-evidence-counts{font-size:.64rem;color:#687589;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
 .lr-evidence-counts b{color:#163a53}.lr-evidence-counts i{font-style:normal;color:#b3bbc6;margin:0 2px}
 .lr-row-body{padding:0 12px 12px 37px;background:#fbfcfe;border-top:1px dashed #dbe2ea}
+.lr-weighted{display:grid;grid-template-columns:minmax(210px,.7fr) minmax(220px,1.3fr);gap:10px;align-items:center;padding:9px 0 2px;color:#53657a;font-size:.67rem}
+.lr-weighted>div:first-child{display:flex;flex-direction:column;gap:2px}.lr-weighted strong{color:#17314f;font-size:.7rem}
+.lr-weightbar{display:flex;height:10px;border-radius:999px;overflow:hidden;background:#e8edf2}
+.lr-weightbar>span{display:block;min-width:2px;box-sizing:border-box}
+.lr-weightbar>span+span{border-left:2px solid #fff}
+.lr-weightbar .lr-primary{background:#123a52}.lr-weightbar .lr-secondary{background:#37a6b5}.lr-weightbar .lr-nonassoc{background:#9ca6b3}
 .lr-summary{margin:0;padding:10px 0 8px;color:#33465d;font-size:.78rem;line-height:1.48}
 .lr-families{margin:0 0 8px;border:1px solid #cfe0ea;border-radius:8px;background:#f5fafc}
 .lr-families>summary{display:flex;gap:7px;align-items:center;padding:7px 10px;cursor:pointer;color:#15576a;font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.03em}
 .lr-families>summary span{margin-left:auto;background:#dceff4;border-radius:10px;padding:1px 6px}
 .lr-family{display:grid;grid-template-columns:minmax(150px,1fr) minmax(180px,1fr);gap:3px 12px;padding:7px 10px;border-top:1px solid #dce9ef;font-size:.72rem;color:#405269}
 .lr-family strong{color:#19364c}.lr-family small{grid-column:1/-1;color:#778397;font-size:.64rem}
-.lr-exceptions{margin:7px 0;padding:8px 10px;border:1px solid #edd6aa;border-radius:8px;background:#fff9ef;color:#684c20;font-size:.72rem}
-.lr-exceptions ul{margin:4px 0 0;padding-left:18px}
+.lr-exceptions{margin:7px 0;border:1px solid #edd6aa;border-radius:8px;background:#fff9ef;color:#684c20;font-size:.72rem;overflow:hidden}
+.lr-exceptions>summary{list-style:none;display:flex;align-items:center;gap:7px;padding:8px 10px;cursor:pointer;font-weight:800}
+.lr-exceptions>summary::-webkit-details-marker{display:none}
+.lr-exceptions>summary::before{content:'\25B8';font-size:.58rem;color:#a8670b;transition:transform .15s}
+.lr-exceptions[open]>summary::before{transform:rotate(90deg)}
+.lr-exceptions>summary span{margin-left:auto;background:#f3dfb7;border-radius:999px;padding:1px 7px;font-size:.62rem}
+.lr-exceptions ul{margin:0;padding:8px 12px 9px 28px;border-top:1px solid #f0dfbd}
 .lr-section-title{padding:7px 0 5px;color:#6f7d91;font-size:.62rem;font-weight:800;letter-spacing:.05em;text-transform:uppercase}
 .lr-source{margin:5px 0;border:1px solid #dce3eb;border-radius:8px;background:#fff;overflow:hidden}
 .lr-source>summary{display:flex;align-items:center;gap:12px;padding:7px 9px;cursor:pointer;color:#203d56;font-size:.72rem;font-weight:750}
@@ -3148,8 +3393,10 @@ body.quiz .lib-chip{display:none}
   .lr-sort-label{margin-left:0}
   .lr-unreported-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
   .lr-source-section li{grid-template-columns:1fr auto}.lr-item-text,.lr-stat-meta{grid-column:1/-1}.lr-stat-value+.lr-item-title{grid-column:1}.lr-locator{grid-column:2;grid-row:1}
+  .lr-weighted{grid-template-columns:1fr}
 }
 @media (max-width:520px){
+  .weighted-axis-tabs{display:grid;grid-template-columns:1fr 1fr}.weighted-axis-tab{white-space:normal}
   .lr-tools{padding:9px 10px 6px;overflow:hidden}.lr-search{flex:1 1 100%;width:100%;max-width:none;min-width:0;box-sizing:border-box}
   .lr-filters{width:100%;min-width:0}.lr-filter{flex:1 1 auto;min-width:0;text-align:center;white-space:normal}
   .lr-sort-label{max-width:100%;flex-wrap:wrap}.lr-sort{max-width:100%}
@@ -4531,10 +4778,24 @@ document.querySelectorAll('.mtab').forEach(tab=>{
       const d=r.querySelector('.mdetail');d.style.maxHeight=d.scrollHeight+'px';});
   });
 });
-mRegionSort.addEventListener('change',()=>mSortRegion(mRegionSort.value));
-mSignSort.addEventListener('change',()=>mSortFlat(mSignSort.value));
+if(mRegionSort) mRegionSort.addEventListener('change',()=>mSortRegion(mRegionSort.value));
+if(mSignSort) mSignSort.addEventListener('change',()=>mSortFlat(mSignSort.value));
 
-// ---- complete current-ledger lateralization evidence ----
+// ---- complete current-ledger weighted evidence ----
+document.querySelectorAll('.weighted-evidence-shell').forEach(shell=>{
+  const tabs=Array.from(shell.querySelectorAll('.weighted-axis-tab'));
+  const panels=Array.from(shell.querySelectorAll('.weighted-axis-panel'));
+  tabs.forEach(tab=>tab.addEventListener('click',()=>{
+    const axis=tab.dataset.axisTab;
+    tabs.forEach(item=>{
+      const selected=item===tab;
+      item.classList.toggle('on',selected);
+      item.setAttribute('aria-selected',selected?'true':'false');
+    });
+    panels.forEach(panel=>{ panel.hidden=panel.dataset.axisPanel!==axis; });
+  }));
+});
+
 function bindLedgerReliability(wrap){
   if(wrap.dataset.bound==='true') return;
   wrap.dataset.bound='true';
@@ -4555,7 +4816,8 @@ function bindLedgerReliability(wrap){
       || (+b.dataset.findings)-(+a.dataset.findings) || a.dataset.name.localeCompare(b.dataset.name);
     if(key==='statistics') return (+b.dataset.statistics)-(+a.dataset.statistics)
       || (+b.dataset.findings)-(+a.dataset.findings) || a.dataset.name.localeCompare(b.dataset.name);
-    return (+b.dataset.findings)-(+a.dataset.findings)
+    return (+b.dataset.weight)-(+a.dataset.weight)
+      || (+b.dataset.findings)-(+a.dataset.findings)
       || (+b.dataset.manuscripts)-(+a.dataset.manuscripts)
       || (+b.dataset.statistics)-(+a.dataset.statistics)
       || a.dataset.name.localeCompare(b.dataset.name);
@@ -4941,6 +5203,9 @@ for fragment_name, fragment_html in {**deferred_fragments, **detail_fragments}.i
 for name in ("seizure_semiology_localization.html", "index.html"):
     with open(os.path.join(DOCS, name), "w", encoding="utf-8") as f:
         f.write(HEAD)
+
+with open(os.path.join(DOCS, "CNAME"), "w", encoding="utf-8") as f:
+    f.write("www.semiologyatlas.org\n")
 
 # Added to the Home Screen the page runs with no address bar or tab strip. A page
 # cannot hide browser chrome any other way, so this is what makes that possible.
