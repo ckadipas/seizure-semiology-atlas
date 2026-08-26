@@ -643,7 +643,8 @@ def descriptive_family_row(family):
         *[item.get("source_file") for item in exact],
         *[item.get("value_text") for item in exact],
     ]).lower()
-    return f'''<details class="syn-family fx-row" data-metric="{esc(family.get('metric_type') or 'OTHER')}" data-fq="{esc(searchable)}">
+    sign_ids = "|".join(sorted(str(sign_id) for sign_id in (family.get("sign_ids") or [])))
+    return f'''<details class="syn-family fx-row" data-metric="{esc(family.get('metric_type') or 'OTHER')}" data-sign-ids="{esc(sign_ids)}" data-fq="{esc(searchable)}">
   <summary><span>{esc(endpoint)}</span><span class="syn-family-meta">{esc(metric)} · {family.get('source_work_count', 0)} paper(s)</span></summary>
   <div class="syn-family-body">
     <div><strong>When:</strong> {esc(phase)}</div>
@@ -1382,8 +1383,8 @@ def build_descriptive_family_library(families):
     rows = "".join(descriptive_family_row(family) for family in families)
     method_note = (EVIDENCE_SYNTHESIS.get("release") or {}).get("method_note") or ""
     return f'''<details class="frontpage-fold synthesis-family-fold">
-<summary>Study-by-study statistical summaries &mdash; {len(families):,} result groups</summary>
-<div class="fx-wrap" data-item-label="result groups">
+<summary>Study-by-study statistical summaries &mdash; <span class="fx-summary-count">{len(families):,}</span> result groups</summary>
+<div class="fx-wrap" data-item-label="result groups" data-global-sign-filter="true">
   <div class="fx-intro">{esc(method_note)}</div>
   <div class="fx-tools"><input type="text" class="fx-search" placeholder="Search signs, outcomes, populations, values, or sources&hellip;"><div class="fx-btns">{"".join(buttons)}</div></div>
   <div class="fx-count"></div>
@@ -3415,7 +3416,7 @@ function filterRegionView(){
     const sec=document.getElementById('browse-'+p.dataset.target);
     p.style.opacity=(sec&&sec.style.display!=='none')?'1':'.4';
   });
-  return visibleIds.size;
+  return visibleIds;
 }
 
 function filterBrowseView(){
@@ -3444,15 +3445,17 @@ function filterBrowseView(){
     section.querySelector('.browse-toggle').setAttribute('aria-expanded',shouldOpen?'true':'false');
     if(shouldOpen) opened=true;
   });
-  return visibleIds.size;
+  return visibleIds;
 }
 
 function filterAll(){
-  const visible=browseMode.value==='region'?filterRegionView():filterBrowseView();
+  const visibleIds=browseMode.value==='region'?filterRegionView():filterBrowseView();
+  const visible=visibleIds.size;
   const active=!!(appliedQuery||fRegion.value||fPhase.value||fLat.value||fEvid.value);
   resultCount.textContent=visible+' of '+uniqueSignCount+' signs shown';
   document.body.classList.toggle('filtering',active);
   noResults.style.display=visible===0?'block':'none';
+  refreshStudyFamilyFilter(visibleIds,active);
 }
 
 function setBrowseMode(mode){
@@ -3676,7 +3679,9 @@ document.querySelectorAll('.mtab').forEach(tab=>{
 mRegionSort.addEventListener('change',()=>mSortRegion(mRegionSort.value));
 mSignSort.addEventListener('change',()=>mSortFlat(mSignSort.value));
 
-// ---- reviewed findings and source statistics: independently scoped filters ----
+// ---- local table controls; study summaries also inherit active sign filters ----
+let activeStudySignIds=null;
+
 function bindFxWrap(wrap){
   if(wrap.dataset.filterBound) return;
   wrap.dataset.filterBound='true';
@@ -3687,16 +3692,30 @@ function bindFxWrap(wrap){
   const rows=Array.from(table.querySelectorAll('.fx-row'));
   const buttons=Array.from(wrap.querySelectorAll('.fxb'));
   const label=wrap.dataset.itemLabel||'items';
+  const inheritSignFilter=wrap.dataset.globalSignFilter==='true';
+  const summaryCount=wrap.closest('.frontpage-fold')?.querySelector(':scope > summary .fx-summary-count');
   let mfilter='all';
   function apply(){
     const q=(search.value||'').toLowerCase().trim();
+    const available=[];
     let vis=0;
     rows.forEach(r=>{
-      const show=((mfilter==='all')||r.dataset.metric===mfilter)&&(!q||(r.dataset.fq||'').includes(q));
+      const linked=(r.dataset.signIds||'').split('|').filter(Boolean);
+      const globallyMatched=!inheritSignFilter||!activeStudySignIds||linked.some(id=>activeStudySignIds.has(id));
+      const locallyMatched=!q||(r.dataset.fq||'').includes(q);
+      if(globallyMatched&&locallyMatched) available.push(r);
+      const show=globallyMatched&&locallyMatched&&((mfilter==='all')||r.dataset.metric===mfilter);
       r.classList.toggle('fx-hidden',!show);
       if(show) vis++;
     });
-    count.textContent=vis+' of '+rows.length+' '+label+' shown';
+    buttons.forEach(button=>{
+      const metric=button.dataset.f;
+      const metricCount=metric==='all'?available.length:available.filter(row=>row.dataset.metric===metric).length;
+      const badge=button.querySelector('i');
+      if(badge) badge.textContent=metricCount.toLocaleString();
+    });
+    count.textContent=vis.toLocaleString()+' of '+available.length.toLocaleString()+' '+label+' shown';
+    if(summaryCount) summaryCount.textContent=vis.toLocaleString();
   }
   buttons.forEach(b=>b.addEventListener('click',()=>{
     buttons.forEach(x=>x.classList.toggle('on',x===b));
@@ -3704,22 +3723,45 @@ function bindFxWrap(wrap){
     apply();
   }));
   search.addEventListener('input',apply);
+  wrap.applyCurrentFilters=apply;
   apply();
 }
 document.querySelectorAll('.fx-wrap').forEach(bindFxWrap);
-document.querySelectorAll('details[data-fragment]').forEach(fold=>{
-  fold.addEventListener('toggle',async()=>{
-    if(!fold.open||fold.dataset.loaded==='true') return;
-    const host=fold.querySelector(':scope > .lazy-fragment');
-    if(!host) return;
-    host.textContent='Loading…';
+
+async function ensureDeferredFold(fold){
+  if(!fold||fold.dataset.loaded==='true') return;
+  if(fold.fragmentPromise) return fold.fragmentPromise;
+  const host=fold.querySelector(':scope > .lazy-fragment');
+  if(!host) return;
+  host.textContent='Loading…';
+  fold.fragmentPromise=(async()=>{
     try{
       host.outerHTML=await loadFragment(fold.dataset.fragment);
       fold.dataset.loaded='true';
       fold.querySelectorAll('.fx-wrap').forEach(bindFxWrap);
     }catch(error){
       host.textContent='This section could not be loaded. Close it, reload the page, and try again.';
+    }finally{
+      delete fold.fragmentPromise;
     }
+  })();
+  return fold.fragmentPromise;
+}
+
+function refreshStudyFamilyFilter(visibleIds,active){
+  activeStudySignIds=active?new Set(Array.from(visibleIds,String)):null;
+  const fold=document.querySelector('.synthesis-family-fold');
+  if(!fold) return;
+  if(fold.dataset.loaded==='true'){
+    fold.querySelectorAll('.fx-wrap').forEach(wrap=>wrap.applyCurrentFilters?.());
+  }else if(active){
+    void ensureDeferredFold(fold);
+  }
+}
+
+document.querySelectorAll('details[data-fragment]').forEach(fold=>{
+  fold.addEventListener('toggle',async()=>{
+    if(fold.open) await ensureDeferredFold(fold);
   });
 });
 
