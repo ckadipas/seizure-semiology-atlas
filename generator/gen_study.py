@@ -2101,14 +2101,26 @@ def build_weighted_evidence(cards):
             "work_count": len(contributions), "contributions": contributions,
         }
 
-    def source_block(source_file, group):
-        source = group["source"]
+    def source_manuscript_label(source_file, group):
         findings = list(group["findings"].values())
         statistics = list(group["statistics"].values())
         citation = next((public_value(row.get("citation")) for row in findings if public_value(row.get("citation"))), "")
         if not citation:
             citation = next((public_value(stat.get("citation")) for _finding, stat in statistics if public_value(stat.get("citation"))), "")
-        manuscript = citation or source_file
+        citation_text = re.sub(r"^\s*(?:REF(?:ERENCE)?S?\s*)?(?:\[[^\]]+\]\s*)+", "", citation, flags=re.IGNORECASE)
+        return citation if re.search(r"[A-Za-z]", citation_text) else source_file
+
+    def source_manuscript_sort_key(source_file, group):
+        label = source_manuscript_label(source_file, group)
+        label = re.sub(r"^\s*(?:REF(?:ERENCE)?S?\s*)?(?:\[[^\]]+\]\s*)+", "", label, flags=re.IGNORECASE)
+        label = re.sub(r"^\s*References?\s+[0-9,\sand\-–—]+:\s*", "", label, flags=re.IGNORECASE)
+        return label.casefold()
+
+    def source_block(source_file, group):
+        source = group["source"]
+        findings = list(group["findings"].values())
+        statistics = list(group["statistics"].values())
+        manuscript = source_manuscript_label(source_file, group)
         finding_rows = []
         for finding in findings:
             label = public_value(finding.get("source_term"), "Reviewed finding")
@@ -2215,6 +2227,22 @@ def build_weighted_evidence(cards):
     def share_text(value):
         return f"{value:.1f}".rstrip("0").rstrip(".")
 
+    def evidence_support_points(analysis):
+        work_count = analysis["work_count"]
+        total_weight = analysis["total_weight"]
+        if work_count >= 3 or total_weight >= 6:
+            return 3
+        if work_count >= 2 or total_weight >= 3:
+            return 2
+        return 1
+
+    def target_color(axis, target):
+        if target["key"] == "nonassoc":
+            return "#6b7280"
+        if axis == "LATERALIZATION":
+            return latcolor.get(target["key"], "#0e9db0")
+        return region_colors.get(target["label"], "#0e9db0")
+
     def bucket_of(card):
         status = status_of(card)
         if status in {"NON_LATERALIZING", "NON_LOCALIZING"}:
@@ -2228,7 +2256,7 @@ def build_weighted_evidence(cards):
         label = display_sign_label(source_label)
         finding_refs = unique_strings(card.get("supporting_finding_refs"))
         statistic_ids = set(unique_strings(card.get("supporting_statistic_ids")))
-        manuscripts = count_value(card, "source_work_count", card.get("source_document_count") or 0)
+        manuscripts = analysis["work_count"]
         findings = count_value(card, "supported_finding_count", len(finding_refs))
         statistics = len(statistic_ids)
         groups = source_groups(card)
@@ -2239,14 +2267,19 @@ def build_weighted_evidence(cards):
             prefix = "" if is_nonassoc else ("Predominant: " if index == 0 else "Also reported: ")
             chip_class = "lr-nonassoc" if is_nonassoc else ("lr-primary" if index == 0 else "lr-secondary")
             percent = share_text(target["share"])
+            color = target_color(axis, target)
             chips.append(
-                f'<span class="lr-direction {chip_class}">{esc(prefix + target["label"])} <b>{percent}%</b></span>'
+                f'<span class="lr-direction {chip_class}" style="color:{color};border-color:{color}">{esc(prefix + target["label"])} <b>{percent}%</b></span>'
             )
             segments.append(
-                f'<span class="{chip_class}" style="width:{target["share"]:.4f}%" '
+                f'<span class="{chip_class}" style="width:{target["share"]:.4f}%;background:{color};opacity:{1 if index == 0 else .56}" '
                 f'title="{esc(target["label"])}: {percent}% of weighted evidence"></span>'
             )
-        source_html = "".join(source_block(source_file, group) for source_file, group in groups.items())
+        ordered_sources = sorted(
+            groups.items(),
+            key=lambda item: source_manuscript_sort_key(item[0], item[1]),
+        )
+        source_html = "".join(source_block(source_file, group) for source_file, group in ordered_sources)
         exceptions = card.get("exceptions") or []
         if isinstance(exceptions, str):
             exceptions = [exceptions]
@@ -2259,17 +2292,39 @@ def build_weighted_evidence(cards):
         )
         weighted_units = f'{analysis["total_weight"]:.2f}'.rstrip("0").rstrip(".")
         source_count = len(groups)
+        leading_target = analysis["targets"][0]
+        reliability = leading_target["share"]
+        reliability_text = share_text(reliability)
+        reliability_color = target_color(axis, leading_target)
+        reliability_marker = min(98.0, max(2.0, reliability))
+        support_points = evidence_support_points(analysis)
+        support_pips = "".join(
+            f'<i class="{"on" if index < support_points else "off"}"></i>'
+            for index in range(3)
+        )
+        reliability_html = (
+            f'<span class="lr-reliability" style="--rel-color:{reliability_color};--rel-position:{reliability_marker:.2f}%" '
+            f'title="{esc(leading_target["label"])}: {reliability_text}% predominant weighted share; {support_points} evidence-support point{"s" if support_points != 1 else ""}">'
+            '<span class="lr-rel-track"><i class="lr-rel-fill"></i><i class="lr-rel-dot"></i></span>'
+            f'<b class="lr-rel-value">{reliability_text}%</b><span class="lr-cert">{support_pips}</span></span>'
+        )
+        sources_html = (
+            '<details class="lr-sources"><summary>Evidence by contributing manuscript '
+            +f'<span>{source_count}</span></summary><p>Alphabetical by manuscript citation.</p><div>{source_html}</div></details>'
+            if source_html else '<p class="lr-empty">No source linkage is available for this synthesis record.</p>'
+        )
         search_text = " ".join([
             source_label, label, summary, " ".join(target["label"] for target in analysis["targets"]),
             " ".join(groups.keys()), axis,
         ]).casefold()
         return (
             f'<details class="lr-row" data-bucket="{bucket_of(card)}" data-name="{esc(label.casefold())}" '
-            f'data-weight="{analysis["total_weight"]:.6f}" data-manuscripts="{manuscripts}" '
+            f'data-weight="{analysis["total_weight"]:.6f}" data-reliability="{reliability:.6f}" data-cert="{support_points}" data-manuscripts="{manuscripts}" '
             f'data-findings="{findings}" data-statistics="{statistics}" data-order="{order}" '
             f'data-search="{esc(search_text)}">'
             '<summary class="lr-row-head"><span class="lr-name">'+esc(label)+'</span>'
             +f'<span class="lr-directions">{"".join(chips)}</span>'
+            +reliability_html
             +f'<span class="lr-evidence-counts"><b>{analysis["work_count"]}</b> weighted manuscript{"s" if analysis["work_count"] != 1 else ""} <i>·</i> <b>{findings}</b> direct finding{"s" if findings != 1 else ""} <i>·</i> <b>{statistics}</b> reported result{"s" if statistics != 1 else ""}</span></summary>'
             +'<div class="lr-row-body">'
             +'<div class="lr-weighted"><div><strong>Weighted evidence distribution</strong>'
@@ -2278,7 +2333,7 @@ def build_weighted_evidence(cards):
             +f'<p class="lr-summary">{esc(summary)}</p>'
             +family_block(card, axis, statistic_ids)
             +exception_html
-            +('<div class="lr-sources"><div class="lr-section-title">Evidence by contributing manuscript</div>'+source_html+'</div>' if source_html else '<p class="lr-empty">No source linkage is available for this synthesis record.</p>')
+            +sources_html
             +f'<div class="lr-linkage-note">{source_count} linked manuscript record{"s" if source_count != 1 else ""}; source-defined numbers remain separate and are not pooled.</div>'
             +'</div></details>'
         )
@@ -2294,7 +2349,9 @@ def build_weighted_evidence(cards):
             else:
                 omitted_cards.append(card)
         weighted_cards.sort(key=lambda item: (
-            -item[1]["total_weight"], -item[1]["work_count"],
+            bucket_of(item[0]) == "nonassoc",
+            -item[1]["targets"][0]["share"],
+            -evidence_support_points(item[1]), -item[1]["work_count"],
             public_value(item[0].get("preferred_label")).casefold(),
         ))
         rows = "".join(card_row(card, axis, analysis, order) for order, (card, analysis) in enumerate(weighted_cards))
@@ -2324,9 +2381,10 @@ def build_weighted_evidence(cards):
       <button type="button" class="lr-filter" data-filter="nonassoc">{esc(config["nonassoc"])} <i>{nonassoc_count:,}</i></button>
     </div>
     <label class="lr-sort-label">Order
-      <select class="lr-sort"><option value="evidence">Highest weighted support</option><option value="name">Semiology A&ndash;Z</option><option value="manuscripts">Most manuscripts</option><option value="statistics">Most reported results</option></select>
+      <select class="lr-sort"><option value="reliability">Reliability (predominant share) &darr;</option><option value="certainty">Evidence support (certainty) &darr;</option><option value="name">Semiology A&ndash;Z</option><option value="manuscripts">Most manuscripts</option><option value="statistics">Most reported results</option></select>
     </label>
   </div>
+  <div class="lr-visual-legend"><span><strong>Reliability</strong> = predominant weighted share</span><span class="lr-legend-scale"><i>0%</i><i>50%</i><i>100%</i></span><span class="lr-legend-pips"><i class="on"></i><i class="on"></i><i class="on"></i> evidence support (manuscripts &amp; weight)</span></div>
   <div class="lr-visible-count"></div>
   <div class="lr-list">{rows}</div>
   <details class="lr-unreported">
@@ -3314,11 +3372,16 @@ body.quiz .lib-chip{display:none}
 .lr-filter.on{background:var(--navy);border-color:var(--navy);color:#fff}
 .lr-sort-label{display:flex;align-items:center;gap:5px;margin-left:auto;color:#758196;font-size:.61rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase}
 .lr-sort{border:1px solid var(--line);border-radius:7px;background:#fff;color:var(--navy);padding:5px 7px;font:inherit;font-size:.7rem;font-weight:700;text-transform:none;letter-spacing:0}
+.lr-visual-legend{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:7px 14px;background:#eef4f8;border-top:1px solid #dbe6ee;border-bottom:1px solid #d6e1ea;color:#4d6075;font-size:.64rem}
+.lr-visual-legend strong{color:#173a54}.lr-legend-scale{display:grid;grid-template-columns:repeat(3,1fr);min-width:170px;position:relative;color:#8490a1;font-size:.58rem;text-align:center}
+.lr-legend-scale::before{content:'';position:absolute;left:8%;right:8%;top:50%;height:5px;transform:translateY(-50%);border-radius:999px;background:linear-gradient(90deg,#dfe6ee,#b8ccd8,#2b7180);z-index:0}
+.lr-legend-scale i{font-style:normal;position:relative;z-index:1;text-shadow:0 1px #eef4f8}.lr-legend-scale i:first-child{text-align:left}.lr-legend-scale i:last-child{text-align:right}
+.lr-legend-pips,.lr-cert{display:inline-flex;align-items:center;gap:3px}.lr-legend-pips i,.lr-cert i{display:inline-block;width:6px;height:6px;border-radius:50%;background:#c8d0da}.lr-legend-pips i.on,.lr-cert i.on{background:#52647b}.lr-cert i.on{background:var(--rel-color)}
 .lr-visible-count{padding:2px 16px 8px;color:#788396;font-size:.7rem;font-style:italic}
 .lr-list{border-top:1px solid var(--line2)}
 .lr-row{border-bottom:1px solid var(--line2)}
 .lr-row[hidden]{display:none}
-.lr-row-head{list-style:none;display:grid;grid-template-columns:16px minmax(190px,1fr) minmax(170px,.8fr) auto;align-items:center;gap:9px;padding:8px 12px;cursor:pointer;color:var(--navy)}
+.lr-row-head{list-style:none;display:grid;grid-template-columns:16px minmax(165px,.8fr) minmax(210px,1.15fr) minmax(150px,.65fr) auto;align-items:center;gap:9px;padding:8px 12px;cursor:pointer;color:var(--navy)}
 .lr-row-head::-webkit-details-marker{display:none}
 .lr-row-head::before{content:'›';font-size:1.05rem;color:#8090a5;transition:transform .16s;justify-self:center}
 .lr-row[open]>.lr-row-head::before{transform:rotate(90deg);color:var(--teal-d)}
@@ -3333,6 +3396,11 @@ body.quiz .lib-chip{display:none}
 .lr-dominant{color:#8240a3;background:#faf3fd}.lr-nondominant{color:#167546;background:#eff9f3}
 .lr-right,.lr-left,.lr-bilateral{color:#5c4a87;background:#f7f4fc}.lr-nonlat{color:#5d6878;background:#f5f6f8}
 .lr-other{color:#7b5a18;background:#fff8e9}.lr-unreported{color:#687386;background:#f5f7fa}
+.lr-reliability{display:grid;grid-template-columns:minmax(86px,1fr) auto auto;align-items:center;gap:6px;min-width:145px}
+.lr-rel-track{position:relative;height:8px;border-radius:999px;background:linear-gradient(to right,transparent 49.5%,#cbd4df 49.5%,#cbd4df 50.5%,transparent 50.5%),linear-gradient(to right,transparent 74.5%,#d7dee7 74.5%,#d7dee7 75.5%,transparent 75.5%),#e7ecf2}
+.lr-rel-fill{position:absolute;inset:0 auto 0 0;width:var(--rel-position);border-radius:999px;background:var(--rel-color);opacity:.28}
+.lr-rel-dot{position:absolute;left:var(--rel-position);top:50%;width:9px;height:9px;border-radius:50%;transform:translate(-50%,-50%);background:var(--rel-color);border:1.5px solid #fff;box-shadow:0 0 0 1px color-mix(in srgb,var(--rel-color) 40%,transparent)}
+.lr-rel-value{min-width:38px;color:var(--rel-color);font-size:.75rem;text-align:right;font-variant-numeric:tabular-nums}
 .lr-evidence-counts{font-size:.64rem;color:#687589;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
 .lr-evidence-counts b{color:#163a53}.lr-evidence-counts i{font-style:normal;color:#b3bbc6;margin:0 2px}
 .lr-row-body{padding:0 12px 12px 37px;background:#fbfcfe;border-top:1px dashed #dbe2ea}
@@ -3355,7 +3423,10 @@ body.quiz .lib-chip{display:none}
 .lr-exceptions[open]>summary::before{transform:rotate(90deg)}
 .lr-exceptions>summary span{margin-left:auto;background:#f3dfb7;border-radius:999px;padding:1px 7px;font-size:.62rem}
 .lr-exceptions ul{margin:0;padding:8px 12px 9px 28px;border-top:1px solid #f0dfbd}
-.lr-section-title{padding:7px 0 5px;color:#6f7d91;font-size:.62rem;font-weight:800;letter-spacing:.05em;text-transform:uppercase}
+.lr-sources{margin:7px 0;border:1px solid #d6e1ea;border-radius:8px;background:#f7fafc;overflow:hidden}
+.lr-sources>summary{list-style:none;display:flex;align-items:center;gap:7px;padding:8px 10px;cursor:pointer;color:#24425a;font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
+.lr-sources>summary::-webkit-details-marker{display:none}.lr-sources>summary::before{content:'\25B8';font-size:.58rem;color:#34778a;transition:transform .15s}.lr-sources[open]>summary::before{transform:rotate(90deg)}
+.lr-sources>summary span{margin-left:auto;background:#dceaf0;border-radius:999px;padding:1px 7px;font-size:.62rem}.lr-sources>p{margin:0;padding:0 10px 7px;color:#748195;font-size:.62rem}.lr-sources>div{padding:0 8px 6px;border-top:1px solid #e0e8ee}
 .lr-source{margin:5px 0;border:1px solid #dce3eb;border-radius:8px;background:#fff;overflow:hidden}
 .lr-source>summary{display:flex;align-items:center;gap:12px;padding:7px 9px;cursor:pointer;color:#203d56;font-size:.72rem;font-weight:750}
 .lr-source>summary span:first-child{min-width:0;overflow-wrap:anywhere}
@@ -3388,7 +3459,7 @@ body.quiz .lib-chip{display:none}
 
 @media (max-width:820px){
   .lr-row-head{grid-template-columns:16px 1fr;gap:5px 8px;padding:9px 10px}
-  .lr-name{font-size:.8rem}.lr-directions,.lr-evidence-counts{grid-column:2;text-align:left;white-space:normal}
+  .lr-name{font-size:.8rem}.lr-directions,.lr-reliability,.lr-evidence-counts{grid-column:2;text-align:left;white-space:normal}
   .lr-row-body{padding:0 10px 11px 34px}
   .lr-sort-label{margin-left:0}
   .lr-unreported-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -3400,6 +3471,7 @@ body.quiz .lib-chip{display:none}
   .lr-tools{padding:9px 10px 6px;overflow:hidden}.lr-search{flex:1 1 100%;width:100%;max-width:none;min-width:0;box-sizing:border-box}
   .lr-filters{width:100%;min-width:0}.lr-filter{flex:1 1 auto;min-width:0;text-align:center;white-space:normal}
   .lr-sort-label{max-width:100%;flex-wrap:wrap}.lr-sort{max-width:100%}
+  .lr-visual-legend{gap:8px}.lr-legend-scale{order:3;width:100%}.lr-reliability{width:100%;grid-template-columns:minmax(100px,1fr) auto auto}
   .lr-directions{min-width:0}.lr-direction{max-width:100%;white-space:normal;line-height:1.25}
   .lr-family{grid-template-columns:1fr}.lr-family small{grid-column:1}
   .lr-unreported-grid{grid-template-columns:1fr}
@@ -4816,10 +4888,16 @@ function bindLedgerReliability(wrap){
       || (+b.dataset.findings)-(+a.dataset.findings) || a.dataset.name.localeCompare(b.dataset.name);
     if(key==='statistics') return (+b.dataset.statistics)-(+a.dataset.statistics)
       || (+b.dataset.findings)-(+a.dataset.findings) || a.dataset.name.localeCompare(b.dataset.name);
-    return (+b.dataset.weight)-(+a.dataset.weight)
-      || (+b.dataset.findings)-(+a.dataset.findings)
+    const associationOrder=(a.dataset.bucket==='nonassoc')-(b.dataset.bucket==='nonassoc');
+    if(key==='certainty') return associationOrder
+      || (+b.dataset.cert)-(+a.dataset.cert)
       || (+b.dataset.manuscripts)-(+a.dataset.manuscripts)
-      || (+b.dataset.statistics)-(+a.dataset.statistics)
+      || (+b.dataset.weight)-(+a.dataset.weight)
+      || a.dataset.name.localeCompare(b.dataset.name);
+    return associationOrder
+      || (+b.dataset.reliability)-(+a.dataset.reliability)
+      || (+b.dataset.cert)-(+a.dataset.cert)
+      || (+b.dataset.manuscripts)-(+a.dataset.manuscripts)
       || a.dataset.name.localeCompare(b.dataset.name);
   }
   function apply(){
