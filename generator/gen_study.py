@@ -1514,10 +1514,11 @@ def build_meta(meta, flags):
     # view (ii): by semiology alphabetical
     view_sign = "".join(row(s,"s") for s in meta["by_sign"])
 
-    return f'''<details class="frontpage-fold meta-fold">
-<summary>Evidence-weighted lateralizing reliability</summary>
+    return f'''<details class="frontpage-fold meta-fold historical-meta-fold">
+<summary>Historical weighted analysis &mdash; {len(meta["by_sign"])} selected signs</summary>
 <div class="meta-wrap"><div class="meta-card">
   <div class="meta-head">
+    <p><strong>Historical analysis retained for provenance.</strong> This separately curated panel predates the current master ledger. It remains available here without being presented as comprehensive ledger coverage.</p>
     <p>{esc(meta.get("method_explanation", ""))} The dot shows the weighted result, the pale bar shows the reported range, and the points show how much supporting evidence contributed. Tap a row to see every study value and its weight.</p>
     <p><strong>Evidence-support points:</strong> When studies report comparable percentages, 3 points means at least 3 such studies or a total weight of at least 6; 2 points means 2 studies or a total weight of at least 3; 1 point means less support. For direction-only results, the same cutoffs use the direction-only sources. These cutoffs are specific to this atlas, not a standard medical evidence grade.</p>
   </div>
@@ -1554,7 +1555,6 @@ def build_meta(meta, flags):
   <div class="meta-view" id="meta-view-sign" hidden>{view_sign}</div>
 </div></div>
 </details>'''
-meta_fold = build_meta(META, FLAGS)
 
 deferred_fragments = {}
 
@@ -1803,6 +1803,340 @@ def build_evidence_library(corpus):
 deferred_fragments["reviewed-findings.html"] = build_reviewed_findings_panel(CORPUS)
 deferred_fragments["study-results.html"] = build_descriptive_family_panel(DESCRIPTIVE_FAMILIES)
 evidence_library_html = defer_details_body(build_evidence_library(CORPUS), "evidence-library.html")
+
+
+# ---------- Comprehensive ledger-derived lateralization evidence ----------
+# This panel is an inventory of the current canonical synthesis, not a new
+# meta-analysis. It exposes the source-supported direction, evidence counts,
+# manuscript links, findings, and reported numbers already present in the
+# release. Source-defined values remain separate and are never pooled here.
+def build_ledger_lateralization(cards, historical_html):
+    lateral_cards = [row for row in cards if str(row.get("axis") or "").upper() == "LATERALIZATION"]
+    if not lateral_cards:
+        return historical_html
+
+    status_labels = {
+        "CONSISTENT": "Consistent direction in the reviewed evidence",
+        "PREDOMINANT_WITH_EXCEPTIONS": "Predominant direction with documented exceptions",
+        "TENDENCY_WITH_UNCERTAINTY": "Directional tendency; uncertainty remains",
+        "CONTEXT_SUBTYPE_DEPENDENT": "Direction differs by subtype or clinical context",
+        "GENUINELY_MIXED": "Mixed directions in the reviewed evidence",
+        "NON_LATERALIZING": "No reliable hemispheric direction",
+        "NOT_REPORTED": "No lateralization relationship reported",
+    }
+
+    def status_of(card):
+        return str(card.get("pattern_status") or card.get("pattern_label") or "NOT_REPORTED").upper()
+
+    def bucket_of(card):
+        status = status_of(card)
+        if status == "NON_LATERALIZING":
+            return "nonlat"
+        if status in {"CONTEXT_SUBTYPE_DEPENDENT", "GENUINELY_MIXED"}:
+            return "mixed"
+        if status == "NOT_REPORTED":
+            return "unreported"
+        return "directional"
+
+    def relationship_parts(card):
+        status = status_of(card)
+        if status == "NON_LATERALIZING":
+            return [("No reliable direction", "nonlat")]
+        if status == "NOT_REPORTED":
+            return [("Not reported", "unreported")]
+        parts = []
+        for relationship in card.get("primary_relationships") or []:
+            dispositions = [str(value).upper() for value in relationship.get("evidence_dispositions") or []]
+            if dispositions and "SUPPORTED_EVIDENCE" not in dispositions:
+                continue
+            for target in relationship.get("targets") or []:
+                if isinstance(target, dict):
+                    raw = public_value(target.get("label") or target.get("name") or target.get("target"))
+                else:
+                    raw = public_value(target)
+                token = raw.casefold().replace("_", " ").replace("-", " ")
+                items = []
+                if "contra" in token or "opposite side" in token:
+                    items.append(("Contralateral", "contra"))
+                if "ipsi" in token:
+                    items.append(("Ipsilateral", "ipsi"))
+                elif "same side" in token:
+                    items.append(("Same side as seizure onset", "ipsi"))
+                is_nondominant = "non dominant" in token or "nondominant" in token
+                if is_nondominant:
+                    items.append(("Non-dominant hemisphere", "nondominant"))
+                elif "dominant" in token:
+                    items.append(("Dominant hemisphere", "dominant"))
+                if "bilateral" in token:
+                    items.append(("Bilateral", "bilateral"))
+                if re.search(r"(^|\W)right($|\W)", token):
+                    items.append(("Right hemisphere", "right"))
+                if re.search(r"(^|\W)left($|\W)", token):
+                    items.append(("Left hemisphere", "left"))
+                if token.strip() == "nonlat" or "non lateral" in token or "nonlateral" in token or "does not lateral" in token:
+                    items.append(("Does not lateralize", "nonlat"))
+                if "variable" in token or "mixed" in token:
+                    items.append(("Variable direction", "other"))
+                if not items and raw:
+                    items.append((public_context_value(raw), "other"))
+                for item in items:
+                    if item not in parts:
+                        parts.append(item)
+        if not parts:
+            parts.append(("See evidence summary", "other"))
+        return parts
+
+    def count_value(card, field, fallback):
+        value = card.get(field)
+        try:
+            return int(value) if value is not None else int(fallback)
+        except (TypeError, ValueError):
+            return int(fallback)
+
+    def unique_strings(values):
+        return list(OrderedDict.fromkeys(str(value) for value in values or [] if str(value or "").strip()))
+
+    def display_sign_label(value):
+        label = public_value(value, "Unnamed semiology")
+        return re.sub(r"^Focal\s+", "", label, flags=re.IGNORECASE)
+
+    def source_groups(card):
+        groups = OrderedDict()
+
+        def group_for(source):
+            source_file = public_value(source.get("source_file"), "Source file not named")
+            return groups.setdefault(source_file, {"source": source, "findings": OrderedDict(), "statistics": OrderedDict()})
+
+        for finding_ref in unique_strings(card.get("supporting_finding_refs")):
+            context = ledger_by_ref.get(finding_ref) or {}
+            source, finding = context.get("source") or {}, context.get("finding") or {}
+            if source or finding:
+                group_for(source)["findings"][finding_ref] = finding
+        for statistic_id in unique_strings(card.get("supporting_statistic_ids")):
+            context = STATISTIC_CONTEXT_BY_ID.get(statistic_id) or {}
+            source, finding, statistic = (
+                context.get("source") or {}, context.get("finding") or {}, context.get("statistic") or {}
+            )
+            if source or statistic:
+                group = group_for(source)
+                group["statistics"][statistic_id] = (finding, statistic)
+        return groups
+
+    def source_block(source_file, group):
+        source = group["source"]
+        findings = list(group["findings"].values())
+        statistics = list(group["statistics"].values())
+        citation = next((public_value(row.get("citation")) for row in findings if public_value(row.get("citation"))), "")
+        if not citation:
+            citation = next((public_value(stat.get("citation")) for _finding, stat in statistics if public_value(stat.get("citation"))), "")
+        manuscript = citation or source_file
+        finding_rows = []
+        for finding in findings:
+            label = public_value(finding.get("source_term"), "Reviewed finding")
+            claim = public_value(finding.get("claim"))
+            locator = public_value(finding.get("locators"), "Source location not stated")
+            finding_rows.append(
+                '<li><span class="lr-item-title">'+esc(label)+'</span>'
+                +(f'<span class="lr-item-text">{esc(claim)}</span>' if claim and claim != label else '')
+                +f'<span class="lr-locator">{esc(locator)}</span></li>'
+            )
+        statistic_rows = []
+        for finding, statistic in statistics:
+            value = statistic_value(statistic) or "Reported result"
+            metric = metric_label(statistic.get("metric_type"))
+            endpoint = public_value(finding.get("source_term"), "Study result")
+            locator = public_value(statistic.get("source_locator")) or public_value(finding.get("locators"), "Source location not stated")
+            ratio = statistic_ratio(statistic)
+            context = " · ".join(filter(None, [
+                public_context_value(statistic.get("population")),
+                public_context_value(statistic.get("subgroup")),
+                public_context_value(statistic.get("phase") or finding.get("phase")),
+            ]))
+            statistic_rows.append(
+                '<li><span class="lr-stat-value">'+esc(value)+'</span>'
+                +f'<span class="lr-item-title">{esc(endpoint)}</span>'
+                +f'<span class="lr-stat-meta">{esc(metric)}{(" · n/N " + esc(ratio)) if ratio else ""}{(" · " + esc(context)) if context else ""}</span>'
+                +f'<span class="lr-locator">{esc(locator)}</span></li>'
+            )
+        counts = []
+        if findings:
+            counts.append(f'{len(findings)} finding{"s" if len(findings) != 1 else ""}')
+        if statistics:
+            counts.append(f'{len(statistics)} reported result{"s" if len(statistics) != 1 else ""}')
+        source_context = public_value(source.get("source_report_methods_population"))
+        return (
+            '<details class="lr-source"><summary><span>'+esc(manuscript)+'</span>'
+            +f'<span>{esc(" · ".join(counts) or "Linked evidence")}</span></summary>'
+            +f'<div class="lr-source-file">{esc(source_file)}</div>'
+            +(f'<div class="lr-source-context">{esc(source_context)}</div>' if source_context else '')
+            +(f'<div class="lr-source-section"><strong>Reviewed findings</strong><ul>{"".join(finding_rows)}</ul></div>' if finding_rows else '')
+            +(f'<div class="lr-source-section"><strong>Reported study results</strong><ul>{"".join(statistic_rows)}</ul></div>' if statistic_rows else '')
+            +'</details>'
+        )
+
+    def family_block(card, statistic_ids):
+        sign_id = str(card.get("sign_id") or "")
+        families = []
+        for family in DESCRIPTIVE_FAMILIES_BY_SIGN.get(sign_id, []):
+            if str(family.get("axis") or "").upper() != "LATERALIZATION":
+                continue
+            family_statistics = set(unique_strings(family.get("statistic_ids")))
+            family_statistics.update(
+                str(item.get("statistic_id")) for item in family.get("exact_estimates") or [] if item.get("statistic_id")
+            )
+            if statistic_ids and family_statistics and not statistic_ids.intersection(family_statistics):
+                continue
+            families.append(family)
+        if not families:
+            return ""
+        rows = []
+        for family in families:
+            targets = [public_context_value(value) for value in family.get("axis_targets") or [] if public_value(value)]
+            title = " / ".join(targets) or public_context_value(family.get("endpoint"), "Source-defined result group")
+            proportion = family.get("descriptive_proportion_summary") or {}
+            minimum, maximum, median = proportion.get("minimum"), proportion.get("maximum"), proportion.get("median")
+            observed = "Source-defined values retained separately"
+            if minimum is not None and maximum is not None:
+                if float(minimum) == float(maximum):
+                    observed = f'Observed proportion {float(minimum):g}%'
+                else:
+                    observed = f'Observed proportion range {float(minimum):g}–{float(maximum):g}% (median {float(median):g}%)' if median is not None else f'Observed proportion range {float(minimum):g}–{float(maximum):g}%'
+            context = " · ".join(filter(None, [
+                public_context_value(family.get("subgroup")),
+                public_context_value(family.get("comparator")),
+                public_context_value(family.get("analysis_unit")),
+            ]))
+            input_count = count_value(family, "input_count", len(family.get("statistic_ids") or []))
+            work_count = count_value(family, "source_work_count", 0)
+            rows.append(
+                '<div class="lr-family"><strong>'+esc(title)+'</strong>'
+                +f'<span>{esc(observed)}</span>'
+                +(f'<small>{esc(context)}</small>' if context else '')
+                +f'<small>{work_count} manuscript{"s" if work_count != 1 else ""} · {input_count} reported result{"s" if input_count != 1 else ""} · not pooled</small></div>'
+            )
+        return (
+            '<details class="lr-families"><summary>Source-defined result groups '
+            +f'<span>{len(rows)}</span></summary><div>{"".join(rows)}</div></details>'
+        )
+
+    def card_row(card, order):
+        status = status_of(card)
+        source_label = public_value(card.get("preferred_label"), "Unnamed semiology")
+        label = display_sign_label(source_label)
+        directions = relationship_parts(card)
+        finding_refs = unique_strings(card.get("supporting_finding_refs"))
+        statistic_ids = set(unique_strings(card.get("supporting_statistic_ids")))
+        manuscripts = count_value(card, "source_work_count", card.get("source_document_count") or 0)
+        findings = count_value(card, "supported_finding_count", len(finding_refs))
+        statistics = len(statistic_ids)
+        groups = source_groups(card)
+        summary = public_value(card.get("plain_summary"), status_labels.get(status, "Reviewed evidence summary available below."))
+        summary_lower = summary.casefold()
+        direction_terms = {
+            "contra": ("contralateral", "opposite side"), "ipsi": ("ipsilateral", "same side"),
+            "dominant": ("dominant",), "nondominant": ("non-dominant", "nondominant"),
+            "right": ("right",), "left": ("left",), "bilateral": ("bilateral",),
+        }
+        ranked_directions = []
+        for index, (_direction, kind) in enumerate(directions):
+            positions = [summary_lower.find(term) for term in direction_terms.get(kind, ()) if term in summary_lower]
+            ranked_directions.append((min(positions) if positions else 10**6, index))
+        primary_index = min(ranked_directions)[1] if ranked_directions else 0
+        direction_html_parts = []
+        for index, (direction, kind) in enumerate(directions):
+            prefix = ""
+            is_explicit_direction = kind in {"contra", "ipsi", "dominant", "nondominant", "right", "left", "bilateral"}
+            if is_explicit_direction and index == primary_index and status == "PREDOMINANT_WITH_EXCEPTIONS":
+                prefix = "Predominant: "
+            elif is_explicit_direction and index == primary_index and status == "TENDENCY_WITH_UNCERTAINTY":
+                prefix = "Tendency: "
+            elif is_explicit_direction and index != primary_index and status == "PREDOMINANT_WITH_EXCEPTIONS":
+                prefix = "Also reported: "
+            direction_html_parts.append(f'<span class="lr-direction lr-{kind}">{esc(prefix + direction)}</span>')
+        direction_html = "".join(direction_html_parts)
+        source_html = "".join(source_block(source_file, group) for source_file, group in groups.items())
+        exceptions = card.get("exceptions") or []
+        if isinstance(exceptions, str):
+            exceptions = [exceptions]
+        exception_rows = [esc(value) for value in exceptions if isinstance(value, str) and value.strip()]
+        exception_html = (
+            '<div class="lr-exceptions"><strong>Documented exceptions</strong><ul>'
+            +"".join(f'<li>{value}</li>' for value in exception_rows)+'</ul></div>'
+            if exception_rows else ""
+        )
+        source_count = len(groups)
+        search_text = " ".join([
+            source_label, label, summary, status_labels.get(status, ""), " ".join(item[0] for item in directions),
+            " ".join(groups.keys()),
+        ]).casefold()
+        return (
+            f'<details class="lr-row" data-bucket="{bucket_of(card)}" data-name="{esc(label.casefold())}" '
+            f'data-manuscripts="{manuscripts}" data-findings="{findings}" data-statistics="{statistics}" '
+            f'data-order="{order}" data-search="{esc(search_text)}">'
+            '<summary class="lr-row-head"><span class="lr-name">'+esc(label)+'</span>'
+            +f'<span class="lr-directions">{direction_html}</span>'
+            +f'<span class="lr-evidence-counts"><b>{manuscripts}</b> manuscript{"s" if manuscripts != 1 else ""} <i>·</i> <b>{findings}</b> direct finding{"s" if findings != 1 else ""} <i>·</i> <b>{statistics}</b> reported result{"s" if statistics != 1 else ""}</span></summary>'
+            +'<div class="lr-row-body">'
+            +f'<p class="lr-summary">{esc(summary)}</p>'
+            +family_block(card, statistic_ids)
+            +exception_html
+            +('<div class="lr-sources"><div class="lr-section-title">Evidence by contributing manuscript</div>'+source_html+'</div>' if source_html else '<p class="lr-empty">No source linkage is available for this synthesis record.</p>')
+            +f'<div class="lr-linkage-note">{source_count} linked manuscript record{"s" if source_count != 1 else ""}; source-defined results are shown separately and are not pooled.</div>'
+            +'</div></details>'
+        )
+
+    evidence_cards = [card for card in lateral_cards if status_of(card) != "NOT_REPORTED"]
+    unreported_cards = [card for card in lateral_cards if status_of(card) == "NOT_REPORTED"]
+    evidence_cards.sort(key=lambda card: (
+        -count_value(card, "supported_finding_count", len(card.get("supporting_finding_refs") or [])),
+        -count_value(card, "source_work_count", card.get("source_document_count") or 0),
+        public_value(card.get("preferred_label")).casefold(),
+    ))
+    evidence_rows = "".join(card_row(card, order) for order, card in enumerate(evidence_cards))
+    unreported_rows = "".join(
+        f'<span class="lr-unreported-sign" data-search="{esc(public_value(card.get("preferred_label"), "Unnamed semiology").casefold())}">{esc(display_sign_label(card.get("preferred_label")))}</span>'
+        for card in sorted(unreported_cards, key=lambda row: public_value(row.get("preferred_label")).casefold())
+    )
+    directional_count = sum(bucket_of(card) == "directional" for card in evidence_cards)
+    mixed_count = sum(bucket_of(card) == "mixed" for card in evidence_cards)
+    nonlat_count = sum(bucket_of(card) == "nonlat" for card in evidence_cards)
+    source_count = len(CORPUS.get("sources") or [])
+    return f'''<details class="frontpage-fold reliability-fold">
+<summary>Lateralizing evidence across the current ledger &mdash; {len(lateral_cards):,} summaries</summary>
+<div class="lr-wrap">
+  <div class="lr-intro">
+    <strong>Complete current-ledger view.</strong> {len(evidence_cards):,} summaries contain a reviewed lateralization relationship and {len(unreported_cards):,} report none. Each row is generated from the current synthesis card, linked findings, reported numbers, and {source_count} contributing manuscripts. No new score or pooled percentage is created.
+  </div>
+  <div class="lr-tools">
+    <input class="lr-search" type="search" placeholder="Search semiology, direction, summary, or manuscript&hellip;" aria-label="Search lateralizing evidence">
+    <button type="button" class="lr-reset">Reset</button>
+    <div class="lr-filters" role="group" aria-label="Filter lateralization summaries">
+      <button type="button" class="lr-filter on" data-filter="all">All evidence <i>{len(evidence_cards):,}</i></button>
+      <button type="button" class="lr-filter" data-filter="directional">Direction reported <i>{directional_count:,}</i></button>
+      <button type="button" class="lr-filter" data-filter="mixed">Mixed or context-specific <i>{mixed_count:,}</i></button>
+      <button type="button" class="lr-filter" data-filter="nonlat">No reliable direction <i>{nonlat_count:,}</i></button>
+    </div>
+    <label class="lr-sort-label">Order
+      <select class="lr-sort"><option value="evidence">Most direct evidence</option><option value="name">Semiology A&ndash;Z</option><option value="manuscripts">Most manuscripts</option><option value="statistics">Most reported results</option></select>
+    </label>
+  </div>
+  <div class="lr-visible-count"></div>
+  <div class="lr-list">{evidence_rows}</div>
+  <details class="lr-unreported">
+    <summary>No lateralization relationship reported <span class="lr-unreported-count">{len(unreported_cards):,}</span></summary>
+    <p>These signs remain visible because absence of a reported relationship is different from evidence that a sign does not lateralize.</p>
+    <div class="lr-unreported-grid">{unreported_rows}</div>
+  </details>
+  <div class="lr-historical">
+    <p>The prior 19-sign weighted display is preserved below for provenance. It is not used as a substitute for the complete current-ledger view above.</p>
+    {historical_html}
+  </div>
+</div>
+</details>'''
+
+
+historical_meta_fold = build_meta(META, FLAGS)
+meta_fold = build_ledger_lateralization(SYNTHESIS_CARDS, historical_meta_fold)
 
 
 # ---------- Descriptive statistics: sensitivity by seizure-onset group ----------
@@ -2730,6 +3064,99 @@ body.quiz .lib-chip{display:none}
   .mc-cl{grid-area:cl}.mc-gt{grid-area:gt}.mc-n,.mc-pg{display:none}
   .mc-note{line-height:1.5;padding:4px 10px 8px}
   .mdetail-in{padding:10px 10px 12px 16px}
+}
+
+/* ---------- CURRENT-LEDGER LATERALIZATION EVIDENCE ---------- */
+.reliability-fold>summary{background:linear-gradient(120deg,#0c2036,#123a52);color:#eaf3f8;border-color:#123a52}
+.reliability-fold>summary::before{color:#7fd4e6}
+.lr-wrap{max-width:1180px;background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.lr-intro{padding:12px 16px;background:#f5f9fc;border-bottom:1px solid #dce7ef;color:#405269;font-size:.78rem;line-height:1.55}
+.lr-intro strong{color:#0b5062}
+.lr-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:11px 14px 7px;border-bottom:1px solid var(--line2)}
+.lr-search{flex:1 1 300px;max-width:430px;border:1px solid var(--line);border-radius:8px;padding:8px 11px;font:inherit;font-size:.8rem;color:var(--navy);outline:none}
+.lr-search:focus{border-color:var(--teal);box-shadow:0 0 0 3px rgba(14,157,176,.12)}
+.lr-reset{border:1px solid var(--line);background:#fff;color:#526276;border-radius:7px;padding:7px 10px;font-family:inherit;font-size:.7rem;font-weight:750;cursor:pointer}
+.lr-filters{display:flex;gap:5px;flex-wrap:wrap}
+.lr-filter{border:1px solid #cbd6e2;background:#fff;color:#263c58;border-radius:16px;padding:5px 9px;font:inherit;font-size:.68rem;font-weight:750;cursor:pointer;white-space:nowrap}
+.lr-filter i{font-style:normal;opacity:.67;margin-left:3px}
+.lr-filter:hover{border-color:var(--teal);color:var(--teal-d)}
+.lr-filter.on{background:var(--navy);border-color:var(--navy);color:#fff}
+.lr-sort-label{display:flex;align-items:center;gap:5px;margin-left:auto;color:#758196;font-size:.61rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase}
+.lr-sort{border:1px solid var(--line);border-radius:7px;background:#fff;color:var(--navy);padding:5px 7px;font:inherit;font-size:.7rem;font-weight:700;text-transform:none;letter-spacing:0}
+.lr-visible-count{padding:2px 16px 8px;color:#788396;font-size:.7rem;font-style:italic}
+.lr-list{border-top:1px solid var(--line2)}
+.lr-row{border-bottom:1px solid var(--line2)}
+.lr-row[hidden]{display:none}
+.lr-row-head{list-style:none;display:grid;grid-template-columns:16px minmax(190px,1fr) minmax(170px,.8fr) auto;align-items:center;gap:9px;padding:8px 12px;cursor:pointer;color:var(--navy)}
+.lr-row-head::-webkit-details-marker{display:none}
+.lr-row-head::before{content:'›';font-size:1.05rem;color:#8090a5;transition:transform .16s;justify-self:center}
+.lr-row[open]>.lr-row-head::before{transform:rotate(90deg);color:var(--teal-d)}
+.lr-row-head:hover{background:#f7fafc}
+.lr-name{font-size:.82rem;font-weight:800;line-height:1.25}
+.lr-directions{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
+.lr-direction{display:inline-flex;border:1px solid currentColor;border-radius:12px;padding:2px 7px;font-size:.6rem;font-weight:800;white-space:nowrap}
+.lr-contra{color:#b9362a;background:#fff4f2}.lr-ipsi{color:#246b9b;background:#f0f7fc}
+.lr-dominant{color:#8240a3;background:#faf3fd}.lr-nondominant{color:#167546;background:#eff9f3}
+.lr-right,.lr-left,.lr-bilateral{color:#5c4a87;background:#f7f4fc}.lr-nonlat{color:#5d6878;background:#f5f6f8}
+.lr-other{color:#7b5a18;background:#fff8e9}.lr-unreported{color:#687386;background:#f5f7fa}
+.lr-evidence-counts{font-size:.64rem;color:#687589;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.lr-evidence-counts b{color:#163a53}.lr-evidence-counts i{font-style:normal;color:#b3bbc6;margin:0 2px}
+.lr-row-body{padding:0 12px 12px 37px;background:#fbfcfe;border-top:1px dashed #dbe2ea}
+.lr-summary{margin:0;padding:10px 0 8px;color:#33465d;font-size:.78rem;line-height:1.48}
+.lr-families{margin:0 0 8px;border:1px solid #cfe0ea;border-radius:8px;background:#f5fafc}
+.lr-families>summary{display:flex;gap:7px;align-items:center;padding:7px 10px;cursor:pointer;color:#15576a;font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.03em}
+.lr-families>summary span{margin-left:auto;background:#dceff4;border-radius:10px;padding:1px 6px}
+.lr-family{display:grid;grid-template-columns:minmax(150px,1fr) minmax(180px,1fr);gap:3px 12px;padding:7px 10px;border-top:1px solid #dce9ef;font-size:.72rem;color:#405269}
+.lr-family strong{color:#19364c}.lr-family small{grid-column:1/-1;color:#778397;font-size:.64rem}
+.lr-exceptions{margin:7px 0;padding:8px 10px;border:1px solid #edd6aa;border-radius:8px;background:#fff9ef;color:#684c20;font-size:.72rem}
+.lr-exceptions ul{margin:4px 0 0;padding-left:18px}
+.lr-section-title{padding:7px 0 5px;color:#6f7d91;font-size:.62rem;font-weight:800;letter-spacing:.05em;text-transform:uppercase}
+.lr-source{margin:5px 0;border:1px solid #dce3eb;border-radius:8px;background:#fff;overflow:hidden}
+.lr-source>summary{display:flex;align-items:center;gap:12px;padding:7px 9px;cursor:pointer;color:#203d56;font-size:.72rem;font-weight:750}
+.lr-source>summary span:first-child{min-width:0;overflow-wrap:anywhere}
+.lr-source>summary span:last-child{margin-left:auto;color:#778397;font-size:.62rem;white-space:nowrap}
+.lr-source-file,.lr-source-context{padding:6px 10px 0;color:#7a8697;font-size:.63rem;line-height:1.4;overflow-wrap:anywhere}
+.lr-source-context{color:#53657a}
+.lr-source-section{padding:7px 10px 9px;color:#445267;font-size:.68rem}
+.lr-source-section+ .lr-source-section{border-top:1px solid #edf0f4}
+.lr-source-section>strong{display:block;margin-bottom:4px;color:#24425a;font-size:.62rem;text-transform:uppercase;letter-spacing:.04em}
+.lr-source-section ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.lr-source-section li{display:grid;grid-template-columns:minmax(130px,.75fr) minmax(180px,1.35fr) auto;gap:3px 9px;align-items:start;padding:5px 0;border-top:1px dotted #e2e7ed;line-height:1.35}
+.lr-source-section li:first-child{border-top:0}
+.lr-item-title{font-weight:750;color:#1e3a53}.lr-item-text{color:#46566a}.lr-locator{color:#8b5b13;font-size:.61rem;text-align:right}
+.lr-stat-value{grid-column:1;font-weight:850;color:#0b6776;font-variant-numeric:tabular-nums}
+.lr-stat-value+.lr-item-title{grid-column:2}.lr-stat-meta{grid-column:1/3;color:#66758a;font-size:.62rem}
+.lr-linkage-note{margin-top:8px;color:#7b8798;font-size:.62rem}
+.lr-empty{color:#7b8798;font-size:.7rem;font-style:italic}
+.lr-unreported{margin:12px;border:1px solid #dce3eb;border-radius:9px;background:#f8fafc}
+.lr-unreported>summary{display:flex;gap:8px;align-items:center;padding:9px 11px;cursor:pointer;color:#4c5c70;font-size:.73rem;font-weight:800}
+.lr-unreported>summary span{margin-left:auto;background:#e6ebf1;border-radius:11px;padding:1px 7px;font-size:.64rem}
+.lr-unreported>p{margin:0;padding:0 11px 8px;color:#68768a;font-size:.68rem;line-height:1.45}
+.lr-unreported-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;padding:0 10px 10px}
+.lr-unreported-sign{border:1px solid #e1e6ec;border-radius:6px;background:#fff;padding:5px 7px;color:#536175;font-size:.67rem;line-height:1.3}
+.lr-unreported-sign[hidden]{display:none}
+.lr-historical{margin:12px;padding-top:10px;border-top:1px solid var(--line)}
+.lr-historical>p{margin:0 3px 8px;color:#6c788b;font-size:.68rem;line-height:1.45}
+.lr-historical .historical-meta-fold{margin:0}
+.lr-historical .historical-meta-fold>summary{min-height:36px;padding:7px 11px;background:#f3f5f8;color:#47566b;border:1px solid #dbe2ea;font-size:.75rem}
+.lr-historical .historical-meta-fold>summary::before{color:#7c8898}
+
+@media (max-width:820px){
+  .lr-row-head{grid-template-columns:16px 1fr;gap:5px 8px;padding:9px 10px}
+  .lr-name{font-size:.8rem}.lr-directions,.lr-evidence-counts{grid-column:2;text-align:left;white-space:normal}
+  .lr-row-body{padding:0 10px 11px 34px}
+  .lr-sort-label{margin-left:0}
+  .lr-unreported-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .lr-source-section li{grid-template-columns:1fr auto}.lr-item-text,.lr-stat-meta{grid-column:1/-1}.lr-stat-value+.lr-item-title{grid-column:1}.lr-locator{grid-column:2;grid-row:1}
+}
+@media (max-width:520px){
+  .lr-tools{padding:9px 10px 6px;overflow:hidden}.lr-search{flex:1 1 100%;width:100%;max-width:none;min-width:0;box-sizing:border-box}
+  .lr-filters{width:100%;min-width:0}.lr-filter{flex:1 1 auto;min-width:0;text-align:center;white-space:normal}
+  .lr-sort-label{max-width:100%;flex-wrap:wrap}.lr-sort{max-width:100%}
+  .lr-directions{min-width:0}.lr-direction{max-width:100%;white-space:normal;line-height:1.25}
+  .lr-family{grid-template-columns:1fr}.lr-family small{grid-column:1}
+  .lr-unreported-grid{grid-template-columns:1fr}
+  .lr-source>summary{align-items:flex-start;flex-direction:column;gap:3px}.lr-source>summary span:last-child{margin-left:0;white-space:normal}
 }
 
 /* ---------- SOURCE-FIGURES EXPLORER ---------- */
@@ -4107,6 +4534,67 @@ document.querySelectorAll('.mtab').forEach(tab=>{
 mRegionSort.addEventListener('change',()=>mSortRegion(mRegionSort.value));
 mSignSort.addEventListener('change',()=>mSortFlat(mSignSort.value));
 
+// ---- complete current-ledger lateralization evidence ----
+function bindLedgerReliability(wrap){
+  if(wrap.dataset.bound==='true') return;
+  wrap.dataset.bound='true';
+  const search=wrap.querySelector('.lr-search');
+  const reset=wrap.querySelector('.lr-reset');
+  const sort=wrap.querySelector('.lr-sort');
+  const list=wrap.querySelector('.lr-list');
+  const count=wrap.querySelector('.lr-visible-count');
+  const filters=Array.from(wrap.querySelectorAll('.lr-filter'));
+  const rows=Array.from(wrap.querySelectorAll('.lr-row'));
+  const unreported=Array.from(wrap.querySelectorAll('.lr-unreported-sign'));
+  const unreportedCount=wrap.querySelector('.lr-unreported-count');
+  let active='all';
+  function compare(a,b){
+    const key=sort.value;
+    if(key==='name') return a.dataset.name.localeCompare(b.dataset.name);
+    if(key==='manuscripts') return (+b.dataset.manuscripts)-(+a.dataset.manuscripts)
+      || (+b.dataset.findings)-(+a.dataset.findings) || a.dataset.name.localeCompare(b.dataset.name);
+    if(key==='statistics') return (+b.dataset.statistics)-(+a.dataset.statistics)
+      || (+b.dataset.findings)-(+a.dataset.findings) || a.dataset.name.localeCompare(b.dataset.name);
+    return (+b.dataset.findings)-(+a.dataset.findings)
+      || (+b.dataset.manuscripts)-(+a.dataset.manuscripts)
+      || (+b.dataset.statistics)-(+a.dataset.statistics)
+      || a.dataset.name.localeCompare(b.dataset.name);
+  }
+  function apply(){
+    const query=search.value.trim().toLowerCase();
+    let visible=0;
+    rows.sort(compare).forEach(row=>{
+      list.appendChild(row);
+      const show=(active==='all'||row.dataset.bucket===active)
+        &&(!query||row.dataset.search.includes(query));
+      row.hidden=!show;
+      if(show) visible++;
+    });
+    let visibleUnreported=0;
+    unreported.forEach(item=>{
+      const show=!query||item.dataset.search.includes(query);
+      item.hidden=!show;
+      if(show) visibleUnreported++;
+    });
+    count.textContent=visible.toLocaleString()+' of '+rows.length.toLocaleString()+' evidence-bearing summaries shown';
+    if(unreportedCount) unreportedCount.textContent=visibleUnreported.toLocaleString();
+  }
+  filters.forEach(button=>button.addEventListener('click',()=>{
+    active=button.dataset.filter;
+    filters.forEach(item=>item.classList.toggle('on',item===button));
+    apply();
+  }));
+  search.addEventListener('input',apply);
+  sort.addEventListener('change',apply);
+  reset.addEventListener('click',()=>{
+    search.value=''; active='all'; sort.value='evidence';
+    filters.forEach(button=>button.classList.toggle('on',button.dataset.filter==='all'));
+    apply(); search.focus();
+  });
+  apply();
+}
+document.querySelectorAll('.lr-wrap').forEach(bindLedgerReliability);
+
 // ---- local table controls; study summaries also inherit active sign filters ----
 let activeStudySignIds=null;
 
@@ -4426,7 +4914,7 @@ HEAD = """<!DOCTYPE html>
 
 <div class="lib">
   <details class="lib-details">
-    <summary>Source Library &mdash; """ + str(len(PAPERS)) + """ papers grounding this resource</summary>
+    <summary>Source Library &mdash; """ + str(len(PAPERS)) + """ Contributing Manuscripts</summary>
     <div class="lib-grid">
 """ + papers_html + """
     </div>
@@ -4487,7 +4975,7 @@ assert h.count(chr(34).join(["class=","sign",""]))==_card_count
 assert 'id="quiz-mode"' in h
 assert 'id="expand-all"' in h and 'id="collapse-all"' in h
 assert h.count('data-area-ref="true"') == _area_ref_count
-assert h.count("data-search=") == _card_count
+assert len(re.findall(r'class="sign"[^>]*\bdata-search=', h)) == _card_count
 assert 'class="detail"' in h
 assert '@media (max-width:760px)' in h
 assert h.count('class="pill"')==len(region_order)
