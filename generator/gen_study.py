@@ -3592,7 +3592,7 @@ body.quiz .lib-chip{display:none}
 /* paper library */
 .lib{max-width:1180px;margin:0 auto;padding:0 16px}
 .lib-details{background:#fff;border:1px solid var(--line);border-radius:10px;margin-bottom:16px;overflow:hidden}
-.lib-details>summary{list-style:none;cursor:pointer;padding:13px 18px;font-size:.82rem;font-weight:800;color:var(--navy);text-transform:uppercase;letter-spacing:.05em;display:flex;align-items:center;gap:9px}
+.lib-details>summary{list-style:none;cursor:pointer;padding:13px 18px;font-size:.82rem;font-weight:800;color:var(--navy);text-transform:none;letter-spacing:0;display:flex;align-items:center;gap:9px}
 .lib-details>summary::-webkit-details-marker{display:none}
 .lib-details>summary::before{content:"\25B6";font-size:.6rem;color:var(--teal);transition:transform .15s}
 .lib-details[open]>summary::before{transform:rotate(90deg)}
@@ -3621,7 +3621,7 @@ body.quiz .lib-chip{display:none}
 /* ---------- ABBREV + FOOTER ---------- */
 .abbrev{max-width:1180px;margin:0 auto;padding:0 16px}
 .abbrev-details{background:#fff;border:1px solid var(--line);border-radius:10px;margin-bottom:20px;overflow:hidden}
-.abbrev-details>summary{list-style:none;cursor:pointer;padding:13px 18px;font-size:.82rem;font-weight:800;color:var(--navy);text-transform:uppercase;letter-spacing:.05em;display:flex;align-items:center;gap:9px}
+.abbrev-details>summary{list-style:none;cursor:pointer;padding:13px 18px;font-size:.82rem;font-weight:800;color:var(--navy);text-transform:none;letter-spacing:0;display:flex;align-items:center;gap:9px}
 .abbrev-details>summary::-webkit-details-marker{display:none}
 .abbrev-details>summary::before{content:"\25B6";font-size:.6rem;color:var(--teal);transition:transform .15s}
 .abbrev-details[open]>summary::before{transform:rotate(90deg)}
@@ -5313,9 +5313,20 @@ HEAD = """<!DOCTYPE html>
   <div id="no-results">No signs match the current search or filters. Try clearing them.</div>
 </main>
 
+""" + evidence_library_html + """
+
+<div class="lib">
+  <details class="lib-details">
+    <summary>Source Library &mdash; """ + str(len(PAPERS)) + """ Contributing Manuscripts</summary>
+    <div class="lib-grid">
+""" + papers_html + """
+    </div>
+  </details>
+</div>
+
 <div class="abbrev">
   <details class="abbrev-details">
-    <summary>Abbreviations &amp; Terminology</summary>
+    <summary>Abbreviations and Terminology</summary>
     <div class="abbrev-grid">
       <div class="abbrev-item"><strong>EZ</strong> = Epileptogenic Zone</div>
       <div class="abbrev-item"><strong>MTLE</strong> = Mesial Temporal Lobe Epilepsy</div>
@@ -5344,17 +5355,6 @@ HEAD = """<!DOCTYPE html>
       <div class="abbrev-item"><strong>OBE</strong> = Out-of-Body Experience</div>
       <div class="abbrev-item"><strong>GTCS</strong> = Generalized Tonic-Clonic Seizure</div>
       <div class="abbrev-item"><strong>BG</strong> = Basal Ganglia</div>
-    </div>
-  </details>
-</div>
-
-""" + evidence_library_html + """
-
-<div class="lib">
-  <details class="lib-details">
-    <summary>Source Library &mdash; """ + str(len(PAPERS)) + """ Contributing Manuscripts</summary>
-    <div class="lib-grid">
-""" + papers_html + """
     </div>
   </details>
 </div>
