@@ -17,6 +17,26 @@ def walk(nodes):
         yield from walk(node.get("children", []))
 
 
+def weighted_axis_panel(html, axis):
+    marker = f'<section class="weighted-axis-panel" data-axis-panel="{axis}"'
+    return html.split(marker, 1)[1].split("</section>", 1)[0]
+
+
+def weighted_rows(panel):
+    rows = {}
+    pattern = re.compile(
+        r'<details class="lr-row"(?P<attrs>[^>]*)>.*?'
+        r'<span class="lr-name">(?P<name>[^<]+)</span>'
+        r'(?P<summary>.*?)</summary>',
+        re.DOTALL,
+    )
+    for match in pattern.finditer(panel):
+        rows.setdefault(match.group("name"), []).append(
+            {"attrs": match.group("attrs"), "summary": match.group("summary")}
+        )
+    return rows
+
+
 class CompactRendererTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -179,6 +199,20 @@ class CompactRendererTest(unittest.TestCase):
         )
         self.assertIn("font-size:.75rem", css)
         self.assertNotRegex(css, r"\.browse-sign-name\{[^}]*font-size:\.(?:[0-5]\d)rem")
+
+    def test_weighted_localization_rows_carry_their_evidence_region(self):
+        rows = weighted_rows(weighted_axis_panel(self.render["h"], "LOCALIZATION"))
+        self.assertIn('data-group-region="Temporal"', rows["Fear aura"][0]["attrs"])
+        for row in rows["Formed visual hallucination"]:
+            self.assertIn('data-group-region="Occipital"', row["attrs"])
+
+    def test_singular_relationship_targets_are_weighted_not_omitted(self):
+        panel = weighted_axis_panel(self.render["h"], "LOCALIZATION")
+        rows = weighted_rows(panel)
+        self.assertIn("Prosopagnosia", rows)
+        self.assertIn("Predominant: Occipital", rows["Prosopagnosia"][0]["summary"])
+        self.assertIn("Seizure-associated aphasia", rows)
+        self.assertIn("Temporal", rows["Seizure-associated aphasia"][0]["summary"])
 
 
 if __name__ == "__main__":

@@ -1928,7 +1928,12 @@ def build_weighted_evidence(cards):
             dispositions = [str(value).upper() for value in relationship.get("evidence_dispositions") or []]
             if dispositions and "SUPPORTED_EVIDENCE" not in dispositions:
                 continue
-            for value in relationship.get("targets") or []:
+            values = relationship.get("targets")
+            if values is None:
+                values = [relationship.get("target")]
+            elif not isinstance(values, (list, tuple, set)):
+                values = [values]
+            for value in values:
                 if isinstance(value, dict):
                     value = value.get("label") or value.get("name") or value.get("target")
                 target = target_from_value(axis, value)
@@ -2054,7 +2059,8 @@ def build_weighted_evidence(cards):
         status = status_of(card)
         fallback_targets = card_targets(card, axis)
         totals, works_by_target, contributions = OrderedDict(), {}, []
-        for work_id, group in work_groups(card).items():
+        grouped_works = list(work_groups(card).items())
+        for work_id, group in grouped_works:
             targets = []
             if status in {"NON_LATERALIZING", "NON_LOCALIZING"}:
                 targets = [nonassociation_target(axis)]
@@ -2065,8 +2071,8 @@ def build_weighted_evidence(cards):
                             targets.append(target)
                 if not targets:
                     targets = family_targets_for_work(card, axis, work_id)
-                if not targets and len(fallback_targets) == 1:
-                    targets = fallback_targets
+                if not targets and (len(fallback_targets) == 1 or len(grouped_works) == 1):
+                    targets = list(fallback_targets)
             if not targets:
                 continue
             weight, standard_multiplier, size_multiplier, denominator = work_weight(card, axis, work_id, group)
@@ -2263,16 +2269,35 @@ def build_weighted_evidence(cards):
         groups = source_groups(card)
         summary = public_value(card.get("plain_summary"), "Reviewed evidence summary available below.")
         nonassociation_only = all(target["key"] == "nonassoc" for target in analysis["targets"])
+        directional_targets = [target for target in analysis["targets"] if target["key"] != "nonassoc"]
+        tied_lead = bool(directional_targets) and sum(
+            math.isclose(target["share"], directional_targets[0]["share"], abs_tol=0.0001)
+            for target in directional_targets
+        ) > 1
+        if axis == "LOCALIZATION":
+            if not directional_targets:
+                group_region = "No localization stated"
+            elif tied_lead:
+                group_region = "Multiregional/Propagation"
+            else:
+                group_region = directional_targets[0]["label"]
+        else:
+            group_region = ""
         chips, segments = [], []
         for index, target in enumerate(analysis["targets"]):
             is_nonassoc = target["key"] == "nonassoc"
-            prefix = ("" if nonassociation_only else "Also reported: ") if is_nonassoc else ("Predominant: " if index == 0 else "Also reported: ")
+            if is_nonassoc:
+                prefix = "" if nonassociation_only else "Also reported: "
+            elif tied_lead:
+                prefix = "Reported: "
+            else:
+                prefix = "Predominant: " if index == 0 else "Also reported: "
             chip_class = "lr-nonassoc" if is_nonassoc else ("lr-primary" if index == 0 else "lr-secondary")
             percent = share_text(target["share"])
             color = target_color(axis, target)
             chip_value = "" if nonassociation_only else f" <b>{percent}%</b>"
             chips.append(
-                f'<span class="lr-direction {chip_class}" style="color:{color};border-color:{color}">{esc(prefix + target["label"])}{chip_value}</span>'
+                f'<span class="lr-direction {chip_class}" style="--target-color:{color};color:{color};border-color:{color}">{esc(prefix + target["label"])}{chip_value}</span>'
             )
             segments.append(
                 f'<span class="{chip_class}" style="width:{target["share"]:.4f}%;background:{color};opacity:{1 if index == 0 else .56}" '
@@ -2327,6 +2352,7 @@ def build_weighted_evidence(cards):
         ]).casefold()
         return (
             f'<details class="lr-row" data-sign-id="{esc(sign_id)}" data-bucket="{bucket_of(card)}" data-name="{esc(label.casefold())}" '
+            f'data-group-region="{esc(group_region)}" '
             f'data-weight="{analysis["total_weight"]:.6f}" data-reliability="{reliability:.6f}" data-cert="{support_points}" data-manuscripts="{manuscripts}" '
             f'data-findings="{findings}" data-statistics="{statistics}" data-order="{order}" '
             f'data-search="{esc(search_text)}">'
@@ -3388,11 +3414,11 @@ body.quiz .lib-chip{display:none}
 .lr-visible-count{padding:2px 16px 8px;color:#788396;font-size:.7rem;font-style:italic}
 .lr-list{border-top:1px solid var(--line2)}
 .lr-page-group{border-bottom:1px solid #d9e2eb;background:#fff}
-.lr-page-group>summary{list-style:none;display:flex;align-items:center;gap:8px;padding:8px 13px;background:#edf3f7;color:#173a54;border-left:4px solid var(--group-color,#0e9db0);cursor:pointer;font-size:.75rem;font-weight:850;text-transform:uppercase;letter-spacing:.035em}
+.lr-page-group>summary{list-style:none;display:flex;align-items:center;gap:8px;padding:8px 13px;background:color-mix(in srgb,var(--group-color,#0e9db0) 11%,#fff);color:color-mix(in srgb,var(--group-color,#0e9db0) 88%,#10283a);border-left:4px solid var(--group-color,#0e9db0);cursor:pointer;font-size:.75rem;font-weight:850;text-transform:uppercase;letter-spacing:.035em}
 .lr-page-group>summary::-webkit-details-marker{display:none}
 .lr-page-group>summary::before{content:'›';font-size:1rem;color:var(--group-color,#0e9db0);transition:transform .15s}
 .lr-page-group[open]>summary::before{transform:rotate(90deg)}
-.lr-page-group-count{margin-left:auto;background:#dce7ef;color:#526579;border-radius:11px;padding:1px 7px;font-size:.64rem;letter-spacing:0}
+.lr-page-group-count{margin-left:auto;background:color-mix(in srgb,var(--group-color,#0e9db0) 18%,#fff);color:color-mix(in srgb,var(--group-color,#0e9db0) 82%,#26384a);border-radius:11px;padding:1px 7px;font-size:.64rem;letter-spacing:0}
 .lr-page-subgroup-title{margin:0;padding:6px 14px 5px 34px;background:#f7f9fb;border-top:1px solid #e2e8ef;border-bottom:1px solid #e8edf2;color:#56667a;font-size:.66rem;font-weight:800;text-transform:uppercase;letter-spacing:.03em}
 .lr-neutral-note{color:#626e7e;font-style:italic}
 .lr-row{border-bottom:1px solid var(--line2)}
@@ -3406,7 +3432,7 @@ body.quiz .lib-chip{display:none}
 .lr-directions{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
 .lr-direction{display:inline-flex;border:1px solid currentColor;border-radius:12px;padding:2px 7px;font-size:.6rem;font-weight:800;white-space:nowrap}
 .lr-direction b{margin-left:4px;font-variant-numeric:tabular-nums}
-.lr-primary{color:#123a52;background:#edf4f8}.lr-secondary{color:#0b7180;background:#eff9fa}
+.lr-primary{color:#123a52;background:color-mix(in srgb,var(--target-color,#123a52) 13%,#fff)}.lr-secondary{color:#0b7180;background:color-mix(in srgb,var(--target-color,#0b7180) 9%,#fff)}
 .lr-nonassoc{color:#5d6878;background:#f5f6f8}
 .lr-contra{color:#b9362a;background:#fff4f2}.lr-ipsi{color:#246b9b;background:#f0f7fc}
 .lr-dominant{color:#8240a3;background:#faf3fd}.lr-nondominant{color:#167546;background:#eff9f3}
@@ -3416,7 +3442,7 @@ body.quiz .lib-chip{display:none}
 .lr-no-directional{grid-template-columns:minmax(112px,1fr) auto;color:#667284}
 .lr-no-directional-label{font-size:.68rem;font-weight:800;white-space:nowrap}
 .lr-rel-track{position:relative;height:8px;border-radius:999px;background:linear-gradient(to right,transparent 49.5%,#cbd4df 49.5%,#cbd4df 50.5%,transparent 50.5%),linear-gradient(to right,transparent 74.5%,#d7dee7 74.5%,#d7dee7 75.5%,transparent 75.5%),#e7ecf2}
-.lr-rel-fill{position:absolute;inset:0 auto 0 0;width:var(--rel-position);border-radius:999px;background:var(--rel-color);opacity:.28}
+.lr-rel-fill{position:absolute;inset:0 auto 0 0;width:var(--rel-position);border-radius:999px;background:var(--rel-color);opacity:.58}
 .lr-rel-dot{position:absolute;left:var(--rel-position);top:50%;width:9px;height:9px;border-radius:50%;transform:translate(-50%,-50%);background:var(--rel-color);border:1.5px solid #fff;box-shadow:0 0 0 1px color-mix(in srgb,var(--rel-color) 40%,transparent)}
 .lr-rel-value{min-width:38px;color:var(--rel-color);font-size:.75rem;text-align:right;font-variant-numeric:tabular-nums}
 .lr-evidence-counts{font-size:.64rem;color:#687589;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
@@ -4896,7 +4922,12 @@ function bindLedgerReliability(wrap){
   const count=wrap.querySelector('.lr-visible-count');
   const filters=Array.from(wrap.querySelectorAll('.lr-filter'));
   const rows=Array.from(wrap.querySelectorAll('.lr-row'));
-  const rowsBySign=new Map(rows.filter(row=>row.dataset.signId).map(row=>[String(row.dataset.signId),row]));
+  const rowsBySign=new Map();
+  rows.filter(row=>row.dataset.signId).forEach(row=>{
+    const key=String(row.dataset.signId);
+    if(!rowsBySign.has(key)) rowsBySign.set(key,[]);
+    rowsBySign.get(key).push(row);
+  });
   const unreported=Array.from(wrap.querySelectorAll('.lr-unreported-sign'));
   const unreportedCount=wrap.querySelector('.lr-unreported-count');
   let active='all';
@@ -4929,10 +4960,12 @@ function bindLedgerReliability(wrap){
   }
   function pageGroups(){
     const regional=browseMode?.value==='region';
+    const localizationRegion=regional&&wrap.dataset.axis==='LOCALIZATION';
     const container=regional?regionBrowseSections:browseSections;
     const sectionSelector=regional?':scope > .region-section':':scope > .browse-section';
     const seen=new Set(),groups=[];
-    Array.from(container?.querySelectorAll(sectionSelector)||[]).forEach(section=>{
+    const pageSections=Array.from(container?.querySelectorAll(sectionSelector)||[]);
+    pageSections.forEach(section=>{
       const label=regional
         ? String(section.dataset.region||'Region')
         : (section.querySelector(':scope > .browse-toggle .browse-name')?.textContent?.trim()||'Other signs');
@@ -4941,20 +4974,45 @@ function bindLedgerReliability(wrap){
         : '#0e9db0';
       const subgroupMap=new Map();
       section.querySelectorAll('.browse-sign').forEach(item=>{
-        const row=rowsBySign.get(String(item.dataset.id||''));
-        if(!row||seen.has(row)) return;
-        seen.add(row);
-        let subgroup='';
-        if(regional){
-          const category=item.closest('.region-category');
-          if(category&&section.contains(category)) subgroup=category.querySelector(':scope > .browse-subtoggle .browse-name')?.textContent?.trim()||'';
-        }
-        if(!subgroupMap.has(subgroup)) subgroupMap.set(subgroup,[]);
-        subgroupMap.get(subgroup).push(row);
+        const signRows=rowsBySign.get(String(item.dataset.id||''))||[];
+        signRows.forEach(row=>{
+          if(seen.has(row)||(localizationRegion&&row.dataset.groupRegion!==label)) return;
+          seen.add(row);
+          let subgroup='';
+          if(regional){
+            const category=item.closest('.region-category');
+            if(category&&section.contains(category)) subgroup=category.querySelector(':scope > .browse-subtoggle .browse-name')?.textContent?.trim()||'';
+          }
+          if(!subgroupMap.has(subgroup)) subgroupMap.set(subgroup,[]);
+          subgroupMap.get(subgroup).push(row);
+        });
       });
+      if(localizationRegion){
+        rows.forEach(row=>{
+          if(seen.has(row)||row.dataset.groupRegion!==label) return;
+          seen.add(row);
+          if(!subgroupMap.has('')) subgroupMap.set('',[]);
+          subgroupMap.get('').push(row);
+        });
+      }
       const subgroups=Array.from(subgroupMap,([label,groupRows])=>({label,rows:groupRows}));
       if(subgroups.length) groups.push({label,color,subgroups});
     });
+    if(localizationRegion){
+      rows.filter(row=>!seen.has(row)).forEach(row=>{
+        const placements=pageSections.filter(section=>
+          Array.from(section.querySelectorAll('.browse-sign')).some(item=>String(item.dataset.id||'')===String(row.dataset.signId||''))
+        );
+        if(placements.length!==1) return;
+        const section=placements[0],label=String(section.dataset.region||'Region');
+        const color=section.querySelector(':scope > .region-toggle')?.style.getPropertyValue('--rc')||'#0e9db0';
+        let group=groups.find(item=>item.label===label);
+        if(!group){ group={label,color,subgroups:[]}; groups.push(group); }
+        let subgroup=group.subgroups.find(item=>!item.label);
+        if(!subgroup){ subgroup={label:'',rows:[]}; group.subgroups.push(subgroup); }
+        subgroup.rows.push(row);seen.add(row);
+      });
+    }
     const remaining=rows.filter(row=>!seen.has(row)).sort((a,b)=>a.dataset.name.localeCompare(b.dataset.name));
     if(remaining.length) groups.push({label:'Other evidence-bearing signs',color:'#7b8798',subgroups:[{label:'',rows:remaining}]});
     return groups;
@@ -4962,7 +5020,6 @@ function bindLedgerReliability(wrap){
   function renderPageGroups(query){
     const openKeys=new Set(Array.from(list.querySelectorAll('.lr-page-group[open]')).map(group=>group.dataset.key));
     list.replaceChildren();
-    let opened=false;
     pageGroups().forEach((group,index)=>{
       const details=document.createElement('details');
       details.className='lr-page-group';details.dataset.key=group.label;
@@ -4984,8 +5041,7 @@ function bindLedgerReliability(wrap){
         section.hidden=subgroupVisible===0;groupVisible+=subgroupVisible;body.append(section);
       });
       badge.textContent=groupVisible.toLocaleString();details.hidden=groupVisible===0;
-      details.open=groupVisible>0&&(query?true:(openKeys.size?openKeys.has(group.label):!opened));
-      if(details.open) opened=true;
+      details.open=groupVisible>0&&(query?true:openKeys.has(group.label));
       details.append(summary,body);list.append(details);
     });
   }
