@@ -58,6 +58,16 @@ class CompactRendererTest(unittest.TestCase):
         }
         self.assertEqual(expected, actual)
 
+    def test_brodmann_editor_can_hide_a_label_without_removing_anatomy(self):
+        medial = re.search(
+            r'<svg[^>]*data-view="medial"[^>]*>(.*?)</svg>',
+            self.render["brain_fold"],
+            re.DOTALL,
+        ).group(1)
+        self.assertNotIn('data-tile="48"', medial)
+        self.assertIn("48", self.render["BA"].AREAS)
+        self.assertIn("medial", self.render["BA"].views_with("48"))
+
     def test_nonidentical_leaf_classification_term_remains_a_visible_family(self):
         groups = self.render["classification_trees"]["LUDERS_5D_2005"]["groups"]
         leaf_terms = {

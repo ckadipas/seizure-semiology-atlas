@@ -207,7 +207,7 @@ else:
             # what is drawn, what is highlighted and what is clicked. The traced
             # outlines are still in the file but nothing renders them, so they are
             # not required of a newly added area.
-            if not a.get("label"):
+            if "label" not in a:
                 err(f"brodmann_map: view {view!r} area {a['id']!r} has no numeral position, "
                     f"so it would be drawn with nothing to click")
 
