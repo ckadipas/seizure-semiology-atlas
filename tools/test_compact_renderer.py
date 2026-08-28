@@ -26,8 +26,8 @@ def weighted_axis_panel(html, axis):
 def weighted_rows(panel):
     rows = {}
     pattern = re.compile(
-        r'<details class="lr-row"(?P<attrs>[^>]*)>.*?'
-        r'<span class="lr-name">(?P<name>[^<]+)</span>'
+        r'<details class="lr-row"(?P<attrs>[^>]*)>\s*<summary class="lr-row-head">'
+        r'<span class="lr-name">(?P<name>[^<]+)(?:<small>.*?</small>)?</span>'
         r'(?P<summary>.*?)</summary>',
         re.DOTALL,
     )
@@ -229,14 +229,21 @@ class CompactRendererTest(unittest.TestCase):
     def test_weighted_localization_rows_carry_their_evidence_region(self):
         rows = weighted_rows(weighted_axis_panel(self.render["h"], "LOCALIZATION"))
         self.assertIn('data-group-region="Temporal"', rows["Fear aura"][0]["attrs"])
-        for row in rows["Formed visual hallucination"]:
-            self.assertIn('data-group-region="Occipital"', row["attrs"])
+        self.assertIn(
+            'data-group-region="Temporal"',
+            rows["Formed visual hallucination"][0]["attrs"],
+        )
+        self.assertIn(
+            "Reported: Occipital",
+            rows["Formed semantic visual hallucinations"][0]["summary"],
+        )
 
-    def test_singular_relationship_targets_are_weighted_not_omitted(self):
+    def test_single_source_targets_are_weighted_without_claiming_predominance(self):
         panel = weighted_axis_panel(self.render["h"], "LOCALIZATION")
         rows = weighted_rows(panel)
         self.assertIn("Prosopagnosia", rows)
-        self.assertIn("Predominant: Occipital", rows["Prosopagnosia"][0]["summary"])
+        self.assertIn("Reported: Occipital", rows["Prosopagnosia"][0]["summary"])
+        self.assertNotIn("Predominant:", rows["Prosopagnosia"][0]["summary"])
         self.assertIn("Seizure-associated aphasia", rows)
         self.assertIn("Temporal", rows["Seizure-associated aphasia"][0]["summary"])
 
