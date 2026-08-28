@@ -1,3 +1,12 @@
+#!/usr/bin/env python3
+"""Render the redacted atlas bundle as a dependency-free static website.
+
+Input: data/atlas_bundle.json, presentation-only Brodmann coordinates, and local
+image assets. Output: docs/ and its deferred HTML fragments. The generator
+performs no network access and does not read the private SQLite ledger;
+scientific values must already be present in the validated public bundle.
+"""
+
 import hashlib, json, re, os, shutil, sys
 def _find_root(start):
     d = os.path.dirname(os.path.abspath(start))
