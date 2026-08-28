@@ -1,4 +1,4 @@
-import hashlib, json, math, re, os, shutil, sys
+import hashlib, json, re, os, shutil, sys
 def _find_root(start):
     d = os.path.dirname(os.path.abspath(start))
     while True:
@@ -8,7 +8,7 @@ def _find_root(start):
         d = p
 ROOT = _find_root(__file__)
 DOCS = os.path.join(ROOT, "docs"); os.makedirs(DOCS, exist_ok=True)
-from collections import OrderedDict
+from collections import Counter, OrderedDict
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import brain_atlas as BA
 
@@ -31,12 +31,13 @@ ROLE_LABEL = {
 EVIDENCE_INDEX = {}
 META = ATLAS.get("weighted_analysis") or None
 EVIDENCE_SYNTHESIS = ATLAS.get("evidence_synthesis") or {}
-SYNTHESIS_CARDS = EVIDENCE_SYNTHESIS.get("axis_summaries") or []
-FINDING_AXES = EVIDENCE_SYNTHESIS.get("finding_axes") or []
-FINDING_AXIS_BY_REF = {
-    (str(row.get("finding_ref") or ""), str(row.get("axis") or "").upper()): row
-    for row in FINDING_AXES
+EVIDENCE_AUTHORITY = ATLAS.get("evidence_authority") or {}
+WORK_AUTHORITY_BY_ID = {
+    str(row.get("work_id") or ""): row
+    for row in EVIDENCE_AUTHORITY.get("profiles") or []
+    if row.get("work_id")
 }
+SYNTHESIS_CARDS = EVIDENCE_SYNTHESIS.get("axis_summaries") or []
 SYNTHESIS_CARD_BY_ID = {row["synthesis_id"]: row for row in SYNTHESIS_CARDS}
 SYNTHESIS_CARDS_BY_SIGN = {
     str(sign_id): [SYNTHESIS_CARD_BY_ID[item_id] for item_id in item_ids]
@@ -975,13 +976,22 @@ def concise_axis_sentence(card):
             value = re.sub(r'\b(?:relationship|localization)\b', '', match.group(1), flags=re.I).strip(' .')
             return f"Predominantly {value}."
     if status == "NON_LATERALIZING":
-        return "No reliable hemispheric lateralization."
+        targets = relationship_targets(card)
+        return "No single reliable side." if any(value != "nonassoc" for value in targets) else "No reliable hemispheric lateralization."
     if status == "NON_LOCALIZING":
-        return "No reliable anatomical localization."
+        targets = relationship_targets(card)
+        return "Not specific to one region." if any(value != "nonassoc" for value in targets) else "No reliable anatomical localization."
     return text.replace("The embedded evidence ", "The reviewed evidence ")
 
 
 def relationship_targets(card):
+    contract = (card or {}).get("target_contract")
+    exported = (contract or {}).get("reported_targets") or []
+    if contract is not None:
+        return list(OrderedDict.fromkeys(
+            str(item.get("key") or item.get("raw") or "").strip()
+            for item in exported if str(item.get("key") or item.get("raw") or "").strip()
+        ))
     values = []
     for relation in (card or {}).get("primary_relationships") or []:
         raw_targets = relation.get("targets")
@@ -1034,9 +1044,9 @@ def axis_synthesis(sign_id, axis):
     return max(
         candidates,
         key=lambda card: (
-            len(card.get("supporting_finding_refs") or []),
-            len(card.get("supporting_statistic_ids") or []),
-            int(card.get("source_document_count") or 0),
+            len(card.get("row_finding_refs") or []),
+            len(card.get("row_statistic_ids") or []),
+            len(card.get("row_work_ids") or []),
             str(card.get("synthesis_id") or ""),
         ),
     )
@@ -1118,13 +1128,13 @@ def localization_display(d):
 
 def compact_evidence_overview(d):
     cards = SYNTHESIS_CARDS_BY_SIGN.get(str(d["id"]), [])
-    sources = set()
+    works = set()
     findings = set()
     statistics = set()
     for card in cards:
-        sources.update(card.get("source_files") or [])
-        findings.update(card.get("supporting_finding_refs") or [])
-        statistics.update(card.get("supporting_statistic_ids") or [])
+        works.update(card.get("row_work_ids") or [])
+        findings.update(card.get("row_finding_refs") or [])
+        statistics.update(card.get("row_statistic_ids") or [])
     raw_summary = limited_sentences(d.get("evidence_summary"), 2)
     summary = raw_summary
     if d.get("support_items") and raw_summary:
@@ -1141,8 +1151,8 @@ def compact_evidence_overview(d):
     if not summary:
         summary = limited_sentences(d.get("notes"), 2)
     count_items = [
-        (len(sources), "paper"),
-        (len(findings), "finding"),
+        (len(works), "canonical work"),
+        (len(findings), "linked finding"),
         (len(statistics), "reported result"),
     ]
     counts = "".join(
@@ -1361,7 +1371,8 @@ def build_lateral(rows):
     # vertical gridlines 0..100
     for t in [0,25,50,75,100]:
         x=X(t)
-        s.append(f'<line x1="{x:.1f}" y1="{padT-4}" x2="{x:.1f}" y2="{H-padB}" stroke="#e7ebf2" stroke-width="1" {"" if t==0 else "stroke-dasharray=\"3 3\""}/>')
+        dash = "" if t == 0 else 'stroke-dasharray="3 3"'
+        s.append(f'<line x1="{x:.1f}" y1="{padT-4}" x2="{x:.1f}" y2="{H-padB}" stroke="#e7ebf2" stroke-width="1" {dash}/>')
         s.append(f'<text x="{x:.1f}" y="{padT-8}" font-size="9" fill="#9aa3b2" text-anchor="middle">{t}%</text>')
     y=padT
     for dc,dname in dirs:
@@ -1811,10 +1822,9 @@ evidence_library_html = defer_details_body(build_evidence_library(CORPUS), "evid
 
 
 # ---------- Evidence-weighted lateralization and localization ----------
-# Every eligible card is derived from the current ledger. One canonical work
-# contributes once per sign/axis, and a work's weight is divided across multiple
-# reported targets so a manuscript cannot inflate itself by listing more places
-# or directions. Source-specific numeric estimates remain unpooled.
+# Every eligible card consumes the exporter-owned exact-row contract. One
+# canonical work contributes once per sign/axis; linkage-only targets never
+# alter its weight. Source-specific numeric estimates remain unpooled.
 def build_weighted_evidence(cards):
     axis_config = {
         "LATERALIZATION": {
@@ -1827,12 +1837,6 @@ def build_weighted_evidence(cards):
             "nonassoc": "Does not localize", "missing": "No localization relationship reported",
             "placeholder": "Search semiology, region, summary, or manuscript…",
         },
-    }
-    reference_weight = {
-        "SEEG": 1.50, "STEREO_EEG": 1.50, "SURGICAL_OUTCOME": 1.50,
-        "INTRACRANIAL_EEG": 1.35, "ECOG": 1.35, "VIDEO_EEG": 1.20,
-        "IMAGING": 1.15, "LESION_LOCATION": 1.15, "ICTAL_EEG": 1.10,
-        "CLINICAL_SEMIOLOGY": 1.00, "NOT_REPORTED": 1.00,
     }
     location_labels = {
         "REG:TEMPORAL": "Temporal", "REG:FRONTAL": "Frontal",
@@ -1854,6 +1858,9 @@ def build_weighted_evidence(cards):
 
     def unique_strings(values):
         return list(OrderedDict.fromkeys(str(value) for value in values or [] if str(value or "").strip()))
+
+    def card_finding_refs(card):
+        return unique_strings(card.get("row_finding_refs"))
 
     def display_sign_label(value):
         return re.sub(r"^Focal\s+", "", public_value(value, "Unnamed semiology"), flags=re.IGNORECASE)
@@ -1909,6 +1916,8 @@ def build_weighted_evidence(cards):
         token = raw.upper().replace("-", "_").replace(" ", "_")
         if token in location_labels:
             return (token, location_labels[token])
+        if token.startswith("BA:") and token[3:].isdigit():
+            return (token, f"Brodmann area {token[3:]}")
         if raw.startswith("REG:"):
             return (raw, readable_term(raw[4:]).title())
         return None
@@ -1916,217 +1925,82 @@ def build_weighted_evidence(cards):
     def target_from_value(axis, value):
         return lateral_target(value) if axis == "LATERALIZATION" else localization_target(value)
 
-    def nonassociation_target(axis):
-        return ("nonassoc", axis_config[axis]["nonassoc"])
-
-    def card_targets(card, axis):
-        status = status_of(card)
-        if status in {"NON_LATERALIZING", "NON_LOCALIZING"}:
-            return [nonassociation_target(axis)]
-        targets = []
-        for relationship in card.get("primary_relationships") or []:
-            dispositions = [str(value).upper() for value in relationship.get("evidence_dispositions") or []]
-            if dispositions and "SUPPORTED_EVIDENCE" not in dispositions:
-                continue
-            values = relationship.get("targets")
-            if values is None:
-                values = [relationship.get("target")]
-            elif not isinstance(values, (list, tuple, set)):
-                values = [values]
-            for value in values:
-                if isinstance(value, dict):
-                    value = value.get("label") or value.get("name") or value.get("target")
-                target = target_from_value(axis, value)
-                if target and target not in targets:
-                    targets.append(target)
-        return targets
-
-    def axis_targets_for_finding(finding_ref, axis):
-        row = FINDING_AXIS_BY_REF.get((finding_ref, axis)) or {}
-        if str(row.get("disposition") or "").upper() != "SUPPORTED_EVIDENCE":
-            return []
-        values = (
-            row.get("normalized_values") or []
-            if axis == "LATERALIZATION"
-            else row.get("region_ids") or []
-        )
-        targets = []
-        for value in values:
-            target = target_from_value(axis, value)
-            if target and target not in targets:
-                targets.append(target)
-        return targets
-
-    def family_targets_for_work(card, axis, work_id):
-        targets = []
-        sign_id = str(card.get("sign_id") or "")
-        for family in DESCRIPTIVE_FAMILIES_BY_SIGN.get(sign_id, []):
-            if str(family.get("axis") or "").upper() != axis:
-                continue
-            if work_id not in [str(value) for value in family.get("source_work_ids") or []]:
-                continue
-            axis_targets = family.get("axis_targets") or {}
-            if isinstance(axis_targets, dict):
-                values = (
-                    axis_targets.get("normalized_values") or []
-                    if axis == "LATERALIZATION"
-                    else axis_targets.get("region_ids") or []
-                )
-                values = values or axis_targets.get("source_native_targets") or []
-            else:
-                values = axis_targets
-            for value in flatten_values(values):
-                target = target_from_value(axis, value)
-                if target and target not in targets:
-                    targets.append(target)
-        return targets
-
     def source_groups(card):
         groups = OrderedDict()
 
         def group_for(source):
             source_file = public_value(source.get("source_file"), "Source file not named")
-            return groups.setdefault(source_file, {"source": source, "findings": OrderedDict(), "statistics": OrderedDict()})
+            key = public_value(source.get("work_id")) or public_value(source.get("source_sha256")) or source_file
+            group = groups.setdefault(key, {
+                "source": source, "source_files": OrderedDict(),
+                "findings": OrderedDict(), "statistics": OrderedDict(),
+            })
+            group["source_files"][source_file] = None
+            return group
 
-        for finding_ref in unique_strings(card.get("supporting_finding_refs")):
+        for finding_ref in card_finding_refs(card):
             context = ledger_by_ref.get(finding_ref) or {}
             source, finding = context.get("source") or {}, context.get("finding") or {}
             if source or finding:
                 group_for(source)["findings"][finding_ref] = finding
-        for statistic_id in unique_strings(card.get("supporting_statistic_ids")):
+        for statistic_id in unique_strings(card.get("row_statistic_ids")):
             context = STATISTIC_CONTEXT_BY_ID.get(statistic_id) or {}
             source, finding, statistic = context.get("source") or {}, context.get("finding") or {}, context.get("statistic") or {}
             if source or statistic:
                 group_for(source)["statistics"][statistic_id] = (finding, statistic)
+        for contribution in card.get("contributions") or []:
+            work_id = str(contribution.get("work_id") or "")
+            if work_id and work_id not in groups:
+                groups[work_id] = {
+                    "source": {"work_id": work_id},
+                    "source_files": OrderedDict(
+                        (value, None) for value in contribution.get("source_files") or []
+                    ),
+                    "findings": OrderedDict(),
+                    "statistics": OrderedDict(),
+                }
         return groups
 
-    def work_groups(card):
-        groups = OrderedDict()
-
-        def group_for(source):
-            key = public_value(source.get("work_id")) or public_value(source.get("source_sha256")) or public_value(source.get("source_file"))
-            return groups.setdefault(key, {"source": source, "finding_refs": OrderedDict(), "statistics": OrderedDict()})
-
-        for finding_ref in unique_strings(card.get("supporting_finding_refs")):
-            context = ledger_by_ref.get(finding_ref) or {}
-            source, finding = context.get("source") or {}, context.get("finding") or {}
-            if source or finding:
-                group_for(source)["finding_refs"][finding_ref] = finding
-        for statistic_id in unique_strings(card.get("supporting_statistic_ids")):
-            context = STATISTIC_CONTEXT_BY_ID.get(statistic_id) or {}
-            source, finding, statistic = context.get("source") or {}, context.get("finding") or {}, context.get("statistic") or {}
-            if source or statistic:
-                group_for(source)["statistics"][statistic_id] = (finding, statistic)
-        return groups
-
-    def exact_denominator(statistic):
-        for key in ("denominator_numeric", "denominator"):
-            value = statistic.get(key)
-            if value is None:
-                continue
-            try:
-                number = float(str(value).replace(",", "").strip())
-                if number > 0:
-                    return number
-            except (TypeError, ValueError):
-                continue
-        return None
-
-    def work_weight(card, axis, work_id, group):
-        standards = []
-        for family in DESCRIPTIVE_FAMILIES_BY_SIGN.get(str(card.get("sign_id") or ""), []):
-            if str(family.get("axis") or "").upper() != axis:
-                continue
-            if work_id not in [str(value) for value in family.get("source_work_ids") or []]:
-                continue
-            standards.extend(flatten_values(family.get("reference_standard")))
-        normalized_standards = [
-            str(value).upper().replace("-", "_").replace(" ", "_")
-            for value in standards if str(value or "").strip()
+    def resolved_card_targets(card, axis):
+        return [
+            dict(item)
+            for item in ((card.get("target_contract") or {}).get("reported_targets") or [])
+            if item.get("key") and item.get("label")
         ]
-        standard_multiplier = max(
-            [reference_weight.get(value, 1.0) for value in normalized_standards] or [1.0]
-        )
-        denominators = [
-            exact_denominator(statistic) for _finding, statistic in group["statistics"].values()
-        ]
-        denominators = [value for value in denominators if value is not None]
-        denominator = max(denominators) if denominators else None
-        size_multiplier = min(2.0, 1.0 + math.log10(denominator) / 2.0) if denominator else 1.0
-        return standard_multiplier * size_multiplier, standard_multiplier, size_multiplier, denominator
 
-    def weighted_distribution(card, axis):
-        status = status_of(card)
-        fallback_targets = card_targets(card, axis)
-        totals, works_by_target, contributions = OrderedDict(), {}, []
-        grouped_works = list(work_groups(card).items())
-        for work_id, group in grouped_works:
-            targets = []
-            if status in {"NON_LATERALIZING", "NON_LOCALIZING"}:
-                targets = [nonassociation_target(axis)]
-            else:
-                for finding_ref in group["finding_refs"]:
-                    for target in axis_targets_for_finding(finding_ref, axis):
-                        if target not in targets:
-                            targets.append(target)
-                if not targets:
-                    targets = family_targets_for_work(card, axis, work_id)
-                if not targets and (len(fallback_targets) == 1 or len(grouped_works) == 1):
-                    targets = list(fallback_targets)
-            if not targets:
-                continue
-            weight, standard_multiplier, size_multiplier, denominator = work_weight(card, axis, work_id, group)
-            divided_weight = weight / len(targets)
-            for key, label in targets:
-                totals.setdefault(key, {"key": key, "label": label, "weight": 0.0, "first": len(totals)})
-                totals[key]["weight"] += divided_weight
-                works_by_target.setdefault(key, set()).add(work_id)
-            contributions.append({
-                "work_id": work_id, "weight": weight, "targets": targets,
-                "standard_multiplier": standard_multiplier, "size_multiplier": size_multiplier,
-                "denominator": denominator,
-            })
-        total_weight = sum(item["weight"] for item in totals.values())
-        if not total_weight:
-            return {"targets": [], "total_weight": 0.0, "work_count": 0, "contributions": []}
-        preferred_order = {target[0]: index for index, target in enumerate(fallback_targets)}
-        targets = sorted(
-            totals.values(),
-            key=lambda item: (
-                item["key"] == "nonassoc",
-                -item["weight"],
-                preferred_order.get(item["key"], 10**6),
-                item["first"],
-            ),
-        )
-        for item in targets:
-            item["share"] = item["weight"] / total_weight * 100.0
-            item["work_count"] = len(works_by_target.get(item["key"], set()))
+    def evidence_support(card, axis):
+        """Consume exporter-finalized contribution weights without recalculation."""
+        contributions = list(card.get("contributions") or [])
+        authority_counts = OrderedDict()
+        for contribution in contributions:
+            category = public_value(
+                contribution.get("authority_category"), "Structured design not resolved"
+            )
+            authority_counts[category] = authority_counts.get(category, 0) + 1
         return {
-            "targets": targets, "total_weight": total_weight,
-            "work_count": len(contributions), "contributions": contributions,
+            "total_weight": sum(float(item.get("final_weight") or 0.0) for item in contributions),
+            "work_count": len(contributions),
+            "contributions": contributions,
+            "authority_counts": authority_counts,
+            "pending_weight_count": sum(
+                float(item.get("final_weight") or 0.0) == 0.0 for item in contributions
+            ),
         }
 
-    def source_manuscript_label(source_file, group):
-        findings = list(group["findings"].values())
-        statistics = list(group["statistics"].values())
-        citation = next((public_value(row.get("citation")) for row in findings if public_value(row.get("citation"))), "")
-        if not citation:
-            citation = next((public_value(stat.get("citation")) for _finding, stat in statistics if public_value(stat.get("citation"))), "")
-        citation_text = re.sub(r"^\s*(?:REF(?:ERENCE)?S?\s*)?(?:\[[^\]]+\]\s*)+", "", citation, flags=re.IGNORECASE)
-        return citation if re.search(r"[A-Za-z]", citation_text) else source_file
+    def source_manuscript_label(work_id, contribution):
+        profile = WORK_AUTHORITY_BY_ID.get(str(work_id)) or {}
+        return public_value(
+            contribution.get("display_name") or profile.get("display_name"), work_id
+        )
 
-    def source_manuscript_sort_key(source_file, group):
-        label = source_manuscript_label(source_file, group)
-        label = re.sub(r"^\s*(?:REF(?:ERENCE)?S?\s*)?(?:\[[^\]]+\]\s*)+", "", label, flags=re.IGNORECASE)
-        label = re.sub(r"^\s*References?\s+[0-9,\sand\-–—]+:\s*", "", label, flags=re.IGNORECASE)
-        return label.casefold()
+    def source_manuscript_sort_key(work_id, contribution):
+        return source_manuscript_label(work_id, contribution).casefold()
 
-    def source_block(source_file, group):
+    def source_block(work_id, group, contribution):
         source = group["source"]
         findings = list(group["findings"].values())
         statistics = list(group["statistics"].values())
-        manuscript = source_manuscript_label(source_file, group)
+        manuscript = source_manuscript_label(work_id, contribution)
         finding_rows = []
         for finding in findings:
             label = public_value(finding.get("source_term"), "Reviewed finding")
@@ -2160,12 +2034,34 @@ def build_weighted_evidence(cards):
         if statistics:
             counts.append(f'{len(statistics)} reported result{"s" if len(statistics) != 1 else ""}')
         source_context = public_value(source.get("source_report_methods_population"))
+        authority_label = public_value(contribution.get("authority_category"))
+        final_weight = float(contribution.get("final_weight") or 0.0)
+        components = contribution.get("weight_components") or {}
+        authority_detail = " · ".join(filter(None, [
+            (
+                "Class pending" if contribution.get("evidence_class") == "UNCLASSIFIED"
+                else f'Class {public_value(contribution.get("evidence_class"))}'
+            ),
+            (
+                f'{final_weight:.2f} weighted units'
+                if final_weight > 0 else "Authority weight pending"
+            ),
+            (
+                f'{float(components.get("class_base") or 0):g} × '
+                f'{float(components.get("directness_multiplier") or 0):g} × '
+                f'{float(components.get("size_factor") or 0):g}'
+            ),
+        ]))
+        source_files = "; ".join(
+            contribution.get("source_files") or group.get("source_files") or [work_id]
+        )
         return (
             '<details class="lr-source"><summary><span>'+esc(manuscript)+'</span>'
-            +f'<span>{esc(" · ".join(counts) or "Linked evidence")}</span></summary>'
-            +f'<div class="lr-source-file">{esc(source_file)}</div>'
+            +f'<span>{esc(" · ".join(filter(None, [authority_label, " · ".join(counts)])) or "Linked evidence")}</span></summary>'
+            +f'<div class="lr-source-file">{esc(source_files)}</div>'
+            +(f'<div class="lr-source-context"><strong>{esc(authority_label)}</strong>{(" · " + esc(authority_detail)) if authority_detail else ""}</div>' if authority_label else '')
             +(f'<div class="lr-source-context">{esc(source_context)}</div>' if source_context else '')
-            +(f'<div class="lr-source-section"><strong>Reviewed findings</strong><ul>{"".join(finding_rows)}</ul></div>' if finding_rows else '')
+            +(f'<div class="lr-source-section"><strong>Linked findings</strong><ul>{"".join(finding_rows)}</ul></div>' if finding_rows else '')
             +(f'<div class="lr-source-section"><strong>Reported study results</strong><ul>{"".join(statistic_rows)}</ul></div>' if statistic_rows else '')
             +'</details>'
         )
@@ -2223,7 +2119,7 @@ def build_weighted_evidence(cards):
                 '<div class="lr-family"><strong>'+esc(title)+'</strong>'
                 +f'<span>{esc(observed)}</span>'
                 +(f'<small>{esc(context)}</small>' if context else '')
-                +f'<small>{work_count} manuscript{"s" if work_count != 1 else ""} · {input_count} reported result{"s" if input_count != 1 else ""} · not pooled</small></div>'
+                +f'<small>{work_count} canonical work{"s" if work_count != 1 else ""} · {input_count} reported result{"s" if input_count != 1 else ""} · not pooled</small></div>'
             )
         return (
             '<details class="lr-families"><summary>Source-defined result groups '
@@ -2234,13 +2130,8 @@ def build_weighted_evidence(cards):
         return f"{value:.1f}".rstrip("0").rstrip(".")
 
     def evidence_support_points(analysis):
-        work_count = analysis["work_count"]
-        total_weight = analysis["total_weight"]
-        if work_count >= 3 or total_weight >= 6:
-            return 3
-        if work_count >= 2 or total_weight >= 3:
-            return 2
-        return 1
+        # Pips are a transparent manuscript-count cue, not a certainty score.
+        return min(3, max(1, int(analysis["work_count"])))
 
     def target_color(axis, target):
         if target["key"] == "nonassoc":
@@ -2252,62 +2143,337 @@ def build_weighted_evidence(cards):
     def bucket_of(card):
         status = status_of(card)
         if status in {"NON_LATERALIZING", "NON_LOCALIZING"}:
-            return "nonassoc"
+            has_association = any(
+                item.get("key") != "nonassoc"
+                for item in ((card.get("target_contract") or {}).get("reported_targets") or [])
+            )
+            return "mixed" if has_association else "nonassoc"
         if status in {"CONTEXT_SUBTYPE_DEPENDENT", "GENUINELY_MIXED"}:
             return "mixed"
         return "association"
 
+    def aggregate_axis_cards(axis):
+        """Render every public sign once per axis; missing release rows stay unsupported."""
+        axis_cards = [
+            dict(card) for card in cards if str(card.get("axis") or "").upper() == axis
+        ]
+        represented_sign_ids = {str(card.get("sign_id") or "") for card in axis_cards}
+        for sign in data:
+            sign_id = str(sign.get("id") or "")
+            if not sign_id or sign_id in represented_sign_ids:
+                continue
+            axis_cards.append({
+                "synthesis_id": f"PUBLIC_SIGN:{sign_id}:{axis}:UNSUPPORTED",
+                "group_id": f"UNLINKED:{sign_id}",
+                "sign_id": sign_id,
+                "axis": axis,
+                "preferred_label": public_value(sign.get("sign"), f"Sign {sign_id}"),
+                "identity_labels": [],
+                "related_context_labels": [],
+                "pattern_status": "NOT_REPORTED",
+                "plain_summary": "No source-level association is recorded for this axis.",
+                "row_finding_refs": [],
+                "row_statistic_ids": [],
+                "row_work_ids": [],
+                "contributions": [],
+                "target_contract": {
+                    "owner_cleared_raw_targets": [],
+                    "identity_group_finding_refs": [],
+                    "exact_group_finding_raw_targets": [],
+                    "additional_linkage_targets": [],
+                    "nonidentity_group_raw_targets": [],
+                    "nonidentity_group_finding_refs": [],
+                    "excluded_relationship_raw_targets": [],
+                    "reported_targets": [],
+                    "unresolved_raw_targets": [],
+                    "finding_wide_only_raw_targets": [],
+                    "true_nonassociation": False,
+                },
+                "categorization_state": "NO_SOURCE_TARGET",
+                "supplemental_projection": False,
+            })
+        return axis_cards
+
+    render_state_aliases = {
+        "EVIDENCE_BEARING_WEIGHTED": "EVIDENCE_BEARING_WEIGHTED",
+        "TARGET_LINKAGE_NEEDED": "RECORDED_TARGET_LINKAGE_NEEDED",
+        "RECORDED_TARGET_LINKAGE_NEEDED": "RECORDED_TARGET_LINKAGE_NEEDED",
+        "NO_SOURCE_TARGET": "NO_SOURCE_ASSOCIATION",
+        "NO_SOURCE_ASSOCIATION": "NO_SOURCE_ASSOCIATION",
+    }
+    render_states = (
+        "EVIDENCE_BEARING_WEIGHTED",
+        "RECORDED_TARGET_LINKAGE_NEEDED",
+        "NO_SOURCE_ASSOCIATION",
+    )
+
+    def render_categorization_state(card):
+        raw_state = str(card.get("categorization_state") or "")
+        if raw_state not in render_state_aliases:
+            raise ValueError(
+                f'Unrecognized categorization_state {raw_state!r} for '
+                f'{card.get("synthesis_id")!r}'
+            )
+        return render_state_aliases[raw_state]
+
+    def card_label_parts(card):
+        """Expose exact source terms while retaining the canonical group identity."""
+        preferred = public_value(card.get("preferred_label"), "Unnamed semiology")
+        identity_labels = unique_strings(card.get("identity_labels"))
+        related_labels = unique_strings(card.get("related_context_labels"))
+        state = render_categorization_state(card)
+        source_label = preferred
+        grouped_under = ""
+        if (
+            state != "EVIDENCE_BEARING_WEIGHTED"
+            and not identity_labels
+            and len(related_labels) == 1
+        ):
+            source_label = related_labels[0]
+            if source_label.casefold() != preferred.casefold():
+                grouped_under = f"Grouped under: {preferred}"
+        displayed = display_sign_label(source_label)
+        aliases = [
+            value for value in identity_labels
+            if value.casefold() not in {source_label.casefold(), preferred.casefold()}
+        ]
+        if grouped_under:
+            note = grouped_under
+        elif aliases:
+            visible = aliases[:3]
+            note = "Source terms: " + "; ".join(visible)
+            if len(aliases) > len(visible):
+                note += f"; +{len(aliases) - len(visible)} more"
+        elif related_labels:
+            visible = related_labels[:3]
+            note = "Source context: " + "; ".join(visible)
+            if len(related_labels) > len(visible):
+                note += f"; +{len(related_labels) - len(visible)} more"
+        else:
+            note = ""
+        return source_label, displayed, note, unique_strings([
+            preferred, *identity_labels, *related_labels,
+        ])
+
+    def plain_scope(value):
+        text = public_value(value)
+        known = {
+            "SIGN_SPECIFIC": "sign-specific",
+            "COHORT_CONTEXT": "cohort context",
+            "COHORT_INCLUSION": "cohort inclusion",
+            "PROPAGATION": "propagation context",
+            "ONSET": "onset context",
+            "SOZ": "seizure-onset-zone context",
+            "EEG_ONSET": "EEG-onset context",
+            "LESION": "lesion context",
+            "CASE_OBSERVATION": "case context",
+            "SIGN_SCOPED_DB_ASSERTION": "sign-scoped database assertion",
+            "SOURCE_STATED": "source-stated",
+            "OWNER_ADJUDICATED": "owner-adjudicated",
+            "CANONICAL_SIGN_MAPPING": "canonical sign mapping",
+            "FINDING_WIDE_ONLY": "finding-wide only",
+            "IDENTITY_GROUP_FINDING_WIDE_ONLY": (
+                "exact-identity group context; not sign-specific"
+            ),
+        }
+        if text in known:
+            return known[text]
+        if re.fullmatch(r"[A-Z0-9_ -]+", text or ""):
+            return readable_term(text).casefold()
+        return text
+
+    def target_label_from_raw(axis, raw):
+        normalized = target_from_value(axis, raw)
+        return normalized[1] if normalized else public_value(raw, "Unresolved target")
+
+    def target_scope_text(item):
+        values = unique_strings([
+            *(item.get("contexts") or []), *(item.get("scopes") or []),
+        ])
+        return ", ".join(plain_scope(value) for value in values if plain_scope(value))
+
+    def target_detail_block(card, axis):
+        contract = card.get("target_contract") or {}
+        rows, seen = [], set()
+        has_directional = any(
+            item.get("key") != "nonassoc"
+            for item in contract.get("reported_targets") or []
+        )
+
+        def retain(label, item, provenance):
+            details = item.get("details") or [item]
+            for detail in details:
+                raw_value = detail.get("raw") or item.get("raw")
+                if isinstance(raw_value, list):
+                    raw_value = raw_value[0] if raw_value else ""
+                raw = public_value(raw_value)
+                target_label = public_value(item.get("label")) or target_label_from_raw(axis, raw)
+                if item.get("key") == "nonassoc" and has_directional:
+                    target_label = (
+                        "No single reliable side"
+                        if axis == "LATERALIZATION"
+                        else "Not specific to one region"
+                    )
+                scope = target_scope_text(detail) or target_scope_text(item)
+                anatomy = " · ".join(filter(None, [
+                    f'Region {target_label_from_raw(axis, detail.get("region_id"))}'
+                    if detail.get("region_id") else "",
+                    f'Brodmann area {detail.get("area_id")}' if detail.get("area_id") else "",
+                    f'location key {detail.get("location_key")}' if detail.get("location_key") else "",
+                ]))
+                assertions = unique_strings([
+                    detail.get("assertion_text"), detail.get("reviewed_assertion_text"),
+                ])
+                key = (label, target_label, scope, anatomy, tuple(assertions), provenance)
+                if key in seen:
+                    continue
+                seen.add(key)
+                rows.append(
+                    f'<li><strong>{esc(label)}: {esc(target_label)}</strong>'
+                    +(f' <span>({esc(scope)})</span>' if scope else '')
+                    +(f'<small>{esc(anatomy)}</small>' if anatomy else '')
+                    +"".join(f'<small>{esc(value)}</small>' for value in assertions)
+                    +(f'<small>{esc(provenance)}</small>' if provenance else '')
+                    +'</li>'
+                )
+
+        for item in contract.get("reported_targets") or []:
+            retain("Reported target", item, "Exact-row or owner-supported; included in this row.")
+        for item in contract.get("additional_linkage_targets") or []:
+            retain("Additional sign-scoped target", item, "Outside exact row lineage; visible but not weighted.")
+        for item in contract.get("nonidentity_group_raw_targets") or []:
+            retain("Related-membership target", item, "Non-identity group linkage; not transferred or weighted.")
+        for item in contract.get("finding_wide_only_raw_targets") or []:
+            retain("Finding-wide target", item, "Exact sign linkage still needed; not weighted.")
+        for item in contract.get("unresolved_raw_targets") or []:
+            retain("Unresolved target", item, "Normalization or exact linkage still needed; not weighted.")
+        for item in contract.get("excluded_relationship_raw_targets") or []:
+            dispositions = ", ".join(plain_scope(value) for value in item.get("dispositions") or [])
+            retain("Provenance only", item, f'{dispositions or "Unsupported/restatement"}; not a reported clinical target.')
+        return (
+            '<details class="lr-exceptions"><summary>Target scope and anatomy '
+            +f'<span>{len(rows)}</span></summary><ul>{"".join(rows)}</ul></details>'
+            if rows else ""
+        )
+
+    def linkage_summary(card, axis, include_reported=True):
+        contract = card.get("target_contract") or {}
+        values = []
+        has_directional = any(
+            item.get("key") != "nonassoc"
+            for item in contract.get("reported_targets") or []
+        )
+        target_items = [*(contract.get("additional_linkage_targets") or [])]
+        if include_reported:
+            target_items = [*(contract.get("reported_targets") or []), *target_items]
+        for item in target_items:
+            label = public_value(item.get("label"), "Recorded target")
+            if item.get("key") == "nonassoc" and has_directional:
+                label = (
+                    "No single reliable side"
+                    if axis == "LATERALIZATION"
+                    else "Not specific to one region"
+                )
+            scope = target_scope_text(item)
+            text = f'{label} — {scope}' if scope else label
+            if text not in values:
+                values.append(text)
+        for field, reason in (
+            ("nonidentity_group_raw_targets", "related membership; exact identity linkage needed"),
+            ("finding_wide_only_raw_targets", "finding-wide; exact sign linkage needed"),
+            ("unresolved_raw_targets", "normalization needed"),
+        ):
+            for item in contract.get(field) or []:
+                label = target_label_from_raw(axis, item.get("raw"))
+                scope = target_scope_text(item)
+                text = " — ".join(filter(None, [label, scope, reason]))
+                if text not in values:
+                    values.append(text)
+        for item in contract.get("excluded_relationship_raw_targets") or []:
+            label = target_label_from_raw(axis, item.get("raw"))
+            scope = target_scope_text(item)
+            dispositions = ", ".join(
+                readable_term(value) for value in item.get("dispositions") or []
+            )
+            reason = (
+                f"{dispositions}; provenance only; not weighted"
+                if dispositions else "provenance only; not weighted"
+            )
+            text = " — ".join(filter(None, [label, scope, reason]))
+            if text not in values:
+                values.append(text)
+        return values
+
     def card_row(card, axis, analysis, order):
-        source_label = public_value(card.get("preferred_label"), "Unnamed semiology")
-        label = display_sign_label(source_label)
+        source_label, label, label_note, source_terms = card_label_parts(card)
         sign_id = str(card.get("sign_id") or "")
-        finding_refs = unique_strings(card.get("supporting_finding_refs"))
-        statistic_ids = set(unique_strings(card.get("supporting_statistic_ids")))
+        finding_refs = unique_strings(card.get("row_finding_refs"))
+        statistic_ids = set(unique_strings(card.get("row_statistic_ids")))
         manuscripts = analysis["work_count"]
-        findings = count_value(card, "supported_finding_count", len(finding_refs))
+        findings = len(finding_refs)
         statistics = len(statistic_ids)
         groups = source_groups(card)
         summary = public_value(card.get("plain_summary"), "Reviewed evidence summary available below.")
-        nonassociation_only = all(target["key"] == "nonassoc" for target in analysis["targets"])
-        directional_targets = [target for target in analysis["targets"] if target["key"] != "nonassoc"]
-        tied_lead = bool(directional_targets) and sum(
-            math.isclose(target["share"], directional_targets[0]["share"], abs_tol=0.0001)
-            for target in directional_targets
-        ) > 1
+        reviewed_targets = resolved_card_targets(card, axis)
+        organizational_targets = [
+            item for item in reviewed_targets if item.get("target_level") != "AREA"
+        ]
+        display_targets = organizational_targets or reviewed_targets
+        status = status_of(card)
+        nonassociation_only = bool(display_targets) and all(
+            target["key"] == "nonassoc" for target in display_targets
+        )
+        directional_targets = [target for target in display_targets if target["key"] != "nonassoc"]
+        context_specific = status in {"CONTEXT_SUBTYPE_DEPENDENT", "GENUINELY_MIXED"}
         if axis == "LOCALIZATION":
             if not directional_targets:
                 group_region = "No localization stated"
-            elif tied_lead:
+            elif context_specific and len(directional_targets) > 1:
                 group_region = "Multiregional/Propagation"
             else:
                 group_region = directional_targets[0]["label"]
         else:
             group_region = ""
-        chips, segments = [], []
-        for index, target in enumerate(analysis["targets"]):
+        chips = []
+        for index, target in enumerate(display_targets):
             is_nonassoc = target["key"] == "nonassoc"
             if is_nonassoc:
-                prefix = "" if nonassociation_only else "Also reported: "
-            elif tied_lead:
-                prefix = "Reported: "
+                if directional_targets:
+                    prefix = ""
+                    target = {
+                        **target,
+                        "label": (
+                            "No single reliable side"
+                            if axis == "LATERALIZATION"
+                            else "Not specific to one region"
+                        ),
+                    }
+                else:
+                    prefix = ""
+            elif index == 0 and status == "PREDOMINANT_WITH_EXCEPTIONS":
+                prefix = "Predominant: "
             else:
-                prefix = "Predominant: " if index == 0 else "Also reported: "
-            chip_class = "lr-nonassoc" if is_nonassoc else ("lr-primary" if index == 0 else "lr-secondary")
-            percent = share_text(target["share"])
+                prefix = "Reported: " if context_specific or index == 0 else "Also reported: "
+            chip_class = "lr-nonassoc" if is_nonassoc else (
+                "lr-primary" if index == 0 and status == "PREDOMINANT_WITH_EXCEPTIONS" else "lr-secondary"
+            )
             color = target_color(axis, target)
-            chip_value = "" if nonassociation_only else f" <b>{percent}%</b>"
             chips.append(
-                f'<span class="lr-direction {chip_class}" style="--target-color:{color};color:{color};border-color:{color}">{esc(prefix + target["label"])}{chip_value}</span>'
+                f'<span class="lr-direction {chip_class}" style="--target-color:{color};color:{color};border-color:{color}">{esc(prefix + target["label"])}</span>'
             )
-            segments.append(
-                f'<span class="{chip_class}" style="width:{target["share"]:.4f}%;background:{color};opacity:{1 if index == 0 else .56}" '
-                f'title="{esc(target["label"])}: {percent}% of weighted evidence"></span>'
-            )
+        contribution_by_work = {
+            str(item.get("work_id") or ""): item for item in analysis["contributions"]
+        }
         ordered_sources = sorted(
             groups.items(),
-            key=lambda item: source_manuscript_sort_key(item[0], item[1]),
+            key=lambda item: source_manuscript_sort_key(
+                item[0], contribution_by_work.get(item[0], {})
+            ),
         )
-        source_html = "".join(source_block(source_file, group) for source_file, group in ordered_sources)
+        source_html = "".join(
+            source_block(work_id, group, contribution_by_work.get(work_id, {}))
+            for work_id, group in ordered_sources
+        )
         exceptions = card.get("exceptions") or []
         if isinstance(exceptions, str):
             exceptions = [exceptions]
@@ -2319,72 +2485,108 @@ def build_weighted_evidence(cards):
             if exception_rows else ""
         )
         weighted_units = f'{analysis["total_weight"]:.2f}'.rstrip("0").rstrip(".")
-        source_count = len(groups)
-        leading_target = analysis["targets"][0]
-        reliability = -1.0 if nonassociation_only else leading_target["share"]
-        reliability_text = share_text(reliability)
+        authority_mix = " · ".join(
+            f'{count} {category.casefold()}'
+            for category, count in analysis["authority_counts"].items()
+        )
+        source_count = analysis["work_count"]
+        leading_target = display_targets[0]
         reliability_color = target_color(axis, leading_target)
-        reliability_marker = min(98.0, max(2.0, reliability))
         support_points = evidence_support_points(analysis)
         support_pips = "".join(
             f'<i class="{"on" if index < support_points else "off"}"></i>'
             for index in range(3)
         )
-        reliability_html = (
+        evidence_profile_html = (
             '<span class="lr-reliability lr-no-directional" style="--rel-color:#6b7280" '
-            f'title="All weighted evidence reports no {"lateralizing" if axis == "LATERALIZATION" else "localizing"} association; this is not a directional reliability score.">'
+            f'title="All weighted evidence reports no {"lateralizing" if axis == "LATERALIZATION" else "localizing"} association.">'
             '<span class="lr-no-directional-label">No directional estimate</span>'
             f'<span class="lr-cert">{support_pips}</span></span>'
             if nonassociation_only else
-            f'<span class="lr-reliability" style="--rel-color:{reliability_color};--rel-position:{reliability_marker:.2f}%" '
-            f'title="{esc(leading_target["label"])}: {reliability_text}% predominant weighted share; {support_points} evidence-support point{"s" if support_points != 1 else ""}">'
-            '<span class="lr-rel-track"><i class="lr-rel-fill"></i><i class="lr-rel-dot"></i></span>'
-            f'<b class="lr-rel-value">{reliability_text}%</b><span class="lr-cert">{support_pips}</span></span>'
+            f'<span class="lr-reliability" style="--rel-color:{reliability_color}" '
+            f'title="Pips show {analysis["work_count"]} contributing canonical work{"s" if analysis["work_count"] != 1 else ""}; they show volume only, not certainty.">'
+            f'<span class="lr-cert">{support_pips}</span></span>'
         )
         sources_html = (
-            '<details class="lr-sources"><summary>Evidence by contributing manuscript '
-            +f'<span>{source_count}</span></summary><p>Alphabetical by manuscript citation.</p><div>{source_html}</div></details>'
+            '<details class="lr-sources"><summary>Evidence by contributing canonical work '
+            +f'<span>{source_count}</span></summary><p>Alphabetical by canonical work name.</p><div>{source_html}</div></details>'
             if source_html else '<p class="lr-empty">No source linkage is available for this synthesis record.</p>'
         )
+        target_contract = card.get("target_contract") or {}
+        linkage_values = linkage_summary(card, axis, include_reported=False)
+        linkage_preview = linkage_values[:8]
+        if len(linkage_values) > len(linkage_preview):
+            linkage_preview.append(
+                f'{len(linkage_values) - len(linkage_preview)} more in Target scope and anatomy'
+            )
+        target_warning = (
+            '<div class="lr-linkage-note"><strong>Additional target linkage needed:</strong> '
+            +esc("; ".join(linkage_preview))+'</div>' if linkage_preview else ""
+        )
+        weight_summary = (
+            "authority weight pending"
+            if analysis["work_count"] and analysis["pending_weight_count"] == analysis["work_count"]
+            else f'{weighted_units} weighted units across {analysis["work_count"]} canonical work{"s" if analysis["work_count"] != 1 else ""}'
+        )
+        if analysis["pending_weight_count"] and analysis["pending_weight_count"] != analysis["work_count"]:
+            weight_summary += f' · {analysis["pending_weight_count"]} authority weight pending'
+        manuscript_search = " ".join(
+            public_value(value)
+            for contribution in analysis["contributions"]
+            for value in [
+                contribution.get("display_name"),
+                *(contribution.get("source_files") or []),
+            ]
+            if public_value(value)
+        )
         search_text = " ".join([
-            source_label, label, summary, " ".join(target["label"] for target in analysis["targets"]),
-            " ".join(groups.keys()), axis,
+            source_label, label, summary, " ".join(target["label"] for target in display_targets),
+            " ".join(source_terms), " ".join(groups.keys()), manuscript_search, axis,
         ]).casefold()
         return (
-            f'<details class="lr-row" data-sign-id="{esc(sign_id)}" data-bucket="{bucket_of(card)}" data-name="{esc(label.casefold())}" '
+            f'<details class="lr-row" data-card-state-id="{esc(str(card.get("synthesis_id") or ""))}" data-card-axis="{axis}" data-card-state="EVIDENCE_BEARING_WEIGHTED" '
+            f'data-sign-id="{esc(sign_id)}" data-group-id="{esc(str(card.get("group_id") or ""))}" data-bucket="{bucket_of(card)}" data-name="{esc(label.casefold())}" '
             f'data-group-region="{esc(group_region)}" '
-            f'data-weight="{analysis["total_weight"]:.6f}" data-reliability="{reliability:.6f}" data-cert="{support_points}" data-manuscripts="{manuscripts}" '
+            f'data-weight="{analysis["total_weight"]:.6f}" data-support="{support_points}" data-manuscripts="{manuscripts}" '
             f'data-findings="{findings}" data-statistics="{statistics}" data-order="{order}" '
             f'data-search="{esc(search_text)}">'
-            '<summary class="lr-row-head"><span class="lr-name">'+esc(label)+'</span>'
+            '<summary class="lr-row-head"><span class="lr-name">'+esc(label)
+            +(f'<small>{esc(label_note)}</small>' if label_note else '')+'</span>'
             +f'<span class="lr-directions">{"".join(chips)}</span>'
-            +reliability_html
-            +f'<span class="lr-evidence-counts"><b>{analysis["work_count"]}</b> weighted manuscript{"s" if analysis["work_count"] != 1 else ""} <i>·</i> <b>{findings}</b> direct finding{"s" if findings != 1 else ""} <i>·</i> <b>{statistics}</b> reported result{"s" if statistics != 1 else ""}</span></summary>'
+            +evidence_profile_html
+            +f'<span class="lr-evidence-counts"><b>{analysis["work_count"]}</b> canonical work{"s" if analysis["work_count"] != 1 else ""} <i>·</i> <b>{findings}</b> linked finding{"s" if findings != 1 else ""} <i>·</i> <b>{statistics}</b> reported result{"s" if statistics != 1 else ""}</span></summary>'
             +'<div class="lr-row-body">'
-            +'<div class="lr-weighted"><div><strong>Weighted evidence distribution</strong>'
-            +f'<span>{weighted_units} weighted units across {analysis["work_count"]} manuscript{"s" if analysis["work_count"] != 1 else ""}</span></div>'
-            +f'<div class="lr-weightbar">{"".join(segments)}</div></div>'
+            +'<div class="lr-weighted"><div><strong>Weighted evidence support</strong>'
+            +f'<span>{esc(weight_summary)}{(" · " + esc(authority_mix)) if authority_mix else ""}</span></div>'
+            +'</div>'
             +f'<p class="lr-summary">{esc(summary)}</p>'
+            +target_warning
+            +target_detail_block(card, axis)
             +family_block(card, axis, statistic_ids)
             +exception_html
             +sources_html
-            +f'<div class="lr-linkage-note">{source_count} linked manuscript record{"s" if source_count != 1 else ""}; source-defined numbers remain separate and are not pooled.</div>'
+            +f'<div class="lr-linkage-note">{source_count} linked canonical work{"s" if source_count != 1 else ""}; source-defined numbers remain separate and are not pooled.</div>'
             +'</div></details>'
         )
 
     def axis_panel(axis):
         config = axis_config[axis]
-        axis_cards = [card for card in cards if str(card.get("axis") or "").upper() == axis]
-        weighted_cards, omitted_cards = [], []
+        axis_cards = aggregate_axis_cards(axis)
+        weighted_cards, linkage_cards, no_source_cards = [], [], []
         for card in axis_cards:
-            analysis = weighted_distribution(card, axis)
-            if analysis["targets"]:
+            analysis = evidence_support(card, axis)
+            state = render_categorization_state(card)
+            if state == "EVIDENCE_BEARING_WEIGHTED":
                 weighted_cards.append((card, analysis))
+            elif state == "RECORDED_TARGET_LINKAGE_NEEDED":
+                linkage_cards.append(card)
+            elif state == "NO_SOURCE_ASSOCIATION":
+                no_source_cards.append(card)
             else:
-                omitted_cards.append(card)
+                raise AssertionError(f"Unhandled rendered card state: {state}")
         weighted_cards.sort(key=lambda item: (
             bucket_of(item[0]) == "nonassoc",
-            -item[1]["targets"][0]["share"],
+            -item[1]["total_weight"],
             -evidence_support_points(item[1]), -item[1]["work_count"],
             public_value(item[0].get("preferred_label")).casefold(),
         ))
@@ -2392,18 +2594,67 @@ def build_weighted_evidence(cards):
         association_count = sum(bucket_of(card) == "association" for card, _analysis in weighted_cards)
         mixed_count = sum(bucket_of(card) == "mixed" for card, _analysis in weighted_cards)
         nonassoc_count = sum(bucket_of(card) == "nonassoc" for card, _analysis in weighted_cards)
-        omitted_rows = "".join(
-            f'<span class="lr-unreported-sign" data-search="{esc((display_sign_label(card.get("preferred_label")) + " " + status_of(card)).casefold())}">'
-            f'{esc(display_sign_label(card.get("preferred_label")))}</span>'
-            for card in sorted(omitted_cards, key=lambda row: public_value(row.get("preferred_label")).casefold())
+        def omitted_rows(cards_to_render):
+            rows = []
+            for card in sorted(
+                cards_to_render,
+                key=lambda row: card_label_parts(row)[1].casefold(),
+            ):
+                _source_label, label, label_note, source_terms = card_label_parts(card)
+                search = " ".join([label, *source_terms, status_of(card)]).casefold()
+                rows.append(
+                    f'<span class="lr-unreported-sign" data-card-state-id="{esc(str(card.get("synthesis_id") or ""))}" data-card-axis="{axis}" data-card-state="NO_SOURCE_ASSOCIATION" '
+                    f'data-search="{esc(search)}">{esc(label)}'
+                    +(f'<small>{esc(label_note)}</small>' if label_note else '')+'</span>'
+                )
+            return "".join(rows)
+        def linkage_rows(cards_to_render):
+            rows = []
+            for card in sorted(
+                cards_to_render,
+                key=lambda row: card_label_parts(row)[1].casefold(),
+            ):
+                _source_label, label, label_note, source_terms = card_label_parts(card)
+                labels = linkage_summary(card, axis)
+                rows.append(
+                    f'<div class="lr-unreported-sign" data-card-state-id="{esc(str(card.get("synthesis_id") or ""))}" data-card-axis="{axis}" data-card-state="RECORDED_TARGET_LINKAGE_NEEDED" '
+                    f'data-search="{esc((" ".join([label, *source_terms, *labels])).casefold())}">'
+                    f'<strong>{esc(label)}</strong>'
+                    +(f'<small>{esc(label_note)}</small>' if label_note else '')
+                    +"".join(f'<small>{esc(value)}</small>' for value in labels)
+                    +'<small>Visible for linkage review; not included in weighted evidence.</small></div>'
+                )
+            return "".join(rows)
+        linkage_rows_html = linkage_rows(linkage_cards)
+        no_source_rows = omitted_rows(no_source_cards)
+        linkage_section = (
+            '<details class="lr-unreported lr-linkage-needed">'
+            f'<summary>Recorded target needs normalization or linkage <span class="lr-unreported-count">{len(linkage_cards):,}</span></summary>'
+            '<p>The master ledger contains an axis target, but it cannot yet be resolved into this weighted display. This is a linkage state, not evidence that the sign lacks an association.</p>'
+            f'<div class="lr-unreported-grid">{linkage_rows_html}</div></details>'
+            if linkage_cards else ""
         )
+        no_source_section = (
+            '<details class="lr-unreported">'
+            f'<summary>No source-level {axis.casefold()} target recorded <span class="lr-unreported-count">{len(no_source_cards):,}</span></summary>'
+            f'<p>{esc(config["missing"])} in the currently linked reviewed findings. These signs remain visible and are not treated as evidence for absence.</p>'
+            f'<div class="lr-unreported-grid">{no_source_rows}</div></details>'
+            if no_source_cards else ""
+        )
+        method_html = "".join(
+            f'<p>{esc(paragraph)}</p>'
+            for paragraph in EVIDENCE_AUTHORITY.get("display_method") or []
+        )
+        canonical_work_count = int(EVIDENCE_AUTHORITY.get("canonical_work_count") or 0)
+        source_report_count = int(EVIDENCE_AUTHORITY.get("source_report_count") or 0)
         hidden = "" if axis == "LATERALIZATION" else " hidden"
         return f'''<section class="weighted-axis-panel" data-axis-panel="{axis}"{hidden}>
 <div class="lr-wrap" data-axis="{axis}">
-  <div class="lr-intro"><strong>{len(weighted_cards):,} evidence-weighted summaries.</strong> Each canonical manuscript contributes once per sign and axis. Its weight is divided across multiple reported targets. Percentages show the distribution of weighted evidence, not pooled sensitivity, specificity, or diagnostic accuracy.</div>
+  <div class="lr-intro"><strong>{len(weighted_cards):,} evidence-weighted summaries.</strong> Each row is one canonical evidence group. Clinical relationship labels come directly from the owner-cleared synthesis release. Work weights separately summarize publication authority, study design, directness of confirmation, and independent primary-study size; they never vote a target into or out of the release.</div>
   <details class="lr-method"><summary>How weighting works</summary><div>
-    <p>Reference-standard multipliers preserve the prior atlas method: SEEG or surgical outcome 1.50; intracranial EEG 1.35; video-EEG 1.20; imaging or lesion location 1.15; ictal EEG 1.10; other or unreported 1.00. An exact denominator adds the existing capped size factor (maximum 2.00). Restatements and overlap records remain visible but do not add another independent manuscript.</p>
-    <p>When one manuscript reports several directions or regions, its single weight is divided among them. Incompatible study percentages remain source-specific and are never pooled.</p>
+    {method_html}
+    <p>The release contains {canonical_work_count} canonical works represented by {source_report_count} source reports. Manuscript counts use canonical works; report counts use source reports.</p>
+    <p>Source-reported directions, regions, percentages, and denominators remain attached to their exact findings. They are displayed below each row and are not converted into a new pooled target percentage.</p>
   </div></details>
   <div class="lr-tools">
     <input class="lr-search" type="search" placeholder="{esc(config["placeholder"])}" aria-label="Search {axis.casefold()} evidence">
@@ -2415,17 +2666,14 @@ def build_weighted_evidence(cards):
       <button type="button" class="lr-filter" data-filter="nonassoc">{esc(config["nonassoc"])} <i>{nonassoc_count:,}</i></button>
     </div>
     <label class="lr-sort-label">Order
-      <select class="lr-sort"><option value="page">Match page organization</option><option value="reliability">Reliability (directional share) &darr;</option><option value="certainty">Evidence support (certainty) &darr;</option><option value="name">Semiology A&ndash;Z</option><option value="manuscripts">Most manuscripts</option><option value="statistics">Most reported results</option></select>
+      <select class="lr-sort"><option value="page">Match page organization</option><option value="weight">Most weighted evidence support</option><option value="name">Semiology A&ndash;Z</option><option value="manuscripts">Most manuscripts</option><option value="statistics">Most reported results</option></select>
     </label>
   </div>
-  <div class="lr-visual-legend"><span><strong>Directional reliability</strong> = predominant directional weighted share</span><span class="lr-legend-scale"><i>0%</i><i>50%</i><i>100%</i></span><span class="lr-legend-pips"><i class="on"></i><i class="on"></i><i class="on"></i> evidence support (manuscripts &amp; weight)</span><span class="lr-neutral-note">Nonassociation is shown separately, not as a 100% directional score.</span></div>
+  <div class="lr-visual-legend"><span><strong>Colored chips</strong> show owner-reviewed relationships, not calculated percentages</span><span class="lr-legend-pips"><i class="on"></i><i class="on"></i><i class="on"></i> 1, 2, or 3+ contributing canonical works (volume only)</span><span class="lr-neutral-note">Weights summarize support; they are not reliability, certainty, sensitivity, or specificity.</span></div>
   <div class="lr-visible-count"></div>
   <div class="lr-list">{rows}</div>
-  <details class="lr-unreported">
-    <summary>Not included in the weighted distribution <span class="lr-unreported-count">{len(omitted_cards):,}</span></summary>
-    <p>{esc(config["missing"])} or the reviewed evidence does not contain a usable source-level target. These signs remain visible and are not treated as evidence for absence.</p>
-    <div class="lr-unreported-grid">{omitted_rows}</div>
-  </details>
+  {linkage_section}
+  {no_source_section}
 </div></section>'''
 
     tabs = "".join(
@@ -2433,11 +2681,52 @@ def build_weighted_evidence(cards):
         f'data-axis-tab="{axis}" aria-selected="{"true" if axis == "LATERALIZATION" else "false"}">{config["tab"]}</button>'
         for axis, config in axis_config.items()
     )
+    panels = "".join(axis_panel(axis) for axis in axis_config)
+    rendered_cards = [
+        card for axis in axis_config for card in aggregate_axis_cards(axis)
+    ]
+    expected_public_sign_axes = {
+        (str(sign.get("id") or ""), axis)
+        for sign in data for axis in axis_config
+    }
+    rendered_sign_axes = {
+        (str(card.get("sign_id") or ""), str(card.get("axis") or "").upper())
+        for card in rendered_cards
+    }
+    if rendered_sign_axes != expected_public_sign_axes:
+        raise AssertionError(
+            "Every public sign must render on each weighted-evidence axis"
+        )
+    expected = [
+        (
+            str(card.get("synthesis_id") or ""),
+            str(card.get("axis") or "").upper(),
+            render_categorization_state(card),
+        )
+        for card in rendered_cards
+    ]
+    rendered = re.findall(
+        r'data-card-state-id="([^"]+)" data-card-axis="([^"]+)" data-card-state="([^"]+)"',
+        panels,
+    )
+    if Counter(rendered) != Counter(expected):
+        raise AssertionError(
+            "Generated card-state DOM is not an exact rendering of public sign-axis cards"
+        )
+    if len(rendered) != len({card_id for card_id, _axis, _state in rendered}):
+        raise AssertionError("Generated card-state DOM contains duplicate synthesis cards")
+    axis_counts = Counter(axis for _card_id, axis, _state in rendered)
+    state_counts = Counter(state for _card_id, _axis, state in rendered)
+    print(
+        f"Card-state DOM invariant: {len(rendered)} unique; "
+        +", ".join(f"{axis}={axis_counts[axis]}" for axis in axis_config)
+        +"; "+", ".join(f"{state}={state_counts[state]}" for state in render_states)
+    )
     return f'''<details class="frontpage-fold reliability-fold">
 <summary>Weighted-Evidence Summary</summary>
 <div class="weighted-evidence-shell">
   <div class="weighted-axis-tabs" role="tablist" aria-label="Weighted evidence axis">{tabs}</div>
-  {"".join(axis_panel(axis) for axis in axis_config)}
+  {panels}
 </div>
 </details>'''
 
@@ -3429,6 +3718,7 @@ body.quiz .lib-chip{display:none}
 .lr-row[open]>.lr-row-head::before{transform:rotate(90deg);color:var(--teal-d)}
 .lr-row-head:hover{background:#f7fafc}
 .lr-name{font-size:.82rem;font-weight:800;line-height:1.25}
+.lr-name small{display:block;margin-top:2px;color:#748195;font-size:.58rem;font-weight:650;line-height:1.3}
 .lr-directions{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
 .lr-direction{display:inline-flex;border:1px solid currentColor;border-radius:12px;padding:2px 7px;font-size:.6rem;font-weight:800;white-space:nowrap}
 .lr-direction b{margin-left:4px;font-variant-numeric:tabular-nums}
@@ -3438,9 +3728,10 @@ body.quiz .lib-chip{display:none}
 .lr-dominant{color:#8240a3;background:#faf3fd}.lr-nondominant{color:#167546;background:#eff9f3}
 .lr-right,.lr-left,.lr-bilateral{color:#5c4a87;background:#f7f4fc}.lr-nonlat{color:#5d6878;background:#f5f6f8}
 .lr-other{color:#7b5a18;background:#fff8e9}.lr-unreported{color:#687386;background:#f5f7fa}
-.lr-reliability{display:grid;grid-template-columns:minmax(86px,1fr) auto auto;align-items:center;gap:6px;min-width:145px}
+.lr-reliability{display:grid;grid-template-columns:minmax(86px,1fr) auto;align-items:center;gap:7px;min-width:145px}
 .lr-no-directional{grid-template-columns:minmax(112px,1fr) auto;color:#667284}
 .lr-no-directional-label{font-size:.68rem;font-weight:800;white-space:nowrap}
+.lr-row-weightbar{height:8px;min-width:96px}
 .lr-rel-track{position:relative;height:8px;border-radius:999px;background:linear-gradient(to right,transparent 49.5%,#cbd4df 49.5%,#cbd4df 50.5%,transparent 50.5%),linear-gradient(to right,transparent 74.5%,#d7dee7 74.5%,#d7dee7 75.5%,transparent 75.5%),#e7ecf2}
 .lr-rel-fill{position:absolute;inset:0 auto 0 0;width:var(--rel-position);border-radius:999px;background:var(--rel-color);opacity:.58}
 .lr-rel-dot{position:absolute;left:var(--rel-position);top:50%;width:9px;height:9px;border-radius:50%;transform:translate(-50%,-50%);background:var(--rel-color);border:1.5px solid #fff;box-shadow:0 0 0 1px color-mix(in srgb,var(--rel-color) 40%,transparent)}
@@ -3494,6 +3785,10 @@ body.quiz .lib-chip{display:none}
 .lr-unreported>p{margin:0;padding:0 11px 8px;color:#68768a;font-size:.68rem;line-height:1.45}
 .lr-unreported-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;padding:0 10px 10px}
 .lr-unreported-sign{border:1px solid #e1e6ec;border-radius:6px;background:#fff;padding:5px 7px;color:#536175;font-size:.67rem;line-height:1.3}
+.lr-unreported-sign small{display:block;margin-top:2px;color:#778397;font-size:.6rem}
+.lr-linkage-needed .lr-unreported-sign{display:grid;gap:3px}
+.lr-linkage-needed .lr-unreported-sign strong{color:#27364a;font-size:.72rem}
+.lr-linkage-needed .lr-unreported-sign small{display:block}
 .lr-unreported-sign[hidden]{display:none}
 .lr-historical{margin:12px;padding-top:10px;border-top:1px solid var(--line)}
 .lr-historical>p{margin:0 3px 8px;color:#6c788b;font-size:.68rem;line-height:1.45}
@@ -4928,8 +5223,11 @@ function bindLedgerReliability(wrap){
     if(!rowsBySign.has(key)) rowsBySign.set(key,[]);
     rowsBySign.get(key).push(row);
   });
-  const unreported=Array.from(wrap.querySelectorAll('.lr-unreported-sign'));
-  const unreportedCount=wrap.querySelector('.lr-unreported-count');
+  const unreportedSections=Array.from(wrap.querySelectorAll('.lr-unreported')).map(section=>({
+    section,
+    items:Array.from(section.querySelectorAll('.lr-unreported-sign')),
+    count:section.querySelector('.lr-unreported-count')
+  }));
   let active='all';
   function compare(a,b){
     const key=sort.value;
@@ -4938,15 +5236,12 @@ function bindLedgerReliability(wrap){
       || (+b.dataset.findings)-(+a.dataset.findings) || a.dataset.name.localeCompare(b.dataset.name);
     if(key==='statistics') return (+b.dataset.statistics)-(+a.dataset.statistics)
       || (+b.dataset.findings)-(+a.dataset.findings) || a.dataset.name.localeCompare(b.dataset.name);
+    if(key==='weight') return (+b.dataset.weight)-(+a.dataset.weight)
+      || (+b.dataset.manuscripts)-(+a.dataset.manuscripts) || a.dataset.name.localeCompare(b.dataset.name);
     const associationOrder=(a.dataset.bucket==='nonassoc')-(b.dataset.bucket==='nonassoc');
-    if(key==='certainty') return associationOrder
-      || (+b.dataset.cert)-(+a.dataset.cert)
-      || (+b.dataset.manuscripts)-(+a.dataset.manuscripts)
-      || (+b.dataset.weight)-(+a.dataset.weight)
-      || a.dataset.name.localeCompare(b.dataset.name);
     return associationOrder
-      || (+b.dataset.reliability)-(+a.dataset.reliability)
-      || (+b.dataset.cert)-(+a.dataset.cert)
+      || (+b.dataset.weight)-(+a.dataset.weight)
+      || (+b.dataset.support)-(+a.dataset.support)
       || (+b.dataset.manuscripts)-(+a.dataset.manuscripts)
       || a.dataset.name.localeCompare(b.dataset.name);
   }
@@ -5059,15 +5354,18 @@ function bindLedgerReliability(wrap){
       list.replaceChildren();
       rows.sort(compare).forEach(row=>list.append(row));
     }
-    let visibleUnreported=0;
-    unreported.forEach(item=>{
-      const show=!query||item.dataset.search.includes(query);
-      item.hidden=!show;
-      if(show) visibleUnreported++;
+    unreportedSections.forEach(({section,items,count:sectionCount})=>{
+      let visibleUnreported=0;
+      items.forEach(item=>{
+        const show=!query||item.dataset.search.includes(query);
+        item.hidden=!show;
+        if(show) visibleUnreported++;
+      });
+      section.hidden=visibleUnreported===0;
+      if(sectionCount) sectionCount.textContent=visibleUnreported.toLocaleString();
     });
     count.textContent=visible.toLocaleString()+' of '+rows.length.toLocaleString()+' evidence-bearing summaries shown'
       +(sort.value==='page'?' · organized by '+pageOrganizationLabel():'');
-    if(unreportedCount) unreportedCount.textContent=visibleUnreported.toLocaleString();
   }
   filters.forEach(button=>button.addEventListener('click',()=>{
     active=button.dataset.filter;
@@ -5436,8 +5734,6 @@ for name in ("seizure_semiology_localization.html", "index.html"):
     with open(os.path.join(DOCS, name), "w", encoding="utf-8") as f:
         f.write(HEAD)
 
-with open(os.path.join(DOCS, "CNAME"), "w", encoding="utf-8") as f:
-    f.write("www.semiologyatlas.org\n")
 
 # Added to the Home Screen the page runs with no address bar or tab strip. A page
 # cannot hide browser chrome any other way, so this is what makes that possible.
