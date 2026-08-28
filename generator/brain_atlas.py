@@ -3,8 +3,8 @@
 brain_atlas.py — renders the Brodmann map from its data file.
 
 This module holds **no scientific curation**. Area definitions and sign links
-come from the generated canonical atlas bundle. The surface-view coordinates
-are presentation data carried in that same redacted bundle.
+come from the generated canonical atlas bundle. The editable surface-view label
+coordinates come from `data/brodmann_map.json` and are presentation data only.
 
 A view is a reference plate and the numerals placed on it, so there is no
 geometry left to compute here: this loads the map and answers which areas a sign
@@ -16,6 +16,13 @@ import os
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 with open(os.path.join(_ROOT, "data", "atlas_bundle.json"), encoding="utf-8") as stream:
     MAP = json.load(stream)["brodmann"]
+with open(os.path.join(_ROOT, "data", "brodmann_map.json"), encoding="utf-8") as stream:
+    DISPLAY_MAP = json.load(stream)
+for view_name, display_view in DISPLAY_MAP["views"].items():
+    labels = {area["id"]: area["label"] for area in display_view["areas"]}
+    for area in MAP["views"].get(view_name, {}).get("areas", []):
+        if area["id"] in labels:
+            area["label"] = labels[area["id"]]
 
 AREAS = MAP["areas"]
 VIEWS = MAP["views"]

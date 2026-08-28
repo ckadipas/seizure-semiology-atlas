@@ -2,6 +2,7 @@
 """Focused regression checks for the compact classification browser."""
 
 import hashlib
+import json
 import re
 import runpy
 import unittest
@@ -41,6 +42,21 @@ class CompactRendererTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.render = runpy.run_path(str(ROOT / "generator" / "gen_study.py"))
+
+    def test_brodmann_renderer_uses_editor_label_positions(self):
+        configured = json.loads((ROOT / "data" / "brodmann_map.json").read_text())
+        expected = {
+            (view_name, area["id"]): area["label"]
+            for view_name, view in configured["views"].items()
+            for area in view["areas"]
+        }
+        actual = {
+            (view_name, area["id"]): area["label"]
+            for view_name, view in self.render["BA"].VIEWS.items()
+            for area in view["areas"]
+            if (view_name, area["id"]) in expected
+        }
+        self.assertEqual(expected, actual)
 
     def test_nonidentical_leaf_classification_term_remains_a_visible_family(self):
         groups = self.render["classification_trees"]["LUDERS_5D_2005"]["groups"]

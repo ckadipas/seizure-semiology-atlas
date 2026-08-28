@@ -4,16 +4,17 @@ A source-grounded educational reference for localizing and lateralizing seizure 
 
 ## Source of truth
 
-This public repository is a generated, redacted consumer of the private canonical Semiology Atlas database. Its only active website data input is [`data/atlas_bundle.json`](data/atlas_bundle.json), produced after private source review and owner approval. Do not hand-edit that bundle or treat website prose as source evidence.
+This public repository is a generated, redacted consumer of the private canonical Semiology Atlas database. Its only scientific website data input is [`data/atlas_bundle.json`](data/atlas_bundle.json), produced after private source review and owner approval. [`data/brodmann_map.json`](data/brodmann_map.json) supplies presentation-only label coordinates. Do not hand-edit the generated bundle or treat website prose as source evidence.
 
-Older files under `data/`, `enrichment/`, and `corpus/` are retained as historical artifacts. They do not drive the website build and are not independent scientific authorities.
+Other older files under `data/`, `enrichment/`, and `corpus/` are retained as historical artifacts. They do not drive the website build and are not independent scientific authorities.
 
 | Path | Role |
 |---|---|
 | `data/atlas_bundle.json` | Generated public bundle: signs, reviewed findings, statistics, anatomy links, and weighted analyses. |
+| `data/brodmann_map.json` | Owner-edited presentation coordinates for Brodmann labels; no scientific mapping authority. |
 | `tools/validate_atlas_bundle.py` | Public-safe integrity and privacy check. |
 | `generator/gen_study.py` | Renders the self-contained website into `docs/`. |
-| `generator/brain_atlas.py` | Renders Brodmann anatomy from the same bundle. |
+| `generator/brain_atlas.py` | Renders Brodmann anatomy from the bundle with label positions from the presentation map. |
 | `generator/assets/` | Reference brain plates. |
 | `docs/` | Generated website output. Do not hand-edit. |
 
