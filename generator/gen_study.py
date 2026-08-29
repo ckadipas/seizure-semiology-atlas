@@ -261,7 +261,7 @@ def statistic_block(row):
         return ""
     items = []
     for statistic in statistics:
-        metric = str(statistic.get("metric_type") or "reported result").replace("_", " ").lower()
+        metric = str(statistic.get("metric_type") or "reported value").replace("_", " ").lower()
         context = []
         for label, key in (
             ("Subgroup", "subgroup"), ("Time", "timepoint"), ("Outcome", "endpoint"),
@@ -697,7 +697,7 @@ METRIC_LABELS = OrderedDict([
     ("SENSITIVITY", "Sensitivity"), ("SPECIFICITY", "Specificity"),
     ("PPV", "Positive predictive value"), ("NPV", "Negative predictive value"),
     ("CORRELATION", "Correlation"), ("UPPER_BOUND_PERCENTAGE", "Upper-bound percentage"),
-    ("OTHER", "Other reported result"),
+    ("OTHER", "Other reported value"),
 ])
 PROPORTION_METRICS = {"PERCENTAGE", "PROPORTION", "SENSITIVITY", "SPECIFICITY", "PPV", "NPV"}
 _MISSING_PUBLIC_VALUES = {
@@ -1165,9 +1165,9 @@ def compact_evidence_overview(d):
     if not summary:
         summary = limited_sentences(d.get("notes"), 2)
     count_items = [
-        (len(works), "canonical work"),
-        (len(findings), "linked finding"),
-        (len(statistics), "reported result"),
+        (len(works), "paper"),
+        (len(findings), "finding"),
+        (len(statistics), "reported value"),
     ]
     counts = "".join(
         f'<span><strong>{count}</strong> {label}{"s" if count != 1 else ""}</span>'
@@ -1767,7 +1767,7 @@ def build_reviewed_findings_panel(corpus):
             if len(statistics) == 1:
                 row_value = statistic_value(statistics[0])
             elif statistics:
-                row_value = f'{len(statistics)} reported results'
+                row_value = f'{len(statistics)} reported values'
             else:
                 row_value = ""
             citation = public_value(row.get("citation"))
@@ -2027,7 +2027,7 @@ def build_weighted_evidence(cards):
             )
         statistic_rows = []
         for finding, statistic in statistics:
-            value = statistic_value(statistic) or "Reported result"
+            value = statistic_value(statistic) or "Reported value"
             endpoint = public_value(finding.get("source_term"), "Study result")
             locator = public_value(statistic.get("source_locator")) or public_value(finding.get("locators"), "Source location not stated")
             ratio = statistic_ratio(statistic)
@@ -2046,7 +2046,7 @@ def build_weighted_evidence(cards):
         if findings:
             counts.append(f'{len(findings)} finding{"s" if len(findings) != 1 else ""}')
         if statistics:
-            counts.append(f'{len(statistics)} reported result{"s" if len(statistics) != 1 else ""}')
+            counts.append(f'{len(statistics)} reported value{"s" if len(statistics) != 1 else ""}')
         source_context = public_value(source.get("source_report_methods_population"))
         authority_label = public_value(contribution.get("authority_category"))
         final_weight = float(contribution.get("final_weight") or 0.0)
@@ -2057,8 +2057,8 @@ def build_weighted_evidence(cards):
                 else f'Class {public_value(contribution.get("evidence_class"))}'
             ),
             (
-                f'{final_weight:.2f} weighted units'
-                if final_weight > 0 else "Authority weight pending"
+                f'Evidence weight {final_weight:.2f}'
+                if final_weight > 0 else "Evidence weight pending"
             ),
             (
                 f'{float(components.get("class_base") or 0):g} × '
@@ -2071,12 +2071,12 @@ def build_weighted_evidence(cards):
         )
         return (
             '<details class="lr-source"><summary><span>'+esc(manuscript)+'</span>'
-            +f'<span>{esc(" · ".join(filter(None, [authority_label, " · ".join(counts)])) or "Linked evidence")}</span></summary>'
+            +f'<span>{esc(" · ".join(filter(None, [authority_label, " · ".join(counts)])) or "Evidence from this manuscript")}</span></summary>'
             +f'<div class="lr-source-file">{esc(source_files)}</div>'
             +(f'<div class="lr-source-context"><strong>{esc(authority_label)}</strong>{(" · " + esc(authority_detail)) if authority_detail else ""}</div>' if authority_label else '')
             +(f'<div class="lr-source-context">{esc(source_context)}</div>' if source_context else '')
-            +(f'<div class="lr-source-section"><strong>Linked findings</strong><ul>{"".join(finding_rows)}</ul></div>' if finding_rows else '')
-            +(f'<div class="lr-source-section"><strong>Reported study results</strong><ul>{"".join(statistic_rows)}</ul></div>' if statistic_rows else '')
+            +(f'<div class="lr-source-section"><strong>Findings</strong><ul>{"".join(finding_rows)}</ul></div>' if finding_rows else '')
+            +(f'<div class="lr-source-section"><strong>Reported values</strong><ul>{"".join(statistic_rows)}</ul></div>' if statistic_rows else '')
             +'</details>'
         )
 
@@ -2133,7 +2133,7 @@ def build_weighted_evidence(cards):
                 '<div class="lr-family"><strong>'+esc(title)+'</strong>'
                 +f'<span>{esc(observed)}</span>'
                 +(f'<small>{esc(context)}</small>' if context else '')
-                +f'<small>{work_count} canonical work{"s" if work_count != 1 else ""} · {input_count} reported result{"s" if input_count != 1 else ""} · not pooled</small></div>'
+                +f'<small>{work_count} manuscript{"s" if work_count != 1 else ""} · {input_count} reported value{"s" if input_count != 1 else ""} · not pooled</small></div>'
             )
         return (
             '<details class="lr-families"><summary>Source-defined result groups '
@@ -2186,6 +2186,7 @@ def build_weighted_evidence(cards):
 
     render_state_aliases = {
         "EVIDENCE_BEARING_WEIGHTED": "EVIDENCE_BEARING_WEIGHTED",
+        "EVIDENCE_LINKED_WEIGHT_PENDING": "EVIDENCE_LINKED_WEIGHT_PENDING",
         "TARGET_LINKAGE_NEEDED": "RECORDED_TARGET_LINKAGE_NEEDED",
         "RECORDED_TARGET_LINKAGE_NEEDED": "RECORDED_TARGET_LINKAGE_NEEDED",
         "NO_SOURCE_TARGET": "NO_SOURCE_ASSOCIATION",
@@ -2193,6 +2194,7 @@ def build_weighted_evidence(cards):
     }
     render_states = (
         "EVIDENCE_BEARING_WEIGHTED",
+        "EVIDENCE_LINKED_WEIGHT_PENDING",
         "RECORDED_TARGET_LINKAGE_NEEDED",
         "NO_SOURCE_ASSOCIATION",
     )
@@ -2494,32 +2496,30 @@ def build_weighted_evidence(cards):
             f'<span class="lr-cert">{support_pips}</span></span>'
             if nonassociation_only else
             f'<span class="lr-reliability" style="--rel-color:{reliability_color}" '
-            f'title="Pips show {analysis["work_count"]} contributing canonical work{"s" if analysis["work_count"] != 1 else ""}; they show volume only, not certainty.">'
+            f'title="Pips show {analysis["work_count"]} contributing manuscript{"s" if analysis["work_count"] != 1 else ""}; they show volume only, not certainty.">'
             f'<span class="lr-cert">{support_pips}</span></span>'
         )
         sources_html = (
-            '<details class="lr-sources"><summary>Evidence by contributing canonical work '
-            +f'<span>{source_count}</span></summary><p>Alphabetical by canonical work name.</p><div>{source_html}</div></details>'
+            '<details class="lr-sources"><summary>Evidence by contributing manuscript '
+            +f'<span>{source_count}</span></summary><p>Alphabetical by manuscript.</p><div>{source_html}</div></details>'
             if source_html else '<p class="lr-empty">No source linkage is available for this synthesis record.</p>'
         )
         target_contract = card.get("target_contract") or {}
         linkage_values = linkage_summary(card, axis, include_reported=False)
-        linkage_preview = linkage_values[:8]
-        if len(linkage_values) > len(linkage_preview):
-            linkage_preview.append(
-                f'{len(linkage_values) - len(linkage_preview)} more in Target scope and anatomy'
-            )
         target_warning = (
-            '<div class="lr-linkage-note"><strong>Additional target linkage needed:</strong> '
-            +esc("; ".join(linkage_preview))+'</div>' if linkage_preview else ""
+            '<details class="lr-linkage-note"><summary>Linkage details '
+            +f'<span>{len(linkage_values)}</span></summary>'
+            +'<p>These source targets remain visible but are not weighted until their exact sign relationship is resolved.</p>'
+            +'<ul>'+"".join(f'<li>{esc(value)}</li>' for value in linkage_values)+'</ul></details>'
+            if linkage_values else ""
         )
         weight_summary = (
-            "authority weight pending"
+            "evidence weight pending"
             if analysis["work_count"] and analysis["pending_weight_count"] == analysis["work_count"]
-            else f'{weighted_units} weighted units across {analysis["work_count"]} canonical work{"s" if analysis["work_count"] != 1 else ""}'
+            else f'evidence weight {weighted_units} across {analysis["work_count"]} manuscript{"s" if analysis["work_count"] != 1 else ""}'
         )
         if analysis["pending_weight_count"] and analysis["pending_weight_count"] != analysis["work_count"]:
-            weight_summary += f' · {analysis["pending_weight_count"]} authority weight pending'
+            weight_summary += f' · {analysis["pending_weight_count"]} manuscript weight pending'
         manuscript_search = " ".join(
             public_value(value)
             for contribution in analysis["contributions"]
@@ -2544,7 +2544,7 @@ def build_weighted_evidence(cards):
             +(f'<small>{esc(label_note)}</small>' if label_note else '')+'</span>'
             +f'<span class="lr-directions">{"".join(chips)}</span>'
             +evidence_profile_html
-            +f'<span class="lr-evidence-counts"><b>{analysis["work_count"]}</b> canonical work{"s" if analysis["work_count"] != 1 else ""} <i>·</i> <b>{findings}</b> linked finding{"s" if findings != 1 else ""} <i>·</i> <b>{statistics}</b> reported result{"s" if statistics != 1 else ""}</span></summary>'
+            +f'<span class="lr-evidence-counts"><b>{analysis["work_count"]}</b> manuscript{"s" if analysis["work_count"] != 1 else ""} <i>·</i> <b>{findings}</b> finding{"s" if findings != 1 else ""} <i>·</i> <b>{statistics}</b> reported value{"s" if statistics != 1 else ""}</span></summary>'
             +'<div class="lr-row-body">'
             +'<div class="lr-weighted"><div><strong>Weighted evidence support</strong>'
             +f'<span>{esc(weight_summary)}{(" · " + esc(authority_mix)) if authority_mix else ""}</span></div>'
@@ -2555,19 +2555,21 @@ def build_weighted_evidence(cards):
             +family_block(card, axis, statistic_ids)
             +exception_html
             +sources_html
-            +f'<div class="lr-linkage-note">{source_count} linked canonical work{"s" if source_count != 1 else ""}; source-defined numbers remain separate and are not pooled.</div>'
+            +f'<p class="lr-source-note">{source_count} contributing manuscript{"s" if source_count != 1 else ""}; source-reported values remain separate and are not pooled.</p>'
             +'</div></details>'
         )
 
     def axis_panel(axis):
         config = axis_config[axis]
         axis_cards = aggregate_axis_cards(axis)
-        weighted_cards, linkage_cards, no_source_cards = [], [], []
+        weighted_cards, pending_cards, linkage_cards, no_source_cards = [], [], [], []
         for card in axis_cards:
             analysis = evidence_support(card, axis)
             state = render_categorization_state(card)
             if state == "EVIDENCE_BEARING_WEIGHTED":
                 weighted_cards.append((card, analysis))
+            elif state == "EVIDENCE_LINKED_WEIGHT_PENDING":
+                pending_cards.append(card)
             elif state == "RECORDED_TARGET_LINKAGE_NEEDED":
                 linkage_cards.append(card)
             elif state == "NO_SOURCE_ASSOCIATION":
@@ -2615,8 +2617,41 @@ def build_weighted_evidence(cards):
                     +'<small>Visible for linkage review; not included in weighted evidence.</small></div>'
                 )
             return "".join(rows)
+        def pending_rows(cards_to_render):
+            rows = []
+            for card in sorted(
+                cards_to_render,
+                key=lambda row: card_label_parts(row)[1].casefold(),
+            ):
+                _source_label, label, label_note, source_terms = card_label_parts(card)
+                labels = linkage_summary(card, axis)
+                papers = int(card.get("row_work_count") or 0)
+                findings = int(card.get("row_finding_count") or 0)
+                values = int(card.get("row_statistic_count") or 0)
+                count_line = (
+                    f'{papers} paper{"s" if papers != 1 else ""} · '
+                    f'{findings} finding{"s" if findings != 1 else ""} · '
+                    f'{values} reported value{"s" if values != 1 else ""}'
+                )
+                rows.append(
+                    f'<div class="lr-unreported-sign" data-card-state-id="{esc(str(card.get("synthesis_id") or ""))}" data-card-axis="{axis}" data-card-state="EVIDENCE_LINKED_WEIGHT_PENDING" '
+                    f'data-search="{esc((" ".join([label, *source_terms, *labels])).casefold())}">'
+                    f'<strong>{esc(label)}</strong>'
+                    +(f'<small>{esc(label_note)}</small>' if label_note else '')
+                    +"".join(f'<small>{esc(value)}</small>' for value in labels)
+                    +f'<small>{esc(count_line)} · study weight pending</small></div>'
+                )
+            return "".join(rows)
+        pending_rows_html = pending_rows(pending_cards)
         linkage_rows_html = linkage_rows(linkage_cards)
         no_source_rows = omitted_rows(no_source_cards)
+        pending_section = (
+            '<details class="lr-unreported lr-weight-pending">'
+            f'<summary>Evidence linked; study weight pending <span class="lr-unreported-count">{len(pending_cards):,}</span></summary>'
+            '<p>Reviewed findings report a clinical relationship, but the manuscript does not yet have an approved study weight. The evidence remains visible and receives no numerical weight.</p>'
+            f'<div class="lr-unreported-grid">{pending_rows_html}</div></details>'
+            if pending_cards else ""
+        )
         linkage_section = (
             '<details class="lr-unreported lr-linkage-needed">'
             f'<summary>Recorded target needs normalization or linkage <span class="lr-unreported-count">{len(linkage_cards):,}</span></summary>'
@@ -2644,10 +2679,10 @@ def build_weighted_evidence(cards):
         hidden = "" if axis == "LATERALIZATION" else " hidden"
         return f'''<section class="weighted-axis-panel" data-axis-panel="{axis}"{hidden}>
 <div class="lr-wrap" data-axis="{axis}">
-  <div class="lr-intro"><strong>{len(weighted_cards):,} current sign summaries contain weighted evidence on this axis.</strong> Each row represents one public sign and retains every linked child evidence group, source finding, reported result, and manuscript. Clinical relationship labels come directly from the owner-cleared synthesis release. Work weights summarize evidence support; they never invent or remove an anatomical or lateralizing target.</div>
+  <div class="lr-intro"><strong>{len(weighted_cards):,} signs have weighted evidence on this axis.</strong> Each row keeps the manuscripts, findings, and reported values for that sign together. Clinical relationship labels come directly from the reviewed evidence. Manuscript weights summarize support; they never create or remove an anatomical or lateralizing relationship.</div>
   <details class="lr-method"><summary>How weighting works</summary><div>
     {method_html}
-    <p>All {source_report_count} reviewed source reports are accounted for and consolidated into {canonical_work_count} de-duplicated canonical works before weighting. {weighted_work_count} works contribute weighted sign-level evidence; {pending_work_count} linked work has unresolved authority metadata; and {context_work_count} context or reference works contain no linked sign-axis contribution.</p>
+    <p>All {source_report_count} reviewed reports are accounted for and represent {canonical_work_count} distinct manuscripts after duplicate files and report versions are combined. {weighted_work_count} manuscripts contribute weighted evidence; {pending_work_count} await evidence-weight review; and {context_work_count} provide context without a sign-specific localization or lateralization result.</p>
     <p>Source-reported directions, regions, percentages, and denominators remain attached to their exact findings. They are displayed below each row and are not converted into a new pooled target percentage.</p>
   </div></details>
   <div class="lr-tools">
@@ -2660,12 +2695,13 @@ def build_weighted_evidence(cards):
       <button type="button" class="lr-filter" data-filter="nonassoc">{esc(config["nonassoc"])} <i>{nonassoc_count:,}</i></button>
     </div>
     <label class="lr-sort-label">Order
-      <select class="lr-sort"><option value="page">Match page organization</option><option value="weight">Most weighted evidence support</option><option value="name">Semiology A&ndash;Z</option><option value="manuscripts">Most manuscripts</option><option value="statistics">Most reported results</option></select>
+      <select class="lr-sort"><option value="page">Match page organization</option><option value="weight">Most weighted evidence support</option><option value="name">Semiology A&ndash;Z</option><option value="manuscripts">Most manuscripts</option><option value="statistics">Most reported values</option></select>
     </label>
   </div>
-  <div class="lr-visual-legend"><span><strong>Colored chips</strong> show owner-reviewed relationships, not calculated percentages</span><span class="lr-legend-pips"><i class="on"></i><i class="on"></i><i class="on"></i> 1, 2, or 3+ contributing canonical works (volume only)</span><span class="lr-neutral-note">Weights summarize support; they are not reliability, certainty, sensitivity, or specificity.</span></div>
+  <div class="lr-visual-legend"><span><strong>Colored chips</strong> show reviewed relationships, not calculated percentages</span><span class="lr-legend-pips"><i class="on"></i><i class="on"></i><i class="on"></i> 1, 2, or 3+ contributing manuscripts (volume only)</span><span class="lr-neutral-note">Weights summarize support; they are not reliability, certainty, sensitivity, or specificity.</span></div>
   <div class="lr-visible-count"></div>
   <div class="lr-list">{rows}</div>
+  {pending_section}
   {linkage_section}
   {no_source_section}
 </div></section>'''
@@ -3771,7 +3807,12 @@ body.quiz .lib-chip{display:none}
 .lr-item-title{font-weight:750;color:#1e3a53}.lr-item-text{color:#46566a}.lr-locator{color:#8b5b13;font-size:.61rem;text-align:right}
 .lr-stat-value{grid-column:1;font-weight:850;color:#0b6776;font-variant-numeric:tabular-nums}
 .lr-stat-value+.lr-item-title{grid-column:2}.lr-stat-meta{grid-column:1/3;color:#66758a;font-size:.62rem}
-.lr-linkage-note{margin-top:8px;color:#7b8798;font-size:.62rem}
+.lr-linkage-note{margin:8px 0;border:1px solid #e3d5b6;border-radius:8px;background:#fffaf1;color:#6f5a34;font-size:.66rem;overflow:hidden}
+.lr-linkage-note>summary{display:flex;align-items:center;gap:7px;padding:7px 9px;cursor:pointer;font-weight:800;list-style:none}
+.lr-linkage-note>summary::-webkit-details-marker{display:none}.lr-linkage-note>summary::before{content:'\25B8';font-size:.58rem;color:#9a6a18}.lr-linkage-note[open]>summary::before{transform:rotate(90deg)}
+.lr-linkage-note>summary span{margin-left:auto;background:#f1dfbd;border-radius:999px;padding:1px 7px;font-size:.6rem}
+.lr-linkage-note>p{margin:0;padding:0 10px 7px;line-height:1.4}.lr-linkage-note>ul{max-height:15rem;overflow:auto;margin:0;padding:7px 12px 9px 28px;border-top:1px solid #eadcc0}
+.lr-source-note{margin:8px 0 0;color:#7b8798;font-size:.62rem}
 .lr-empty{color:#7b8798;font-size:.7rem;font-style:italic}
 .lr-unreported{margin:12px;border:1px solid #dce3eb;border-radius:9px;background:#f8fafc}
 .lr-unreported>summary{display:flex;gap:8px;align-items:center;padding:9px 11px;cursor:pointer;color:#4c5c70;font-size:.73rem;font-weight:800}
@@ -5708,7 +5749,7 @@ HEAD = """<!DOCTYPE html>
 </div>
 
 <div class="footer">
-  <strong>Educational use:</strong> This reference is designed for teaching and self-study by epilepsy trainees. Each evidence entry shows who was studied, what was counted, the reported result, and important cautions. Results from different studies are not combined. Real localization always integrates ictal EEG, imaging, neuropsychology, and history. &nbsp;|&nbsp;
+  <strong>Educational use:</strong> This reference is designed for teaching and self-study by epilepsy trainees. Each evidence entry shows who was studied, what was counted, the reported value, and important cautions. Results from different studies are not combined. Real localization always integrates ictal EEG, imaging, neuropsychology, and history. &nbsp;|&nbsp;
   <strong>Schools referenced:</strong> Paris SEEG (Bancaud, Talairach, Chauvel, Bartolomei, McGonigal); Cleveland Clinic (L&#252;ders, Kotagal, Bleasel, Dinner); Lyon SEEG (Isnard, Maugui&#232;re, Ryvlin, Ostrowsky); Montreal (Penfield, Jasper, Rasmussen). &nbsp;|&nbsp;
   <strong>Contribute a paper or correction:</strong> new evidence is welcome &mdash; <a href="https://github.com/ckadipas/seizure-semiology-atlas/issues/new/choose">submit it here</a>. Every submission is reviewed by the maintainers before it appears.
 </div>

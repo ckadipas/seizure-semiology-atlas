@@ -11,15 +11,19 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 BUNDLE = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "data" / "atlas_bundle.json"
-SCHEMA = "atlas-public-bundle-1.4.2"
+SCHEMA = "atlas-public-bundle-1.4.3"
 CARD_STATES = {
-    "EVIDENCE_BEARING_WEIGHTED", "TARGET_LINKAGE_NEEDED", "NO_SOURCE_TARGET",
+    "EVIDENCE_BEARING_WEIGHTED", "EVIDENCE_LINKED_WEIGHT_PENDING",
+    "TARGET_LINKAGE_NEEDED", "NO_SOURCE_TARGET",
 }
 CLASS_BASE = {"I": 3.0, "II": 2.0, "III": 1.0}
 DIRECTNESS_MULTIPLIERS = {
     "postop": 1.5, "seeg": 1.5, "intracranial_eeg": 1.35,
     "video_eeg": 1.2, "imaging_concordance": 1.15,
     "scalp_eeg": 1.1, "review": 1.0, "none": 0.9,
+}
+ABSENT_TARGET_TERMS = {
+    "", "n a", "none", "not reported", "not resolved", "unknown", "unspecified",
 }
 LOCATION_LABELS = {
     "REG:TEMPORAL": "Temporal", "REG:FRONTAL": "Frontal",
@@ -34,14 +38,9 @@ TARGET_FIELDS = {
     "nonidentity_group_raw_targets", "nonidentity_group_finding_refs",
     "excluded_relationship_raw_targets", "reported_targets",
     "unresolved_raw_targets", "finding_wide_only_raw_targets",
-    "true_nonassociation",
+    "true_nonassociation", "inherited_nonassociation_status",
+    "promoted_linked_finding_refs", "source_explicit_linked_finding_targets",
 }
-RECORDED_TARGET_FIELDS = TARGET_FIELDS - {
-    "identity_group_finding_refs", "nonidentity_group_finding_refs",
-    "reported_targets", "true_nonassociation",
-}
-
-
 def require(condition, message):
     if not condition:
         raise ValueError(message)
@@ -64,6 +63,30 @@ def relationship_profile(contract):
         for target in targets
     )
     return positive, nonassociation
+
+
+def meaningful_unresolved_targets(values):
+    """Ignore placeholders that explicitly mean no target was reported."""
+    return [
+        value for value in values or []
+        if " ".join(re.findall(
+            r"[a-z0-9]+", str((value or {}).get("raw") or "").casefold()
+        )) not in ABSENT_TARGET_TERMS
+    ]
+
+
+def has_meaningful_recorded_target(contract):
+    """Mirror the exporter's distinction between evidence and placeholders."""
+    if contract.get("reported_targets") or contract.get("true_nonassociation"):
+        return True
+    if (contract.get("exact_group_finding_raw_targets")
+            or contract.get("additional_linkage_targets")):
+        return True
+    return any(meaningful_unresolved_targets(contract.get(field)) for field in (
+        "owner_cleared_raw_targets", "nonidentity_group_raw_targets",
+        "excluded_relationship_raw_targets", "unresolved_raw_targets",
+        "finding_wide_only_raw_targets",
+    ))
 
 
 bundle = json.loads(BUNDLE.read_text(encoding="utf-8"))
@@ -219,16 +242,27 @@ for card in cards:
                 "reported target detail references an absent finding")
 
     positive, nonassociation = relationship_profile(contract)
-    recorded = bool(targets or contract["true_nonassociation"] or any(
-        contract[field] for field in RECORDED_TARGET_FIELDS
-    ))
+    recorded = has_meaningful_recorded_target(contract)
+    relationship_linked = bool(
+        (positive or nonassociation) and row_findings and row_works
+    )
+    has_applied_weight = any(
+        float(contribution.get("final_weight") or 0.0) > 0.0
+        for contribution in contributions
+    )
     expected_state = (
         "EVIDENCE_BEARING_WEIGHTED"
-        if (positive or nonassociation) and row_findings and row_works
+        if relationship_linked and has_applied_weight
+        else "EVIDENCE_LINKED_WEIGHT_PENDING"
+        if relationship_linked
         else "TARGET_LINKAGE_NEEDED" if recorded
         else "NO_SOURCE_TARGET"
     )
-    require(state == expected_state, "card state differs from its source-target contract")
+    require(
+        state == expected_state,
+        "card state differs from its source-target contract: "
+        f"sign_id={card['sign_id']} axis={axis} state={state} expected={expected_state}",
+    )
     status = card["pattern_status"]
     if positive and nonassociation:
         require(status == "GENUINELY_MIXED", "mixed evidence has a contradictory status")
@@ -283,8 +317,9 @@ for card in cards:
             * float(components["directness_multiplier"])
             * float(components["size_factor"]), 3,
         )
-        if state == "EVIDENCE_BEARING_WEIGHTED":
+        if state in {"EVIDENCE_BEARING_WEIGHTED", "EVIDENCE_LINKED_WEIGHT_PENDING"}:
             linked_works.add(work_id)
+        if state == "EVIDENCE_BEARING_WEIGHTED":
             require(contribution.get("weight_status")
                     == "APPLIED_TO_SOURCE_REPORTED_RELATIONSHIP",
                     "usable relationship lacks applied-weight status")
@@ -292,6 +327,15 @@ for card in cards:
                                  abs_tol=1e-9), "applied weight differs from components")
             if float(contribution["final_weight"]) > 0:
                 weighted_works.add(work_id)
+        elif state == "EVIDENCE_LINKED_WEIGHT_PENDING":
+            require(float(contribution["final_weight"]) == 0.0,
+                    "weight was applied while study weighting is pending")
+            require(contribution.get("weight_status")
+                    == "NOT_APPLIED_STUDY_WEIGHT_PENDING",
+                    "pending study lacks pending-weight status")
+            require(math.isclose(float(contribution.get("potential_weight") or 0.0),
+                                 calculated, abs_tol=1e-9),
+                    "pending potential weight differs from components")
         else:
             require(float(contribution["final_weight"]) == 0.0,
                     "weight was applied without a usable axis target")
@@ -304,12 +348,12 @@ for card in cards:
 
 accounting = authority["corpus_accounting"]
 expected_accounting = {
-    "source_reports": 77, "canonical_works": 73, "contributes_weight": 66,
-    "linked_authority_pending": 1, "no_sign_axis_contribution": 6,
+    "source_reports": 77, "canonical_works": 73, "contributes_weight": 65,
+    "linked_authority_pending": 2, "no_sign_axis_contribution": 6,
 }
 require(all(accounting.get(key) == value for key, value in expected_accounting.items()),
         "current corpus accounting changed")
-require(len(weighted_works) == 66 and len(linked_works - weighted_works) == 1
+require(len(weighted_works) == 65 and len(linked_works - weighted_works) == 2
         and len(set(profile_ids) - linked_works) == 6,
         "derived work coverage does not reconcile to corpus accounting")
 
@@ -319,7 +363,7 @@ require(projection == {
     "localization_rows_checked_against_browse_regions": alignment_checks,
     "positive_weight_outside_weighted_rows": 0,
     "duplicate_work_contributions": 0,
-    "browse_region_memberships_added_from_source_targets": 18,
+    "browse_region_memberships_added_from_source_targets": 31,
 }, "current projection audit changed")
 
 serialized = json.dumps(bundle, sort_keys=True).lower()
