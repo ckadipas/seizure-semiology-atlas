@@ -331,7 +331,7 @@ for card in cards:
             linked_works.add(work_id)
         projection_disposition = contribution.get("projection_disposition")
         if projection_disposition:
-            require(projection_disposition in {"SHARED_SOURCE_CATEGORY", "CITED_RESTATEMENT"},
+            require(projection_disposition in {"SHARED_SOURCE_CATEGORY", "CITED_CONTEXT_ONLY"},
                     "unknown context-only projection disposition")
             require(float(contribution["final_weight"]) == 0.0,
                     "context-only source projection carries numerical weight")
