@@ -4961,13 +4961,13 @@ function buildRegionBrowseView(mode){
     const regionIds=totalRegionIds[region]||new Set();
     if(!regionIds.size) return;
     const section=document.createElement('section');
-    section.className='region-section'+(index?' collapsed':'');
+    section.className='region-section collapsed';
     section.id='browse-'+sourceSection.id;
     section.dataset.region=region;
     const sourceToggle=sourceSection.querySelector('.region-toggle');
     const toggle=document.createElement('button');toggle.className='region-toggle';toggle.type='button';
     toggle.style.setProperty('--rc',sourceToggle.style.getPropertyValue('--rc'));
-    toggle.setAttribute('aria-expanded',index?'false':'true');
+    toggle.setAttribute('aria-expanded','false');
     const chev=document.createElement('span');chev.className='region-chev';chev.textContent='▼';
     const name=document.createElement('span');name.className='region-name';name.textContent=region.toLocaleUpperCase();
     const count=document.createElement('span');count.className='region-count';count.textContent=regionIds.size;
@@ -5015,7 +5015,7 @@ function filterRegionView(){
     const ids=perRegionIds[sec.dataset.region];const count=ids?ids.size:0;
     sec.style.display=count?'':'none';
     sec.querySelector('.region-count').textContent=count;
-    const shouldOpen=count&&(!active? !opened:!opened);
+    const shouldOpen=count&&active&&!opened;
     sec.classList.toggle('collapsed',!shouldOpen);
     sec.querySelector('.region-toggle').setAttribute('aria-expanded',shouldOpen?'true':'false');
     if(shouldOpen)opened=true;
@@ -5751,7 +5751,7 @@ HEAD = """<!DOCTYPE html>
        aria-label="Show search and filters">&#128269;<span class="tb-dot" aria-hidden="true"></span></label>
 
 <main>
-""" + brain_fold + meta_fold + """
+""" + brain_fold + """
   <div class="quiz-hint"><strong>Quiz mode on:</strong> lateralization &amp; evidence cues are hidden. Read each sign, predict its localization/lateralization, then expand to check yourself.</div>
   <p class="axis-display-note">Region colors identify anatomy only; they do not indicate evidence strength.</p>
   <div id="source-sign-store" hidden>
@@ -5768,7 +5768,7 @@ HEAD = """<!DOCTYPE html>
   <div id="no-results">No signs match the current search or filters. Try clearing them.</div>
 </main>
 
-""" + evidence_library_html + """
+""" + meta_fold + evidence_library_html + """
 
 <div class="lib">
   <details class="lib-details">
