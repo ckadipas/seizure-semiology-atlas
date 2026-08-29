@@ -705,6 +705,27 @@ _MISSING_PUBLIC_VALUES = {
 }
 PUBLIC_SIGN_BY_ID = {str(row["id"]): row for row in data}
 
+# Reader-facing grouping metadata for the deferred evidence browsers.  These
+# values reorganize already-exported ledger records; they never infer a new
+# scientific relationship.  Region groups use structured region identifiers
+# when a study-result family carries them, and classification groups use the
+# pinned registry crosswalk already embedded in the public bundle.
+REGION_LABEL_BY_ID = {
+    "REG:TEMPORAL": "Temporal", "REG:FRONTAL": "Frontal",
+    "REG:PARIETAL": "Parietal", "REG:OCCIPITAL": "Occipital",
+    "REG:INSULAR": "Insular", "REG:LIMBIC": "Limbic",
+    "REG:DEEP_SUBCORTICAL": "Deep/Subcortical",
+    "REG:MULTIREGIONAL_PROPAGATION": "Multiregional/Propagation",
+}
+CLASSIFICATION_GROUP_BY_SIGN = {}
+for _scheme_id, _tree in classification_trees.items():
+    _scheme_groups = CLASSIFICATION_GROUP_BY_SIGN.setdefault(_scheme_id, {})
+    for _group in _tree.get("groups") or []:
+        for _sign_id in _group.get("all_sign_ids") or []:
+            _labels = _scheme_groups.setdefault(str(_sign_id), [])
+            if _group["label"] not in _labels:
+                _labels.append(_group["label"])
+
 
 def public_value(value, fallback=""):
     if value is None:
@@ -786,7 +807,7 @@ def statistic_item(statistic_id):
 def family_reference_label(family):
     axis = readable_term(family.get("axis") or "result").title()
     signs = family_sign_labels(family)
-    semiology = "; ".join(signs) if signs else "General or contextual result"
+    semiology = "; ".join(signs) if signs else "Additional reported result"
     endpoint = public_value(family.get("endpoint"), "Reported outcome")
     return f"{axis} · {semiology} · {endpoint}"
 
@@ -1597,136 +1618,222 @@ def defer_details_body(html, filename):
     return shell.replace("<details ", f'<details data-fragment="fragments/{filename}" ', 1)
 
 
-def build_unassigned_statistic_section(statistic_ids):
-    if not statistic_ids:
-        return ""
-    sign_groups = {}
+EVIDENCE_CHUNK_SIZE = 48
+
+
+def one_group_label(values, empty_label, multiple_label):
+    values = list(OrderedDict.fromkeys(str(value).strip() for value in values if str(value or "").strip()))
+    if not values:
+        return empty_label
+    return values[0] if len(values) == 1 else multiple_label
+
+
+def sign_group_label(sign_ids):
+    labels = [
+        public_value((PUBLIC_SIGN_BY_ID.get(str(sign_id)) or {}).get("sign"))
+        for sign_id in sign_ids
+    ]
+    return one_group_label(labels, "No linked semiology stated", "Multiple linked semiologies")
+
+
+def linked_sign_region_label(sign_ids):
+    labels = []
+    for sign_id in sign_ids:
+        sign = PUBLIC_SIGN_BY_ID.get(str(sign_id))
+        if not sign:
+            continue
+        labels.extend(
+            value for value in public_browse_regions(sign)
+            if value != "No localization stated"
+        )
+    return one_group_label(labels, "No region stated", "Multiple regions")
+
+
+def classification_group_label(sign_ids, scheme_id):
+    labels = []
+    scheme = CLASSIFICATION_GROUP_BY_SIGN.get(scheme_id) or {}
+    for sign_id in sign_ids:
+        labels.extend(scheme.get(str(sign_id)) or [])
+    short_name = "ILAE" if scheme_id == "ILAE_SEIZURE_2025" else "Lüders"
+    return one_group_label(
+        labels,
+        f"No {short_name} placement",
+        f"Multiple {short_name} categories",
+    )
+
+
+def compact_finding_search_text(row):
+    fields = []
+    for statistic in finding_statistics(row):
+        fields.extend(statistic.get(key) for key in (
+            "metric_type", "value_text", "measure", "numerator", "denominator",
+            "analysis_unit", "comparator", "population", "subgroup", "timepoint",
+            "endpoint", "phase", "citation", "source_locator",
+        ))
+    return " ".join(str(value or "") for value in fields)
+
+
+def register_evidence_dataset(dataset_name, records):
+    """Store a small metadata index and bounded HTML chunks for on-demand display."""
+    index_records = []
+    for chunk_number, start in enumerate(range(0, len(records), EVIDENCE_CHUNK_SIZE), start=1):
+        chunk_records = records[start:start + EVIDENCE_CHUNK_SIZE]
+        chunk_name = f"evidence-data/{dataset_name}-{chunk_number:03d}.json"
+        deferred_fragments[chunk_name] = json.dumps(
+            {record["id"]: record["html"] for record in chunk_records},
+            ensure_ascii=False,
+            separators=(",", ":"),
+        )
+        for record in chunk_records:
+            metadata = {key: value for key, value in record.items() if key != "html"}
+            metadata["chunk"] = f"fragments/{chunk_name}"
+            index_records.append(metadata)
+    index_name = f"{dataset_name}-index.json"
+    deferred_fragments[index_name] = json.dumps(
+        {"schema_version": 1, "records": index_records},
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
+    return f"fragments/{index_name}"
+
+
+def indexed_panel_shell(*, dataset_path, intro, records, organizers, default_organizer,
+                        item_label, placeholder, view_kind):
+    counts = Counter(record["metric"] for record in records)
+    metric_labels = {record["metric"]: record["metric_label"] for record in records}
+    buttons = [f'<button class="fxb on" data-f="all">All <i>{len(records):,}</i></button>']
+    for metric, count in sorted(counts.items(), key=lambda item: metric_labels[item[0]].casefold()):
+        buttons.append(
+            f'<button class="fxb" data-f="{esc(metric)}">{esc(metric_labels[metric])} <i>{count:,}</i></button>'
+        )
+    organizer_options = "".join(
+        f'<option value="{esc(value)}"{" selected" if value == default_organizer else ""}>{esc(label)}</option>'
+        for value, label in organizers
+    )
+    return f'''<div class="fx-wrap fx-indexed" data-index="{esc(dataset_path)}" data-item-label="{esc(item_label)}" data-view-kind="{esc(view_kind)}" data-global-sign-filter="true">
+  <div class="fx-intro">{intro}</div>
+  <div class="fx-tools">
+    <input type="text" class="fx-search" placeholder="{placeholder}">
+    <button type="button" class="fx-reset">Reset</button>
+    <label class="fx-organize-label"><span>Organize by</span><select class="fx-organize">{organizer_options}</select></label>
+    <label class="fx-page-label"><span>Show per group</span><select class="fx-page-size"><option>24</option><option selected>48</option><option>96</option></select></label>
+    <div class="fx-btns">{"".join(buttons)}</div>
+  </div>
+  <div class="evidence-result-counts"><span class="fx-count">Loading index&hellip;</span><span class="fx-secondary-count"></span></div>
+  <div class="fx-table fx-indexed-table"><div class="fx-loading">Loading organized evidence&hellip;</div></div>
+</div>'''
+
+
+def study_result_record(family, *, record_id, statistic_ids=None, counted=True):
+    family_id = str(family.get("analysis_id") or "")
+    assigned_statistic_ids = (
+        FAMILY_PRIMARY_STATISTIC_IDS.get(family_id, [])
+        if statistic_ids is None else list(statistic_ids)
+    )
+    sign_ids = list(OrderedDict.fromkeys(str(sign_id) for sign_id in family.get("sign_ids") or []))
+    items = [statistic_item(statistic_id) for statistic_id in assigned_statistic_ids]
+    phases = [public_context_value(family.get("phase"))]
+    manuscripts = []
+    for item in items:
+        _context, source, finding, statistic = estimate_context(item)
+        phases.append(public_context_value(statistic.get("phase")) or public_context_value(finding.get("phase")))
+        manuscript = public_value(source.get("source_file")) or estimate_citation(item)
+        if manuscript:
+            manuscripts.append(manuscript)
+    structured_regions = [
+        REGION_LABEL_BY_ID.get(region_id, readable_term(region_id).title())
+        for region_id in ((family.get("axis_targets") or {}).get("region_ids") or [])
+    ]
+    region_group = one_group_label(
+        structured_regions,
+        linked_sign_region_label(sign_ids) if not counted else "No region reported for this result",
+        "Multiple regions",
+    )
+    endpoint = public_value(family.get("endpoint"), "Reported outcome")
+    metric_key = str(family.get("metric_type") or "OTHER").upper()
+    axis = str(family.get("axis") or "").upper()
+    search = " ".join(str(value or "") for value in [
+        endpoint, metric_label(metric_key), axis, family.get("phase"), family.get("population"),
+        family.get("comparator"), family.get("subgroup"), family.get("analysis_unit"),
+        family.get("reference_standard"), *family_sign_labels(family),
+        *[estimate_search_text(item) for item in items],
+    ]).casefold()
+    return {
+        "id": record_id,
+        "metric": metric_key,
+        "metric_label": metric_label(metric_key),
+        "sign_ids": sign_ids,
+        "search": search,
+        "numbers": len(assigned_statistic_ids),
+        "kind": "grouped" if counted else "additional",
+        "sort": endpoint.casefold(),
+        "groups": {
+            "sign": sign_group_label(sign_ids),
+            "axis": readable_term(axis).title() if axis else "No result-group axis",
+            "region": region_group,
+            "manuscript": one_group_label(manuscripts, "No manuscript stated", "Multiple contributing manuscripts"),
+            "phase": one_group_label(phases, "Phase not stated", "Multiple phases"),
+            "result": metric_label(metric_key),
+            "ilae": classification_group_label(sign_ids, "ILAE_SEIZURE_2025"),
+            "luders": classification_group_label(sign_ids, "LUDERS_5D_2005"),
+        },
+        "html": descriptive_family_row(
+            family,
+            statistic_ids=assigned_statistic_ids,
+            count_as_family=counted,
+        ),
+    }
+
+
+def build_unassigned_statistic_records(statistic_ids):
+    grouped = {}
     for statistic_id in statistic_ids:
         context = STATISTIC_CONTEXT_BY_ID.get(str(statistic_id)) or {}
         source = context.get("source") or {}
         finding = context.get("finding") or {}
         statistic = context.get("statistic") or {}
-        endpoint = public_value(finding.get("source_term"), "General or contextual result")
+        endpoint = public_value(finding.get("source_term"), "Additional reported result")
         metric_key = str(statistic.get("metric_type") or "OTHER").upper()
-        sign_ids = []
-        sign_labels = []
-        for sign_id in [*(finding.get("exact_sign_ids") or []), *(finding.get("related_sign_ids") or [])]:
-            sign_id = str(sign_id)
-            label = public_value((PUBLIC_SIGN_BY_ID.get(sign_id) or {}).get("sign"))
-            if label and sign_id not in sign_ids:
-                sign_ids.append(sign_id)
-                sign_labels.append(label)
-        if len(sign_labels) == 1:
-            sign_group_key = (0, sign_labels[0].casefold(), sign_labels[0])
-        elif len(sign_labels) > 1:
-            sign_group_key = (1, "multiple linked semiologies", "Multiple linked semiologies")
-        else:
-            sign_group_key = (2, "general or contextual outcomes", "General or contextual outcomes")
-        sign_group = sign_groups.setdefault(sign_group_key, {"groups": {}, "statistic_count": 0})
-        sign_group["statistic_count"] += 1
-        group = sign_group["groups"].setdefault(
-            (endpoint.casefold(), metric_key),
-            {"endpoint": endpoint, "metric_type": metric_key, "statistic_ids": [], "sign_ids": [], "works": set()},
-        )
+        sign_ids = list(OrderedDict.fromkeys(
+            str(sign_id) for sign_id in [
+                *(finding.get("exact_sign_ids") or []), *(finding.get("related_sign_ids") or []),
+            ]
+        ))
+        key = (sign_group_label(sign_ids).casefold(), endpoint.casefold(), metric_key)
+        group = grouped.setdefault(key, {
+            "endpoint": endpoint, "metric_type": metric_key, "statistic_ids": [],
+            "sign_ids": [], "works": set(),
+        })
         group["statistic_ids"].append(str(statistic_id))
-        for sign_id in sign_ids:
-            if sign_id not in group["sign_ids"]:
-                group["sign_ids"].append(sign_id)
+        group["sign_ids"].extend(sign_id for sign_id in sign_ids if sign_id not in group["sign_ids"])
         work_key = public_value(source.get("work_id")) or public_value(source.get("source_file"))
         if work_key:
             group["works"].add(work_key)
-    sign_sections = []
-    for sign_group_key in sorted(sign_groups):
-        sign_group = sign_groups[sign_group_key]
-        rows = []
-        for group_key in sorted(sign_group["groups"]):
-            group = sign_group["groups"][group_key]
-            pseudo_family = {
-                "analysis_id": "",
-                "axis": "",
-                "endpoint": group["endpoint"],
-                "metric_type": group["metric_type"],
-                "sign_ids": group["sign_ids"],
-                "source_work_count": len(group["works"]),
-            }
-            rows.append(
-                descriptive_family_row(
-                    pseudo_family,
-                    statistic_ids=group["statistic_ids"],
-                    count_as_family=False,
-                )
-            )
-        outcome_word = "outcome" if len(rows) == 1 else "outcomes"
-        number_count = sign_group["statistic_count"]
-        number_word = "number" if number_count == 1 else "numbers"
-        sign_sections.append(
-            '<details class="evidence-sign-group" data-fx-group>'
-            f'<summary><span>{esc(sign_group_key[2])}</span>'
-            f'<span>{len(rows):,} {outcome_word} &middot; {number_count:,} {number_word}</span></summary>'
-            f'<div class="evidence-sign-results">{"".join(rows)}</div>'
-            '</details>'
-        )
-    number_word = "number" if len(statistic_ids) == 1 else "numbers"
-    return (
-        '<section class="evidence-axis-group evidence-contextual-results" data-fx-group>'
-        '<div class="evidence-axis-heading"><span>General or contextual results</span>'
-        f'<span>{len(statistic_ids):,} reported {number_word}</span></div>'
-        f'{"".join(sign_sections)}</section>'
-    )
+    records = []
+    for position, key in enumerate(sorted(grouped), start=1):
+        group = grouped[key]
+        pseudo_family = {
+            "analysis_id": "", "axis": "", "endpoint": group["endpoint"],
+            "metric_type": group["metric_type"], "sign_ids": group["sign_ids"],
+            "source_work_count": len(group["works"]),
+        }
+        records.append(study_result_record(
+            pseudo_family,
+            record_id=f"additional-{position:04d}",
+            statistic_ids=group["statistic_ids"],
+            counted=False,
+        ))
+    return records
 
 
 def build_descriptive_family_panel(families):
     if not families:
         return ""
-    counts = {}
-    for family in families:
-        metric = str(family.get("metric_type") or "OTHER").upper()
-        counts[metric] = counts.get(metric, 0) + 1
-    buttons = [f'<button class="fxb on" data-f="all">All <i>{len(families):,}</i></button>']
-    for metric, count in sorted(counts.items()):
-        buttons.append(
-            f'<button class="fxb" data-f="{esc(metric)}">{esc(metric_label(metric))} <i>{count:,}</i></button>'
-        )
-    families_by_axis = OrderedDict((axis, []) for axis in ("LATERALIZATION", "LOCALIZATION"))
-    for family in families:
-        axis = str(family.get("axis") or "OTHER").upper()
-        families_by_axis.setdefault(axis, []).append(family)
-    axis_sections = []
-    for axis, axis_families in families_by_axis.items():
-        if not axis_families:
-            continue
-        sign_groups = {}
-        for family in axis_families:
-            labels = family_sign_labels(family)
-            if len(labels) == 1:
-                group_key = (0, labels[0].casefold(), labels[0])
-            elif len(labels) > 1:
-                group_key = (1, "multiple linked semiologies", "Multiple linked semiologies")
-            else:
-                group_key = (2, "general or contextual outcomes", "General or contextual outcomes")
-            sign_groups.setdefault(group_key, []).append(family)
-        sign_sections = []
-        for group_key in sorted(sign_groups):
-            group_label = group_key[2]
-            group_families = sorted(sign_groups[group_key], key=lambda family: (
-                str(family.get("endpoint") or "").casefold(),
-                str(family.get("metric_type") or "").casefold(),
-                str(family.get("phase") or "").casefold(),
-                str(family.get("analysis_id") or ""),
-            ))
-            outcome_word = "outcome" if len(group_families) == 1 else "outcomes"
-            sign_sections.append(
-                '<details class="evidence-sign-group" data-fx-group>'
-                f'<summary><span>{esc(group_label)}</span><span><i data-fx-group-count>{len(group_families):,}</i> {outcome_word}</span></summary>'
-                f'<div class="evidence-sign-results">{"".join(descriptive_family_row(family) for family in group_families)}</div>'
-                '</details>'
-            )
-        axis_label = readable_term(axis).title()
-        axis_sections.append(
-            '<details class="evidence-axis-group" data-fx-group>'
-            f'<summary class="evidence-axis-heading"><span>{esc(axis_label)}</span><span><i data-fx-group-count>{len(axis_families):,}</i> result groups</span></summary>'
-            f'{"".join(sign_sections)}</details>'
-        )
+    records = [
+        study_result_record(family, record_id=f"family-{position:04d}")
+        for position, family in enumerate(families, start=1)
+    ]
+    records.extend(build_unassigned_statistic_records(UNASSIGNED_STATISTIC_IDS))
     rendered_statistic_ids = [
         statistic_id
         for family in families
@@ -1737,32 +1844,46 @@ def build_descriptive_family_panel(families):
         or set(rendered_statistic_ids) != set(STATISTIC_CONTEXT_BY_ID)
     ):
         raise RuntimeError("The evidence library must render every reported number exactly once.")
-    unassigned_section = build_unassigned_statistic_section(UNASSIGNED_STATISTIC_IDS)
+    dataset_path = register_evidence_dataset("study-results", records)
     method_note = (EVIDENCE_SYNTHESIS.get("release") or {}).get("method_note") or ""
     method_details = (
         '<details class="evidence-method-note"><summary>How result groups were constructed</summary>'
         f'<p>{esc(method_note)}</p></details>' if public_value(method_note) else ""
     )
-    return f'''<div class="fx-wrap study-results-panel" data-item-label="result groups" data-global-sign-filter="true">
-  <div class="fx-intro">Result groups and their exact reported numbers are organized together: axis &rarr; semiology &rarr; outcome &rarr; study &rarr; reported number. Values remain source-specific and are not pooled. Ungrouped values remain under <strong>General or contextual results</strong>. {method_details}</div>
-  <div class="fx-tools"><input type="text" class="fx-search" placeholder="Search signs, outcomes, populations, values, or sources&hellip;"><button type="button" class="fx-reset">Reset</button><div class="fx-btns">{"".join(buttons)}</div></div>
-  <div class="evidence-result-counts"><span class="fx-count"></span><span class="fx-secondary-count"></span></div>
-  <div class="fx-table syn-global-table">{"".join(axis_sections)}{unassigned_section}</div>
-</div>'''
+    intro = (
+        "Study results retain their exact reported numbers, citations, and source locations; values are not pooled. "
+        "Choose the clinical organization that is useful to you. Reported numbers not assigned to a descriptive "
+        "result group remain available in the closed <strong>Additional reported results</strong> section. "
+        "That placement does not mean the associated sign lacks localization or lateralization. " + method_details
+    )
+    return indexed_panel_shell(
+        dataset_path=dataset_path,
+        intro=intro,
+        records=records,
+        organizers=(
+            ("sign", "Semiology A–Z"), ("axis", "Evidence axis"),
+            ("region", "Brain region"), ("manuscript", "Contributing manuscript"),
+            ("phase", "Seizure phase"), ("result", "Result type"),
+            ("ilae", "ILAE 2025 classification"), ("luders", "Lüders 5D classification"),
+        ),
+        default_organizer="sign",
+        item_label="study results",
+        placeholder="Search signs, outcomes, populations, values, or sources…",
+        view_kind="studies",
+    )
 
 
 def build_reviewed_findings_panel(corpus):
-    """Render every reviewed finding once in reader-facing language."""
+    """Index every reviewed finding while deferring its full card until opened."""
     role_color = {
         "PRIMARY_RESULT": "#1a7a4a", "REVIEW_SYNTHESIS": "#2471a3",
         "CITED_STUDY_RESTATEMENT": "#6b7280", "EDUCATIONAL_STATEMENT": "#8e44ad",
         "GUIDELINE_RECOMMENDATION": "#0a7a8a", "CASE_OBSERVATION": "#95691a",
     }
-    rows, counts = [], {}
+    records = []
     for source in corpus["sources"]:
         for row in source["findings"]:
             role = row["evidence_role"]
-            counts[role] = counts.get(role, 0) + 1
             statistics = finding_statistics(row)
             if len(statistics) == 1:
                 row_value = statistic_value(statistics[0])
@@ -1776,14 +1897,9 @@ def build_reviewed_findings_panel(corpus):
                     *(row.get("exact_sign_ids") or []), *(row.get("related_sign_ids") or []),
                 ]
             ))
-            search = " ".join(str(x or "") for x in [
-                row["source_term"], row["claim"], statistic_search_text(row), row["citation"], row["locators"],
-                row["evidence_text"], row["population"], row["laterality_localization"],
-                source["source_file"], ROLE_LABEL.get(role, ""),
-            ]).lower().replace('"', "")
             measure = statistic_block(row)
-            rows.append(
-                f'<div class="fx-row evidence-row" data-metric="{role}" data-sign-ids="{esc("|".join(sign_ids))}" data-fq="{esc(search)}">'
+            row_html = (
+                '<div class="fx-row evidence-row">'
                 f'<span class="fx-m" style="background:{role_color.get(role,"#6b7280")}">{esc(ROLE_LABEL.get(role,"Source information"))}</span>'
                 f'<span class="fx-ph">{esc(row["source_term"])}<span class="fx-reg">{esc(row["phase"])}</span></span>'
                 f'<span class="fx-val">{esc(row_value)}</span>'
@@ -1795,18 +1911,49 @@ def build_reviewed_findings_panel(corpus):
                 f'<div><strong>What the finding suggests:</strong> {esc(row["laterality_localization"])}</div>'
                 f'<div><strong>Important cautions:</strong> {esc(row["limitations"])}</div>'
                 f'{cited_source_line(row)}'
-                '</details></div>')
-    total = len(rows)
-    buttons = [f'<button class="fxb on" data-f="all">All <i>{total}</i></button>']
-    for role in ROLE_LABEL:
-        if counts.get(role):
-            buttons.append(f'<button class="fxb" data-f="{role}">{esc(ROLE_LABEL[role])} <i>{counts[role]}</i></button>')
-    return f'''<div class="fx-wrap" data-item-label="findings" data-global-sign-filter="true">
-  <div class="fx-intro">Every reviewed finding appears once with its claim, exact citation when catalogued, source filename, locator, and expandable source context.</div>
-  <div class="fx-tools"><input type="text" class="fx-search" placeholder="Search signs, claims, measures, sources, locators&hellip;"><button type="button" class="fx-reset">Reset</button><div class="fx-btns">{"".join(buttons)}</div></div>
-  <div class="fx-count"></div>
-  <div class="fx-table">{chr(10).join(rows)}</div>
-</div>'''
+                '</details></div>'
+            )
+            search = " ".join(str(value or "") for value in [
+                row["source_term"], row["claim"], compact_finding_search_text(row), row["citation"],
+                row["locators"], row["population"], row["laterality_localization"],
+                source["source_file"], ROLE_LABEL.get(role, ""),
+            ]).casefold().replace('"', "")
+            records.append({
+                "id": f"finding-{len(records) + 1:05d}",
+                "metric": role,
+                "metric_label": ROLE_LABEL.get(role, "Source information"),
+                "sign_ids": sign_ids,
+                "search": search,
+                "numbers": len(statistics),
+                "kind": "finding",
+                "sort": str(row["source_term"] or "").casefold(),
+                "groups": {
+                    "sign": sign_group_label(sign_ids),
+                    "region": linked_sign_region_label(sign_ids),
+                    "manuscript": public_value(source.get("source_file"), "Manuscript not stated"),
+                    "phase": public_context_value(row.get("phase"), "Phase not stated"),
+                    "result": ROLE_LABEL.get(role, "Source information"),
+                    "ilae": classification_group_label(sign_ids, "ILAE_SEIZURE_2025"),
+                    "luders": classification_group_label(sign_ids, "LUDERS_5D_2005"),
+                },
+                "html": row_html,
+            })
+    dataset_path = register_evidence_dataset("reviewed-findings", records)
+    return indexed_panel_shell(
+        dataset_path=dataset_path,
+        intro="Every reviewed finding remains available with its claim, manuscript, locator, reported values, and expandable source context. Open only the group you need; closed groups do not load thousands of hidden cards.",
+        records=records,
+        organizers=(
+            ("manuscript", "Contributing manuscript"), ("sign", "Semiology A–Z"),
+            ("region", "Brain region (linked sign)"), ("phase", "Seizure phase"),
+            ("result", "Evidence type"), ("ilae", "ILAE 2025 classification"),
+            ("luders", "Lüders 5D classification"),
+        ),
+        default_organizer="manuscript",
+        item_label="findings",
+        placeholder="Search signs, claims, measures, sources, or locators…",
+        view_kind="findings",
+    )
 
 
 def build_evidence_library(corpus):
@@ -3945,6 +4092,9 @@ body.quiz .lib-chip{display:none}
 .fx-search:focus{border-color:var(--teal);box-shadow:0 0 0 3px rgba(14,157,176,.13)}
 .fx-reset{border:1px solid var(--line);background:#fff;color:#526276;border-radius:7px;padding:7px 10px;font-family:inherit;font-size:.7rem;font-weight:700;cursor:pointer}
 .fx-reset:hover{border-color:var(--teal);color:var(--teal-d)}
+.fx-organize-label,.fx-page-label{display:flex;align-items:center;gap:6px;color:#697588;font-size:.65rem;font-weight:750;text-transform:uppercase;letter-spacing:.035em}
+.fx-organize-label select,.fx-page-label select{border:1px solid #cdd8e5;border-radius:7px;background:#fff;color:#17314f;padding:7px 25px 7px 8px;font-family:inherit;font-size:.72rem;font-weight:700;text-transform:none;letter-spacing:0}
+.fx-organize-label select{min-width:190px}.fx-page-label select{min-width:66px}
 .fx-btns{display:flex;gap:6px;flex-wrap:wrap}
 .fxb{border:1px solid var(--line);background:#fff;color:var(--navy);border-radius:16px;padding:5px 10px;font-size:.73rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:5px}
 .fxb:hover{border-color:var(--teal);color:var(--teal-d)}
@@ -3952,6 +4102,24 @@ body.quiz .lib-chip{display:none}
 .fxb i{font-style:normal;font-size:.64rem;opacity:.7;font-weight:800}
 .fx-count{font-size:.72rem;color:var(--muted);font-style:italic;padding:2px 16px 8px}
 .fx-table{max-height:560px;overflow-y:auto;border-top:1px solid var(--line2)}
+.fx-indexed-table{min-height:76px;padding:7px;background:#fbfcfe}
+.fx-loading,.fx-empty,.fx-group-prompt{padding:18px;color:#718096;font-size:.74rem;font-style:italic;text-align:center}
+.fx-browser-group{margin:6px;border:1px solid #d9e2ec;border-radius:8px;background:#fff;overflow:hidden}
+.fx-browser-group>summary,.fx-additional-results>summary{list-style:none;display:flex;align-items:center;gap:8px;padding:9px 11px;cursor:pointer;color:#18314e;font-size:.75rem;font-weight:780}
+.fx-browser-group>summary::-webkit-details-marker,.fx-additional-results>summary::-webkit-details-marker{display:none}
+.fx-browser-group>summary::before,.fx-additional-results>summary::before{content:'\25B8';color:var(--teal-d);font-size:.6rem;transition:transform .14s}
+.fx-browser-group[open]>summary::before,.fx-additional-results[open]>summary::before{transform:rotate(90deg)}
+.fx-browser-group>summary>span:first-of-type,.fx-additional-results>summary>span:first-of-type{min-width:0;overflow-wrap:anywhere}
+.fx-browser-group>summary>span:last-of-type,.fx-additional-results>summary>span:last-of-type{margin-left:auto;color:#718096;font-size:.64rem;font-weight:680;white-space:nowrap}
+.fx-browser-group-body{border-top:1px solid #e8edf3;background:#fff}
+.fx-browser-rows>.fx-row:last-child{border-bottom:0}
+.fx-additional-results{margin:9px 6px 6px;border:1px solid #b9dce4;border-radius:9px;background:#f3fafc;overflow:hidden}
+.fx-additional-results>summary{color:#15576a}
+.fx-additional-results>p{margin:0;padding:0 12px 9px;color:#58697d;font-size:.69rem;line-height:1.45}
+.fx-additional-groups{padding:1px 3px 6px;border-top:1px solid #d8ebef}
+.fx-pager{display:flex;align-items:center;justify-content:center;gap:10px;padding:8px 10px;border-top:1px solid #e8edf3;background:#f8fafc;color:#657287;font-size:.68rem}
+.fx-pager button{border:1px solid #cdd8e5;border-radius:6px;background:#fff;color:#17314f;padding:5px 9px;font-family:inherit;font-size:.67rem;font-weight:700;cursor:pointer}
+.fx-pager button:disabled{opacity:.42;cursor:default}
 .fx-row{display:grid;grid-template-columns:96px minmax(150px,1.4fr) 88px minmax(120px,1fr);gap:8px;align-items:start;padding:7px 16px;border-bottom:1px solid var(--line2);font-size:.78rem}
 .fx-row:nth-child(even){background:#fbfcfe}
 .fx-row[data-excl="1"]{opacity:.55}
@@ -3985,6 +4153,10 @@ body.quiz .lib-chip{display:none}
   .fx-row{grid-template-columns:1fr auto;grid-template-areas:"m val" "ph ph" "src src" "q q";gap:3px 8px}
   .fx-m{grid-area:m}.fx-ph{grid-area:ph}.fx-val{grid-area:val;text-align:right}.fx-src{grid-area:src}.fx-q{grid-area:q}.fx-context{grid-column:1 / -1}
   .fx-search{width:100%}
+  .fx-organize-label,.fx-page-label{flex:1 1 100%;justify-content:space-between}
+  .fx-organize-label select,.fx-page-label select{flex:1;min-width:0;max-width:68%}
+  .fx-browser-group>summary,.fx-additional-results>summary{align-items:flex-start;flex-wrap:wrap}
+  .fx-browser-group>summary>span:last-of-type,.fx-additional-results>summary>span:last-of-type{flex:1 1 100%;margin-left:14px;white-space:normal}
   .evidence-method-note{display:block;margin:5px 0 0}
   .syn-family-context{grid-template-columns:1fr}
   .evidence-axis-heading,.evidence-sign-group>summary,.syn-family>summary,.evidence-study>summary{align-items:flex-start}
@@ -4614,6 +4786,16 @@ function loadFragment(path){
     }));
   }
   return fragmentCache.get(path);
+}
+const evidenceJsonCache=new Map();
+function loadEvidenceJson(path){
+  if(!evidenceJsonCache.has(path)){
+    evidenceJsonCache.set(path,fetch(path,{cache:'no-store'}).then(response=>{
+      if(!response.ok) throw new Error('HTTP '+response.status);
+      return response.json();
+    }));
+  }
+  return evidenceJsonCache.get(path);
 }
 function bindDetailPanels(sign){
   sign.querySelectorAll('.detail details').forEach(panel=>{
@@ -5491,7 +5673,195 @@ document.querySelectorAll('.lr-wrap').forEach(bindLedgerReliability);
 // ---- local table controls; study summaries also inherit active sign filters ----
 let activeStudySignIds=null;
 
+function fxEscape(value){
+  return String(value??'').replace(/[&<>"']/g,char=>({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  })[char]);
+}
+
+async function bindIndexedFxWrap(wrap){
+  if(wrap.dataset.filterBound) return;
+  wrap.dataset.filterBound='true';
+  const search=wrap.querySelector('.fx-search');
+  const table=wrap.querySelector('.fx-table');
+  const count=wrap.querySelector('.fx-count');
+  const secondaryCount=wrap.querySelector('.fx-secondary-count');
+  const reset=wrap.querySelector('.fx-reset');
+  const organizer=wrap.querySelector('.fx-organize');
+  const pageSizeControl=wrap.querySelector('.fx-page-size');
+  const buttons=Array.from(wrap.querySelectorAll('.fxb'));
+  if(!search||!table||!count||!organizer||!pageSizeControl) return;
+  const defaultOrganizer=organizer.value;
+  let payload;
+  try{
+    payload=await loadEvidenceJson(wrap.dataset.index);
+  }catch(error){
+    count.textContent='The evidence index could not be loaded.';
+    table.innerHTML='<div class="fx-empty">Reload the page and try again.</div>';
+    return;
+  }
+  const records=Array.isArray(payload.records)?payload.records:[];
+  const groupRecords=new Map();
+  let metricFilter='all';
+  let groupSequence=0;
+  let searchTimer=null;
+
+  const groupOrder={
+    axis:['Lateralization','Localization','No result-group axis'],
+    region:['Temporal','Frontal','Parietal','Occipital','Insular','Limbic','Deep/Subcortical','Multiregional/Propagation','Multiple regions','No region stated','No region reported for this result'],
+    phase:['Aura','Ictal','Postictal','Interictal','Peri-ictal','Multiple phases','Phase not stated']
+  };
+  function linkedToVisibleSign(record){
+    if(!activeStudySignIds) return true;
+    return (record.sign_ids||[]).some(id=>activeStudySignIds.has(String(id)));
+  }
+  function orderedLabels(labels,key){
+    const preferred=groupOrder[key]||[];
+    return labels.sort((a,b)=>{
+      const ai=preferred.indexOf(a),bi=preferred.indexOf(b);
+      if(ai>=0||bi>=0){
+        if(ai<0) return 1;
+        if(bi<0) return -1;
+        if(ai!==bi) return ai-bi;
+      }
+      const aTail=/^(No |Multiple |Other)/i.test(a),bTail=/^(No |Multiple |Other)/i.test(b);
+      if(aTail!==bTail) return aTail?1:-1;
+      return a.localeCompare(b,undefined,{sensitivity:'base',numeric:true});
+    });
+  }
+  function groupMarkup(sourceRecords,prefix){
+    const key=organizer.value;
+    const groups=new Map();
+    sourceRecords.forEach(record=>{
+      const label=record.groups?.[key]||'Other';
+      if(!groups.has(label)) groups.set(label,[]);
+      groups.get(label).push(record);
+    });
+    return orderedLabels(Array.from(groups.keys()),key).map(label=>{
+      const rows=groups.get(label).sort((a,b)=>(a.sort||'').localeCompare(b.sort||'',undefined,{sensitivity:'base',numeric:true}));
+      const token=prefix+'-'+(++groupSequence);
+      groupRecords.set(token,rows);
+      const numbers=rows.reduce((sum,row)=>sum+(Number(row.numbers)||0),0);
+      const itemWord=rows.length===1?'entry':'entries';
+      const numberWord=numbers===1?'number':'numbers';
+      return '<details class="fx-browser-group" data-fx-group-id="'+token+'">'+
+        '<summary><span>'+fxEscape(label)+'</span><span>'+rows.length.toLocaleString()+' '+itemWord+' · '+numbers.toLocaleString()+' '+numberWord+'</span></summary>'+
+        '<div class="fx-browser-group-body"><div class="fx-group-prompt">Open this group to load its records.</div></div></details>';
+    }).join('');
+  }
+  async function renderGroupPage(details,page){
+    const rows=groupRecords.get(details.dataset.fxGroupId)||[];
+    const pageSize=Math.max(1,Number(pageSizeControl.value)||48);
+    const pages=Math.max(1,Math.ceil(rows.length/pageSize));
+    page=Math.max(0,Math.min(Number(page)||0,pages-1));
+    details.dataset.page=String(page);
+    const body=details.querySelector(':scope > .fx-browser-group-body');
+    const serial=String((Number(details.dataset.loadSerial)||0)+1);
+    details.dataset.loadSerial=serial;
+    body.innerHTML='<div class="fx-loading">Loading records…</div>';
+    const pageRows=rows.slice(page*pageSize,(page+1)*pageSize);
+    try{
+      const htmlRows=await Promise.all(pageRows.map(async record=>{
+        const chunk=await loadEvidenceJson(record.chunk);
+        return chunk[record.id]||'<div class="fx-empty">Record unavailable.</div>';
+      }));
+      if(!details.open||details.dataset.loadSerial!==serial) return;
+      const first=page*pageSize+1,last=Math.min(rows.length,(page+1)*pageSize);
+      const pager=pages>1?'<div class="fx-pager">'+
+        '<button type="button" data-fx-page="prev"'+(page===0?' disabled':'')+'>Previous</button>'+
+        '<span>'+first.toLocaleString()+'–'+last.toLocaleString()+' of '+rows.length.toLocaleString()+'</span>'+
+        '<button type="button" data-fx-page="next"'+(page===pages-1?' disabled':'')+'>Next</button></div>':'';
+      body.innerHTML='<div class="fx-browser-rows">'+htmlRows.join('')+'</div>'+pager;
+    }catch(error){
+      if(details.dataset.loadSerial===serial)
+        body.innerHTML='<div class="fx-empty">These records could not be loaded. Close the group and try again.</div>';
+    }
+  }
+  function bindRenderedGroups(){
+    table.querySelectorAll('.fx-browser-group').forEach(details=>{
+      details.addEventListener('toggle',()=>{
+        if(details.open){
+          void renderGroupPage(details,Number(details.dataset.page)||0);
+        }else{
+          details.dataset.loadSerial=String((Number(details.dataset.loadSerial)||0)+1);
+          details.querySelector(':scope > .fx-browser-group-body').innerHTML=
+            '<div class="fx-group-prompt">Open this group to load its records.</div>';
+        }
+      });
+    });
+    table.querySelectorAll('.fx-additional-results').forEach(section=>{
+      section.addEventListener('toggle',()=>{
+        if(!section.open)
+          section.querySelectorAll('.fx-browser-group[open]').forEach(details=>{details.open=false;});
+      });
+    });
+  }
+  function apply(){
+    const query=(search.value||'').toLocaleLowerCase().trim();
+    const available=records.filter(record=>
+      linkedToVisibleSign(record)&&(!query||(record.search||'').includes(query))
+    );
+    buttons.forEach(button=>{
+      const metric=button.dataset.f;
+      const metricCount=metric==='all'?available.length:available.filter(record=>record.metric===metric).length;
+      const badge=button.querySelector('i');
+      if(badge) badge.textContent=metricCount.toLocaleString();
+    });
+    const matched=available.filter(record=>metricFilter==='all'||record.metric===metricFilter);
+    const numbers=matched.reduce((sum,record)=>sum+(Number(record.numbers)||0),0);
+    if(wrap.dataset.viewKind==='studies'){
+      const grouped=matched.filter(record=>record.kind==='grouped');
+      const additional=matched.filter(record=>record.kind==='additional');
+      count.textContent=grouped.length.toLocaleString()+' grouped study results · '+additional.length.toLocaleString()+' additional entries matched';
+      secondaryCount.textContent=numbers.toLocaleString()+' reported '+(numbers===1?'number':'numbers')+' matched';
+      groupRecords.clear();groupSequence=0;
+      let markup=groupMarkup(grouped,'grouped');
+      if(additional.length){
+        const additionalNumbers=additional.reduce((sum,record)=>sum+(Number(record.numbers)||0),0);
+        markup+='<details class="fx-additional-results"><summary><span>Additional reported results</span><span>'+additional.length.toLocaleString()+' entries · '+additionalNumbers.toLocaleString()+' numbers</span></summary>'+
+          '<p>These numbers are present in the ledger but are not assigned to a descriptive result group. This is not evidence that the linked semiology lacks localization or lateralization.</p>'+
+          '<div class="fx-additional-groups">'+groupMarkup(additional,'additional')+'</div></details>';
+      }
+      table.innerHTML=markup||'<div class="fx-empty">No study results match the current selection.</div>';
+    }else{
+      count.textContent=matched.length.toLocaleString()+' '+(matched.length===1?'finding':'findings')+' matched';
+      secondaryCount.textContent=numbers.toLocaleString()+' linked reported '+(numbers===1?'number':'numbers');
+      groupRecords.clear();groupSequence=0;
+      table.innerHTML=groupMarkup(matched,'finding')||'<div class="fx-empty">No findings match the current selection.</div>';
+    }
+    bindRenderedGroups();
+  }
+  buttons.forEach(button=>button.addEventListener('click',()=>{
+    buttons.forEach(item=>item.classList.toggle('on',item===button));
+    metricFilter=button.dataset.f;
+    apply();
+  }));
+  search.addEventListener('input',()=>{
+    clearTimeout(searchTimer);
+    searchTimer=setTimeout(apply,120);
+  });
+  organizer.addEventListener('change',apply);
+  pageSizeControl.addEventListener('change',()=>{
+    table.querySelectorAll('.fx-browser-group[open]').forEach(details=>void renderGroupPage(details,0));
+  });
+  table.addEventListener('click',event=>{
+    const button=event.target.closest('[data-fx-page]');
+    if(!button||button.disabled) return;
+    const details=button.closest('.fx-browser-group');
+    const current=Number(details.dataset.page)||0;
+    void renderGroupPage(details,current+(button.dataset.fxPage==='next'?1:-1));
+  });
+  reset?.addEventListener('click',()=>{
+    search.value='';metricFilter='all';organizer.value=defaultOrganizer;pageSizeControl.value='48';
+    buttons.forEach(button=>button.classList.toggle('on',button.dataset.f==='all'));
+    apply();search.focus();
+  });
+  wrap.applyCurrentFilters=apply;
+  apply();
+}
+
 function bindFxWrap(wrap){
+  if(wrap.dataset.index){void bindIndexedFxWrap(wrap);return;}
   if(wrap.dataset.filterBound) return;
   wrap.dataset.filterBound='true';
   const search=wrap.querySelector('.fx-search');
@@ -5625,7 +5995,7 @@ async function ensureDeferredFold(fold){
 
 function refreshStudyFamilyFilter(visibleIds,active){
   activeStudySignIds=active?new Set(Array.from(visibleIds,String)):null;
-  document.querySelectorAll('.evidence-library-details .fx-wrap[data-global-sign-filter="true"]')
+  document.querySelectorAll('.evidence-library-details .evidence-view-panel:not([hidden]) .fx-wrap[data-global-sign-filter="true"]')
     .forEach(wrap=>wrap.applyCurrentFilters?.());
 }
 
@@ -5828,7 +6198,9 @@ fragments_dir = os.path.join(DOCS, "fragments")
 shutil.rmtree(fragments_dir, ignore_errors=True)
 os.makedirs(fragments_dir, exist_ok=True)
 for fragment_name, fragment_html in {**deferred_fragments, **detail_fragments}.items():
-    with open(os.path.join(fragments_dir, fragment_name), "w", encoding="utf-8") as fragment_file:
+    fragment_path = os.path.join(fragments_dir, fragment_name)
+    os.makedirs(os.path.dirname(fragment_path), exist_ok=True)
+    with open(fragment_path, "w", encoding="utf-8") as fragment_file:
         fragment_file.write(fragment_html)
 
 for name in ("seizure_semiology_localization.html", "index.html"):
