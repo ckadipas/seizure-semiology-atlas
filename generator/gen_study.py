@@ -2051,20 +2051,35 @@ def build_weighted_evidence(cards):
         authority_label = public_value(contribution.get("authority_category"))
         final_weight = float(contribution.get("final_weight") or 0.0)
         components = contribution.get("weight_components") or {}
+        projection_disposition = public_value(
+            contribution.get("projection_disposition")
+        )
+        if projection_disposition == "SHARED_SOURCE_CATEGORY":
+            weight_detail = (
+                "Shared source category; counted once under "
+                + public_value(contribution.get("counted_under_label"), "the matching sign")
+            )
+            calculation_detail = ""
+        elif projection_disposition == "CITED_CONTEXT_ONLY":
+            weight_detail = "Cited study result; retained as context and not independently weighted"
+            calculation_detail = ""
+        else:
+            weight_detail = (
+                f'Evidence weight {final_weight:.2f}'
+                if final_weight > 0 else "Evidence weight pending"
+            )
+            calculation_detail = (
+                f'{float(components.get("class_base") or 0):g} × '
+                f'{float(components.get("directness_multiplier") or 0):g} × '
+                f'{float(components.get("size_factor") or 0):g}'
+            )
         authority_detail = " · ".join(filter(None, [
             (
                 "Class pending" if contribution.get("evidence_class") == "UNCLASSIFIED"
                 else f'Class {public_value(contribution.get("evidence_class"))}'
             ),
-            (
-                f'Evidence weight {final_weight:.2f}'
-                if final_weight > 0 else "Evidence weight pending"
-            ),
-            (
-                f'{float(components.get("class_base") or 0):g} × '
-                f'{float(components.get("directness_multiplier") or 0):g} × '
-                f'{float(components.get("size_factor") or 0):g}'
-            ),
+            weight_detail,
+            calculation_detail,
         ]))
         source_files = "; ".join(
             contribution.get("source_files") or group.get("source_files") or [work_id]
@@ -2186,6 +2201,7 @@ def build_weighted_evidence(cards):
 
     render_state_aliases = {
         "EVIDENCE_BEARING_WEIGHTED": "EVIDENCE_BEARING_WEIGHTED",
+        "EVIDENCE_LINKED_CONTEXT_ONLY": "EVIDENCE_LINKED_CONTEXT_ONLY",
         "EVIDENCE_LINKED_WEIGHT_PENDING": "EVIDENCE_LINKED_WEIGHT_PENDING",
         "TARGET_LINKAGE_NEEDED": "RECORDED_TARGET_LINKAGE_NEEDED",
         "RECORDED_TARGET_LINKAGE_NEEDED": "RECORDED_TARGET_LINKAGE_NEEDED",
@@ -2194,6 +2210,7 @@ def build_weighted_evidence(cards):
     }
     render_states = (
         "EVIDENCE_BEARING_WEIGHTED",
+        "EVIDENCE_LINKED_CONTEXT_ONLY",
         "EVIDENCE_LINKED_WEIGHT_PENDING",
         "RECORDED_TARGET_LINKAGE_NEEDED",
         "NO_SOURCE_ASSOCIATION",
@@ -2562,12 +2579,14 @@ def build_weighted_evidence(cards):
     def axis_panel(axis):
         config = axis_config[axis]
         axis_cards = aggregate_axis_cards(axis)
-        weighted_cards, pending_cards, linkage_cards, no_source_cards = [], [], [], []
+        weighted_cards, context_cards, pending_cards, linkage_cards, no_source_cards = [], [], [], [], []
         for card in axis_cards:
             analysis = evidence_support(card, axis)
             state = render_categorization_state(card)
             if state == "EVIDENCE_BEARING_WEIGHTED":
                 weighted_cards.append((card, analysis))
+            elif state == "EVIDENCE_LINKED_CONTEXT_ONLY":
+                context_cards.append(card)
             elif state == "EVIDENCE_LINKED_WEIGHT_PENDING":
                 pending_cards.append(card)
             elif state == "RECORDED_TARGET_LINKAGE_NEEDED":
@@ -2642,6 +2661,45 @@ def build_weighted_evidence(cards):
                     +f'<small>{esc(count_line)} · study weight pending</small></div>'
                 )
             return "".join(rows)
+        def context_rows(cards_to_render):
+            rows = []
+            for card in sorted(
+                cards_to_render,
+                key=lambda row: card_label_parts(row)[1].casefold(),
+            ):
+                _source_label, label, label_note, source_terms = card_label_parts(card)
+                labels = linkage_summary(card, axis)
+                contributions = card.get("contributions") or []
+                shared = next(
+                    (
+                        item for item in contributions
+                        if item.get("projection_disposition") == "SHARED_SOURCE_CATEGORY"
+                    ),
+                    None,
+                )
+                cited = any(
+                    item.get("projection_disposition") == "CITED_CONTEXT_ONLY"
+                    for item in contributions
+                )
+                if shared:
+                    note = (
+                        "Same source category; counted once under "
+                        + public_value(shared.get("counted_under_label"), "the matching sign")
+                    )
+                elif cited:
+                    note = "Cited study result; retained as context and not independently weighted"
+                else:
+                    note = "Source context retained without independent weight"
+                rows.append(
+                    f'<div class="lr-unreported-sign" data-card-state-id="{esc(str(card.get("synthesis_id") or ""))}" data-card-axis="{axis}" data-card-state="EVIDENCE_LINKED_CONTEXT_ONLY" '
+                    f'data-search="{esc((" ".join([label, *source_terms, *labels, note])).casefold())}">'
+                    f'<strong>{esc(label)}</strong>'
+                    +(f'<small>{esc(label_note)}</small>' if label_note else '')
+                    +"".join(f'<small>{esc(value)}</small>' for value in labels)
+                    +f'<small>{esc(note)}</small></div>'
+                )
+            return "".join(rows)
+        context_rows_html = context_rows(context_cards)
         pending_rows_html = pending_rows(pending_cards)
         linkage_rows_html = linkage_rows(linkage_cards)
         no_source_rows = omitted_rows(no_source_cards)
@@ -2651,6 +2709,13 @@ def build_weighted_evidence(cards):
             '<p>Reviewed findings report a clinical relationship, but the manuscript does not yet have an approved study weight. The evidence remains visible and receives no numerical weight.</p>'
             f'<div class="lr-unreported-grid">{pending_rows_html}</div></details>'
             if pending_cards else ""
+        )
+        context_section = (
+            '<details class="lr-unreported lr-context-only">'
+            f'<summary>Shared or cited study context <span class="lr-unreported-count">{len(context_cards):,}</span></summary>'
+            '<p>These source results remain visible, but they are not counted again as an independent weighted category.</p>'
+            f'<div class="lr-unreported-grid">{context_rows_html}</div></details>'
+            if context_cards else ""
         )
         linkage_section = (
             '<details class="lr-unreported lr-linkage-needed">'
@@ -2701,6 +2766,7 @@ def build_weighted_evidence(cards):
   <div class="lr-visual-legend"><span><strong>Colored chips</strong> show reviewed relationships, not calculated percentages</span><span class="lr-legend-pips"><i class="on"></i><i class="on"></i><i class="on"></i> 1, 2, or 3+ contributing manuscripts (volume only)</span><span class="lr-neutral-note">Weights summarize support; they are not reliability, certainty, sensitivity, or specificity.</span></div>
   <div class="lr-visible-count"></div>
   <div class="lr-list">{rows}</div>
+  {context_section}
   {pending_section}
   {linkage_section}
   {no_source_section}
