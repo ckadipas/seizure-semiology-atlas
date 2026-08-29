@@ -11,10 +11,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 BUNDLE = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "data" / "atlas_bundle.json"
-SCHEMA = "atlas-public-bundle-1.4.3"
+SCHEMA = "atlas-public-bundle-1.4.4"
 CARD_STATES = {
     "EVIDENCE_BEARING_WEIGHTED", "EVIDENCE_LINKED_WEIGHT_PENDING",
-    "TARGET_LINKAGE_NEEDED", "NO_SOURCE_TARGET",
+    "EVIDENCE_LINKED_CONTEXT_ONLY", "TARGET_LINKAGE_NEEDED", "NO_SOURCE_TARGET",
 }
 CLASS_BASE = {"I": 3.0, "II": 2.0, "III": 1.0}
 DIRECTNESS_MULTIPLIERS = {
@@ -122,8 +122,8 @@ statistic_finding = {
 finding_work = {}
 
 require(len(sources) == 77, "current source-report count changed")
-require(len(findings) == 4119 and unique(finding_refs), "public finding contract changed")
-require(len(statistics) == 4514 and unique(statistic_ids), "public statistic contract changed")
+require(len(findings) == 4120 and unique(finding_refs), "public finding contract changed")
+require(len(statistics) == 4518 and unique(statistic_ids), "public statistic contract changed")
 require(len(signs) == 383 and unique(sign_ids), "public sign contract changed")
 require(unique([source["source_sha256"] for source in sources]), "duplicate source report")
 for source in sources:
@@ -168,8 +168,8 @@ release = synthesis["release"]
 axes = synthesis["finding_axes"]
 cards = synthesis["axis_summaries"]
 families = synthesis["descriptive_families"]
-require(release["private_finding_count"] == 4121, "private finding count changed")
-require(release["public_finding_count"] == 4119, "release finding count changed")
+require(release["private_finding_count"] == 4122, "private finding count changed")
+require(release["public_finding_count"] == 4120, "release finding count changed")
 require(release["axis_count"] == len(axes) == 8238, "finding-axis count changed")
 require(release["owner_release_card_count"] == 766, "source-release card count changed")
 require(release["supplemental_card_count"] == 46, "supplemental card count changed")
@@ -250,9 +250,16 @@ for card in cards:
         float(contribution.get("final_weight") or 0.0) > 0.0
         for contribution in contributions
     )
+    context_only_projection = bool(contributions) and all(
+        float(contribution.get("final_weight") or 0.0) == 0.0
+        and bool(contribution.get("projection_disposition"))
+        for contribution in contributions
+    )
     expected_state = (
         "EVIDENCE_BEARING_WEIGHTED"
         if relationship_linked and has_applied_weight
+        else "EVIDENCE_LINKED_CONTEXT_ONLY"
+        if relationship_linked and context_only_projection
         else "EVIDENCE_LINKED_WEIGHT_PENDING"
         if relationship_linked
         else "TARGET_LINKAGE_NEEDED" if recorded
@@ -317,8 +324,34 @@ for card in cards:
             * float(components["directness_multiplier"])
             * float(components["size_factor"]), 3,
         )
-        if state in {"EVIDENCE_BEARING_WEIGHTED", "EVIDENCE_LINKED_WEIGHT_PENDING"}:
+        if state in {
+            "EVIDENCE_BEARING_WEIGHTED", "EVIDENCE_LINKED_WEIGHT_PENDING",
+            "EVIDENCE_LINKED_CONTEXT_ONLY",
+        }:
             linked_works.add(work_id)
+        projection_disposition = contribution.get("projection_disposition")
+        if projection_disposition:
+            require(projection_disposition in {"SHARED_SOURCE_CATEGORY", "CITED_RESTATEMENT"},
+                    "unknown context-only projection disposition")
+            require(float(contribution["final_weight"]) == 0.0,
+                    "context-only source projection carries numerical weight")
+            require(math.isclose(float(contribution.get("potential_weight") or 0.0),
+                                 calculated, abs_tol=1e-9),
+                    "context-only potential weight differs from components")
+            require(bool(contribution.get("projection_reason")),
+                    "context-only source projection lacks an explanation")
+            expected_weight_status = (
+                "NOT_APPLIED_SHARED_SOURCE_CATEGORY"
+                if projection_disposition == "SHARED_SOURCE_CATEGORY"
+                else "NOT_APPLIED_CITED_RESTATEMENT"
+            )
+            require(contribution.get("weight_status") == expected_weight_status,
+                    "context-only source projection has the wrong weight status")
+            if projection_disposition == "SHARED_SOURCE_CATEGORY":
+                require(bool(contribution.get("counted_under_sign_id")
+                             and contribution.get("counted_under_label")),
+                        "shared source category lacks its counted-under sign")
+            continue
         if state == "EVIDENCE_BEARING_WEIGHTED":
             require(contribution.get("weight_status")
                     == "APPLIED_TO_SOURCE_REPORTED_RELATIONSHIP",
