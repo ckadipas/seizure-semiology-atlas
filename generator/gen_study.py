@@ -300,18 +300,23 @@ def slug(s):
 
 
 def public_browse_regions(d):
-    localization_card = next(
-        (
-            card for card in SYNTHESIS_CARDS_BY_SIGN.get(str(d.get("id")), [])
-            if card.get("axis") == "LOCALIZATION"
-        ),
-        None,
-    )
-    if str((localization_card or {}).get("pattern_status") or "") in {
-        "NOT_REPORTED", "NON_LOCALIZING"
-    }:
-        return ["No localization stated"]
-    return list(OrderedDict.fromkeys(d.get("regions") or [d.get("region")]))
+    # Organizational placement is the union of positive, source-linked regional
+    # targets. A simultaneous nonlocalizing/not-reported conclusion describes
+    # specificity; it must not erase regions that the same ledger explicitly
+    # reports. This also avoids the former arbitrary "first card wins" behavior.
+    reported = []
+    for card in SYNTHESIS_CARDS_BY_SIGN.get(str(d.get("id")), []):
+        if str(card.get("axis") or "").upper() != "LOCALIZATION":
+            continue
+        for target in (card.get("target_contract") or {}).get("reported_targets") or []:
+            if target.get("target_level") == "REGION" and target.get("label"):
+                reported.append(target["label"])
+    stored = [
+        region for region in (d.get("regions") or [d.get("region")])
+        if region and region != "No localization stated"
+    ]
+    positive = list(OrderedDict.fromkeys([*reported, *stored]))
+    return positive or ["No localization stated"]
 
 # Resolve each sign's location relationship once by immutable sign id.  Every
 # presentation below (cards, regional search references, and map) consumes this
@@ -2162,45 +2167,21 @@ def build_weighted_evidence(cards):
         return "association"
 
     def aggregate_axis_cards(axis):
-        """Render every public sign once per axis; missing release rows stay unsupported."""
+        """Consume the database-materialized one-row-per-public-sign axis contract."""
         axis_cards = [
             dict(card) for card in cards if str(card.get("axis") or "").upper() == axis
         ]
-        represented_sign_ids = {str(card.get("sign_id") or "") for card in axis_cards}
-        for sign in data:
-            sign_id = str(sign.get("id") or "")
-            if not sign_id or sign_id in represented_sign_ids:
-                continue
-            axis_cards.append({
-                "synthesis_id": f"PUBLIC_SIGN:{sign_id}:{axis}:UNSUPPORTED",
-                "group_id": f"UNLINKED:{sign_id}",
-                "sign_id": sign_id,
-                "axis": axis,
-                "preferred_label": public_value(sign.get("sign"), f"Sign {sign_id}"),
-                "identity_labels": [],
-                "related_context_labels": [],
-                "pattern_status": "NOT_REPORTED",
-                "plain_summary": "No source-level association is recorded for this axis.",
-                "row_finding_refs": [],
-                "row_statistic_ids": [],
-                "row_work_ids": [],
-                "contributions": [],
-                "target_contract": {
-                    "owner_cleared_raw_targets": [],
-                    "identity_group_finding_refs": [],
-                    "exact_group_finding_raw_targets": [],
-                    "additional_linkage_targets": [],
-                    "nonidentity_group_raw_targets": [],
-                    "nonidentity_group_finding_refs": [],
-                    "excluded_relationship_raw_targets": [],
-                    "reported_targets": [],
-                    "unresolved_raw_targets": [],
-                    "finding_wide_only_raw_targets": [],
-                    "true_nonassociation": False,
-                },
-                "categorization_state": "NO_SOURCE_TARGET",
-                "supplemental_projection": False,
-            })
+        expected = {str(sign.get("id") or "") for sign in data}
+        represented = [str(card.get("sign_id") or "") for card in axis_cards]
+        if len(represented) != len(set(represented)):
+            raise AssertionError(f"Duplicate public sign rows on {axis}")
+        if set(represented) != expected:
+            missing = sorted(expected - set(represented))
+            extra = sorted(set(represented) - expected)
+            raise AssertionError(
+                f"Incomplete public sign-axis projection on {axis}: "
+                f"missing={missing[:5]} extra={extra[:5]}"
+            )
         return axis_cards
 
     render_state_aliases = {
@@ -2656,13 +2637,17 @@ def build_weighted_evidence(cards):
         )
         canonical_work_count = int(EVIDENCE_AUTHORITY.get("canonical_work_count") or 0)
         source_report_count = int(EVIDENCE_AUTHORITY.get("source_report_count") or 0)
+        corpus_accounting = EVIDENCE_AUTHORITY.get("corpus_accounting") or {}
+        weighted_work_count = int(corpus_accounting.get("contributes_weight") or 0)
+        pending_work_count = int(corpus_accounting.get("linked_authority_pending") or 0)
+        context_work_count = int(corpus_accounting.get("no_sign_axis_contribution") or 0)
         hidden = "" if axis == "LATERALIZATION" else " hidden"
         return f'''<section class="weighted-axis-panel" data-axis-panel="{axis}"{hidden}>
 <div class="lr-wrap" data-axis="{axis}">
-  <div class="lr-intro"><strong>{len(weighted_cards):,} evidence-weighted summaries.</strong> Each row is one canonical evidence group. Clinical relationship labels come directly from the owner-cleared synthesis release. Work weights separately summarize publication authority, study design, directness of confirmation, and independent primary-study size; they never vote a target into or out of the release.</div>
+  <div class="lr-intro"><strong>{len(weighted_cards):,} current sign summaries contain weighted evidence on this axis.</strong> Each row represents one public sign and retains every linked child evidence group, source finding, reported result, and manuscript. Clinical relationship labels come directly from the owner-cleared synthesis release. Work weights summarize evidence support; they never invent or remove an anatomical or lateralizing target.</div>
   <details class="lr-method"><summary>How weighting works</summary><div>
     {method_html}
-    <p>The release contains {canonical_work_count} canonical works represented by {source_report_count} source reports. Manuscript counts use canonical works; report counts use source reports.</p>
+    <p>All {source_report_count} reviewed source reports are accounted for and consolidated into {canonical_work_count} de-duplicated canonical works before weighting. {weighted_work_count} works contribute weighted sign-level evidence; {pending_work_count} linked work has unresolved authority metadata; and {context_work_count} context or reference works contain no linked sign-axis contribution.</p>
     <p>Source-reported directions, regions, percentages, and denominators remain attached to their exact findings. They are displayed below each row and are not converted into a new pooled target percentage.</p>
   </div></details>
   <div class="lr-tools">
