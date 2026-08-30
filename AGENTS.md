@@ -2,6 +2,12 @@
 
 Read this file before changing the public atlas.
 
+## Operational command hygiene
+
+- Use the repository Makefile and the owner workspace's maintained `turtle_time/semiology_console.tcsh` for repeated build, validation, release, deployment, and status operations.
+- Do not add date-stamped, stage-stamped, task-specific, or otherwise uniquely named shell/Python wrapper scripts for ordinary operations.
+- A true one-off diagnostic belongs only in `/private/tmp` and must be removed in the same task. If it may be reused, add a documented Makefile target or console action instead.
+
 ## Authority and active data route
 
 - The repository owner is the final clinical and scientific authority.
