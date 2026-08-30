@@ -101,8 +101,10 @@ class CompactRendererTest(unittest.TestCase):
         self.assertEqual(footer.count("CM Kadipasaoglu, MD, PhD"), 1)
         self.assertRegex(
             footer,
-            r'<strong>&copy; 2026 <span data-nosnippet>CM Kadipasaoglu, MD, PhD</span></strong> &middot; Creator and maintainer\.',
+            r'&copy; 2026 <span data-nosnippet>CM Kadipasaoglu, MD, PhD</span> &middot; Creator and maintainer\.',
         )
+        self.assertEqual(footer.count("<p>"), 1)
+        self.assertNotIn("<strong>", footer)
         self.assertNotIn("&copy; 2026 Seizure Semiology Atlas", footer)
         self.assertIn(
             "This atlas is independently created and maintained in a personal capacity.",
@@ -439,6 +441,12 @@ class CompactRendererTest(unittest.TestCase):
             "This public sign combines",
             "Linkage details",
             "Target scope and anatomy",
+            "exact identity linkage needed",
+            "exact sign linkage needed",
+            "finding-wide only",
+            "normalization needed",
+            "provenance only",
+            "source linked finding axis",
         ):
             self.assertNotIn(internal_text, panels)
         fear_filename = "sign-" + hashlib.sha256(b"2").hexdigest()[:24] + ".html"

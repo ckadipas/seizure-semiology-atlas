@@ -2707,154 +2707,32 @@ def build_weighted_evidence(cards):
             preferred, *identity_labels, *related_labels,
         ])
 
-    def plain_scope(value):
-        text = public_value(value)
-        known = {
-            "SIGN_SPECIFIC": "sign-specific",
-            "COHORT_CONTEXT": "cohort context",
-            "COHORT_INCLUSION": "cohort inclusion",
-            "PROPAGATION": "propagation context",
-            "ONSET": "onset context",
-            "SOZ": "seizure-onset-zone context",
-            "EEG_ONSET": "EEG-onset context",
-            "LESION": "lesion context",
-            "CASE_OBSERVATION": "case context",
-            "SIGN_SCOPED_DB_ASSERTION": "sign-scoped database assertion",
-            "SOURCE_STATED": "source-stated",
-            "OWNER_ADJUDICATED": "owner-adjudicated",
-            "CANONICAL_SIGN_MAPPING": "canonical sign mapping",
-            "FINDING_WIDE_ONLY": "finding-wide only",
-            "IDENTITY_GROUP_FINDING_WIDE_ONLY": (
-                "exact-identity group context; not sign-specific"
-            ),
-        }
-        if text in known:
-            return known[text]
-        if re.fullmatch(r"[A-Z0-9_ -]+", text or ""):
-            return readable_term(text).casefold()
-        return text
-
-    def target_label_from_raw(axis, raw):
-        normalized = target_from_value(axis, raw)
-        return normalized[1] if normalized else public_value(raw, "Unresolved target")
-
-    def target_scope_text(item):
-        values = unique_strings([
-            *(item.get("contexts") or []), *(item.get("scopes") or []),
-        ])
-        return ", ".join(plain_scope(value) for value in values if plain_scope(value))
-
-    def target_detail_block(card, axis):
+    def public_target_labels(card, axis):
+        """Return concise, approved target labels for public summary cards."""
         contract = card.get("target_contract") or {}
-        rows, seen = [], set()
+        items = [
+            *(contract.get("reported_targets") or []),
+            *(contract.get("additional_linkage_targets") or []),
+        ]
         has_directional = any(
-            item.get("key") != "nonassoc"
-            for item in contract.get("reported_targets") or []
+            item.get("key") != "nonassoc" for item in items
         )
-
-        def retain(label, item, provenance):
-            details = item.get("details") or [item]
-            for detail in details:
-                raw_value = detail.get("raw") or item.get("raw")
-                if isinstance(raw_value, list):
-                    raw_value = raw_value[0] if raw_value else ""
-                raw = public_value(raw_value)
-                target_label = public_value(item.get("label")) or target_label_from_raw(axis, raw)
-                if item.get("key") == "nonassoc" and has_directional:
-                    target_label = (
-                        "No single reliable side"
-                        if axis == "LATERALIZATION"
-                        else "Not specific to one region"
-                    )
-                scope = target_scope_text(detail) or target_scope_text(item)
-                anatomy = " · ".join(filter(None, [
-                    f'Region {target_label_from_raw(axis, detail.get("region_id"))}'
-                    if detail.get("region_id") else "",
-                    f'Brodmann area {detail.get("area_id")}' if detail.get("area_id") else "",
-                    f'location key {detail.get("location_key")}' if detail.get("location_key") else "",
-                ]))
-                assertions = unique_strings([
-                    detail.get("assertion_text"), detail.get("reviewed_assertion_text"),
-                ])
-                key = (label, target_label, scope, anatomy, tuple(assertions), provenance)
-                if key in seen:
-                    continue
-                seen.add(key)
-                rows.append(
-                    f'<li><strong>{esc(label)}: {esc(target_label)}</strong>'
-                    +(f' <span>({esc(scope)})</span>' if scope else '')
-                    +(f'<small>{esc(anatomy)}</small>' if anatomy else '')
-                    +"".join(f'<small>{esc(value)}</small>' for value in assertions)
-                    +(f'<small>{esc(provenance)}</small>' if provenance else '')
-                    +'</li>'
-                )
-
-        for item in contract.get("reported_targets") or []:
-            retain("Reported target", item, "Exact-row or owner-supported; included in this row.")
-        for item in contract.get("additional_linkage_targets") or []:
-            retain("Additional sign-scoped target", item, "Outside exact row lineage; visible but not weighted.")
-        for item in contract.get("nonidentity_group_raw_targets") or []:
-            retain("Related-membership target", item, "Non-identity group linkage; not transferred or weighted.")
-        for item in contract.get("finding_wide_only_raw_targets") or []:
-            retain("Finding-wide target", item, "Exact sign linkage still needed; not weighted.")
-        for item in contract.get("unresolved_raw_targets") or []:
-            retain("Unresolved target", item, "Normalization or exact linkage still needed; not weighted.")
-        for item in contract.get("excluded_relationship_raw_targets") or []:
-            dispositions = ", ".join(plain_scope(value) for value in item.get("dispositions") or [])
-            retain("Provenance only", item, f'{dispositions or "Unsupported/restatement"}; not a reported clinical target.')
-        return (
-            '<details class="lr-exceptions"><summary>Target scope and anatomy '
-            +f'<span>{len(rows)}</span></summary><ul>{"".join(rows)}</ul></details>'
-            if rows else ""
-        )
-
-    def linkage_summary(card, axis, include_reported=True):
-        contract = card.get("target_contract") or {}
-        values = []
-        has_directional = any(
-            item.get("key") != "nonassoc"
-            for item in contract.get("reported_targets") or []
-        )
-        target_items = [*(contract.get("additional_linkage_targets") or [])]
-        if include_reported:
-            target_items = [*(contract.get("reported_targets") or []), *target_items]
-        for item in target_items:
-            label = public_value(item.get("label"), "Recorded target")
+        labels = []
+        for item in items:
+            label = public_value(item.get("label"))
+            if not label:
+                normalized = target_from_value(axis, item.get("raw"))
+                label = normalized[1] if normalized else ""
             if item.get("key") == "nonassoc" and has_directional:
                 label = (
                     "No single reliable side"
                     if axis == "LATERALIZATION"
                     else "Not specific to one region"
                 )
-            scope = target_scope_text(item)
-            text = f'{label} — {scope}' if scope else label
-            if text not in values:
-                values.append(text)
-        for field, reason in (
-            ("nonidentity_group_raw_targets", "related membership; exact identity linkage needed"),
-            ("finding_wide_only_raw_targets", "finding-wide; exact sign linkage needed"),
-            ("unresolved_raw_targets", "normalization needed"),
-        ):
-            for item in contract.get(field) or []:
-                label = target_label_from_raw(axis, item.get("raw"))
-                scope = target_scope_text(item)
-                text = " — ".join(filter(None, [label, scope, reason]))
-                if text not in values:
-                    values.append(text)
-        for item in contract.get("excluded_relationship_raw_targets") or []:
-            label = target_label_from_raw(axis, item.get("raw"))
-            scope = target_scope_text(item)
-            dispositions = ", ".join(
-                readable_term(value) for value in item.get("dispositions") or []
-            )
-            reason = (
-                f"{dispositions}; provenance only; not weighted"
-                if dispositions else "provenance only; not weighted"
-            )
-            text = " — ".join(filter(None, [label, scope, reason]))
-            if text not in values:
-                values.append(text)
-        return values
+            if label and label not in labels:
+                labels.append(label)
+        return labels
+
 
     def card_row(card, axis, analysis, order):
         source_label, label, label_note, source_terms = card_label_parts(card)
@@ -3060,14 +2938,14 @@ def build_weighted_evidence(cards):
                 key=lambda row: card_label_parts(row)[1].casefold(),
             ):
                 _source_label, label, label_note, source_terms = card_label_parts(card)
-                labels = linkage_summary(card, axis)
+                labels = public_target_labels(card, axis)
                 rows.append(
                     f'<div class="lr-unreported-sign" data-card-state-id="{esc(str(card.get("synthesis_id") or ""))}" data-card-axis="{axis}" data-card-state="RECORDED_TARGET_LINKAGE_NEEDED" '
                     f'data-search="{esc((" ".join([label, *source_terms, *labels])).casefold())}">'
                     f'<strong>{esc(label)}</strong>'
                     +(f'<small>{esc(label_note)}</small>' if label_note else '')
                     +"".join(f'<small>{esc(value)}</small>' for value in labels)
-                    +'<small>Visible for linkage review; not included in weighted evidence.</small></div>'
+                    +'<small>Needs source review before weighting.</small></div>'
                 )
             return "".join(rows)
         def pending_rows(cards_to_render):
@@ -3077,7 +2955,7 @@ def build_weighted_evidence(cards):
                 key=lambda row: card_label_parts(row)[1].casefold(),
             ):
                 _source_label, label, label_note, source_terms = card_label_parts(card)
-                labels = linkage_summary(card, axis)
+                labels = public_target_labels(card, axis)
                 papers = int(card.get("row_work_count") or 0)
                 findings = int(card.get("row_finding_count") or 0)
                 values = int(card.get("row_statistic_count") or 0)
@@ -3102,7 +2980,7 @@ def build_weighted_evidence(cards):
                 key=lambda row: card_label_parts(row)[1].casefold(),
             ):
                 _source_label, label, label_note, source_terms = card_label_parts(card)
-                labels = linkage_summary(card, axis)
+                labels = public_target_labels(card, axis)
                 contributions = card.get("contributions") or []
                 shared = next(
                     (
@@ -3146,22 +3024,22 @@ def build_weighted_evidence(cards):
         )
         context_section = (
             '<details class="lr-unreported lr-context-only">'
-            f'<summary>Shared or cited study context <span class="lr-unreported-count">{len(context_cards):,}</span></summary>'
-            '<p>These source results remain visible, but they are not counted again as an independent weighted category.</p>'
+            f'<summary>Background evidence (not counted twice) <span class="lr-unreported-count">{len(context_cards):,}</span></summary>'
+            '<p>These results remain visible but are not counted again.</p>'
             f'<div class="lr-unreported-grid">{context_rows_html}</div></details>'
             if context_cards else ""
         )
         linkage_section = (
             '<details class="lr-unreported lr-linkage-needed">'
-            f'<summary>Recorded target needs normalization or linkage <span class="lr-unreported-count">{len(linkage_cards):,}</span></summary>'
-            '<p>The master ledger contains an axis target, but it cannot yet be resolved into this weighted display. This is a linkage state, not evidence that the sign lacks an association.</p>'
+            f'<summary>Needs source review <span class="lr-unreported-count">{len(linkage_cards):,}</span></summary>'
+            '<p>These signs are not weighted until their source relationship is clear.</p>'
             f'<div class="lr-unreported-grid">{linkage_rows_html}</div></details>'
             if linkage_cards else ""
         )
         no_source_section = (
             '<details class="lr-unreported">'
-            f'<summary>No source-level {axis.casefold()} target recorded <span class="lr-unreported-count">{len(no_source_cards):,}</span></summary>'
-            f'<p>{esc(config["missing"])} in the currently linked reviewed findings. These signs remain visible and are not treated as evidence for absence.</p>'
+            f'<summary>No {axis.casefold()} reported in linked evidence <span class="lr-unreported-count">{len(no_source_cards):,}</span></summary>'
+            f'<p>{esc(config["missing"])} in the currently linked reviewed findings. These signs remain visible.</p>'
             f'<div class="lr-unreported-grid">{no_source_rows}</div></details>'
             if no_source_cards else ""
         )
@@ -4539,9 +4417,8 @@ body.quiz .lib-chip{display:none}
 .abbrev-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:5px 24px;padding:0 18px 18px}
 .abbrev-item{font-size:.78rem;color:#444}
 .abbrev-item strong{color:var(--navy)}
-.footer{background:var(--navy);color:#8fa0b4;padding:20px 24px;font-size:.76rem;line-height:1.75}
-.footer p{margin:0 0 6px}.footer p:last-child{margin-bottom:0}
-.footer strong{color:#b3c1d1}
+.footer{background:var(--navy);color:#8fa0b4;padding:12px 24px;font-size:.76rem;line-height:1.5}
+.footer p{margin:0}
 .footer a{color:#9fc3e0;text-decoration:underline}
 .footer a:hover{color:#cfe0ee}
 
@@ -6522,12 +6399,7 @@ HEAD = """<!DOCTYPE html>
 </div>
 
 <div class="footer">
-  <p><strong>Contribute a paper or correction:</strong> new evidence is welcome &mdash; <a href="https://github.com/ckadipas/seizure-semiology-atlas/issues/new/choose">submit it here</a>. Every submission is reviewed before it appears.</p>
-  <p><strong>&copy; 2026 <span data-nosnippet>CM Kadipasaoglu, MD, PhD</span></strong> &middot; Creator and maintainer.</p>
-  <p><strong>Independent project.</strong> This atlas is independently created and maintained in a personal capacity. It is not an official product of, and does not represent, any employer, university, hospital, health system, professional society, or other institution with which the author is or has been affiliated. Unless expressly stated, no such institution has sponsored, reviewed, approved, or endorsed this atlas. Any professional affiliation mentioned is provided solely for biographical identification. The views and editorial judgments expressed are the author&rsquo;s own.</p>
-  <p>Copyright is claimed only in the atlas&rsquo;s original software, explanatory text, original graphics, and original selection, coordination, and arrangement of the compiled material&mdash;not in underlying scientific facts, clinical concepts, source publications, or third-party material. Cited works remain attributable to their respective authors and publishers; inclusion does not imply ownership or endorsement.</p>
-  <p><strong>Licensing:</strong> <a href="https://github.com/ckadipas/seizure-semiology-atlas/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">Code: MIT</a> &middot; <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="license noopener noreferrer" target="_blank">Atlas content and data: CC BY-NC-SA 4.0</a>.</p>
-  <p><strong>Educational use only:</strong> not medical advice, a medical device, or clinical decision support. <a href="https://github.com/ckadipas/seizure-semiology-atlas/blob/main/DISCLAIMER.md" target="_blank" rel="noopener noreferrer">Full disclaimer</a> &middot; <a href="https://github.com/ckadipas/seizure-semiology-atlas/blob/main/CITATION.cff" target="_blank" rel="noopener noreferrer">Citation</a> &middot; <a href="https://github.com/ckadipas/seizure-semiology-atlas/issues/new/choose">Questions or issues</a></p>
+  <p>Contribute a paper or correction: new evidence is welcome &mdash; <a href="https://github.com/ckadipas/seizure-semiology-atlas/issues/new/choose">submit it here</a>. Every submission is reviewed before it appears. &middot; &copy; 2026 <span data-nosnippet>CM Kadipasaoglu, MD, PhD</span> &middot; Creator and maintainer. This atlas is independently created and maintained in a personal capacity. It is not an official product of, and does not represent, any employer, university, hospital, health system, professional society, or other institution with which the author is or has been affiliated. Unless expressly stated, no such institution has sponsored, reviewed, approved, or endorsed this atlas. Any professional affiliation mentioned is provided solely for biographical identification. The views and editorial judgments expressed are the author&rsquo;s own. Copyright is claimed only in the atlas&rsquo;s original software, explanatory text, original graphics, and original selection, coordination, and arrangement of the compiled material&mdash;not in underlying scientific facts, clinical concepts, source publications, or third-party material. Cited works remain attributable to their respective authors and publishers; inclusion does not imply ownership or endorsement. Licensing: <a href="https://github.com/ckadipas/seizure-semiology-atlas/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">Code: MIT</a> &middot; <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="license noopener noreferrer" target="_blank">Atlas content and data: CC BY-NC-SA 4.0</a>. Educational use only: not medical advice, a medical device, or clinical decision support. <a href="https://github.com/ckadipas/seizure-semiology-atlas/blob/main/DISCLAIMER.md" target="_blank" rel="noopener noreferrer">Full disclaimer</a> &middot; <a href="https://github.com/ckadipas/seizure-semiology-atlas/blob/main/CITATION.cff" target="_blank" rel="noopener noreferrer">Citation</a> &middot; <a href="https://github.com/ckadipas/seizure-semiology-atlas/issues/new/choose">Questions or issues</a></p>
 </div>
 
 <script>""" + JS + """</script>
