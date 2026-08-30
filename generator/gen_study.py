@@ -19,15 +19,36 @@ def _find_root(start):
         d = p
 ROOT = _find_root(__file__)
 DOCS = os.path.join(ROOT, "docs"); os.makedirs(DOCS, exist_ok=True)
-SITE_UPDATED_UTC = datetime.now(timezone.utc)
-SITE_UPDATED_ISO = SITE_UPDATED_UTC.isoformat(timespec="minutes").replace("+00:00", "Z")
-SITE_UPDATED_LABEL = SITE_UPDATED_UTC.astimezone(ZoneInfo("America/Chicago")).strftime("%m/%d/%Y %I:%M %p CT")
 from collections import Counter, OrderedDict
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import brain_atlas as BA
 
 with open(os.path.join(ROOT,"data","atlas_bundle.json"), encoding="utf-8") as f:
     ATLAS = json.load(f)
+
+
+def release_updated_utc(atlas):
+    """Return the immutable release time used by every deterministic build."""
+    raw = str(
+        ((atlas.get("evidence_synthesis") or {}).get("release") or {}).get(
+            "updated_utc"
+        )
+        or ""
+    )
+    if not raw:
+        raise RuntimeError("The public bundle has no release update timestamp.")
+    try:
+        parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise RuntimeError("The public bundle has an invalid release update timestamp.") from exc
+    if parsed.tzinfo is None:
+        raise RuntimeError("The public bundle release timestamp must include a timezone.")
+    return parsed.astimezone(timezone.utc)
+
+
+SITE_UPDATED_UTC = release_updated_utc(ATLAS)
+SITE_UPDATED_ISO = SITE_UPDATED_UTC.isoformat(timespec="minutes").replace("+00:00", "Z")
+SITE_UPDATED_LABEL = SITE_UPDATED_UTC.astimezone(ZoneInfo("America/Chicago")).strftime("%m/%d/%Y %I:%M %p CT")
 data = ATLAS["signs"]
 CORPUS = ATLAS["corpus"]
 CLASSIFICATIONS = ATLAS.get("classifications") or {"nodes": [], "sign_mappings": []}

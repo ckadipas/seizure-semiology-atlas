@@ -6,6 +6,7 @@ import json
 import math
 import re
 import sys
+from datetime import datetime
 from pathlib import Path
 
 
@@ -105,6 +106,14 @@ expected_digest = hashlib.sha256(json.dumps(
     digest_payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
 ).encode("utf-8")).hexdigest()
 require(bundle["semantic_digest"] == expected_digest, "semantic digest mismatch")
+
+release = (bundle.get("evidence_synthesis") or {}).get("release") or {}
+updated_utc = str(release.get("updated_utc") or "")
+try:
+    parsed_updated_utc = datetime.fromisoformat(updated_utc.replace("Z", "+00:00"))
+except ValueError as exc:
+    raise ValueError("invalid release update timestamp") from exc
+require(parsed_updated_utc.tzinfo is not None, "release update timestamp has no timezone")
 
 sources = bundle["corpus"]["sources"]
 findings = [finding for source in sources for finding in source["findings"]]

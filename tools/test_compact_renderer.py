@@ -294,6 +294,17 @@ class CompactRendererTest(unittest.TestCase):
             self.render["h"],
         )
 
+    def test_last_updated_uses_the_immutable_release_timestamp(self):
+        release = self.render["EVIDENCE_SYNTHESIS"]["release"]
+        self.assertEqual(
+            release["updated_utc"],
+            self.render["SITE_UPDATED_UTC"].isoformat(),
+        )
+        self.assertIn(
+            f"datetime='{self.render['SITE_UPDATED_ISO']}'",
+            self.render["h"],
+        )
+
     def test_source_less_legacy_background_is_not_evidence_history(self):
         block, linked_count, search = self.render["ledger_evidence_block"](
             "__source_less__", "Legacy clinical note"
