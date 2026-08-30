@@ -3416,6 +3416,27 @@ def source_library_card(paper):
 
 
 papers_html = "\n".join(source_library_card(paper) for paper in PAPERS)
+
+# Public release notes describe clinically meaningful changes only. Fold small
+# display and maintenance adjustments into the next grouped entry, and never
+# expose storage formats, internal identifiers, paths, or workflow mechanics.
+atlas_updates_html = """
+<div class="lib atlas-updates">
+  <details class="lib-details atlas-updates-details">
+    <summary><span>Atlas updates</span><span class="atlas-update-version">Version 1.4.1 &middot; August 30, 2026</span></summary>
+    <div class="atlas-update-body">
+      <p>Meaningful changes to evidence coverage and organization are listed here. Small display and maintenance changes are grouped with the next release.</p>
+      <h3>Registry and evidence organization</h3>
+      <ul>
+        <li>Corrected relationships among equivalent and closely related semiology terms so the same clinical sign is represented consistently throughout the atlas.</li>
+        <li>Improved links among clinical classifications, lateralization, localization, anatomical regions, Brodmann areas, and supporting publications.</li>
+        <li>Aligned regional browsing, weighted evidence summaries, reviewed evidence, and source views so they use the same reviewed relationships.</li>
+        <li>Clarified manuscript counts, terminology, navigation, and update information.</li>
+      </ul>
+    </div>
+  </details>
+</div>
+"""
 n_ev_signs = sum(1 for d in data if d.get("_ev"))
 
 CSS = r"""
@@ -3688,6 +3709,7 @@ body.tb-collapsed .sticky-head{display:none}
   align-items:center;justify-content:center;border-radius:50%;border:1px solid var(--line);
   background:rgba(255,255,255,.95);backdrop-filter:blur(7px);font-size:1rem;cursor:pointer;
   box-shadow:0 4px 16px rgba(15,30,61,.20)}
+@media(min-width:901px){.tb-fab{top:42px}}
 .tb-fab:hover{border-color:var(--teal)}
 body.tb-collapsed .tb-fab{display:inline-flex}
 .tb-dot{position:absolute;top:5px;right:5px;width:9px;height:9px;border-radius:50%;
@@ -4397,6 +4419,13 @@ body.quiz .lib-chip{display:none}
 .lib-details>summary::before{content:"\25B6";font-size:.6rem;color:var(--teal);transition:transform .15s}
 .lib-details[open]>summary::before{transform:rotate(90deg)}
 .lib-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:10px;padding:0 18px 18px}
+.atlas-updates-details>summary{flex-wrap:wrap}
+.atlas-update-version{margin-left:auto;color:#64748b;font-size:.7rem;font-weight:650}
+.atlas-update-body{border-top:1px solid var(--line2);padding:12px 18px 14px;color:#334155;font-size:.78rem;line-height:1.45}
+.atlas-update-body p,.atlas-update-body h3{margin:0 0 7px}
+.atlas-update-body h3{color:var(--navy);font-size:.8rem}
+.atlas-update-body ul{margin:0;padding-left:18px}
+.atlas-update-body li{margin:4px 0}
 .evidence-library-details>summary{text-transform:none;letter-spacing:0;flex-wrap:wrap}
 .evidence-library-details>summary>span:first-of-type{margin-right:auto}
 .evidence-library-summary{color:#64748b;font-size:.68rem;font-weight:650;text-align:right}
@@ -6379,6 +6408,8 @@ HEAD = """<!DOCTYPE html>
     </div>
   </details>
 </div>
+
+""" + atlas_updates_html + """
 
 <div class="abbrev">
   <details class="abbrev-details">

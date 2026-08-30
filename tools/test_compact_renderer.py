@@ -493,6 +493,54 @@ class CompactRendererTest(unittest.TestCase):
             self.render["h"],
         )
 
+    def test_collapsed_desktop_toolbar_button_clears_update_timestamp(self):
+        updated_top = int(
+            re.search(r"\.last-updated\{[^}]*top:(\d+)px", self.render["CSS"]).group(1)
+        )
+        desktop_rule = re.search(
+            r"@media\(min-width:901px\)\{\.tb-fab\{[^}]*top:(\d+)px",
+            self.render["CSS"],
+        )
+        self.assertIsNotNone(desktop_rule)
+        self.assertGreaterEqual(int(desktop_rule.group(1)), updated_top + 22)
+
+    def test_atlas_updates_are_collapsed_concise_and_clinical(self):
+        updates = re.search(
+            r'<details class="lib-details atlas-updates-details">(.*?)</details>',
+            self.render["h"],
+            re.DOTALL,
+        )
+        self.assertIsNotNone(updates)
+        block = updates.group(0)
+        self.assertNotRegex(block.split(">", 1)[0], r"\bopen\b")
+        self.assertIn("Atlas updates", block)
+        self.assertIn("Version 1.4", block)
+        self.assertIn("August 30, 2026", block)
+        self.assertGreaterEqual(block.count("<li>"), 1)
+        self.assertLessEqual(block.count("<li>"), 4)
+        for term in ("classifications", "lateralization", "localization", "anatomical regions"):
+            self.assertIn(term, block)
+
+    def test_atlas_updates_do_not_expose_internal_implementation_terms(self):
+        block = re.search(
+            r'<details class="lib-details atlas-updates-details">(.*?)</details>',
+            self.render["h"],
+            re.DOTALL,
+        ).group(0).casefold()
+        for term in (
+            "sqlite",
+            "database",
+            "ledger",
+            "sign_id",
+            "projection",
+            "pipeline",
+            "canonical",
+            "provenance",
+            "source-linked",
+            "internal identifier",
+        ):
+            self.assertNotIn(term, block)
+
     def test_source_less_legacy_background_is_not_evidence_history(self):
         block, linked_count, search = self.render["ledger_evidence_block"](
             "__source_less__", "Legacy clinical note"
