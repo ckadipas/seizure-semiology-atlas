@@ -504,7 +504,7 @@ class CompactRendererTest(unittest.TestCase):
         self.assertIsNotNone(desktop_rule)
         self.assertGreaterEqual(int(desktop_rule.group(1)), updated_top + 22)
 
-    def test_atlas_updates_are_collapsed_concise_and_clinical(self):
+    def test_publication_changelog_is_compact_and_below_terminology(self):
         updates = re.search(
             r'<details class="lib-details atlas-updates-details">(.*?)</details>',
             self.render["h"],
@@ -513,13 +513,20 @@ class CompactRendererTest(unittest.TestCase):
         self.assertIsNotNone(updates)
         block = updates.group(0)
         self.assertNotRegex(block.split(">", 1)[0], r"\bopen\b")
-        self.assertIn("Atlas updates", block)
-        self.assertIn("Version 1.4.8", block)
-        self.assertIn("August 30, 2026", block)
-        self.assertGreaterEqual(block.count("<li>"), 1)
-        self.assertLessEqual(block.count("<li>"), 4)
+        self.assertIn("Publication changelog", block)
+        self.assertIn("v1.4.8 data", block)
+        self.assertIn("<strong>v1.4</strong>", block)
+        self.assertIn("<strong>v1.0&ndash;1.3</strong>", block)
+        self.assertNotIn("Meaningful changes", block)
+        self.assertNotIn("Small display and maintenance changes", block)
+        self.assertEqual(block.count("<li>"), 5)
         for term in ("classifications", "lateralization", "localization", "anatomical regions"):
             self.assertIn(term, block)
+        terminology = self.render["h"].index('<div class="abbrev">')
+        changelog = self.render["h"].index('<div class="lib atlas-updates">')
+        footer = self.render["h"].index('<div class="footer">')
+        self.assertLess(terminology, changelog)
+        self.assertLess(changelog, footer)
 
     def test_atlas_updates_do_not_expose_internal_implementation_terms(self):
         block = re.search(
