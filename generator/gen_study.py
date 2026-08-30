@@ -8,6 +8,8 @@ scientific values must already be present in the validated public bundle.
 """
 
 import hashlib, json, re, os, shutil, sys
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 def _find_root(start):
     d = os.path.dirname(os.path.abspath(start))
     while True:
@@ -17,6 +19,9 @@ def _find_root(start):
         d = p
 ROOT = _find_root(__file__)
 DOCS = os.path.join(ROOT, "docs"); os.makedirs(DOCS, exist_ok=True)
+SITE_UPDATED_UTC = datetime.now(timezone.utc)
+SITE_UPDATED_ISO = SITE_UPDATED_UTC.isoformat(timespec="minutes").replace("+00:00", "Z")
+SITE_UPDATED_LABEL = SITE_UPDATED_UTC.astimezone(ZoneInfo("America/Chicago")).strftime("%m/%d/%Y %I:%M %p CT")
 from collections import Counter, OrderedDict
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import brain_atlas as BA
@@ -3696,9 +3701,14 @@ html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
 body{font-family:'Segoe UI','Helvetica Neue',Arial,sans-serif;background:var(--bg);color:var(--ink);font-size:15px;line-height:1.5}
 
 /* ---------- TITLE ---------- */
-.site-header{background:linear-gradient(135deg,var(--navy) 0%,var(--navy2) 55%,#0a4a5a 100%);color:#fff;padding:16px 26px 14px}
+.site-header{position:relative;background:linear-gradient(135deg,var(--navy) 0%,var(--navy2) 55%,#0a4a5a 100%);color:#fff;padding:16px 238px 14px 26px}
 .site-header h1{font-size:1.5rem;font-weight:800;letter-spacing:.01em;margin-bottom:5px}
 .site-header p{font-size:.82rem;opacity:.92;max-width:80ch;line-height:1.5}
+.last-updated{position:absolute;top:17px;right:24px;color:rgba(255,255,255,.68);font-size:.69rem;font-weight:600;letter-spacing:.02em;white-space:nowrap}
+@media(max-width:900px){
+  .site-header{padding-right:26px}
+  .last-updated{position:static;display:block;margin-top:6px;text-align:right}
+}
 .edu-inline{color:#ffe4a3;font-weight:600}
 .edu-note{margin-top:12px;display:inline-flex;align-items:center;gap:8px;background:rgba(255,220,120,.16);border:1px solid rgba(255,220,120,.4);color:#ffe9b0;font-size:.76rem;font-weight:600;padding:5px 12px;border-radius:20px}
 .header-meta{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
@@ -4476,6 +4486,7 @@ body.quiz .lib-chip{display:none}
 @media (max-width:760px){
   .site-header{padding:14px 16px 12px}
   .site-header h1{font-size:1.12rem}
+  .last-updated{font-size:.63rem;margin-top:5px}
   .search-wrap{flex:1 1 55%;max-width:none}
   #search-input{width:auto}
   .search-clear{display:none}
@@ -6287,6 +6298,7 @@ HEAD = """<!DOCTYPE html>
 <div class="site-header">
   <h1>Seizure Semiology &mdash; Interactive Study Reference</h1>
   <p>Search the evidence library or browse the signs below. Results from different studies are shown separately. <span class="edu-inline">&#9888;&#65039; Educational reference &mdash; not for clinical decision-making.</span></p>
+  <time class="last-updated" datetime='""" + SITE_UPDATED_ISO + """'>Last updated: """ + SITE_UPDATED_LABEL + """</time>
 </div>
 
 <input class="tb-state" type="checkbox" id="tb-collapse" aria-label="Collapse toolbar">
