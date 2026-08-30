@@ -1240,15 +1240,22 @@ def lateralization_target_chips(sign_id):
         "bilateral": "Bilateral", "same-side": "Same side",
         "same side": "Same side", "nonlat": "No reliable lateralization",
         "non-lateralizing": "No reliable lateralization",
+        "nonassoc": "No single reliable side",
     }
     values = []
     for card in SYNTHESIS_CARDS_BY_SIGN.get(str(sign_id), []):
         if card.get("axis") != "LATERALIZATION":
             continue
-        for target in relationship_targets(card):
-            key = target.lower().replace("_", "-")
-            if key in labels and labels[key] not in values:
-                values.append(labels[key])
+        targets = ((card.get("target_contract") or {}).get("reported_targets") or [])
+        for target in targets:
+            key = str(target.get("key") or "").lower().replace("_", "-")
+            label = labels.get(key) or str(target.get("label") or "").strip()
+            if not label:
+                raise AssertionError(
+                    f"Lateralization target lacks a display label: sign_id={sign_id} key={key}"
+                )
+            if label not in values:
+                values.append(label)
     visible = values[:5]
     chips = "".join(f'<span class="axis-chip">{esc(value)}</span>' for value in visible)
     if len(values) > len(visible):
