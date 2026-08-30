@@ -3147,13 +3147,15 @@ def build_weighted_evidence(cards):
         +", ".join(f"{axis}={axis_counts[axis]}" for axis in axis_config)
         +"; "+", ".join(f"{state}={state_counts[state]}" for state in render_states)
     )
-    return f'''<details class="frontpage-fold reliability-fold">
+    return f'''<div class="lib weighted-evidence-section">
+<details class="frontpage-fold lib-details reliability-fold">
 <summary>Weighted-Evidence Summary</summary>
 <div class="weighted-evidence-shell">
   <div class="weighted-axis-tabs" role="tablist" aria-label="Weighted evidence axis">{tabs}</div>
   {panels}
 </div>
-</details>'''
+</details>
+</div>'''
 
 
 meta_fold = build_weighted_evidence(SYNTHESIS_CARDS)
@@ -4140,8 +4142,6 @@ body.quiz .lib-chip{display:none}
 }
 
 /* ---------- CURRENT-LEDGER WEIGHTED EVIDENCE ---------- */
-.reliability-fold>summary{background:linear-gradient(120deg,#0c2036,#123a52);color:#eaf3f8;border-color:#123a52}
-.reliability-fold>summary::before{color:#7fd4e6}
 .weighted-evidence-shell{max-width:1180px;margin:0 auto}
 .weighted-axis-tabs{display:flex;gap:6px;margin-bottom:7px;padding:0 2px}
 .weighted-axis-tab{border:1px solid #b9c9d8;border-radius:999px;background:#fff;color:#29445f;padding:7px 13px;font:inherit;font-size:.72rem;font-weight:800;cursor:pointer}
@@ -4421,6 +4421,10 @@ body.quiz .lib-chip{display:none}
 .lib-details>summary::before{content:"\25B6";font-size:.6rem;color:var(--teal);transition:transform .15s}
 .lib-details[open]>summary::before{transform:rotate(90deg)}
 .lib-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:10px;padding:0 18px 18px}
+.weighted-evidence-section>.reliability-fold{max-width:none;margin:0 0 16px;padding:0}
+body.tb-collapsed .weighted-evidence-section>.reliability-fold{padding-right:0}
+.weighted-evidence-section>.reliability-fold>summary{background:transparent;border:none;border-radius:0}
+.weighted-evidence-section>.reliability-fold[open]>summary{margin-bottom:0}
 .atlas-updates-details{margin-bottom:8px}
 .atlas-updates-details>summary{padding:9px 14px}
 .atlas-update-body{border-top:1px solid var(--line2);padding:8px 14px 9px;color:#334155;font-size:.72rem;line-height:1.35}

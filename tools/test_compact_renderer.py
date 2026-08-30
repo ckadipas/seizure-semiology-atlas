@@ -476,6 +476,27 @@ class CompactRendererTest(unittest.TestCase):
             self.render["h"],
         )
 
+    def test_weighted_evidence_uses_the_library_banner_contract(self):
+        weighted = self.render["meta_fold"]
+        self.assertRegex(
+            weighted,
+            r'<div class="lib weighted-evidence-section">\s*'
+            r'<details class="[^\"]*\blib-details\b[^\"]*\breliability-fold\b[^\"]*">',
+        )
+        self.assertNotRegex(
+            self.render["CSS"],
+            r"\.reliability-fold>summary\{[^}]*background:linear-gradient",
+        )
+        self.assertIn(
+            ".weighted-evidence-section>.reliability-fold{max-width:none",
+            self.render["CSS"],
+        )
+        self.assertIn(
+            ".weighted-evidence-section>.reliability-fold>summary{"
+            "background:transparent;border:none;border-radius:0}",
+            self.render["CSS"],
+        )
+
     def test_last_updated_uses_the_site_repository_commit_timestamp(self):
         committed = subprocess.run(
             ["git", "-C", str(ROOT), "log", "-1", "--format=%cI"],
