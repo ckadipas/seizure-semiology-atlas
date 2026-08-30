@@ -7,7 +7,7 @@ performs no network access and does not read the private SQLite ledger;
 scientific values must already be present in the validated public bundle.
 """
 
-import hashlib, json, re, os, shutil, sys
+import hashlib, json, re, os, shutil, subprocess, sys
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 def _find_root(start):
@@ -46,7 +46,24 @@ def release_updated_utc(atlas):
     return parsed.astimezone(timezone.utc)
 
 
-SITE_UPDATED_UTC = release_updated_utc(ATLAS)
+def site_updated_utc(root, atlas):
+    """Return the deployed repository revision time, or the frozen release time."""
+    try:
+        committed = subprocess.run(
+            ["git", "-C", root, "log", "-1", "--format=%cI"],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        parsed = datetime.fromisoformat(committed)
+        if parsed.tzinfo is not None:
+            return parsed.astimezone(timezone.utc)
+    except (OSError, subprocess.CalledProcessError, ValueError):
+        pass
+    return release_updated_utc(atlas)
+
+
+SITE_UPDATED_UTC = site_updated_utc(ROOT, ATLAS)
 SITE_UPDATED_ISO = SITE_UPDATED_UTC.isoformat(timespec="minutes").replace("+00:00", "Z")
 SITE_UPDATED_LABEL = SITE_UPDATED_UTC.astimezone(ZoneInfo("America/Chicago")).strftime("%m/%d/%Y %I:%M %p CT")
 data = ATLAS["signs"]
@@ -6399,7 +6416,7 @@ HEAD = """<!DOCTYPE html>
 </div>
 
 <div class="footer">
-  <p>Contribute a paper or correction: new evidence is welcome &mdash; <a href="https://github.com/ckadipas/seizure-semiology-atlas/issues/new/choose">submit it here</a>. Every submission is reviewed before it appears. &middot; &copy; 2026 <span data-nosnippet>CM Kadipasaoglu, MD, PhD</span> &middot; Creator and maintainer. This atlas is independently created and maintained in a personal capacity. It is not an official product of, and does not represent, any employer, university, hospital, health system, professional society, or other institution with which the author is or has been affiliated. Unless expressly stated, no such institution has sponsored, reviewed, approved, or endorsed this atlas. Any professional affiliation mentioned is provided solely for biographical identification. The views and editorial judgments expressed are the author&rsquo;s own. Copyright is claimed only in the atlas&rsquo;s original software, explanatory text, original graphics, and original selection, coordination, and arrangement of the compiled material&mdash;not in underlying scientific facts, clinical concepts, source publications, or third-party material. Cited works remain attributable to their respective authors and publishers; inclusion does not imply ownership or endorsement. Licensing: <a href="https://github.com/ckadipas/seizure-semiology-atlas/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">Code: MIT</a> &middot; <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="license noopener noreferrer" target="_blank">Atlas content and data: CC BY-NC-SA 4.0</a>. Educational use only: not medical advice, a medical device, or clinical decision support. <a href="https://github.com/ckadipas/seizure-semiology-atlas/blob/main/DISCLAIMER.md" target="_blank" rel="noopener noreferrer">Full disclaimer</a> &middot; <a href="https://github.com/ckadipas/seizure-semiology-atlas/blob/main/CITATION.cff" target="_blank" rel="noopener noreferrer">Citation</a> &middot; <a href="https://github.com/ckadipas/seizure-semiology-atlas/issues/new/choose">Questions or issues</a></p>
+  <p>Contribute a paper or correction: new evidence is welcome &mdash; <a href="https://github.com/ckadipas/seizure-semiology-atlas/issues/new/choose">submit it here</a>. Every submission is reviewed before it appears. &middot; &copy; 2026 <span data-nosnippet>CM Kadipasaoglu, MD, PhD</span> &middot; Creator and maintainer. This atlas is independently created and maintained in a personal capacity. It is not an official product of, and does not represent, any employer, university, hospital, health system, professional society, or other institution with which the author is or has been affiliated. Unless expressly stated, no such institution has sponsored, reviewed, approved, or endorsed this atlas. Any professional affiliation mentioned is provided solely for biographical identification. The views and editorial judgments expressed are the author&rsquo;s own. Copyright is claimed only in the atlas&rsquo;s original software, explanatory text, original graphics, and original selection, coordination, and arrangement of the compiled material&mdash;not in underlying scientific facts, clinical concepts, source publications, or third-party material. Cited works remain attributable to their respective authors and publishers; inclusion does not imply ownership or endorsement. Licensing: <a href="https://github.com/ckadipas/seizure-semiology-atlas/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">Code: MIT</a> &middot; <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="license noopener noreferrer" target="_blank">Atlas content and data: CC BY-NC-SA 4.0</a>. Educational use only: not medical advice, a medical device, or clinical decision support. <a href="https://github.com/ckadipas/seizure-semiology-atlas/blob/main/DISCLAIMER.md" target="_blank" rel="noopener noreferrer">Full disclaimer</a> &middot; <a href="https://github.com/ckadipas/seizure-semiology-atlas/issues/new/choose">Questions or issues</a></p>
 </div>
 
 <script>""" + JS + """</script>

@@ -5,7 +5,9 @@ import hashlib
 import json
 import re
 import runpy
+import subprocess
 import unittest
+from datetime import datetime, timezone
 from pathlib import Path
 
 
@@ -116,6 +118,8 @@ class CompactRendererTest(unittest.TestCase):
         )
         self.assertIn("CC BY-NC-SA 4.0", footer)
         self.assertIn("Full disclaimer", footer)
+        self.assertNotIn(">Citation</a>", footer)
+        self.assertNotIn("CITATION.cff", footer)
         self.assertNotIn("Results from different studies are not combined", footer)
         self.assertNotIn(
             "Real localization always integrates ictal EEG, imaging, neuropsychology, and history",
@@ -472,11 +476,17 @@ class CompactRendererTest(unittest.TestCase):
             self.render["h"],
         )
 
-    def test_last_updated_uses_the_immutable_release_timestamp(self):
-        release = self.render["EVIDENCE_SYNTHESIS"]["release"]
+    def test_last_updated_uses_the_site_repository_commit_timestamp(self):
+        committed = subprocess.run(
+            ["git", "-C", str(ROOT), "log", "-1", "--format=%cI"],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        expected = datetime.fromisoformat(committed).astimezone(timezone.utc)
         self.assertEqual(
-            release["updated_utc"],
-            self.render["SITE_UPDATED_UTC"].isoformat(),
+            expected,
+            self.render["SITE_UPDATED_UTC"],
         )
         self.assertIn(
             f"datetime='{self.render['SITE_UPDATED_ISO']}'",
