@@ -8,6 +8,7 @@ help:
 	@echo "  make serve      - build, then serve docs/ at http://localhost:8000"
 
 validate:
+	python3 tools/test_public_governance.py
 	python3 tools/validate_atlas_bundle.py
 
 build: validate

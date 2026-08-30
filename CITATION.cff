@@ -8,7 +8,7 @@ abstract: >-
   curated dataset. Educational use only — not for clinical decision-making.
 type: dataset
 authors:
-  - family-names: "CM"
+  - family-names: "Kadipasaoglu"
     given-names: "CM"
     # orcid: "https://orcid.org/0000-0000-0000-0000"
 keywords:
@@ -21,5 +21,4 @@ keywords:
 license: CC-BY-NC-SA-4.0
 repository-code: "https://github.com/ckadipas/seizure-semiology-atlas"
 # version: 1.0.0
-# date-released: 2025-01-01
 # doi: 10.5281/zenodo.XXXXXXX   # if linking Zenodo and publishing a release

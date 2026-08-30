@@ -42,6 +42,7 @@ TARGET_FIELDS = {
     "unresolved_raw_targets", "finding_wide_only_raw_targets",
     "true_nonassociation", "inherited_nonassociation_status",
     "promoted_linked_finding_refs", "source_explicit_linked_finding_targets",
+    "context_only_finding_axis_targets",
 }
 def require(condition, message):
     if not condition:
@@ -84,6 +85,8 @@ def has_meaningful_recorded_target(contract):
     if (contract.get("exact_group_finding_raw_targets")
             or contract.get("additional_linkage_targets")):
         return True
+    if contract.get("adjudicated_unsupported"):
+        return False
     return any(meaningful_unresolved_targets(contract.get(field)) for field in (
         "owner_cleared_raw_targets", "nonidentity_group_raw_targets",
         "excluded_relationship_raw_targets", "unresolved_raw_targets",
@@ -230,6 +233,12 @@ lateralization_by_id = {
 classification_by_id = {
     str(row["classification_link_id"]): row for row in classification_links
 }
+known_context_region_ids = set(LOCATION_LABELS)
+known_context_region_ids.update(
+    str(value) for row in location_links
+    for value in (row.get("region_id"), row.get("major_region_id"))
+    if value
+)
 sign_axis_context_by_id = {
     str(row["sign_axis_context_link_id"]): row for row in sign_axis_context_links
 }
@@ -291,7 +300,8 @@ for row in sign_axis_context_links:
         problems.append("context")
     if str(row.get("axis")) not in {"LOCALIZATION", "LATERALIZATION"}:
         problems.append("axis")
-    if any(str(region_id) not in LOCATION_LABELS for region_id in row.get("region_ids") or []):
+    if any(str(region_id) not in known_context_region_ids
+           for region_id in row.get("region_ids") or []):
         problems.append("region")
     if any(str(statistic_id) not in statistic_set
            for statistic_id in row.get("linked_statistic_ids") or []):
@@ -317,28 +327,20 @@ for row in sign_axis_summary_links:
 node_ids = {str(row["node_id"]) for row in bundle["classifications"]["nodes"]}
 require(all(str(row["node_id"]) in node_ids for row in classification_links),
         "context classification references an absent node")
+bundle_sign_classifications = {
+    (str(row["sign_id"]), str(row["node_id"]), str(row["relation"]))
+    for row in bundle["classifications"]["sign_mappings"]
+}
+context_sign_classifications = {
+    (str(sign_id), str(row["node_id"]), str(row["relation"]))
+    for row in classification_links if row["subject_kind"] == "SIGN"
+    for sign_id in row.get("public_sign_ids") or []
+}
+require(bundle_sign_classifications == context_sign_classifications,
+        "canonical sign classifications differ between public projections")
 
 expected_regions_by_sign = {sign_id: set() for sign_id in sign_ids}
 expected_areas_by_sign = {sign_id: set() for sign_id in sign_ids}
-for row in location_links:
-    region = LOCATION_LABELS.get(str(
-        row.get("major_region_id") or row.get("region_id") or ""
-    ))
-    for sign_id in row.get("public_sign_ids") or []:
-        if region:
-            expected_regions_by_sign[str(sign_id)].add(region)
-        if row.get("brodmann_area_id"):
-            expected_areas_by_sign[str(sign_id)].add(str(row["brodmann_area_id"]))
-for row in sign_axis_context_links:
-    if str(row.get("axis")) != "LOCALIZATION":
-        continue
-    for sign_id in row.get("public_sign_ids") or []:
-        expected_regions_by_sign[str(sign_id)].update(
-            LOCATION_LABELS[str(region_id)] for region_id in row.get("region_ids") or []
-        )
-        expected_areas_by_sign[str(sign_id)].update(
-            str(area_id) for area_id in row.get("brodmann_area_ids") or []
-        )
 for row in sign_axis_summary_links:
     if str(row.get("axis")) != "LOCALIZATION":
         continue
@@ -457,7 +459,14 @@ for card in cards:
             "row work contributions are duplicated or incomplete")
 
     contract = card["target_contract"]
-    require(set(contract) == TARGET_FIELDS, "target contract fields changed")
+    optional_target_fields = {
+        "adjudicated_finding_refs", "adjudicated_unsupported",
+    }
+    require(
+        TARGET_FIELDS <= set(contract)
+        and set(contract) <= TARGET_FIELDS | optional_target_fields,
+        "target contract fields changed",
+    )
     targets = contract["reported_targets"]
     card_axis_links = [
         row for row in sign_axis_context_links
@@ -489,10 +498,18 @@ for card in cards:
                 "weighted row target is absent from its evidence-context relationships")
     require(unique([target["key"] for target in targets]), "duplicate reported target")
     for target in targets:
-        require(set(target) == {
+        required_target_fields = {
             "key", "label", "raw", "origins", "contexts", "scopes",
             "target_level", "details",
-        }, "reported-target fields changed")
+        }
+        hierarchy_fields = {
+            "region_id", "parent_region_id", "area_id", "brodmann_label",
+        }
+        require(
+            required_target_fields <= set(target)
+            and set(target) <= required_target_fields | hierarchy_fields,
+            "reported-target fields changed",
+        )
         require(bool(target["key"] and target["label"] and target["raw"]
                      and target["origins"]), "reported target lacks provenance")
         require(unique(target["raw"]) and unique(target["origins"])
@@ -515,11 +532,17 @@ for card in cards:
         and bool(contribution.get("projection_disposition"))
         for contribution in contributions
     )
+    unsupported_context = bool(
+        card.get("terminal_classification") == "GENUINELY_UNSUPPORTED"
+        and row_findings and row_works and not positive and not nonassociation
+    )
     expected_state = (
         "EVIDENCE_BEARING_WEIGHTED"
         if relationship_linked and has_applied_weight
         else "EVIDENCE_LINKED_CONTEXT_ONLY"
         if relationship_linked and context_only_projection
+        else "EVIDENCE_LINKED_CONTEXT_ONLY"
+        if unsupported_context
         else "EVIDENCE_LINKED_WEIGHT_PENDING"
         if relationship_linked
         else "TARGET_LINKAGE_NEEDED" if recorded
@@ -544,14 +567,22 @@ for card in cards:
         require(status == "NOT_REPORTED", "target-free card has a relationship status")
 
     if axis == "LOCALIZATION" and positive:
-        required_regions = {
-            LOCATION_LABELS[str(target["key"])] for target in positive
-            if str(target["key"]) in LOCATION_LABELS
-        }
+        required_regions = set()
+        for target in positive:
+            major_region_id = next((
+                str(value) for value in (
+                    target.get("key"), target.get("region_id"),
+                    target.get("parent_region_id"),
+                )
+                if str(value) in LOCATION_LABELS
+            ), "")
+            if major_region_id:
+                required_regions.add(LOCATION_LABELS[major_region_id])
         if required_regions:
             alignment_checks += 1
             regions = set(sign_by_id[str(card["sign_id"])].get("regions") or [])
-            require(required_regions <= regions, "localized sign is missing a browse region")
+            require(required_regions == regions,
+                    "localized sign differs from its canonical browse regions")
             require("No localization stated" not in regions,
                     "localized sign remains classified only as unlocalized")
 

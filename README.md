@@ -54,9 +54,9 @@ The website preserves the previously defined weighting method and explains it in
 - 77 reviewed source reports consolidated into 73 canonical manuscripts
 - 4,120 public findings
 - 4,518 source-reported atomic statistics
-- 383 established atlas signs
-- 766 sign-axis summaries: one localization and one lateralization row per sign
-- 65 canonical manuscripts contribute weighted evidence; 2 remain linked with
+- 378 established atlas signs
+- 756 sign-axis summaries: one localization and one lateralization row per sign
+- 66 canonical manuscripts contribute weighted evidence; 1 remains linked with
   authority metadata pending and 6 are context/reference works without a linked
   sign-axis contribution
 

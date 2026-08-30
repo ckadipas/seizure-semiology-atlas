@@ -18,10 +18,12 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Validate public-repository governance
+        run: python3 tools/test_public_governance.py
       - name: Validate generated atlas bundle
         run: python3 tools/validate_atlas_bundle.py
       - name: Run projection renderer regressions
-        run: python3 -m unittest tools.test_compact_renderer
+        run: python3 tools/test_compact_renderer.py
       - name: Build website
         run: python3 generator/gen_study.py
       - name: Check generated files for malformed patches

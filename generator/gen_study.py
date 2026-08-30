@@ -149,12 +149,20 @@ class EvidenceContextIndex:
 
     def public_sign_ids_for_findings(self, finding_refs, *, exact_only=True):
         allowed = {"EXACT"} if exact_only else {"EXACT", "RELATED"}
-        return self._unique(
+        direct = [
             str(link["public_sign_id"])
             for finding_ref in finding_refs
             for link in (self.contexts_by_ref.get(str(finding_ref)) or {}).get("sign_links") or []
             if str(link.get("relation") or "").upper() in allowed and link.get("public_sign_id")
-        )
+        ]
+        adjudicated = [
+            str(sign_id)
+            for finding_ref in finding_refs
+            for row in self.axis_contexts_by_finding.get(str(finding_ref), [])
+            if row.get("relationship_eligible")
+            for sign_id in row.get("public_sign_ids") or []
+        ]
+        return self._unique([*direct, *adjudicated])
 
     def public_sign_ids_for_statistics(self, statistic_ids):
         linked = self._unique(
@@ -163,11 +171,10 @@ class EvidenceContextIndex:
             for link in (self.statistics.get(str(statistic_id)) or {}).get("sign_links") or []
             for public_sign_id in link.get("public_sign_ids") or []
         )
-        if linked:
-            return linked
-        return self.public_sign_ids_for_findings(
+        adjudicated = self.public_sign_ids_for_findings(
             self.finding_refs_for_statistics(statistic_ids)
         )
+        return self._unique([*linked, *adjudicated])
 
     def relationship_rows_for_statistics(self, statistic_ids, rows_by_finding):
         rows = []
@@ -227,7 +234,6 @@ class EvidenceContextIndex:
             ))
             for finding_ref in finding_refs
             for link in self.locations_by_finding.get(str(finding_ref), [])
-            if link.get("public_sign_ids")
         )
         projected = self._unique(
             CONTEXT_REGION_LABEL_BY_ID.get(str(region_id))
@@ -419,6 +425,13 @@ for d in data:
 latcolor = {"contra":"#c0392b","ipsi":"#2471a3","dominant":"#8e44ad","nondominant":"#1a7a4a","right":"#d35400","left":"#2471a3","bilateral":"#5b6472","nonlat":"#6b7280","variable":"#95691a","notreported":"#6b7280"}
 latbg    = {"contra":"#fdf2f2","ipsi":"#eaf4fb","dominant":"#f5f0fb","nondominant":"#eafaf1","right":"#fef5ee","left":"#eef5fb","bilateral":"#f3f4f6","nonlat":"#f3f4f6","variable":"#fdf8ee","notreported":"#f3f4f6"}
 latlabel = {"contra":"CONTRA","ipsi":"IPSI","dominant":"DOM","nondominant":"NON-DOM","right":"RIGHT","left":"LEFT","bilateral":"BILATERAL","nonlat":"NON-LAT","variable":"VARIABLE","notreported":"NOT STATED"}
+LATERALIZATION_TARGET_LABELS = OrderedDict((
+    ("contra", "Contralateral"), ("ipsi", "Ipsilateral"),
+    ("dominant", "Dominant"), ("nondominant", "Non-dominant"),
+    ("left", "Left"), ("right", "Right"),
+    ("bilateral", "Bilateral"), ("nonassoc", "Does not lateralize"),
+    ("notreported", "Not reported"),
+))
 evidcolor= {"I":"#1a7a4a","II":"#c47a00","III":"#c0392b","SRC":"#0e9db0"}
 
 region_order = ["Temporal","Frontal","Parietal","Occipital","Insular","Limbic","Deep/Subcortical","Multiregional/Propagation","No localization stated"]
@@ -1268,36 +1281,41 @@ def relationship_targets(card):
     return values
 
 
-def lateralization_target_chips(sign_id):
-    labels = {
-        "right": "Right", "left": "Left", "dominant": "Dominant",
-        "nondominant": "Non-dominant", "non-dominant": "Non-dominant",
-        "contra": "Contralateral", "contralateral": "Contralateral",
-        "ipsi": "Ipsilateral", "ipsilateral": "Ipsilateral",
-        "bilateral": "Bilateral", "same-side": "Same side",
-        "same side": "Same side", "nonlat": "No reliable lateralization",
-        "non-lateralizing": "No reliable lateralization",
-        "nonassoc": "No single reliable side",
-    }
-    values = []
+def lateralization_targets(sign_id):
+    """Return every canonical target once for display and filtering."""
+    values = OrderedDict()
     for card in SYNTHESIS_CARDS_BY_SIGN.get(str(sign_id), []):
         if card.get("axis") != "LATERALIZATION":
             continue
         targets = ((card.get("target_contract") or {}).get("reported_targets") or [])
         for target in targets:
-            key = str(target.get("key") or "").lower().replace("_", "-")
-            label = labels.get(key) or str(target.get("label") or "").strip()
+            key = str(target.get("key") or "").strip().casefold()
+            key = {"nonlat": "nonassoc", "non-lateralizing": "nonassoc"}.get(key, key)
+            label = LATERALIZATION_TARGET_LABELS.get(key) or str(
+                target.get("label") or ""
+            ).strip()
             if not label:
                 raise AssertionError(
                     f"Lateralization target lacks a display label: sign_id={sign_id} key={key}"
                 )
-            if label not in values:
-                values.append(label)
+            values.setdefault(key, label)
+    return values
+
+
+def lateralization_filter_values(sign_id):
+    values = list(lateralization_targets(sign_id))
+    return values or ["notreported"]
+
+
+def lateralization_target_chips(sign_id):
+    values = list(lateralization_targets(sign_id).values())
     visible = values[:5]
     chips = "".join(f'<span class="axis-chip">{esc(value)}</span>' for value in visible)
     if len(values) > len(visible):
         chips += f'<span class="axis-chip axis-chip-more">+{len(values) - len(visible)}</span>'
-    return f'<span class="axis-chips">{chips}</span>' if chips else ""
+    if not chips:
+        chips = '<span class="axis-chip">Not reported</span>'
+    return f'<span class="axis-chips">{chips}</span>'
 
 
 def axis_synthesis(sign_id, axis):
@@ -1502,17 +1520,19 @@ def area_reference_blocks(region):
                         if _nsrc else '')
             evid_chip = evidence_header_chip(ec)
             phase_search = "|".join(d.get("phase_values") or [d["phase"]])
+            lat_targets = lateralization_target_chips(d.get("id"))
+            lat_facets = "|".join(lateralization_filter_values(d.get("id")))
             refs.append(f'''<div class="sign" id="area-sign-{slug(region)}-{aid}-{d['id']}"
     data-area-ref="true" data-id="{d['id']}" data-ba="{esc(aid)}" data-region="{esc(region)}"
     data-regions="{esc('|'.join(public_browse_regions(d)))}"
-    data-phase="{esc(d['phase'])}" data-phase-search="{esc(phase_search)}" data-latcode="{esc(lc)}" data-evid="{esc(ec)}"
+    data-phase="{esc(d['phase'])}" data-phase-search="{esc(phase_search)}" data-lat-targets="{esc(lat_facets)}" data-evid="{esc(ec)}"
     data-search="{esc(ref_search)}" style="--accent:{latcolor.get(lc,'#999')}">
   <button class="sign-head" aria-expanded="false">
     <span class="chevron">&#8250;</span>
     <span class="sign-name">{esc(d['sign'])}</span>
     <span class="head-chips">
       <span class="chip phase-badge phase-{slug(d['phase'].split('/')[0])}">{esc(d['phase'])}</span>
-      <span class="chip lat-chip" style="color:{latcolor.get(lc,'#333')};background:{latbg.get(lc,'#f7f7f7')};border-color:{latcolor.get(lc,'#333')}">{latlabel.get(lc,'?')}</span>
+      {lat_targets}
       {evid_chip}
       {lib_chip}
     </span>
@@ -1563,6 +1583,7 @@ for r in region_order:
             evid_chip = evidence_header_chip(ec)
             overview_block = compact_evidence_overview(d)
             lat_targets = lateralization_target_chips(d.get("id"))
+            lat_facets = "|".join(lateralization_filter_values(d.get("id")))
             loc_display = localization_display(d)
             source_status_block = ('' if _nsrc else '''<div class="d-row d-cite source-review-pending">
         <span class="d-label">Source review pending</span>
@@ -1590,13 +1611,13 @@ for r in region_order:
       {ppv_block}
     </div>'''
             phase_search = "|".join(d.get("phase_values") or [d["phase"]])
-            rows.append(f'''<div class="sign" id="sign-{slug(r)}-{d['id']}" data-id="{d['id']}" data-region="{esc(r)}" data-regions="{esc('|'.join(public_browse_regions(d)))}" data-phase="{esc(d['phase'])}" data-phase-search="{esc(phase_search)}" data-latcode="{lc}" data-evid="{ec}" data-search="{esc(search_str)}" style="--accent:{accent}">
+            rows.append(f'''<div class="sign" id="sign-{slug(r)}-{d['id']}" data-id="{d['id']}" data-region="{esc(r)}" data-regions="{esc('|'.join(public_browse_regions(d)))}" data-phase="{esc(d['phase'])}" data-phase-search="{esc(phase_search)}" data-lat-targets="{esc(lat_facets)}" data-evid="{ec}" data-search="{esc(search_str)}" style="--accent:{accent}">
   <button class="sign-head" aria-expanded="false">
     <span class="chevron">&#8250;</span>
     <span class="sign-name">{esc(d['sign'])}</span>
     <span class="head-chips">
       <span class="chip phase-badge phase-{slug(d['phase'].split('/')[0])}">{esc(d['phase'])}</span>
-      <span class="chip lat-chip" style="color:{latcolor.get(lc,'#333')};background:{latbg.get(lc,'#f7f7f7')};border-color:{latcolor.get(lc,'#333')}">{latlabel.get(lc,'?')}</span>
+      {lat_targets}
       {evid_chip}
       {lib_chip}
     </span>
@@ -4519,6 +4540,7 @@ body.quiz .lib-chip{display:none}
 .abbrev-item{font-size:.78rem;color:#444}
 .abbrev-item strong{color:var(--navy)}
 .footer{background:var(--navy);color:#8fa0b4;padding:20px 24px;font-size:.76rem;line-height:1.75}
+.footer p{margin:0 0 6px}.footer p:last-child{margin-bottom:0}
 .footer strong{color:#b3c1d1}
 .footer a{color:#9fc3e0;text-decoration:underline}
 .footer a:hover{color:#cfe0ee}
@@ -5216,7 +5238,7 @@ function itemMatches(item){
   const reg=fRegion.value,ph=fPhase.value,lat=fLat.value,ev=fEvid.value;
   if(reg && item.dataset.region!==reg) return false;
   if(ph && !((item.dataset.phaseSearch||item.dataset.phase||'').toLowerCase().includes(ph.toLowerCase()))) return false;
-  if(lat && item.dataset.latcode!==lat) return false;
+  if(lat && !(item.dataset.latTargets||'').split('|').includes(lat)) return false;
   if(ev && item.dataset.evid!==ev) return false;
   const searchable=(SIGN_SEARCH[String(item.dataset.id)]||'')+' '+(item.dataset.search||'');
   if(appliedQuery && !searchable.includes(appliedQuery)) return false;
@@ -5399,10 +5421,14 @@ function buildBrowseView(mode){
   browseSections.append(fragment);
 }
 
-function ludersRegionCategories(regionIds){
-  const tree=CLASSIFICATION_TREES.LUDERS_5D_2005||{groups:[]};
-  const preferred=['Aura','Seizure','Lateralizing signs','Diagnostic signs'];
-  const ordered=preferred.map(label=>(tree.groups||[]).find(group=>group.label===label)).filter(Boolean);
+function classificationRegionCategories(regionIds,mode){
+  if(mode==='az') return [{label:'Signs A–Z',group:null,ids:sortSignIds(Array.from(regionIds))}];
+  const scheme=mode==='ilae'?'ILAE_SEIZURE_2025':'LUDERS_5D_2005';
+  const tree=CLASSIFICATION_TREES[scheme]||{groups:[]};
+  const preferred=mode==='luders'?['Aura','Seizure','Lateralizing signs','Diagnostic signs']:[];
+  const ordered=preferred.length
+    ? preferred.map(label=>(tree.groups||[]).find(group=>group.label===label)).filter(Boolean)
+    : (tree.groups||[]);
   const used=new Set();
   const categories=[];
   ordered.forEach(group=>{
@@ -5412,7 +5438,10 @@ function ludersRegionCategories(regionIds){
     categories.push({label:group.label,group,ids});
   });
   const other=sortSignIds(Array.from(regionIds).filter(id=>!used.has(id)));
-  if(other.length) categories.push({label:'Other signs',group:null,ids:other});
+  if(other.length) categories.push({
+    label:mode==='ilae'?'Not yet placed within ILAE 2025':'Not yet placed within Lüders 5D',
+    group:null,ids:other
+  });
   return categories;
 }
 
@@ -5422,13 +5451,10 @@ function appendRegionCategoryContent(parent,category,mode,region){
     category.ids.forEach(id=>appendBrowseSign(parent,id,category.label,region));
     return;
   }
-  if(mode==='luders'){
+  if(mode==='luders'||mode==='ilae'){
     (category.group.children||[]).forEach(child=>appendClassificationNode(parent,child,allowed,seen,region));
     const general=eligibleIds([...(category.group.sign_ids||[]),...(category.group.broad_sign_ids||[])],allowed,seen,true);
     appendBroadClassificationBucket(parent,category.label,general,region);
-  }else{
-    const ilae=CLASSIFICATION_TREES.ILAE_SEIZURE_2025||{groups:[]};
-    (ilae.groups||[]).forEach(group=>appendClassificationNode(parent,group,allowed,seen,region));
   }
   const remaining=eligibleIds(category.ids,allowed,seen,true);
   if(mode==='luders') appendSignBucket(parent,'Not yet placed within Lüders 5D',remaining,region,'unclassified-mappings');
@@ -5458,7 +5484,7 @@ function buildRegionBrowseView(mode){
     const count=document.createElement('span');count.className='region-count';count.textContent=regionIds.size;
     toggle.append(chev,name,count);
     const body=document.createElement('div');body.className='region-body';
-    ludersRegionCategories(regionIds).forEach(category=>{
+    classificationRegionCategories(regionIds,mode).forEach(category=>{
       const subsection=document.createElement('div');subsection.className='browse-subsection region-category collapsed';
       const subToggle=document.createElement('button');subToggle.className='browse-subtoggle';subToggle.type='button';subToggle.setAttribute('aria-expanded','false');
       const subChev=document.createElement('span');subChev.className='browse-chev';subChev.textContent='▼';
@@ -6314,6 +6340,17 @@ filterAll();
 """
 )
 
+_active_lateralization_facets = {
+    value
+    for sign in data
+    for value in lateralization_filter_values(sign.get("id"))
+}
+lateralization_filter_options = "\n".join(
+    f'<option value="{esc(key)}">{esc(label)}</option>'
+    for key, label in LATERALIZATION_TARGET_LABELS.items()
+    if key in _active_lateralization_facets
+)
+
 HEAD = """<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6394,13 +6431,7 @@ HEAD = """<!DOCTYPE html>
       <div class="filter-field"><span class="ctrl-label">Lateralization</span>
         <select id="filter-lat">
           <option value="">All</option>
-          <option value="contra">Contralateral</option>
-          <option value="ipsi">Ipsilateral</option>
-          <option value="dominant">Dominant</option>
-          <option value="nondominant">Non-dominant</option>
-          <option value="right">Right hemisphere</option>
-          <option value="nonlat">Non-lateralizing</option>
-          <option value="variable">Variable</option>
+""" + lateralization_filter_options + """
         </select>
       </div>
       <div class="filter-field"><span class="ctrl-label">Evidence</span>
@@ -6491,8 +6522,12 @@ HEAD = """<!DOCTYPE html>
 </div>
 
 <div class="footer">
-  <strong>Educational use:</strong> This reference is designed for teaching and self-study by epilepsy trainees. Each evidence entry shows who was studied, what was counted, the reported value, and important cautions. Results from different studies are not combined. Real localization always integrates ictal EEG, imaging, neuropsychology, and history. &nbsp;|&nbsp;
-  <strong>Contribute a paper or correction:</strong> new evidence is welcome &mdash; <a href="https://github.com/ckadipas/seizure-semiology-atlas/issues/new/choose">submit it here</a>. Every submission is reviewed by the maintainers before it appears.
+  <p><strong>Contribute a paper or correction:</strong> new evidence is welcome &mdash; <a href="https://github.com/ckadipas/seizure-semiology-atlas/issues/new/choose">submit it here</a>. Every submission is reviewed before it appears.</p>
+  <p><strong>&copy; 2026 <span data-nosnippet>CM Kadipasaoglu, MD, PhD</span></strong> &middot; Creator and maintainer.</p>
+  <p><strong>Independent project.</strong> This atlas is independently created and maintained in a personal capacity. It is not an official product of, and does not represent, any employer, university, hospital, health system, professional society, or other institution with which the author is or has been affiliated. Unless expressly stated, no such institution has sponsored, reviewed, approved, or endorsed this atlas. Any professional affiliation mentioned is provided solely for biographical identification. The views and editorial judgments expressed are the author&rsquo;s own.</p>
+  <p>Copyright is claimed only in the atlas&rsquo;s original software, explanatory text, original graphics, and original selection, coordination, and arrangement of the compiled material&mdash;not in underlying scientific facts, clinical concepts, source publications, or third-party material. Cited works remain attributable to their respective authors and publishers; inclusion does not imply ownership or endorsement.</p>
+  <p><strong>Licensing:</strong> <a href="https://github.com/ckadipas/seizure-semiology-atlas/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">Code: MIT</a> &middot; <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="license noopener noreferrer" target="_blank">Atlas content and data: CC BY-NC-SA 4.0</a>.</p>
+  <p><strong>Educational use only:</strong> not medical advice, a medical device, or clinical decision support. <a href="https://github.com/ckadipas/seizure-semiology-atlas/blob/main/DISCLAIMER.md" target="_blank" rel="noopener noreferrer">Full disclaimer</a> &middot; <a href="https://github.com/ckadipas/seizure-semiology-atlas/blob/main/CITATION.cff" target="_blank" rel="noopener noreferrer">Citation</a> &middot; <a href="https://github.com/ckadipas/seizure-semiology-atlas/issues/new/choose">Questions or issues</a></p>
 </div>
 
 <script>""" + JS + """</script>

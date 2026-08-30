@@ -71,6 +71,7 @@ class CompactRendererTest(unittest.TestCase):
     def test_brodmann_hover_clears_off_an_area_and_when_views_change(self):
         js = self.render["JS"]
         self.assertIn("function resetBrainHover()", js)
+        self.assertIn("card.addEventListener('mouseleave',resetBrainHover);", js)
         self.assertRegex(
             js,
             r"if\(!hit\)\{resetBrainHover\(\);return;\}",
@@ -80,9 +81,44 @@ class CompactRendererTest(unittest.TestCase):
         )[0]
         self.assertIn("resetBrainHover();", show_view)
 
+    def test_subcentral_area_is_not_interactive_on_the_medial_view(self):
+        self.assertEqual(["lateral"], self.render["BA"].views_with("43"))
+        medial = re.search(
+            r'<svg[^>]*data-view="medial"[^>]*>(.*?)</svg>',
+            self.render["brain_fold"],
+            re.DOTALL,
+        ).group(1)
+        self.assertNotIn('data-tile="43"', medial)
+
     def test_footer_omits_named_schools_and_keeps_the_submission_link(self):
         self.assertNotIn("Schools referenced", self.render["h"])
         self.assertIn("Contribute a paper or correction", self.render["h"])
+
+    def test_footer_identifies_owner_and_links_the_content_license(self):
+        footer = self.render["h"].split('<div class="footer">', 1)[1].split(
+            "</div>", 1
+        )[0]
+        self.assertEqual(footer.count("CM Kadipasaoglu, MD, PhD"), 1)
+        self.assertRegex(
+            footer,
+            r'<strong>&copy; 2026 <span data-nosnippet>CM Kadipasaoglu, MD, PhD</span></strong> &middot; Creator and maintainer\.',
+        )
+        self.assertNotIn("&copy; 2026 Seizure Semiology Atlas", footer)
+        self.assertIn(
+            "This atlas is independently created and maintained in a personal capacity.",
+            footer,
+        )
+        self.assertRegex(
+            footer,
+            r'<a[^>]+href="https://creativecommons\.org/licenses/by-nc-sa/4\.0/"[^>]+rel="license noopener noreferrer"',
+        )
+        self.assertIn("CC BY-NC-SA 4.0", footer)
+        self.assertIn("Full disclaimer", footer)
+        self.assertNotIn("Results from different studies are not combined", footer)
+        self.assertNotIn(
+            "Real localization always integrates ictal EEG, imaging, neuropsychology, and history",
+            footer,
+        )
 
     def test_nonidentical_leaf_classification_term_remains_a_visible_family(self):
         groups = self.render["classification_trees"]["LUDERS_5D_2005"]["groups"]
@@ -131,12 +167,47 @@ class CompactRendererTest(unittest.TestCase):
     def test_region_view_uses_semilogy_hierarchy_before_signs(self):
         self.assertIn('id="region-order-mode"', self.render["h"])
         self.assertIn("function buildRegionBrowseView", self.render["JS"])
-        self.assertIn("['Aura','Seizure','Lateralizing signs','Diagnostic signs']", self.render["JS"])
+        self.assertIn("classificationRegionCategories(regionIds,mode)", self.render["JS"])
+        self.assertNotIn("ludersRegionCategories(regionIds).forEach", self.render["JS"])
         self.assertIn("appendRegionCategoryContent", self.render["JS"])
         groups = self.render["classification_trees"]["LUDERS_5D_2005"]["groups"]
         aura = next(node for node in groups if node["label"] == "Aura")
         self.assertTrue(aura["broad_sign_ids"])
         self.assertIn("Autonomic aura", {child["label"] for child in aura["children"]})
+
+    def test_language_and_auditory_signs_use_canonical_scheme_placements(self):
+        signs = {str(row["id"]): row["sign"] for row in self.render["data"]}
+
+        def labels_for(tree, node_label):
+            node = next(node for node in walk(tree["groups"]) if node["label"] == node_label)
+            return {signs[str(sign_id)] for sign_id in node["all_sign_ids"]}
+
+        ilae = self.render["classification_trees"]["ILAE_SEIZURE_2025"]
+        self.assertTrue({
+            "Alexia", "Aphasia (phase unspecified)", "Conduction aphasia", "Ictal anomia",
+        }.issubset(labels_for(ilae, "Cognitive and language phenomena")))
+        self.assertTrue({
+            "Ictal auditory loss", "Ictal deafness / hypoacusis",
+        }.issubset(labels_for(ilae, "Auditory")))
+
+        luders = self.render["classification_trees"]["LUDERS_5D_2005"]
+        self.assertTrue({
+            "Alexia", "Aphasia (phase unspecified)", "Conduction aphasia", "Ictal anomia",
+        }.issubset(labels_for(luders, "Aphasic seizure")))
+
+    def test_canonical_classifications_are_identical_in_every_projection(self):
+        bundle = json.loads((ROOT / "data" / "atlas_bundle.json").read_text())
+        canonical = {
+            (str(row["sign_id"]), row["node_id"], row["relation"])
+            for row in bundle["classifications"]["sign_mappings"]
+        }
+        context = {
+            (str(sign_id), row["node_id"], row["relation"])
+            for row in bundle["evidence_context"]["relationships"]["classifications"]
+            if row["subject_kind"] == "SIGN"
+            for sign_id in row["public_sign_ids"]
+        }
+        self.assertEqual(canonical, context)
 
     def test_synthesis_replaces_repeated_generic_variable_sentence(self):
         sign_id = "SGRP:f39e29bedd8219a01713"
@@ -175,6 +246,28 @@ class CompactRendererTest(unittest.TestCase):
         )
         self.assertIn(">Right<", chips)
 
+    def test_lateralization_filter_uses_every_shared_target_without_scalar_loss(self):
+        expected = {
+            str(target.get("key") or "").strip().casefold()
+            for card in self.render["SYNTHESIS_CARDS"]
+            if card.get("axis") == "LATERALIZATION"
+            for target in (card.get("target_contract") or {}).get("reported_targets") or []
+            if str(target.get("key") or "").strip()
+        }
+        expected.add("notreported")
+        select = self.render["h"].split('<select id="filter-lat">', 1)[1].split(
+            "</select>", 1
+        )[0]
+        options = set(re.findall(r'<option value="([^"]+)">', select)) - {""}
+        self.assertEqual(expected, options)
+        self.assertTrue(
+            {"left", "right", "bilateral", "contra", "ipsi", "dominant",
+             "nondominant", "nonassoc", "notreported"}.issubset(options)
+        )
+        self.assertIn('data-lat-targets="', self.render["h"])
+        self.assertIn("item.dataset.latTargets", self.render["JS"])
+        self.assertNotIn("item.dataset.latcode!==lat", self.render["JS"])
+
     def test_internal_synthesis_labels_are_not_the_public_axis_value(self):
         rapid_recovery = next(
             row for row in self.render["data"] if row["sign"] == "Rapid postictal recovery"
@@ -197,6 +290,67 @@ class CompactRendererTest(unittest.TestCase):
         for region in ("Frontal", "Temporal", "Occipital", "Parietal"):
             self.assertIn(f">{region}<", display)
         self.assertNotIn("No reported localization relationship", display)
+
+    def test_reviewed_finding_keeps_its_source_region_without_canonical_sign_link(self):
+        index = self.render["EvidenceContextIndex"].__new__(
+            self.render["EvidenceContextIndex"]
+        )
+        index.locations_by_finding = {
+            "F:source": [{
+                "region_id": "REG:TEMPORAL",
+                "major_region_id": "REG:TEMPORAL",
+                "public_sign_ids": [],
+            }]
+        }
+        index.axis_contexts_by_finding = {"F:source": []}
+        self.assertEqual(["Temporal"], index.region_labels_for_findings(["F:source"]))
+
+    def test_adjudicated_sign_link_reaches_reviewed_findings_and_statistics(self):
+        finding_ref = (
+            "c824399545b3427f14a20f00453bff7545f2ab64c291d7098ca60e4419a44ee4:F007"
+        )
+        statistic_ids = [
+            "STAT2:2a98ee300976a26e7f9eae37",
+            "STAT2:c259837e62e26b73ffc287a9",
+        ]
+        self.assertIn(
+            "43", self.render["CONTEXT"].public_sign_ids_for_findings([finding_ref])
+        )
+        for statistic_id in statistic_ids:
+            self.assertIn(
+                "43",
+                self.render["CONTEXT"].public_sign_ids_for_statistics([statistic_id]),
+            )
+
+    def test_every_adjudicated_sign_link_reaches_all_evidence_views(self):
+        context = self.render["CONTEXT"]
+        statistics_by_finding = {}
+        for statistic_id, statistic in context.statistics.items():
+            statistics_by_finding.setdefault(
+                str(statistic.get("finding_ref") or ""), []
+            ).append(statistic_id)
+        for finding_ref, rows in context.axis_contexts_by_finding.items():
+            expected = {
+                str(sign_id)
+                for row in rows
+                if row.get("relationship_eligible")
+                for sign_id in row.get("public_sign_ids") or []
+            }
+            if not expected:
+                continue
+            self.assertTrue(
+                expected.issubset(
+                    context.public_sign_ids_for_findings([finding_ref])
+                ),
+                finding_ref,
+            )
+            for statistic_id in statistics_by_finding.get(finding_ref, []):
+                self.assertTrue(
+                    expected.issubset(
+                        context.public_sign_ids_for_statistics([statistic_id])
+                    ),
+                    statistic_id,
+                )
 
     def test_spasm_browse_regions_match_the_shared_context(self):
         spasms = next(row for row in self.render["data"] if row["sign"] == "Epileptic spasms")
