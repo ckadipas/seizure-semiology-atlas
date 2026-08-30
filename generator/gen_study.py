@@ -3423,7 +3423,7 @@ papers_html = "\n".join(source_library_card(paper) for paper in PAPERS)
 atlas_updates_html = """
 <div class="lib atlas-updates">
   <details class="lib-details atlas-updates-details">
-    <summary><span>Atlas updates</span><span class="atlas-update-version">Version 1.4.1 &middot; August 30, 2026</span></summary>
+    <summary><span>Atlas updates</span><span class="atlas-update-version">Version 1.4.8 &middot; August 30, 2026</span></summary>
     <div class="atlas-update-body">
       <p>Meaningful changes to evidence coverage and organization are listed here. Small display and maintenance changes are grouped with the next release.</p>
       <h3>Registry and evidence organization</h3>

@@ -514,7 +514,7 @@ class CompactRendererTest(unittest.TestCase):
         block = updates.group(0)
         self.assertNotRegex(block.split(">", 1)[0], r"\bopen\b")
         self.assertIn("Atlas updates", block)
-        self.assertIn("Version 1.4", block)
+        self.assertIn("Version 1.4.8", block)
         self.assertIn("August 30, 2026", block)
         self.assertGreaterEqual(block.count("<li>"), 1)
         self.assertLessEqual(block.count("<li>"), 4)
