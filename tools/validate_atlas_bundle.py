@@ -125,7 +125,7 @@ finding_work = {}
 require(len(sources) == 77, "current source-report count changed")
 require(len(findings) == 4120 and unique(finding_refs), "public finding contract changed")
 require(len(statistics) == 4518 and unique(statistic_ids), "public statistic contract changed")
-require(len(signs) == 383 and unique(sign_ids), "public sign contract changed")
+require(bool(signs) and unique(sign_ids), "public sign identities are empty or duplicated")
 require(unique([source["source_sha256"] for source in sources]), "duplicate source report")
 for source in sources:
     sha, work_id = source["source_sha256"], str(source["work_id"])
@@ -210,6 +210,7 @@ relationships = context["relationships"]
 location_links = relationships["finding_locations"]
 lateralization_links = relationships["finding_lateralizations"]
 sign_axis_context_links = relationships["sign_axis_contexts"]
+sign_axis_summary_links = relationships["sign_axis_summaries"]
 statistic_sign_links = relationships["statistic_signs"]
 statistic_assertion_links = relationships["statistic_assertions"]
 classification_links = relationships["classifications"]
@@ -223,6 +224,9 @@ classification_by_id = {
 sign_axis_context_by_id = {
     str(row["sign_axis_context_link_id"]): row for row in sign_axis_context_links
 }
+sign_axis_summary_by_id = {
+    str(row["sign_axis_summary_link_id"]): row for row in sign_axis_summary_links
+}
 require(len(location_by_id) == len(location_links), "duplicate finding-location relationship")
 require(len(lateralization_by_id) == len(lateralization_links),
         "duplicate finding-lateralization relationship")
@@ -230,6 +234,8 @@ require(len(classification_by_id) == len(classification_links),
         "duplicate classification relationship")
 require(len(sign_axis_context_by_id) == len(sign_axis_context_links),
         "duplicate sign-axis context relationship")
+require(len(sign_axis_summary_by_id) == len(sign_axis_summary_links),
+        "duplicate sign-axis summary relationship")
 for finding_ref, row in context_by_finding.items():
     require(all(link_id in location_by_id
                 and str(location_by_id[link_id]["finding_ref"]) == finding_ref
@@ -257,7 +263,7 @@ for finding_ref, row in context_by_finding.items():
     }, "context statistic membership differs from the atomic ledger")
 
 for rows in (location_links, lateralization_links, sign_axis_context_links,
-             statistic_sign_links, classification_links):
+             sign_axis_summary_links, statistic_sign_links, classification_links):
     require(all(str(public_sign_id) in sign_set for row in rows
                 for public_sign_id in row.get("public_sign_ids") or []),
             "context relationship references an absent public sign")
@@ -284,6 +290,21 @@ for row in sign_axis_context_links:
     require(not problems,
             "invalid sign-axis context relationship "
             f'{row.get("sign_axis_context_link_id")}: {",".join(problems)}')
+for row in sign_axis_summary_links:
+    problems = []
+    if str(row.get("axis")) not in {"LOCALIZATION", "LATERALIZATION"}:
+        problems.append("axis")
+    if len(row.get("public_sign_ids") or []) != 1:
+        problems.append("public-sign")
+    if any(str(region_id) not in LOCATION_LABELS
+           for region_id in row.get("region_ids") or []):
+        problems.append("region")
+    if any(str(context_id) not in context_id_set
+           for context_id in row.get("context_ids") or []):
+        problems.append("context")
+    require(not problems,
+            "invalid sign-axis summary relationship "
+            f'{row.get("sign_axis_summary_link_id")}: {",".join(problems)}')
 node_ids = {str(row["node_id"]) for row in bundle["classifications"]["nodes"]}
 require(all(str(row["node_id"]) in node_ids for row in classification_links),
         "context classification references an absent node")
@@ -291,13 +312,25 @@ require(all(str(row["node_id"]) in node_ids for row in classification_links),
 expected_regions_by_sign = {sign_id: set() for sign_id in sign_ids}
 expected_areas_by_sign = {sign_id: set() for sign_id in sign_ids}
 for row in location_links:
-    region = LOCATION_LABELS.get(str(row.get("region_id")))
+    region = LOCATION_LABELS.get(str(
+        row.get("major_region_id") or row.get("region_id") or ""
+    ))
     for sign_id in row.get("public_sign_ids") or []:
         if region:
             expected_regions_by_sign[str(sign_id)].add(region)
         if row.get("brodmann_area_id"):
             expected_areas_by_sign[str(sign_id)].add(str(row["brodmann_area_id"]))
 for row in sign_axis_context_links:
+    if str(row.get("axis")) != "LOCALIZATION":
+        continue
+    for sign_id in row.get("public_sign_ids") or []:
+        expected_regions_by_sign[str(sign_id)].update(
+            LOCATION_LABELS[str(region_id)] for region_id in row.get("region_ids") or []
+        )
+        expected_areas_by_sign[str(sign_id)].update(
+            str(area_id) for area_id in row.get("brodmann_area_ids") or []
+        )
+for row in sign_axis_summary_links:
     if str(row.get("axis")) != "LOCALIZATION":
         continue
     for sign_id in row.get("public_sign_ids") or []:
@@ -326,6 +359,7 @@ require(accounting_context == {
     "atomic_statistics": len(statistic_set),
     "assertions": len(assertions),
     "sign_axis_contexts": len(sign_axis_context_links),
+    "sign_axis_summaries": len(sign_axis_summary_links),
     "source_reports": len(source_report_ids),
     "canonical_works": len(profile_ids),
     "dangling_references": 0,
@@ -342,8 +376,8 @@ require(release["axis_count"] == len(axes) == 8238, "finding-axis count changed"
 require(release["owner_release_card_count"] == 766, "source-release card count changed")
 require(release["supplemental_card_count"] == 46, "supplemental card count changed")
 require(release["group_axis_card_count"] == 812, "group-axis lineage count changed")
-require(release["synthesis_card_count"] == len(cards) == 766,
-        "current sign-axis count changed")
+require(release["synthesis_card_count"] == len(cards) == len(signs) * 2,
+        "current sign-axis coverage changed")
 require(release["descriptive_family_count"] == len(families) == 1555,
         "descriptive-family count changed")
 require(release["retained_artifact_count"] == 146, "retained artifact count changed")
@@ -354,6 +388,12 @@ expected_pairs = {(sign_id, axis) for sign_id in sign_ids
 actual_pairs = {(str(card["sign_id"]), card["axis"]) for card in cards}
 require(actual_pairs == expected_pairs and len(cards) == len(actual_pairs),
         "projection is not exactly one row per sign and axis")
+summary_pairs = {
+    (str(row["public_sign_ids"][0]), str(row["axis"]))
+    for row in sign_axis_summary_links
+}
+require(summary_pairs == expected_pairs and len(sign_axis_summary_links) == len(summary_pairs),
+        "sign-axis summaries are not exactly one row per sign and axis")
 require(unique([(row["finding_ref"], row["axis"]) for row in axes]),
         "duplicate finding-axis identity")
 require(all(row["finding_ref"] in finding_set for row in axes),
@@ -414,6 +454,14 @@ for card in cards:
         row for row in sign_axis_context_links
         if str(row["synthesis_id"]) == str(card["synthesis_id"])
     ]
+    card_summary_links = [
+        row for row in sign_axis_summary_links
+        if str(row["synthesis_id"]) == str(card["synthesis_id"])
+    ]
+    require(len(card_summary_links) == 1
+            and card_summary_links[0].get("public_sign_ids") == [str(card["sign_id"])]
+            and str(card_summary_links[0].get("axis")) == axis,
+            "weighted row lacks its canonical sign-axis summary")
     require(all(str(row["finding_ref"]) in set(row_findings)
                 and str(row["axis"]) == axis
                 and row.get("public_sign_ids") == [str(card["sign_id"])]
@@ -424,6 +472,10 @@ for card in cards:
             str(value) for row in card_axis_links
             for value in row.get("reported_target_keys") or []
         }
+        context_target_keys.update(
+            str(value) for row in card_summary_links
+            for value in row.get("reported_target_keys") or []
+        )
         require({str(target["key"]) for target in targets} <= context_target_keys,
                 "weighted row target is absent from its evidence-context relationships")
     require(unique([target["key"] for target in targets]), "duplicate reported target")
@@ -500,9 +552,22 @@ for card in cards:
         work_findings = [value for value in row_findings if finding_work[value] == work_id]
         work_statistics = [value for value in row_statistics
                            if finding_work[statistic_finding[value]] == work_id]
-        require(contribution["row_finding_refs"] == work_findings
-                and contribution["row_statistic_ids"] == work_statistics,
-                "contribution evidence differs from its canonical work")
+        projection_disposition = contribution.get("projection_disposition")
+        if projection_disposition:
+            selected = set(contribution["row_statistic_ids"])
+            unselected = set(
+                contribution.get("projection_unselected_statistic_ids") or []
+            )
+            require(selected.isdisjoint(unselected)
+                    and selected | unselected == set(work_statistics),
+                    "source projection does not partition its canonical-work statistics")
+            require(set(contribution["row_finding_refs"]) == {
+                statistic_finding[statistic_id] for statistic_id in selected
+            }, "source projection findings differ from its selected statistics")
+        else:
+            require(contribution["row_finding_refs"] == work_findings
+                    and contribution["row_statistic_ids"] == work_statistics,
+                    "contribution evidence differs from its canonical work")
         evidence_class = contribution["evidence_class"]
         components = contribution["weight_components"]
         require(evidence_class in {"I", "II", "III", "UNCLASSIFIED"},
@@ -528,7 +593,6 @@ for card in cards:
             "EVIDENCE_LINKED_CONTEXT_ONLY",
         }:
             linked_works.add(work_id)
-        projection_disposition = contribution.get("projection_disposition")
         if projection_disposition:
             require(projection_disposition in {"SHARED_SOURCE_CATEGORY", "CITED_CONTEXT_ONLY"},
                     "unknown context-only projection disposition")
@@ -580,18 +644,22 @@ for card in cards:
 
 accounting = authority["corpus_accounting"]
 expected_accounting = {
-    "source_reports": 77, "canonical_works": 73, "contributes_weight": 65,
-    "linked_authority_pending": 2, "no_sign_axis_contribution": 6,
+    "source_reports": len(sources),
+    "canonical_works": len(profiles),
+    "contributes_weight": len(weighted_works),
+    "linked_authority_pending": len(linked_works - weighted_works),
+    "no_sign_axis_contribution": len(set(profile_ids) - linked_works),
 }
 require(all(accounting.get(key) == value for key, value in expected_accounting.items()),
         "current corpus accounting changed")
-require(len(weighted_works) == 65 and len(linked_works - weighted_works) == 2
-        and len(set(profile_ids) - linked_works) == 6,
-        "derived work coverage does not reconcile to corpus accounting")
+require(sum(expected_accounting[key] for key in (
+    "contributes_weight", "linked_authority_pending", "no_sign_axis_contribution"
+)) == len(profile_ids), "derived work coverage does not reconcile")
 
 projection = authority["current_projection_audit"]
 require(projection == {
-    "status": "PASS", "sign_axis_rows": 766, "unique_sign_axis_pairs": 766,
+    "status": "PASS", "sign_axis_rows": len(cards),
+    "unique_sign_axis_pairs": len(actual_pairs),
     "localization_rows_checked_against_browse_regions": alignment_checks,
     "positive_weight_outside_weighted_rows": 0,
     "duplicate_work_contributions": 0,

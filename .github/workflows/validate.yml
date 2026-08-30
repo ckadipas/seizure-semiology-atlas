@@ -20,6 +20,8 @@ jobs:
           python-version: "3.12"
       - name: Validate generated atlas bundle
         run: python3 tools/validate_atlas_bundle.py
+      - name: Run projection renderer regressions
+        run: python3 -m unittest tools.test_compact_renderer
       - name: Build website
         run: python3 generator/gen_study.py
       - name: Check generated files for malformed patches

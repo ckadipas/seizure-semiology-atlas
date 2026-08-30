@@ -95,6 +95,10 @@ class EvidenceContextIndex:
             self.axis_contexts_by_finding.setdefault(str(row["finding_ref"]), []).append(row)
             for sign_id in row.get("public_sign_ids") or []:
                 self.axis_contexts_by_sign.setdefault(str(sign_id), []).append(row)
+        self.axis_summaries_by_sign = {}
+        for row in relationships.get("sign_axis_summaries") or []:
+            for sign_id in row.get("public_sign_ids") or []:
+                self.axis_summaries_by_sign.setdefault(str(sign_id), []).append(row)
         self.classifications_by_finding = {}
         self.classifications_by_sign = {}
         for row in relationships.get("classifications") or []:
@@ -159,7 +163,9 @@ class EvidenceContextIndex:
 
     def region_labels_for_statistics(self, statistic_ids):
         direct = self._unique(
-            CONTEXT_REGION_LABEL_BY_ID.get(str(link.get("region_id")))
+            CONTEXT_REGION_LABEL_BY_ID.get(str(
+                link.get("major_region_id") or link.get("region_id") or ""
+            ))
             for link in self.relationship_rows_for_statistics(
                 statistic_ids, self.locations_by_finding
             )
@@ -195,7 +201,9 @@ class EvidenceContextIndex:
 
     def region_labels_for_findings(self, finding_refs):
         direct = self._unique(
-            CONTEXT_REGION_LABEL_BY_ID.get(str(link.get("region_id")))
+            CONTEXT_REGION_LABEL_BY_ID.get(str(
+                link.get("major_region_id") or link.get("region_id") or ""
+            ))
             for finding_ref in finding_refs
             for link in self.locations_by_finding.get(str(finding_ref), [])
             if link.get("public_sign_ids")
@@ -211,12 +219,17 @@ class EvidenceContextIndex:
 
     def region_labels_for_sign(self, sign_id):
         direct = self._unique(
-            CONTEXT_REGION_LABEL_BY_ID.get(str(link.get("region_id")))
+            CONTEXT_REGION_LABEL_BY_ID.get(str(
+                link.get("major_region_id") or link.get("region_id") or ""
+            ))
             for link in self.locations_by_sign.get(str(sign_id), [])
         )
         projected = self._unique(
             CONTEXT_REGION_LABEL_BY_ID.get(str(region_id))
-            for link in self.axis_contexts_by_sign.get(str(sign_id), [])
+            for link in (
+                self.axis_contexts_by_sign.get(str(sign_id), [])
+                + self.axis_summaries_by_sign.get(str(sign_id), [])
+            )
             if str(link.get("axis")) == "LOCALIZATION"
             for region_id in link.get("region_ids") or []
         )
@@ -230,7 +243,10 @@ class EvidenceContextIndex:
         )
         projected = self._unique(
             str(area_id)
-            for link in self.axis_contexts_by_sign.get(str(sign_id), [])
+            for link in (
+                self.axis_contexts_by_sign.get(str(sign_id), [])
+                + self.axis_summaries_by_sign.get(str(sign_id), [])
+            )
             if str(link.get("axis")) == "LOCALIZATION"
             for area_id in link.get("brodmann_area_ids") or []
         )
@@ -818,7 +834,7 @@ def ledger_evidence_block(cid, notes=""):
     informative_notes = str(notes or "").strip()
     if informative_notes == "Reviewed source evidence is shown below.":
         informative_notes = ""
-    if not linked and not families and not informative_notes:
+    if not linked and not families:
         return "", 0, ""
     papers, search = {}, []
     for entry, relation in linked:
@@ -1368,6 +1384,8 @@ def compact_evidence_overview(d):
         findings.update(card.get("row_finding_refs") or [])
         statistics.update(card.get("row_statistic_ids") or [])
     raw_summary = limited_sentences(d.get("evidence_summary"), 2)
+    if raw_summary.startswith("This public sign combines "):
+        raw_summary = ""
     summary = raw_summary
     if d.get("support_items") and raw_summary:
         first_sentence = limited_sentences(raw_summary, 1)
@@ -1382,6 +1400,8 @@ def compact_evidence_overview(d):
         summary = " ".join(OrderedDict.fromkeys(value for value in summaries if value))
     if not summary:
         summary = limited_sentences(d.get("notes"), 2)
+    if summary.startswith("This public sign combines "):
+        summary = ""
     count_items = [
         (len(works), "paper"),
         (len(findings), "finding"),
@@ -1402,13 +1422,16 @@ def compact_evidence_overview(d):
     numbers_block = f'<ul class="key-numbers">{numbers}</ul>' if numbers else ""
     return (
         '<div class="d-row evidence-overview"><span class="d-label">Summary</span>'
-        f'<p>{esc(summary)}</p><div class="evidence-counts">{counts}</div>{numbers_block}</div>'
+        +(f'<p>{esc(summary)}</p>' if summary else '')
+        +f'<div class="evidence-counts">{counts}</div>{numbers_block}</div>'
     )
 
 
 def support_summary_block(d):
     """Render a compact, reader-facing synthesis without replacing source rows."""
     summary = str(d.get("evidence_summary") or "").strip()
+    if summary.startswith("This public sign combines "):
+        summary = ""
     basis = str(d.get("evidence_basis") or "").strip()
     items = d.get("support_items") or []
     if not summary and not basis and not items:
@@ -2182,11 +2205,10 @@ def build_evidence_library(corpus):
     accounting = corpus["integration_accounting"]
     finding_count = accounting["public_ledger_findings"]
     statistic_count = accounting["source_reported_statistics"]
-    source_count = accounting["source_reports"]
     manuscript_count = len(PAPERS)
     return f'''<div class="lib evidence-library">
 <details class="lib-details evidence-library-details">
-  <summary><span>Reviewed Evidence Library</span><span class="evidence-library-summary">{finding_count:,} findings &middot; {statistic_count:,} reported results &middot; {manuscript_count} manuscripts &middot; {source_count} source files</span></summary>
+  <summary><span>Reviewed Evidence Library</span><span class="evidence-library-summary">{finding_count:,} findings &middot; {statistic_count:,} reported results &middot; {manuscript_count} manuscripts</span></summary>
   <div class="evidence-library-body">
     <p class="evidence-library-overview">Two views of the same ledger. Every finding and reported result keeps its manuscript, citation, source location, semiology, anatomy, side, phase, and classification links; no value is copied or newly pooled.</p>
     <div class="evidence-view-tabs" role="tablist" aria-label="Reviewed evidence views">
@@ -2801,7 +2823,9 @@ def build_weighted_evidence(cards):
         findings = len(finding_refs)
         statistics = len(statistic_ids)
         groups = source_groups(card)
-        summary = public_value(card.get("plain_summary"), "Reviewed evidence summary available below.")
+        summary = public_value(card.get("plain_summary"))
+        if summary.startswith("This public sign combines "):
+            summary = ""
         reviewed_targets = resolved_card_targets(card, axis)
         organizational_targets = [
             item for item in reviewed_targets if item.get("target_level") != "AREA"
@@ -2899,15 +2923,6 @@ def build_weighted_evidence(cards):
             +f'<span>{source_count}</span></summary><p>Alphabetical by manuscript.</p><div>{source_html}</div></details>'
             if source_html else '<p class="lr-empty">No source linkage is available for this synthesis record.</p>'
         )
-        target_contract = card.get("target_contract") or {}
-        linkage_values = linkage_summary(card, axis, include_reported=False)
-        target_warning = (
-            '<details class="lr-linkage-note"><summary>Linkage details '
-            +f'<span>{len(linkage_values)}</span></summary>'
-            +'<p>These source targets remain visible but are not weighted until their exact sign relationship is resolved.</p>'
-            +'<ul>'+"".join(f'<li>{esc(value)}</li>' for value in linkage_values)+'</ul></details>'
-            if linkage_values else ""
-        )
         weight_summary = (
             "evidence weight pending"
             if analysis["work_count"] and analysis["pending_weight_count"] == analysis["work_count"]
@@ -2945,9 +2960,7 @@ def build_weighted_evidence(cards):
             +'<div class="lr-weighted"><div><strong>Weighted evidence support</strong>'
             +f'<span>{esc(weight_summary)}{(" · " + esc(authority_mix)) if authority_mix else ""}</span></div>'
             +'</div>'
-            +f'<p class="lr-summary">{esc(summary)}</p>'
-            +target_warning
-            +target_detail_block(card, axis)
+            +(f'<p class="lr-summary">{esc(summary)}</p>' if summary else "")
             +family_block(card, axis, statistic_ids)
             +exception_html
             +sources_html
@@ -6084,19 +6097,10 @@ async function bindIndexedFxWrap(wrap){
     const matched=available.filter(record=>metricFilter==='all'||record.metric===metricFilter);
     const numbers=matched.reduce((sum,record)=>sum+(Number(record.numbers)||0),0);
     if(wrap.dataset.viewKind==='studies'){
-      const grouped=matched.filter(record=>record.kind==='grouped');
-      const additional=matched.filter(record=>record.kind==='additional');
-      count.textContent=grouped.length.toLocaleString()+' grouped study results · '+additional.length.toLocaleString()+' additional entries matched';
-      secondaryCount.textContent=numbers.toLocaleString()+' reported '+(numbers===1?'number':'numbers')+' matched';
+      count.textContent=matched.length.toLocaleString()+' study '+(matched.length===1?'result':'results')+' matched';
+      secondaryCount.textContent='';
       groupRecords.clear();groupSequence=0;
-      let markup=groupMarkup(grouped,'grouped');
-      if(additional.length){
-        const additionalNumbers=additional.reduce((sum,record)=>sum+(Number(record.numbers)||0),0);
-        markup+='<details class="fx-additional-results"><summary><span>Additional reported results</span><span>'+additional.length.toLocaleString()+' entries · '+additionalNumbers.toLocaleString()+' numbers</span></summary>'+
-          '<p>These numbers are present in the ledger but are not assigned to a descriptive result group. This is not evidence that the linked semiology lacks localization or lateralization.</p>'+
-          '<div class="fx-additional-groups">'+groupMarkup(additional,'additional')+'</div></details>';
-      }
-      table.innerHTML=markup||'<div class="fx-empty">No study results match the current selection.</div>';
+      table.innerHTML=groupMarkup(matched,'study')||'<div class="fx-empty">No study results match the current selection.</div>';
     }else{
       count.textContent=matched.length.toLocaleString()+' '+(matched.length===1?'finding':'findings')+' matched';
       secondaryCount.textContent=numbers.toLocaleString()+' linked reported '+(numbers===1?'number':'numbers');
@@ -6417,7 +6421,7 @@ HEAD = """<!DOCTYPE html>
 
 <div class="lib">
   <details class="lib-details">
-    <summary>Source Library &mdash; """ + str(len(PAPERS)) + """ manuscripts &middot; """ + str(len(CORPUS["sources"])) + """ reviewed source files</summary>
+    <summary>Source Library &mdash; """ + str(len(PAPERS)) + """ Manuscripts</summary>
     <div class="lib-grid">
 """ + papers_html + """
     </div>

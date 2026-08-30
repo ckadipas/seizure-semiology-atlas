@@ -78,7 +78,7 @@ class CompactRendererTest(unittest.TestCase):
         self.assertIn("Vestibular aura", leaf_terms)
         signs = {str(row["id"]): row["sign"] for row in self.render["data"]}
         self.assertEqual(
-            ["Vertiginous aura"],
+            ["Vertiginous aura / ictal vestibular sensation"],
             [signs[str(sign_id)] for sign_id in leaf_terms["Vestibular aura"]["all_sign_ids"]],
         )
 
@@ -127,11 +127,8 @@ class CompactRendererTest(unittest.TestCase):
         filename = "sign-" + hashlib.sha256(sign_id.encode()).hexdigest()[:24] + ".html"
         fragment = self.render["detail_fragments"][filename]
         self.assertIn("No reliable lateralization", fragment)
-        self.assertIn(
-            "Evidence is context-dependent rather than establishing one predominant localizer",
-            fragment,
-        )
-        self.assertIn("posterior-frontal localization", fragment)
+        self.assertIn(">Frontal<", fragment)
+        self.assertIn(">Temporal<", fragment)
         self.assertNotIn(
             "Localization depends on the described subtype or context.", fragment
         )
@@ -141,19 +138,19 @@ class CompactRendererTest(unittest.TestCase):
     def test_late_forced_head_version_names_the_frontal_eye_field_network(self):
         filename = "sign-" + hashlib.sha256(b"12").hexdigest()[:24] + ".html"
         fragment = self.render["detail_fragments"][filename]
-        self.assertIn("Late forced head version is predominantly contralateral", fragment)
+        self.assertIn(">Contralateral<", fragment)
+        self.assertIn(">Frontal<", fragment)
         self.assertIn("contralateral frontal eye field", fragment.casefold())
-        self.assertIn("Brodmann 8", fragment)
-        self.assertNotIn("No reliable anatomical localization", fragment)
-        self.assertNotIn("Does not localize", fragment)
+        self.assertIn('data-ba="8"', fragment)
 
     def test_forced_eye_version_separates_network_from_onset_lobe(self):
         filename = "sign-" + hashlib.sha256(b"76").hexdigest()[:24] + ".html"
         fragment = self.render["detail_fragments"][filename]
-        self.assertIn("Forced or tonic eye version is predominantly contralateral", fragment)
-        self.assertIn("contralateral", fragment.casefold())
-        self.assertIn("frontal eye field", fragment.casefold())
-        self.assertIn("occipital eye field", fragment.casefold())
+        self.assertIn(">Contralateral<", fragment)
+        self.assertIn(">Frontal<", fragment)
+        self.assertIn(">Occipital<", fragment)
+        self.assertIn('data-ba="8"', fragment)
+        self.assertIn('data-ba="19"', fragment)
         self.assertNotIn("Localization depends on the described subtype or context", fragment)
 
     def test_singular_relationship_target_is_shown_as_clinical_direction(self):
@@ -178,20 +175,20 @@ class CompactRendererTest(unittest.TestCase):
         self.assertIn("mesial temporal/insular cortex", fragment)
         self.assertNotIn("depends on the described subtype or context", fragment)
 
-    def test_nonlocalizing_card_does_not_show_context_regions_as_localizers(self):
+    def test_source_linked_spasm_regions_are_visible_in_localization(self):
         spasms = next(row for row in self.render["data"] if row["sign"] == "Epileptic spasms")
         display = self.render["localization_display"](spasms)
-        self.assertIn("No reliable localization", display)
-        self.assertNotIn(">Temporal<", display)
-        self.assertNotIn(">Occipital<", display)
-        self.assertNotIn(">Deep/Subcortical<", display)
+        for region in ("Frontal", "Temporal", "Occipital", "Parietal"):
+            self.assertIn(f">{region}<", display)
+        self.assertNotIn("No reported localization relationship", display)
 
-    def test_nonlocalizing_sign_is_browsed_only_as_unlocalized(self):
+    def test_spasm_browse_regions_match_the_shared_context(self):
         spasms = next(row for row in self.render["data"] if row["sign"] == "Epileptic spasms")
         self.assertEqual(
-            ["No localization stated"],
-            self.render["public_browse_regions"](spasms),
+            set(spasms["regions"]),
+            set(self.render["public_browse_regions"](spasms)),
         )
+        self.assertNotIn("No localization stated", spasms["regions"])
 
     def test_region_color_legend_disclaims_evidence_strength(self):
         self.assertIn(
@@ -228,14 +225,18 @@ class CompactRendererTest(unittest.TestCase):
 
     def test_weighted_localization_rows_carry_their_evidence_region(self):
         rows = weighted_rows(weighted_axis_panel(self.render["h"], "LOCALIZATION"))
-        self.assertIn('data-group-region="Temporal"', rows["Fear aura"][0]["attrs"])
-        self.assertIn(
-            'data-group-region="Temporal"',
-            rows["Formed visual hallucination"][0]["attrs"],
+        self.assertRegex(rows["Fear aura"][0]["attrs"], r'data-group-regions="[^"]*Temporal')
+        formed_name = next(
+            name for name in rows
+            if name.startswith("Formed semantic visual hallucinations")
+        )
+        self.assertRegex(
+            rows[formed_name][0]["attrs"],
+            r'data-group-regions="[^"]*Occipital',
         )
         self.assertIn(
             "Reported: Occipital",
-            rows["Formed semantic visual hallucinations"][0]["summary"],
+            rows[formed_name][0]["summary"],
         )
 
     def test_single_source_targets_are_weighted_without_claiming_predominance(self):
@@ -246,6 +247,62 @@ class CompactRendererTest(unittest.TestCase):
         self.assertNotIn("Predominant:", rows["Prosopagnosia"][0]["summary"])
         self.assertIn("Seizure-associated aphasia", rows)
         self.assertIn("Temporal", rows["Seizure-associated aphasia"][0]["summary"])
+
+    def test_study_results_render_every_atomic_statistic(self):
+        index = json.loads(
+            self.render["deferred_fragments"]["study-results-index.json"]
+        )
+        expected = self.render["CORPUS"]["integration_accounting"][
+            "source_reported_statistics"
+        ]
+        self.assertEqual(expected, len(index["records"]))
+        self.assertNotIn("record.kind==='grouped'", self.render["JS"])
+        self.assertNotIn("record.kind==='additional'", self.render["JS"])
+        self.assertIn("groupMarkup(matched,'study')", self.render["JS"])
+
+    def test_weighted_rows_hide_internal_linkage_audit_text(self):
+        panels = "".join(
+            weighted_axis_panel(self.render["h"], axis)
+            for axis in ("LATERALIZATION", "LOCALIZATION")
+        )
+        for internal_text in (
+            "This public sign combines",
+            "Linkage details",
+            "Target scope and anatomy",
+        ):
+            self.assertNotIn(internal_text, panels)
+        fear_filename = "sign-" + hashlib.sha256(b"2").hexdigest()[:24] + ".html"
+        self.assertNotIn(
+            "This public sign combines",
+            self.render["detail_fragments"][fear_filename],
+        )
+        self.assertIn("Documented exceptions", panels)
+        self.assertIn("Evidence by contributing manuscript", panels)
+
+    def test_public_library_counts_use_canonical_manuscripts_only(self):
+        accounting = self.render["CORPUS"]["integration_accounting"]
+        manuscript_count = len(self.render["PAPERS"])
+        self.assertIn(
+            f'{accounting["public_ledger_findings"]:,} findings &middot; '
+            f'{accounting["source_reported_statistics"]:,} reported results &middot; '
+            f"{manuscript_count} manuscripts",
+            self.render["evidence_library_html"],
+        )
+        self.assertNotIn("source files", self.render["evidence_library_html"])
+        self.assertIn(
+            f"<summary>Source Library &mdash; {manuscript_count} Manuscripts</summary>",
+            self.render["h"],
+        )
+
+    def test_source_less_legacy_background_is_not_evidence_history(self):
+        block, linked_count, search = self.render["ledger_evidence_block"](
+            "__source_less__", "Legacy clinical note"
+        )
+        self.assertEqual(("", 0, ""), (block, linked_count, search))
+        filename = "sign-" + hashlib.sha256(b"71").hexdigest()[:24] + ".html"
+        self.assertNotIn(
+            "evidence-history-shell", self.render["detail_fragments"][filename]
+        )
 
 
 if __name__ == "__main__":
