@@ -11,7 +11,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 BUNDLE = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "data" / "atlas_bundle.json"
-SCHEMA = "atlas-public-bundle-1.4.4"
+SCHEMA = "atlas-public-bundle-1.5.0"
+CONTEXT_SCHEMA = "atlas-evidence-context-1.0.0"
 CARD_STATES = {
     "EVIDENCE_BEARING_WEIGHTED", "EVIDENCE_LINKED_WEIGHT_PENDING",
     "EVIDENCE_LINKED_CONTEXT_ONLY", "TARGET_LINKAGE_NEEDED", "NO_SOURCE_TARGET",
@@ -92,7 +93,7 @@ def has_meaningful_recorded_target(contract):
 bundle = json.loads(BUNDLE.read_text(encoding="utf-8"))
 require(set(bundle) == {
     "brodmann", "classifications", "corpus", "evidence_authority",
-    "evidence_synthesis", "finding_locations", "schema_version",
+    "evidence_context", "evidence_synthesis", "finding_locations", "schema_version",
     "semantic_digest", "signs", "source_digests",
 }, "unexpected top-level bundle contract")
 require(bundle["schema_version"] == SCHEMA, "unexpected bundle schema version")
@@ -163,6 +164,173 @@ require(authority["ground_truth_multipliers"] == DIRECTNESS_MULTIPLIERS,
         "directness multipliers changed")
 require(float(authority["size_cap"]) == 2.0, "size cap changed")
 
+context = bundle["evidence_context"]
+require(context["schema_version"] == CONTEXT_SCHEMA,
+        "unexpected evidence-context schema version")
+require(re.fullmatch(r"[0-9a-f]{64}", context["semantic_digest"]) is not None,
+        "invalid evidence-context digest")
+context_digest_payload = dict(context)
+context_digest_payload.pop("semantic_digest")
+require(context["semantic_digest"] == hashlib.sha256(json.dumps(
+    context_digest_payload, sort_keys=True, separators=(",", ":"),
+    ensure_ascii=False,
+).encode("utf-8")).hexdigest(), "evidence-context digest mismatch")
+
+finding_contexts = context["contexts"]
+context_by_finding = {str(row["finding_ref"]): row for row in finding_contexts}
+context_ids = [str(row["context_id"]) for row in finding_contexts]
+context_id_set = set(context_ids)
+require(len(finding_contexts) == len(context_by_finding) == len(finding_set),
+        "evidence context is not exactly one row per public finding")
+require(set(context_by_finding) == finding_set and unique(context_ids),
+        "evidence context finding identities differ from the public corpus")
+source_report_ids = {str(source["source_sha256"]) for source in sources}
+for finding_ref, row in context_by_finding.items():
+    require(row["context_id"] == f"ECTX:{finding_ref}", "noncanonical context identity")
+    require(str(row["source_report_id"]) in source_report_ids,
+            "context references an absent source report")
+    require(str(row["source_work_id"]) in profile_by_id,
+            "context references an absent canonical work")
+    require(all(str(link.get("public_sign_id")) in sign_set
+                and str(link.get("relation")) in {"EXACT", "RELATED"}
+                for link in row.get("sign_links") or []),
+            "context has an invalid public-sign relationship")
+
+assertions = context["assertions_by_id"]
+statistics_context = context["statistics_by_id"]
+require(set(statistics_context) == statistic_set,
+        "atomic statistic context differs from the public statistic set")
+for statistic_id, row in statistics_context.items():
+    require(str(row["finding_ref"]) == statistic_finding[statistic_id],
+            "statistic context points to the wrong finding")
+    require(str(row["context_id"]) == context_by_finding[statistic_finding[statistic_id]]["context_id"],
+            "statistic context points to the wrong evidence context")
+
+relationships = context["relationships"]
+location_links = relationships["finding_locations"]
+lateralization_links = relationships["finding_lateralizations"]
+sign_axis_context_links = relationships["sign_axis_contexts"]
+statistic_sign_links = relationships["statistic_signs"]
+statistic_assertion_links = relationships["statistic_assertions"]
+classification_links = relationships["classifications"]
+location_by_id = {str(row["location_link_id"]): row for row in location_links}
+lateralization_by_id = {
+    str(row["lateralization_link_id"]): row for row in lateralization_links
+}
+classification_by_id = {
+    str(row["classification_link_id"]): row for row in classification_links
+}
+sign_axis_context_by_id = {
+    str(row["sign_axis_context_link_id"]): row for row in sign_axis_context_links
+}
+require(len(location_by_id) == len(location_links), "duplicate finding-location relationship")
+require(len(lateralization_by_id) == len(lateralization_links),
+        "duplicate finding-lateralization relationship")
+require(len(classification_by_id) == len(classification_links),
+        "duplicate classification relationship")
+require(len(sign_axis_context_by_id) == len(sign_axis_context_links),
+        "duplicate sign-axis context relationship")
+for finding_ref, row in context_by_finding.items():
+    require(all(link_id in location_by_id
+                and str(location_by_id[link_id]["finding_ref"]) == finding_ref
+                for link_id in row.get("location_link_ids") or []),
+            "context has a dangling or cross-finding location relationship")
+    require(all(link_id in lateralization_by_id
+                and str(lateralization_by_id[link_id]["finding_ref"]) == finding_ref
+                for link_id in row.get("lateralization_link_ids") or []),
+            "context has a dangling or cross-finding lateralization relationship")
+    require(all(link_id in classification_by_id
+                and str(classification_by_id[link_id].get("finding_ref")) == finding_ref
+                for link_id in row.get("classification_link_ids") or []),
+            "context has a dangling or cross-finding classification relationship")
+    require(all(link_id in sign_axis_context_by_id
+                and str(sign_axis_context_by_id[link_id]["finding_ref"]) == finding_ref
+                and str(sign_axis_context_by_id[link_id]["context_id"]) == row["context_id"]
+                for link_id in row.get("sign_axis_context_link_ids") or []),
+            "context has a dangling or cross-finding sign-axis relationship")
+    require(all(str(assertion_id) in assertions
+                for assertion_id in row.get("assertion_ids") or []),
+            "context has a dangling axis assertion")
+    require(set(row.get("statistic_ids") or []) == {
+        statistic_id for statistic_id, statistic_row in statistics_context.items()
+        if str(statistic_row["finding_ref"]) == finding_ref
+    }, "context statistic membership differs from the atomic ledger")
+
+for rows in (location_links, lateralization_links, sign_axis_context_links,
+             statistic_sign_links, classification_links):
+    require(all(str(public_sign_id) in sign_set for row in rows
+                for public_sign_id in row.get("public_sign_ids") or []),
+            "context relationship references an absent public sign")
+require(all(str(row["statistic_id"]) in statistic_set for row in statistic_sign_links),
+        "statistic-sign relationship references an absent statistic")
+require(all(str(row["statistic_id"]) in statistic_set
+            and str(row["assertion_id"]) in assertions
+            for row in statistic_assertion_links),
+        "statistic-assertion relationship is dangling")
+for row in sign_axis_context_links:
+    finding_ref = str(row.get("finding_ref") or "")
+    problems = []
+    if finding_ref not in finding_set:
+        problems.append("finding")
+    elif str(row.get("context_id")) != context_by_finding[finding_ref]["context_id"]:
+        problems.append("context")
+    if str(row.get("axis")) not in {"LOCALIZATION", "LATERALIZATION"}:
+        problems.append("axis")
+    if any(str(region_id) not in LOCATION_LABELS for region_id in row.get("region_ids") or []):
+        problems.append("region")
+    if any(str(statistic_id) not in statistic_set
+           for statistic_id in row.get("linked_statistic_ids") or []):
+        problems.append("statistic")
+    require(not problems,
+            "invalid sign-axis context relationship "
+            f'{row.get("sign_axis_context_link_id")}: {",".join(problems)}')
+node_ids = {str(row["node_id"]) for row in bundle["classifications"]["nodes"]}
+require(all(str(row["node_id"]) in node_ids for row in classification_links),
+        "context classification references an absent node")
+
+expected_regions_by_sign = {sign_id: set() for sign_id in sign_ids}
+expected_areas_by_sign = {sign_id: set() for sign_id in sign_ids}
+for row in location_links:
+    region = LOCATION_LABELS.get(str(row.get("region_id")))
+    for sign_id in row.get("public_sign_ids") or []:
+        if region:
+            expected_regions_by_sign[str(sign_id)].add(region)
+        if row.get("brodmann_area_id"):
+            expected_areas_by_sign[str(sign_id)].add(str(row["brodmann_area_id"]))
+for row in sign_axis_context_links:
+    if str(row.get("axis")) != "LOCALIZATION":
+        continue
+    for sign_id in row.get("public_sign_ids") or []:
+        expected_regions_by_sign[str(sign_id)].update(
+            LOCATION_LABELS[str(region_id)] for region_id in row.get("region_ids") or []
+        )
+        expected_areas_by_sign[str(sign_id)].update(
+            str(area_id) for area_id in row.get("brodmann_area_ids") or []
+        )
+for sign in signs:
+    sign_id = str(sign["id"])
+    expected_regions = expected_regions_by_sign[sign_id] or {"No localization stated"}
+    require(set(sign.get("regions") or []) == expected_regions,
+            "browse-region membership differs from exact context relationships")
+brodmann_by_sign = bundle["brodmann"]["mapping"]["by_sign"]
+require(set(brodmann_by_sign) == {
+    sign_id for sign_id, areas in expected_areas_by_sign.items() if areas
+}, "Brodmann sign membership differs from evidence context")
+require(all(set(brodmann_by_sign[sign_id]["areas"]) == areas
+            for sign_id, areas in expected_areas_by_sign.items() if areas),
+        "Brodmann areas differ from exact context relationships")
+
+accounting_context = context["accounting"]
+require(accounting_context == {
+    "contexts": len(finding_set),
+    "atomic_statistics": len(statistic_set),
+    "assertions": len(assertions),
+    "sign_axis_contexts": len(sign_axis_context_links),
+    "source_reports": len(source_report_ids),
+    "canonical_works": len(profile_ids),
+    "dangling_references": 0,
+}, "evidence-context accounting does not reconcile")
+
 synthesis = bundle["evidence_synthesis"]
 release = synthesis["release"]
 axes = synthesis["finding_axes"]
@@ -190,6 +358,8 @@ require(unique([(row["finding_ref"], row["axis"]) for row in axes]),
         "duplicate finding-axis identity")
 require(all(row["finding_ref"] in finding_set for row in axes),
         "finding axis references an absent finding")
+require(all(row.get("context_id") == context_by_finding[row["finding_ref"]]["context_id"]
+            for row in axes), "finding-axis row points to the wrong evidence context")
 
 cards_by_sign = {sign_id: [] for sign_id in sign_ids}
 for card in cards:
@@ -200,6 +370,16 @@ require(all(str(sign_id) in sign_set for family in families for sign_id in famil
         "family references an absent sign")
 require(all(value in family_ids for values in synthesis["families_by_sign"].values()
             for value in values), "sign references an absent family")
+for family in families:
+    family_statistics = set(str(value) for value in family.get("statistic_ids") or [])
+    family_statistics.update(
+        str(row["statistic_id"]) for row in family.get("exact_estimates") or []
+        if row.get("statistic_id")
+    )
+    require(set(family.get("context_ids") or []) == {
+        statistics_context[statistic_id]["context_id"]
+        for statistic_id in family_statistics if statistic_id in statistics_context
+    }, "source-defined result group differs from its atomic evidence contexts")
 
 sign_by_id = {str(sign["id"]): sign for sign in signs}
 weighted_works, linked_works = set(), set()
@@ -210,6 +390,9 @@ for card in cards:
     row_findings = card["row_finding_refs"]
     row_statistics = card["row_statistic_ids"]
     row_works = [str(value) for value in card["row_work_ids"]]
+    require(set(card.get("context_ids") or []) == {
+        context_by_finding[finding_ref]["context_id"] for finding_ref in row_findings
+    }, "weighted row context differs from its linked findings")
     require(unique(row_findings) and unique(row_statistics) and unique(row_works),
             "row duplicates finding, statistic, or work identity")
     require(set(row_findings) <= finding_set and set(row_statistics) <= statistic_set,
@@ -227,6 +410,22 @@ for card in cards:
     contract = card["target_contract"]
     require(set(contract) == TARGET_FIELDS, "target contract fields changed")
     targets = contract["reported_targets"]
+    card_axis_links = [
+        row for row in sign_axis_context_links
+        if str(row["synthesis_id"]) == str(card["synthesis_id"])
+    ]
+    require(all(str(row["finding_ref"]) in set(row_findings)
+                and str(row["axis"]) == axis
+                and row.get("public_sign_ids") == [str(card["sign_id"])]
+                for row in card_axis_links),
+            "weighted row has an invalid sign-axis context relationship")
+    if targets:
+        context_target_keys = {
+            str(value) for row in card_axis_links
+            for value in row.get("reported_target_keys") or []
+        }
+        require({str(target["key"]) for target in targets} <= context_target_keys,
+                "weighted row target is absent from its evidence-context relationships")
     require(unique([target["key"] for target in targets]), "duplicate reported target")
     for target in targets:
         require(set(target) == {
@@ -396,7 +595,10 @@ require(projection == {
     "localization_rows_checked_against_browse_regions": alignment_checks,
     "positive_weight_outside_weighted_rows": 0,
     "duplicate_work_contributions": 0,
-    "browse_region_memberships_added_from_source_targets": 31,
+    "browse_region_memberships_added_from_context":
+        projection["browse_region_memberships_added_from_context"],
+    "evidence_context_status": "PASS",
+    "evidence_context_digest": context["semantic_digest"],
 }, "current projection audit changed")
 
 serialized = json.dumps(bundle, sort_keys=True).lower()

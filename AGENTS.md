@@ -10,6 +10,15 @@ Read this file before changing the public atlas.
 - This public repository is a generated/redacted consumer. Its only active website data input is `data/atlas_bundle.json`, exported from the private canonical relational database after owner approval.
 - Legacy `data/`, `enrichment/`, and `corpus/` artifacts do not drive the build and are not evidence sources.
 
+## One generated evidence graph
+
+- `data/atlas_bundle.json` contains one generated evidence-context graph anchored by immutable `sign_id`, finding, and statistic identities. Every scientific view—region and classification browse, reviewed findings, study results, weighted evidence, Brodmann maps, Source Library, filters, and counts—must query that same graph.
+- Source-native wording, phase, subtype, and provenance remain visible, but approved variants resolve through their canonical `sign_id`. The generator may not create identity, anatomy, classification, or evidence relationships from wording.
+- Approved sign classification supplies stable public placement. Finding- and sequence-level classifications are additional context and may not move a canonical sign into `General`, `Other`, or `Unlocalized`.
+- Each atomic statistic is rendered once and may appear under multiple valid facets only by reference. Panel-specific scientific stores, first-match selection, copied values, and fallback maps are forbidden.
+- A positive localization or lateralization relationship must survive every applicable projection. Missing normalization remains an explicit linkage issue and must not be displayed as absence.
+- Fix discrepancies in the private ledger or exporter, then regenerate. Never hand-edit `docs/` or patch one panel to hide a projection failure.
+
 ## Scientific red zone
 
 Without an exact owner-approved Gate-B packet and diff, do not change:
@@ -33,7 +42,7 @@ The public intake workflow may only acknowledge or register a request for privat
 
 ## Build and validation
 
-Run `make validate`, `python3 tools/test_compact_renderer.py`, and `make build`. The validator checks only the generated public bundle; the generator reads only that bundle. Do not revive the legacy enrichment/review pipeline, and never hand-edit generated HTML.
+Run `make validate` and `make build`. The validator checks evidence-context integrity, cross-view relationship parity, atomic-statistic ownership, public-safe fields, and bundle integrity; the generator reads only that validated bundle. Do not revive the legacy enrichment/review pipeline, and never hand-edit generated HTML.
 
 The generated display must use clinical hierarchy rather than the flat storage table: region → Aura/Seizure/Lateralizing signs/Diagnostic signs → selected ordering → primary feature → sign, or published classification order → category → alphabetical primary feature → sign. Summary and evidence history use the same provenance set. Public cards show the concrete direction/anatomy and basic counts instead of generic interpretation labels; evidence history is closed by default; technical identifiers remain in advanced provenance; nested banners remain inside their parents and readable; desktop uses available width and mobile stacks.
 

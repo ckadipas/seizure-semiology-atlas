@@ -46,6 +46,232 @@ WORK_AUTHORITY_BY_ID = {
     for row in EVIDENCE_AUTHORITY.get("profiles") or []
     if row.get("work_id")
 }
+CONTEXT_REGION_LABEL_BY_ID = {
+    "REG:TEMPORAL": "Temporal", "REG:FRONTAL": "Frontal",
+    "REG:PARIETAL": "Parietal", "REG:OCCIPITAL": "Occipital",
+    "REG:INSULAR": "Insular", "REG:LIMBIC": "Limbic",
+    "REG:DEEP_SUBCORTICAL": "Deep/Subcortical",
+    "REG:MULTIREGIONAL_PROPAGATION": "Multiregional/Propagation",
+}
+
+
+class EvidenceContextIndex:
+    """One relationship index shared by every scientific presentation."""
+
+    def __init__(self, payload, classification_node_rows):
+        if not payload:
+            raise RuntimeError("The public bundle does not contain the evidence-context index.")
+        self.payload = payload
+        self.classification_nodes = {
+            str(row["node_id"]): row for row in classification_node_rows
+        }
+        self.contexts_by_ref = {
+            str(row["finding_ref"]): row for row in payload.get("contexts") or []
+        }
+        self.contexts_by_id = {
+            str(row["context_id"]): row for row in payload.get("contexts") or []
+        }
+        self.statistics = {
+            str(key): value for key, value in (payload.get("statistics_by_id") or {}).items()
+        }
+        relationships = payload.get("relationships") or {}
+        self.locations_by_finding = {}
+        self.locations_by_sign = {}
+        for row in relationships.get("finding_locations") or []:
+            self.locations_by_finding.setdefault(str(row["finding_ref"]), []).append(row)
+            for sign_id in row.get("public_sign_ids") or []:
+                self.locations_by_sign.setdefault(str(sign_id), []).append(row)
+        self.lateralizations_by_finding = {}
+        for row in relationships.get("finding_lateralizations") or []:
+            self.lateralizations_by_finding.setdefault(str(row["finding_ref"]), []).append(row)
+        self.axis_contexts_by_finding = {}
+        self.axis_contexts_by_sign = {}
+        for row in relationships.get("sign_axis_contexts") or []:
+            self.axis_contexts_by_finding.setdefault(str(row["finding_ref"]), []).append(row)
+            for sign_id in row.get("public_sign_ids") or []:
+                self.axis_contexts_by_sign.setdefault(str(sign_id), []).append(row)
+        self.classifications_by_finding = {}
+        self.classifications_by_sign = {}
+        for row in relationships.get("classifications") or []:
+            finding_ref = row.get("finding_ref")
+            if finding_ref:
+                self.classifications_by_finding.setdefault(str(finding_ref), []).append(row)
+            if str(row.get("subject_kind") or "").upper() == "SIGN":
+                for sign_id in row.get("public_sign_ids") or []:
+                    self.classifications_by_sign.setdefault(str(sign_id), []).append(row)
+
+    @staticmethod
+    def _unique(values):
+        return list(OrderedDict.fromkeys(value for value in values if value))
+
+    def finding_refs_for_statistics(self, statistic_ids):
+        return self._unique(
+            (self.statistics.get(str(statistic_id)) or {}).get("finding_ref")
+            for statistic_id in statistic_ids
+        )
+
+    def contexts_for_statistics(self, statistic_ids):
+        return [
+            self.contexts_by_ref[ref]
+            for ref in self.finding_refs_for_statistics(statistic_ids)
+            if ref in self.contexts_by_ref
+        ]
+
+    def public_sign_ids_for_findings(self, finding_refs, *, exact_only=True):
+        allowed = {"EXACT"} if exact_only else {"EXACT", "RELATED"}
+        return self._unique(
+            str(link["public_sign_id"])
+            for finding_ref in finding_refs
+            for link in (self.contexts_by_ref.get(str(finding_ref)) or {}).get("sign_links") or []
+            if str(link.get("relation") or "").upper() in allowed and link.get("public_sign_id")
+        )
+
+    def public_sign_ids_for_statistics(self, statistic_ids):
+        linked = self._unique(
+            str(public_sign_id)
+            for statistic_id in statistic_ids
+            for link in (self.statistics.get(str(statistic_id)) or {}).get("sign_links") or []
+            for public_sign_id in link.get("public_sign_ids") or []
+        )
+        if linked:
+            return linked
+        return self.public_sign_ids_for_findings(
+            self.finding_refs_for_statistics(statistic_ids)
+        )
+
+    def relationship_rows_for_statistics(self, statistic_ids, rows_by_finding):
+        rows = []
+        for statistic_id in statistic_ids:
+            statistic = self.statistics.get(str(statistic_id)) or {}
+            finding_ref = str(statistic.get("finding_ref") or "")
+            sign_ids = set(self.public_sign_ids_for_statistics([statistic_id]))
+            for row in rows_by_finding.get(finding_ref, []):
+                row_sign_ids = {str(value) for value in row.get("public_sign_ids") or []}
+                if sign_ids and not sign_ids.intersection(row_sign_ids):
+                    continue
+                rows.append(row)
+        return rows
+
+    def region_labels_for_statistics(self, statistic_ids):
+        direct = self._unique(
+            CONTEXT_REGION_LABEL_BY_ID.get(str(link.get("region_id")))
+            for link in self.relationship_rows_for_statistics(
+                statistic_ids, self.locations_by_finding
+            )
+        )
+        projected = self._unique(
+            CONTEXT_REGION_LABEL_BY_ID.get(str(region_id))
+            for link in self.relationship_rows_for_statistics(
+                statistic_ids, self.axis_contexts_by_finding
+            )
+            if str(link.get("axis")) == "LOCALIZATION"
+            for region_id in link.get("region_ids") or []
+        )
+        return direct + [value for value in projected if value not in direct]
+
+    def laterality_for_statistics(self, statistic_ids):
+        direct = self._unique(
+            str(link.get("laterality_code") or "")
+            for link in self.relationship_rows_for_statistics(
+                statistic_ids, self.lateralizations_by_finding
+            )
+        )
+        projected = self._unique(
+            str(value)
+            for link in self.relationship_rows_for_statistics(
+                statistic_ids, self.axis_contexts_by_finding
+            )
+            if str(link.get("axis")) == "LATERALIZATION"
+            for value in (
+                link.get("reported_target_keys") or link.get("normalized_values") or []
+            )
+        )
+        return direct + [value for value in projected if value not in direct]
+
+    def region_labels_for_findings(self, finding_refs):
+        direct = self._unique(
+            CONTEXT_REGION_LABEL_BY_ID.get(str(link.get("region_id")))
+            for finding_ref in finding_refs
+            for link in self.locations_by_finding.get(str(finding_ref), [])
+            if link.get("public_sign_ids")
+        )
+        projected = self._unique(
+            CONTEXT_REGION_LABEL_BY_ID.get(str(region_id))
+            for finding_ref in finding_refs
+            for link in self.axis_contexts_by_finding.get(str(finding_ref), [])
+            if str(link.get("axis")) == "LOCALIZATION"
+            for region_id in link.get("region_ids") or []
+        )
+        return direct + [value for value in projected if value not in direct]
+
+    def region_labels_for_sign(self, sign_id):
+        direct = self._unique(
+            CONTEXT_REGION_LABEL_BY_ID.get(str(link.get("region_id")))
+            for link in self.locations_by_sign.get(str(sign_id), [])
+        )
+        projected = self._unique(
+            CONTEXT_REGION_LABEL_BY_ID.get(str(region_id))
+            for link in self.axis_contexts_by_sign.get(str(sign_id), [])
+            if str(link.get("axis")) == "LOCALIZATION"
+            for region_id in link.get("region_ids") or []
+        )
+        return direct + [value for value in projected if value not in direct]
+
+    def brodmann_areas_for_sign(self, sign_id):
+        direct = self._unique(
+            str(link["brodmann_area_id"])
+            for link in self.locations_by_sign.get(str(sign_id), [])
+            if link.get("brodmann_area_id")
+        )
+        projected = self._unique(
+            str(area_id)
+            for link in self.axis_contexts_by_sign.get(str(sign_id), [])
+            if str(link.get("axis")) == "LOCALIZATION"
+            for area_id in link.get("brodmann_area_ids") or []
+        )
+        return direct + [value for value in projected if value not in direct]
+
+    def laterality_for_findings(self, finding_refs):
+        direct = self._unique(
+            str(link.get("laterality_code") or "")
+            for finding_ref in finding_refs
+            for link in self.lateralizations_by_finding.get(str(finding_ref), [])
+        )
+        projected = self._unique(
+            str(value)
+            for finding_ref in finding_refs
+            for link in self.axis_contexts_by_finding.get(str(finding_ref), [])
+            if str(link.get("axis")) == "LATERALIZATION"
+            for value in (
+                link.get("reported_target_keys") or link.get("normalized_values") or []
+            )
+        )
+        return direct + [value for value in projected if value not in direct]
+
+    def classification_nodes_for_findings(self, finding_refs, scheme_id):
+        return self._unique(
+            str(link["node_id"])
+            for finding_ref in finding_refs
+            for link in self.classifications_by_finding.get(str(finding_ref), [])
+            if str((self.classification_nodes.get(
+                str(link.get("node_id") or "")
+            ) or {}).get("scheme_id") or "") == scheme_id
+        )
+
+    def classification_nodes_for_signs(self, sign_ids, scheme_id):
+        return self._unique(
+            str(link["node_id"])
+            for sign_id in sign_ids
+            for link in self.classifications_by_sign.get(str(sign_id), [])
+            if str((self.classification_nodes.get(
+                str(link.get("node_id") or "")
+            ) or {}).get("scheme_id") or "") == scheme_id
+        )
+
+
+CONTEXT = EvidenceContextIndex(
+    ATLAS.get("evidence_context") or {}, CLASSIFICATIONS.get("nodes") or []
+)
 SYNTHESIS_CARDS = EVIDENCE_SYNTHESIS.get("axis_summaries") or []
 SYNTHESIS_CARD_BY_ID = {row["synthesis_id"]: row for row in SYNTHESIS_CARDS}
 SYNTHESIS_CARDS_BY_SIGN = {
@@ -61,18 +287,13 @@ DESCRIPTIVE_FAMILIES_BY_SIGN = {
 FLAGS = None
 
 PAPERS = []
+REPORTS_BY_WORK = OrderedDict()
 ledger_by_ref = {}
 ledger_evidence_by_cardid = {}
 STATISTIC_CONTEXT_BY_ID = {}
 for _source in CORPUS["sources"]:
-    _nstat = sum(len(_row.get("statistics", [])) for _row in _source["findings"])
-    PAPERS.append((
-        _source["source_file"],
-        f'{_source["page_count"]} pages',
-        _source["source_report_summary"],
-        f'{len(_source["findings"])} findings; {_nstat} source-reported statistics; '
-        + _source["source_version_role"].replace("_", " ").lower(),
-    ))
+    _work_id = str(_source.get("work_id") or _source["source_sha256"])
+    REPORTS_BY_WORK.setdefault(_work_id, []).append(_source)
     for _row in _source["findings"]:
         _entry = {"source": _source, "finding": _row}
         ledger_by_ref[_row["source_finding_ref"]] = _entry
@@ -87,10 +308,8 @@ for _source in CORPUS["sources"]:
         for _cid in _row["related_sign_ids"]:
             ledger_evidence_by_cardid.setdefault(_cid, []).append((_entry, "RELATED"))
 
-# A reported number can support more than one descriptive result group, but it
-# must have one visible home in the library. Preserve every relationship here,
-# then assign the number to the first canonical family in release order. Any
-# additional memberships remain visible as cross-links on that same number.
+# A reported number is one atomic record. Descriptive families are references
+# to that record, never alternate copies or competing scientific homes.
 _FAMILY_BY_STRING_ID = {
     str(_family["analysis_id"]): _family for _family in DESCRIPTIVE_FAMILIES
 }
@@ -108,27 +327,21 @@ for _family in DESCRIPTIVE_FAMILIES:
             if _family_id not in _memberships:
                 _memberships.append(_family_id)
 
-FAMILY_PRIMARY_STATISTIC_IDS = {
-    str(_family["analysis_id"]): [] for _family in DESCRIPTIVE_FAMILIES
-}
-FAMILY_LINKED_STATISTIC_IDS = {
-    str(_family["analysis_id"]): [] for _family in DESCRIPTIVE_FAMILIES
-}
-PRIMARY_FAMILY_BY_STATISTIC_ID = {}
-UNASSIGNED_STATISTIC_IDS = []
-for _statistic_id in STATISTIC_CONTEXT_BY_ID:
-    _family_ids = [
-        _family_id for _family_id in STATISTIC_FAMILY_IDS.get(_statistic_id, [])
-        if _family_id in _FAMILY_BY_STRING_ID
-    ]
-    for _family_id in _family_ids:
-        FAMILY_LINKED_STATISTIC_IDS[_family_id].append(_statistic_id)
-    if _family_ids:
-        _primary_family_id = _family_ids[0]
-        PRIMARY_FAMILY_BY_STATISTIC_ID[_statistic_id] = _primary_family_id
-        FAMILY_PRIMARY_STATISTIC_IDS[_primary_family_id].append(_statistic_id)
-    else:
-        UNASSIGNED_STATISTIC_IDS.append(_statistic_id)
+for _work_id, _reports in REPORTS_BY_WORK.items():
+    _profile = WORK_AUTHORITY_BY_ID.get(_work_id) or {}
+    _finding_count = sum(len(report["findings"]) for report in _reports)
+    _statistic_count = sum(
+        len(finding.get("statistics") or [])
+        for report in _reports for finding in report["findings"]
+    )
+    PAPERS.append({
+        "work_id": _work_id,
+        "display_name": _profile.get("display_name") or _reports[0]["source_file"],
+        "reports": _reports,
+        "finding_count": _finding_count,
+        "statistic_count": _statistic_count,
+    })
+PAPERS.sort(key=lambda row: str(row["display_name"]).casefold())
 
 # The completed axis audit identified source findings that supported a synthesis
 # card but were absent from its visible source history. Link those existing
@@ -300,22 +513,9 @@ def slug(s):
 
 
 def public_browse_regions(d):
-    # Organizational placement is the union of positive, source-linked regional
-    # targets. A simultaneous nonlocalizing/not-reported conclusion describes
-    # specificity; it must not erase regions that the same ledger explicitly
-    # reports. This also avoids the former arbitrary "first card wins" behavior.
-    reported = []
-    for card in SYNTHESIS_CARDS_BY_SIGN.get(str(d.get("id")), []):
-        if str(card.get("axis") or "").upper() != "LOCALIZATION":
-            continue
-        for target in (card.get("target_contract") or {}).get("reported_targets") or []:
-            if target.get("target_level") == "REGION" and target.get("label"):
-                reported.append(target["label"])
-    stored = [
-        region for region in (d.get("regions") or [d.get("region")])
-        if region and region != "No localization stated"
-    ]
-    positive = list(OrderedDict.fromkeys([*reported, *stored]))
+    # Navigation is a projection of exact finding-location links. Summary cards,
+    # sign names, and classification labels are never anatomy fallbacks.
+    positive = CONTEXT.region_labels_for_sign(str(d.get("id")))
     return positive or ["No localization stated"]
 
 # Resolve each sign's location relationship once by immutable sign id.  Every
@@ -324,6 +524,11 @@ def public_browse_regions(d):
 SIGN_LOCATION_BY_ID = OrderedDict()
 for d in data:
     mapping = BA.mapping_for_sign(d)
+    context_areas = CONTEXT.brodmann_areas_for_sign(str(d["id"]))
+    if set(mapping["areas"]) != set(context_areas):
+        raise RuntimeError(
+            f'Brodmann mapping for sign {d["id"]} differs from the evidence context.'
+        )
     lobes = []
     for aid in mapping["areas"]:
         lobe = BA.AREAS[aid]["lobe"]
@@ -705,28 +910,6 @@ _MISSING_PUBLIC_VALUES = {
 }
 PUBLIC_SIGN_BY_ID = {str(row["id"]): row for row in data}
 
-# Reader-facing grouping metadata for the deferred evidence browsers.  These
-# values reorganize already-exported ledger records; they never infer a new
-# scientific relationship.  Region groups use structured region identifiers
-# when a study-result family carries them, and classification groups use the
-# pinned registry crosswalk already embedded in the public bundle.
-REGION_LABEL_BY_ID = {
-    "REG:TEMPORAL": "Temporal", "REG:FRONTAL": "Frontal",
-    "REG:PARIETAL": "Parietal", "REG:OCCIPITAL": "Occipital",
-    "REG:INSULAR": "Insular", "REG:LIMBIC": "Limbic",
-    "REG:DEEP_SUBCORTICAL": "Deep/Subcortical",
-    "REG:MULTIREGIONAL_PROPAGATION": "Multiregional/Propagation",
-}
-CLASSIFICATION_GROUP_BY_SIGN = {}
-for _scheme_id, _tree in classification_trees.items():
-    _scheme_groups = CLASSIFICATION_GROUP_BY_SIGN.setdefault(_scheme_id, {})
-    for _group in _tree.get("groups") or []:
-        for _sign_id in _group.get("all_sign_ids") or []:
-            _labels = _scheme_groups.setdefault(str(_sign_id), [])
-            if _group["label"] not in _labels:
-                _labels.append(_group["label"])
-
-
 def public_value(value, fallback=""):
     if value is None:
         return fallback
@@ -846,9 +1029,9 @@ def descriptive_estimate_row(item, family):
     if limitations:
         provenance.append(f'<div><strong>Limitations:</strong> {esc(limitations)}</div>')
     linked_family_labels = []
-    primary_family_id = PRIMARY_FAMILY_BY_STATISTIC_ID.get(statistic_id)
+    current_family_id = str(family.get("analysis_id") or "")
     for family_id in STATISTIC_FAMILY_IDS.get(statistic_id, []):
-        if family_id == primary_family_id:
+        if family_id == current_family_id:
             continue
         linked_family = _FAMILY_BY_STRING_ID.get(family_id)
         if linked_family:
@@ -887,15 +1070,17 @@ def descriptive_family_row(family, statistic_ids=None, count_as_family=True):
     reference_standard = public_context_value(family.get("reference_standard"))
     sign_labels = family_sign_labels(family)
     assigned_statistic_ids = (
-        FAMILY_PRIMARY_STATISTIC_IDS.get(family_id, [])
+        list(OrderedDict.fromkeys([
+            *(str(value) for value in family.get("statistic_ids") or []),
+            *(
+                str(item.get("statistic_id")) for item in family.get("exact_estimates") or []
+                if item.get("statistic_id")
+            ),
+        ]))
         if statistic_ids is None else list(statistic_ids)
     )
     exact = [statistic_item(statistic_id) for statistic_id in assigned_statistic_ids]
-    linked_statistic_ids = (
-        FAMILY_LINKED_STATISTIC_IDS.get(family_id, [])
-        if statistic_ids is None else assigned_statistic_ids
-    )
-    cross_linked_elsewhere = max(0, len(linked_statistic_ids) - len(exact))
+    cross_linked_elsewhere = 0
     studies = OrderedDict()
     for item in exact:
         context, source, _finding, _statistic = estimate_context(item)
@@ -954,7 +1139,7 @@ def descriptive_family_row(family, statistic_ids=None, count_as_family=True):
         *[estimate_search_text(item) for item in exact],
         *[
             family_reference_label(_FAMILY_BY_STRING_ID[linked_family_id])
-            for statistic_id in FAMILY_PRIMARY_STATISTIC_IDS.get(family_id, [])
+            for statistic_id in assigned_statistic_ids
             for linked_family_id in STATISTIC_FAMILY_IDS.get(statistic_id, [])
             if linked_family_id in _FAMILY_BY_STRING_ID
         ],
@@ -1650,16 +1835,32 @@ def linked_sign_region_label(sign_ids):
 
 
 def classification_group_label(sign_ids, scheme_id):
-    labels = []
-    scheme = CLASSIFICATION_GROUP_BY_SIGN.get(scheme_id) or {}
-    for sign_id in sign_ids:
-        labels.extend(scheme.get(str(sign_id)) or [])
+    labels = [
+        public_value((classification_nodes.get(node_id) or {}).get("label"))
+        for node_id in CONTEXT.classification_nodes_for_signs(sign_ids, scheme_id)
+    ]
     short_name = "ILAE" if scheme_id == "ILAE_SEIZURE_2025" else "Lüders"
     return one_group_label(
         labels,
         f"No {short_name} placement",
         f"Multiple {short_name} categories",
     )
+
+
+def finding_classification_labels(finding_refs, scheme_id):
+    labels = []
+    for node_id in CONTEXT.classification_nodes_for_findings(finding_refs, scheme_id):
+        node = classification_nodes.get(node_id) or {}
+        label = public_value(node.get("label"))
+        if label and label not in labels:
+            labels.append(label)
+    if labels:
+        return labels
+    # A sign classification is a clearly labelled navigation fallback only; it
+    # never becomes a finding/event classification in the evidence record.
+    sign_ids = CONTEXT.public_sign_ids_for_findings(finding_refs)
+    fallback = classification_group_label(sign_ids, scheme_id)
+    return [f"Sign category: {fallback}"] if not fallback.startswith("No ") else [fallback]
 
 
 def compact_finding_search_text(row):
@@ -1724,126 +1925,117 @@ def indexed_panel_shell(*, dataset_path, intro, records, organizers, default_org
 </div>'''
 
 
-def study_result_record(family, *, record_id, statistic_ids=None, counted=True):
-    family_id = str(family.get("analysis_id") or "")
-    assigned_statistic_ids = (
-        FAMILY_PRIMARY_STATISTIC_IDS.get(family_id, [])
-        if statistic_ids is None else list(statistic_ids)
-    )
-    sign_ids = list(OrderedDict.fromkeys(str(sign_id) for sign_id in family.get("sign_ids") or []))
-    items = [statistic_item(statistic_id) for statistic_id in assigned_statistic_ids]
-    phases = [public_context_value(family.get("phase"))]
-    manuscripts = []
-    for item in items:
-        _context, source, finding, statistic = estimate_context(item)
-        phases.append(public_context_value(statistic.get("phase")) or public_context_value(finding.get("phase")))
-        manuscript = public_value(source.get("source_file")) or estimate_citation(item)
-        if manuscript:
-            manuscripts.append(manuscript)
-    structured_regions = [
-        REGION_LABEL_BY_ID.get(region_id, readable_term(region_id).title())
-        for region_id in ((family.get("axis_targets") or {}).get("region_ids") or [])
+def atomic_study_result_record(statistic_id, position):
+    item = statistic_item(statistic_id)
+    _context, source, finding, statistic = estimate_context(item)
+    finding_ref = str(finding.get("source_finding_ref") or "")
+    finding_refs = [finding_ref] if finding_ref else []
+    sign_ids = CONTEXT.public_sign_ids_for_statistics([statistic_id])
+    regions = CONTEXT.region_labels_for_statistics([statistic_id])
+    laterality = CONTEXT.laterality_for_statistics([statistic_id])
+    assertion_ids = [
+        str(link.get("assertion_id") or "")
+        for link in (CONTEXT.statistics.get(str(statistic_id)) or {}).get("assertion_links") or []
     ]
-    region_group = one_group_label(
-        structured_regions,
-        linked_sign_region_label(sign_ids) if not counted else "No region reported for this result",
-        "Multiple regions",
+    assertions = CONTEXT.payload.get("assertions_by_id") or {}
+    axes = list(OrderedDict.fromkeys(
+        readable_term((assertions.get(assertion_id) or {}).get("axis")).title()
+        for assertion_id in assertion_ids
+        if (assertions.get(assertion_id) or {}).get("axis")
+    ))
+    for family_id in STATISTIC_FAMILY_IDS.get(str(statistic_id), []):
+        family_axis = str((_FAMILY_BY_STRING_ID.get(family_id) or {}).get("axis") or "").strip()
+        if family_axis:
+            family_axis = readable_term(family_axis).title()
+            if family_axis not in axes:
+                axes.append(family_axis)
+    phases = list(OrderedDict.fromkeys(filter(None, [
+        public_context_value(statistic.get("phase")),
+        public_context_value(finding.get("phase")),
+    ])))
+    endpoint = (
+        public_value(statistic.get("endpoint"))
+        or public_value(finding.get("source_term"), "Reported outcome")
     )
-    endpoint = public_value(family.get("endpoint"), "Reported outcome")
-    metric_key = str(family.get("metric_type") or "OTHER").upper()
-    axis = str(family.get("axis") or "").upper()
+    metric_key = str(statistic.get("metric_type") or "OTHER").upper()
+    work_id = str(source.get("work_id") or "")
+    work_name = public_value(
+        (WORK_AUTHORITY_BY_ID.get(work_id) or {}).get("display_name"),
+        public_value(source.get("source_file"), "Manuscript not stated"),
+    )
+    family_labels = [
+        family_reference_label(_FAMILY_BY_STRING_ID[family_id])
+        for family_id in STATISTIC_FAMILY_IDS.get(str(statistic_id), [])
+        if family_id in _FAMILY_BY_STRING_ID
+    ]
+    pseudo_family = {
+        "analysis_id": "", "endpoint": endpoint, "metric_type": metric_key,
+        "sign_ids": sign_ids,
+    }
+    context_lines = []
+    if regions:
+        context_lines.append("<strong>Localization:</strong> " + esc("; ".join(regions)))
+    if laterality:
+        context_lines.append(
+            "<strong>Lateralization:</strong> "
+            + esc("; ".join(readable_term(value).title() for value in laterality))
+        )
+    if family_labels:
+        context_lines.append("<strong>Result groups:</strong> " + esc("; ".join(family_labels)))
+    html = (
+        '<div class="fx-row evidence-row atomic-result">'
+        f'<span class="fx-m">{esc(metric_label(metric_key))}</span>'
+        f'<span class="fx-ph">{esc(endpoint)}<span class="fx-reg">{esc("; ".join(phases))}</span></span>'
+        f'<span class="fx-val">{esc(statistic_value(statistic))}</span>'
+        f'<span class="fx-src"><strong>{esc(work_name)}</strong><br>{esc(source.get("source_file"))}</span>'
+        f'<div class="fx-q">{"<br>".join(context_lines)}'
+        f'{descriptive_estimate_row(item, pseudo_family)}</div></div>'
+    )
     search = " ".join(str(value or "") for value in [
-        endpoint, metric_label(metric_key), axis, family.get("phase"), family.get("population"),
-        family.get("comparator"), family.get("subgroup"), family.get("analysis_unit"),
-        family.get("reference_standard"), *family_sign_labels(family),
-        *[estimate_search_text(item) for item in items],
+        endpoint, metric_label(metric_key), *axes, *regions, *laterality, *phases,
+        work_name, source.get("source_file"), *family_labels, *[
+            (PUBLIC_SIGN_BY_ID.get(sign_id) or {}).get("sign") for sign_id in sign_ids
+        ], estimate_search_text(item),
     ]).casefold()
     return {
-        "id": record_id,
+        "id": f"statistic-{position:05d}",
         "metric": metric_key,
         "metric_label": metric_label(metric_key),
         "sign_ids": sign_ids,
         "search": search,
-        "numbers": len(assigned_statistic_ids),
-        "kind": "grouped" if counted else "additional",
+        "numbers": 1,
+        "kind": "statistic",
         "sort": endpoint.casefold(),
         "groups": {
-            "sign": sign_group_label(sign_ids),
-            "axis": readable_term(axis).title() if axis else "No result-group axis",
-            "region": region_group,
-            "manuscript": one_group_label(manuscripts, "No manuscript stated", "Multiple contributing manuscripts"),
-            "phase": one_group_label(phases, "Phase not stated", "Multiple phases"),
-            "result": metric_label(metric_key),
-            "ilae": classification_group_label(sign_ids, "ILAE_SEIZURE_2025"),
-            "luders": classification_group_label(sign_ids, "LUDERS_5D_2005"),
+            "sign": [
+                public_value((PUBLIC_SIGN_BY_ID.get(sign_id) or {}).get("sign"))
+                for sign_id in sign_ids
+            ] or ["No linked semiology stated"],
+            "axis": axes or ["No evidence axis stated"],
+            "region": regions or ["No region reported for this result"],
+            "manuscript": [work_name],
+            "phase": phases or ["Phase not stated"],
+            "result": [metric_label(metric_key)],
+            "ilae": finding_classification_labels(finding_refs, "ILAE_SEIZURE_2025"),
+            "luders": finding_classification_labels(finding_refs, "LUDERS_5D_2005"),
         },
-        "html": descriptive_family_row(
-            family,
-            statistic_ids=assigned_statistic_ids,
-            count_as_family=counted,
-        ),
+        "html": html,
     }
 
 
-def build_unassigned_statistic_records(statistic_ids):
-    grouped = {}
-    for statistic_id in statistic_ids:
-        context = STATISTIC_CONTEXT_BY_ID.get(str(statistic_id)) or {}
-        source = context.get("source") or {}
-        finding = context.get("finding") or {}
-        statistic = context.get("statistic") or {}
-        endpoint = public_value(finding.get("source_term"), "Additional reported result")
-        metric_key = str(statistic.get("metric_type") or "OTHER").upper()
-        sign_ids = list(OrderedDict.fromkeys(
-            str(sign_id) for sign_id in [
-                *(finding.get("exact_sign_ids") or []), *(finding.get("related_sign_ids") or []),
-            ]
-        ))
-        key = (sign_group_label(sign_ids).casefold(), endpoint.casefold(), metric_key)
-        group = grouped.setdefault(key, {
-            "endpoint": endpoint, "metric_type": metric_key, "statistic_ids": [],
-            "sign_ids": [], "works": set(),
-        })
-        group["statistic_ids"].append(str(statistic_id))
-        group["sign_ids"].extend(sign_id for sign_id in sign_ids if sign_id not in group["sign_ids"])
-        work_key = public_value(source.get("work_id")) or public_value(source.get("source_file"))
-        if work_key:
-            group["works"].add(work_key)
-    records = []
-    for position, key in enumerate(sorted(grouped), start=1):
-        group = grouped[key]
-        pseudo_family = {
-            "analysis_id": "", "axis": "", "endpoint": group["endpoint"],
-            "metric_type": group["metric_type"], "sign_ids": group["sign_ids"],
-            "source_work_count": len(group["works"]),
-        }
-        records.append(study_result_record(
-            pseudo_family,
-            record_id=f"additional-{position:04d}",
-            statistic_ids=group["statistic_ids"],
-            counted=False,
-        ))
-    return records
-
-
-def build_descriptive_family_panel(families):
-    if not families:
-        return ""
+def build_descriptive_family_panel(_families):
     records = [
-        study_result_record(family, record_id=f"family-{position:04d}")
-        for position, family in enumerate(families, start=1)
+        atomic_study_result_record(statistic_id, position)
+        for position, statistic_id in enumerate(STATISTIC_CONTEXT_BY_ID, start=1)
     ]
-    records.extend(build_unassigned_statistic_records(UNASSIGNED_STATISTIC_IDS))
-    rendered_statistic_ids = [
-        statistic_id
-        for family in families
-        for statistic_id in FAMILY_PRIMARY_STATISTIC_IDS.get(str(family.get("analysis_id") or ""), [])
-    ] + list(UNASSIGNED_STATISTIC_IDS)
-    if (
-        len(rendered_statistic_ids) != len(set(rendered_statistic_ids))
-        or set(rendered_statistic_ids) != set(STATISTIC_CONTEXT_BY_ID)
-    ):
-        raise RuntimeError("The evidence library must render every reported number exactly once.")
+    rendered = {
+        record_id
+        for record_id in (
+            str(statistic_id) for statistic_id in STATISTIC_CONTEXT_BY_ID
+        )
+    }
+    if rendered != set(CONTEXT.statistics):
+        raise RuntimeError("The evidence library and evidence context differ on atomic statistics.")
     dataset_path = register_evidence_dataset("study-results", records)
     method_note = (EVIDENCE_SYNTHESIS.get("release") or {}).get("method_note") or ""
     method_details = (
@@ -1851,10 +2043,9 @@ def build_descriptive_family_panel(families):
         f'<p>{esc(method_note)}</p></details>' if public_value(method_note) else ""
     )
     intro = (
-        "Study results retain their exact reported numbers, citations, and source locations; values are not pooled. "
-        "Choose the clinical organization that is useful to you. Reported numbers not assigned to a descriptive "
-        "result group remain available in the closed <strong>Additional reported results</strong> section. "
-        "That placement does not mean the associated sign lacks localization or lateralization. " + method_details
+        "Each reported result is one atomic ledger record with its manuscript, citation, source location, "
+        "semiology, localization, lateralization, phase, and classifications kept together. Values are not "
+        "pooled or copied when a result is available through more than one clinical filter. " + method_details
     )
     return indexed_panel_shell(
         dataset_path=dataset_path,
@@ -1892,11 +2083,20 @@ def build_reviewed_findings_panel(corpus):
             else:
                 row_value = ""
             citation = public_value(row.get("citation"))
-            sign_ids = list(OrderedDict.fromkeys(
-                str(sign_id) for sign_id in [
-                    *(row.get("exact_sign_ids") or []), *(row.get("related_sign_ids") or []),
-                ]
-            ))
+            finding_ref = str(row.get("source_finding_ref") or "")
+            finding_refs = [finding_ref] if finding_ref else []
+            sign_ids = CONTEXT.public_sign_ids_for_findings(finding_refs)
+            if not sign_ids:
+                sign_ids = CONTEXT.public_sign_ids_for_findings(
+                    finding_refs, exact_only=False
+                )
+            regions = CONTEXT.region_labels_for_findings(finding_refs)
+            laterality = CONTEXT.laterality_for_findings(finding_refs)
+            work_id = str(source.get("work_id") or "")
+            work_name = public_value(
+                (WORK_AUTHORITY_BY_ID.get(work_id) or {}).get("display_name"),
+                public_value(source.get("source_file"), "Manuscript not stated"),
+            )
             measure = statistic_block(row)
             row_html = (
                 '<div class="fx-row evidence-row">'
@@ -1909,14 +2109,17 @@ def build_reviewed_findings_panel(corpus):
                 f'<div><strong>Relevant source text:</strong> {esc(row["evidence_text"])}</div>'
                 f'<div><strong>Who was studied:</strong> {esc(row["population"])}</div>'
                 f'<div><strong>What the finding suggests:</strong> {esc(row["laterality_localization"])}</div>'
-                f'<div><strong>Important cautions:</strong> {esc(row["limitations"])}</div>'
-                f'{cited_source_line(row)}'
-                '</details></div>'
+                +(f'<div><strong>Localization:</strong> {esc("; ".join(regions))}</div>' if regions else '')
+                +(f'<div><strong>Lateralization:</strong> {esc("; ".join(readable_term(value).title() for value in laterality))}</div>' if laterality else '')
+                +f'<div><strong>Important cautions:</strong> {esc(row["limitations"])}</div>'
+                +f'{cited_source_line(row)}'
+                +'</details></div>'
             )
             search = " ".join(str(value or "") for value in [
                 row["source_term"], row["claim"], compact_finding_search_text(row), row["citation"],
                 row["locators"], row["population"], row["laterality_localization"],
-                source["source_file"], ROLE_LABEL.get(role, ""),
+                source["source_file"], work_name, *regions, *laterality,
+                ROLE_LABEL.get(role, ""),
             ]).casefold().replace('"', "")
             records.append({
                 "id": f"finding-{len(records) + 1:05d}",
@@ -1928,13 +2131,20 @@ def build_reviewed_findings_panel(corpus):
                 "kind": "finding",
                 "sort": str(row["source_term"] or "").casefold(),
                 "groups": {
-                    "sign": sign_group_label(sign_ids),
-                    "region": linked_sign_region_label(sign_ids),
-                    "manuscript": public_value(source.get("source_file"), "Manuscript not stated"),
-                    "phase": public_context_value(row.get("phase"), "Phase not stated"),
-                    "result": ROLE_LABEL.get(role, "Source information"),
-                    "ilae": classification_group_label(sign_ids, "ILAE_SEIZURE_2025"),
-                    "luders": classification_group_label(sign_ids, "LUDERS_5D_2005"),
+                    "sign": [
+                        public_value((PUBLIC_SIGN_BY_ID.get(sign_id) or {}).get("sign"))
+                        for sign_id in sign_ids
+                    ] or ["No linked semiology stated"],
+                    "region": regions or ["No region reported for this finding"],
+                    "manuscript": [work_name],
+                    "phase": [public_context_value(row.get("phase"), "Phase not stated")],
+                    "result": [ROLE_LABEL.get(role, "Source information")],
+                    "ilae": finding_classification_labels(
+                        finding_refs, "ILAE_SEIZURE_2025"
+                    ),
+                    "luders": finding_classification_labels(
+                        finding_refs, "LUDERS_5D_2005"
+                    ),
                 },
                 "html": row_html,
             })
@@ -1945,7 +2155,7 @@ def build_reviewed_findings_panel(corpus):
         records=records,
         organizers=(
             ("manuscript", "Contributing manuscript"), ("sign", "Semiology A–Z"),
-            ("region", "Brain region (linked sign)"), ("phase", "Seizure phase"),
+            ("region", "Brain region"), ("phase", "Seizure phase"),
             ("result", "Evidence type"), ("ilae", "ILAE 2025 classification"),
             ("luders", "Lüders 5D classification"),
         ),
@@ -1959,17 +2169,17 @@ def build_reviewed_findings_panel(corpus):
 def build_evidence_library(corpus):
     accounting = corpus["integration_accounting"]
     finding_count = accounting["public_ledger_findings"]
-    family_count = len(DESCRIPTIVE_FAMILIES)
     statistic_count = accounting["source_reported_statistics"]
     source_count = accounting["source_reports"]
+    manuscript_count = len(PAPERS)
     return f'''<div class="lib evidence-library">
 <details class="lib-details evidence-library-details">
-  <summary><span>Reviewed Evidence Library</span><span class="evidence-library-summary">{finding_count:,} findings &middot; {family_count:,} study-result groups &middot; {statistic_count:,} reported numbers &middot; {source_count} source files</span></summary>
+  <summary><span>Reviewed Evidence Library</span><span class="evidence-library-summary">{finding_count:,} findings &middot; {statistic_count:,} reported results &middot; {manuscript_count} manuscripts &middot; {source_count} source files</span></summary>
   <div class="evidence-library-body">
-    <p class="evidence-library-overview">Two connected views of the same canonical ledger. Study results contain their exact reported numbers, citations, and source locations; no new pooling, mapping, or interpretation is added.</p>
+    <p class="evidence-library-overview">Two views of the same ledger. Every finding and reported result keeps its manuscript, citation, source location, semiology, anatomy, side, phase, and classification links; no value is copied or newly pooled.</p>
     <div class="evidence-view-tabs" role="tablist" aria-label="Reviewed evidence views">
       <button type="button" class="evidence-view-tab on" role="tab" aria-selected="true" data-evidence-view="findings">Reviewed findings <i>{finding_count:,}</i></button>
-      <button type="button" class="evidence-view-tab" role="tab" aria-selected="false" data-evidence-view="studies">Study results <i>{family_count:,} groups &middot; {statistic_count:,} numbers</i></button>
+      <button type="button" class="evidence-view-tab" role="tab" aria-selected="false" data-evidence-view="studies">Study results <i>{statistic_count:,} reported results</i></button>
     </div>
     <section class="evidence-view-panel" role="tabpanel" data-evidence-panel="findings" data-fragment="fragments/reviewed-findings.html"><div class="lazy-fragment">Loading reviewed findings&hellip;</div></section>
     <section class="evidence-view-panel" role="tabpanel" data-evidence-panel="studies" data-fragment="fragments/study-results.html" hidden><div class="lazy-fragment">Open this view to load study results.</div></section>
@@ -2259,21 +2469,31 @@ def build_weighted_evidence(cards):
 
     def family_block(card, axis, statistic_ids):
         families = []
+        card_context_ids = set(unique_strings(card.get("context_ids")))
         for family in DESCRIPTIVE_FAMILIES_BY_SIGN.get(str(card.get("sign_id") or ""), []):
-            if str(family.get("axis") or "").upper() != axis:
-                continue
             family_statistics = set(unique_strings(family.get("statistic_ids")))
             family_statistics.update(
                 str(item.get("statistic_id")) for item in family.get("exact_estimates") or [] if item.get("statistic_id")
             )
-            if statistic_ids and family_statistics and not statistic_ids.intersection(family_statistics):
+            family_context_ids = set(unique_strings(family.get("context_ids")))
+            shares_context = bool(card_context_ids.intersection(family_context_ids))
+            shares_statistic = bool(
+                statistic_ids and family_statistics
+                and statistic_ids.intersection(family_statistics)
+            )
+            if (card_context_ids or statistic_ids) and not (shares_context or shares_statistic):
                 continue
             families.append(family)
         if not families:
             return ""
         rows = []
         for family in families:
-            title = " / ".join(family_target_labels(family, axis)) or public_context_value(family.get("endpoint"), "Source-defined result group")
+            family_axis = str(family.get("axis") or "").upper() or axis
+            target_text = " / ".join(family_target_labels(family, family_axis))
+            title = target_text or public_context_value(
+                family.get("endpoint"), "Source-defined result group"
+            )
+            title = f"{readable_term(family_axis).title()}: {title}"
             proportion = family.get("descriptive_proportion_summary") or {}
             minimum, maximum, median = proportion.get("minimum"), proportion.get("maximum"), proportion.get("median")
             observed = "Source-defined values retained separately"
@@ -2582,13 +2802,12 @@ def build_weighted_evidence(cards):
         directional_targets = [target for target in display_targets if target["key"] != "nonassoc"]
         context_specific = status in {"CONTEXT_SUBTYPE_DEPENDENT", "GENUINELY_MIXED"}
         if axis == "LOCALIZATION":
-            if not directional_targets:
-                group_region = "No localization stated"
-            elif context_specific and len(directional_targets) > 1:
-                group_region = "Multiregional/Propagation"
-            else:
-                group_region = directional_targets[0]["label"]
+            group_regions = list(OrderedDict.fromkeys(
+                target["label"] for target in directional_targets if target.get("label")
+            )) or ["No localization stated"]
+            group_region = group_regions[0]
         else:
+            group_regions = []
             group_region = ""
         chips = []
         for index, target in enumerate(display_targets):
@@ -2701,6 +2920,7 @@ def build_weighted_evidence(cards):
             f'<details class="lr-row" data-card-state-id="{esc(str(card.get("synthesis_id") or ""))}" data-card-axis="{axis}" data-card-state="EVIDENCE_BEARING_WEIGHTED" '
             f'data-sign-id="{esc(sign_id)}" data-group-id="{esc(str(card.get("group_id") or ""))}" data-bucket="{bucket_of(card)}" data-name="{esc(label.casefold())}" '
             f'data-group-region="{esc(group_region)}" '
+            f'data-group-regions="{esc("|".join(group_regions))}" '
             f'data-weight="{analysis["total_weight"]:.6f}" data-support="{support_points}" data-manuscripts="{manuscripts}" '
             f'data-findings="{findings}" data-statistics="{statistics}" data-order="{order}" '
             f'data-search="{esc(search_text)}">'
@@ -3211,10 +3431,29 @@ callout_fold = ('<details class="frontpage-fold">\n'
     '<summary>Framework &mdash; semiology as a dynamic network</summary>\n'
     + callout_html + '\n</details>')
 
-papers_html = "\n".join(
-    f'<div class="paper"><div class="p-cite">{esc(c)}</div><div class="p-jrnl">{esc(j)}</div>'
-    f'<div class="p-title">{esc(t)}</div><div class="p-contrib">{esc(k)}</div></div>'
-    for (c,j,t,k) in PAPERS)
+def source_library_card(paper):
+    reports = paper["reports"]
+    report_rows = "".join(
+        '<li><strong>'+esc(report.get("source_file"))+'</strong><span>'
+        +" · ".join(filter(None, [
+            f'{int(report.get("page_count") or 0)} pages' if report.get("page_count") else "",
+            readable_term(report.get("source_version_role")),
+        ]))+'</span></li>'
+        for report in reports
+    )
+    return (
+        '<div class="paper">'
+        f'<div class="p-title">{esc(paper["display_name"])}</div>'
+        '<div class="p-contrib">'
+        f'{paper["finding_count"]:,} finding{"s" if paper["finding_count"] != 1 else ""} · '
+        f'{paper["statistic_count"]:,} reported result{"s" if paper["statistic_count"] != 1 else ""} · '
+        f'{len(reports)} reviewed source file{"s" if len(reports) != 1 else ""}'
+        '</div><details class="paper-reports"><summary>Reviewed source files</summary>'
+        f'<ul>{report_rows}</ul></details></div>'
+    )
+
+
+papers_html = "\n".join(source_library_card(paper) for paper in PAPERS)
 n_ev_signs = sum(1 for d in data if d.get("_ev"))
 
 CSS = r"""
@@ -4208,6 +4447,12 @@ body.quiz .lib-chip{display:none}
 .paper .p-jrnl{font-style:italic;color:var(--teal-d);font-size:.74rem;margin:1px 0 4px}
 .paper .p-title{font-size:.8rem;color:#2a2a2a;margin-bottom:5px}
 .paper .p-contrib{font-size:.76rem;color:#5a6478;line-height:1.45}
+.paper-reports{margin-top:7px;border-top:1px solid var(--line2);padding-top:6px}
+.paper-reports>summary{cursor:pointer;color:#36516f;font-size:.7rem;font-weight:750}
+.paper-reports ul{list-style:none;margin:7px 0 0;padding:0;display:grid;gap:5px}
+.paper-reports li{display:flex;justify-content:space-between;gap:10px;padding:6px 8px;border-radius:6px;background:#f4f7fa;color:#65748a;font-size:.66rem;line-height:1.35}
+.paper-reports strong{color:#334b67;font-weight:650;overflow-wrap:anywhere}
+.paper-reports span{white-space:nowrap}
 
 /* ---------- EMPTY ---------- */
 #no-results{display:none;padding:44px 20px;text-align:center;color:var(--muted);font-size:.95rem;font-style:italic}
@@ -5536,6 +5781,10 @@ function bindLedgerReliability(wrap){
     }
     return browseMode.selectedOptions?.[0]?.textContent?.trim()||'page organization';
   }
+  function rowInRegion(row,label){
+    return String(row.dataset.groupRegions||row.dataset.groupRegion||'')
+      .split('|').map(value=>value.trim()).filter(Boolean).includes(label);
+  }
   function pageGroups(){
     const regional=browseMode?.value==='region';
     const localizationRegion=regional&&wrap.dataset.axis==='LOCALIZATION';
@@ -5554,7 +5803,7 @@ function bindLedgerReliability(wrap){
       section.querySelectorAll('.browse-sign').forEach(item=>{
         const signRows=rowsBySign.get(String(item.dataset.id||''))||[];
         signRows.forEach(row=>{
-          if(seen.has(row)||(localizationRegion&&row.dataset.groupRegion!==label)) return;
+          if((!localizationRegion&&seen.has(row))||(localizationRegion&&!rowInRegion(row,label))) return;
           seen.add(row);
           let subgroup='';
           if(regional){
@@ -5567,7 +5816,7 @@ function bindLedgerReliability(wrap){
       });
       if(localizationRegion){
         rows.forEach(row=>{
-          if(seen.has(row)||row.dataset.groupRegion!==label) return;
+          if(!rowInRegion(row,label)) return;
           seen.add(row);
           if(!subgroupMap.has('')) subgroupMap.set('',[]);
           subgroupMap.get('').push(row);
@@ -5598,6 +5847,7 @@ function bindLedgerReliability(wrap){
   function renderPageGroups(query){
     const openKeys=new Set(Array.from(list.querySelectorAll('.lr-page-group[open]')).map(group=>group.dataset.key));
     list.replaceChildren();
+    const renderedRows=new Set();
     pageGroups().forEach((group,index)=>{
       const details=document.createElement('details');
       details.className='lr-page-group';details.dataset.key=group.label;
@@ -5615,7 +5865,10 @@ function bindLedgerReliability(wrap){
           const heading=document.createElement('h4');heading.className='lr-page-subgroup-title';
           heading.textContent=subgroup.label;heading.hidden=subgroupVisible===0;section.append(heading);
         }
-        subgroup.rows.forEach(row=>section.append(row));
+        subgroup.rows.forEach(row=>{
+          const rendered=renderedRows.has(row)?row.cloneNode(true):row;
+          renderedRows.add(row);section.append(rendered);
+        });
         section.hidden=subgroupVisible===0;groupVisible+=subgroupVisible;body.append(section);
       });
       badge.textContent=groupVisible.toLocaleString();details.hidden=groupVisible===0;
@@ -5733,9 +5986,12 @@ async function bindIndexedFxWrap(wrap){
     const key=organizer.value;
     const groups=new Map();
     sourceRecords.forEach(record=>{
-      const label=record.groups?.[key]||'Other';
-      if(!groups.has(label)) groups.set(label,[]);
-      groups.get(label).push(record);
+      const raw=record.groups?.[key];
+      const labels=(Array.isArray(raw)?raw:[raw||'Other']).filter(Boolean);
+      Array.from(new Set(labels)).forEach(label=>{
+        if(!groups.has(label)) groups.set(label,[]);
+        groups.get(label).push(record);
+      });
     });
     return orderedLabels(Array.from(groups.keys()),key).map(label=>{
       const rows=groups.get(label).sort((a,b)=>(a.sort||'').localeCompare(b.sort||'',undefined,{sensitivity:'base',numeric:true}));
@@ -6142,7 +6398,7 @@ HEAD = """<!DOCTYPE html>
 
 <div class="lib">
   <details class="lib-details">
-    <summary>Source Library &mdash; """ + str(len(PAPERS)) + """ Contributing Manuscripts</summary>
+    <summary>Source Library &mdash; """ + str(len(PAPERS)) + """ manuscripts &middot; """ + str(len(CORPUS["sources"])) + """ reviewed source files</summary>
     <div class="lib-grid">
 """ + papers_html + """
     </div>

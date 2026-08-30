@@ -4,13 +4,13 @@ A source-grounded educational reference for localizing and lateralizing seizure 
 
 ## Source of truth
 
-This public repository is a generated, redacted consumer of the private canonical Semiology Atlas database. Its only scientific website data input is [`data/atlas_bundle.json`](data/atlas_bundle.json), produced after private source review and owner approval. [`data/brodmann_map.json`](data/brodmann_map.json) supplies presentation-only label coordinates. Do not hand-edit the generated bundle or treat website prose as source evidence.
+This public repository is a generated, redacted consumer of the private canonical Semiology Atlas database. Its only scientific website data input is [`data/atlas_bundle.json`](data/atlas_bundle.json), produced after private source review and owner approval. The bundle contains one generated `evidence_context` relationship graph: every region, classification, reviewed finding, study result, weighted summary, Brodmann association, manuscript view, filter, and count resolves through that graph. [`data/brodmann_map.json`](data/brodmann_map.json) supplies presentation-only label coordinates. Do not hand-edit the generated bundle or treat website prose as source evidence.
 
 Other older files under `data/`, `enrichment/`, and `corpus/` are retained as historical artifacts. They do not drive the website build and are not independent scientific authorities.
 
 | Path | Role |
 |---|---|
-| `data/atlas_bundle.json` | Generated public bundle: signs, reviewed findings, statistics, anatomy links, and weighted analyses. |
+| `data/atlas_bundle.json` | Generated public bundle and shared evidence-context graph for every scientific view. |
 | `data/brodmann_map.json` | Owner-edited presentation coordinates for Brodmann labels; no scientific mapping authority. |
 | `tools/validate_atlas_bundle.py` | Public-safe integrity and privacy check. |
 | `generator/gen_study.py` | Renders the self-contained website into `docs/`. |
@@ -41,6 +41,8 @@ Scientific updates follow one path:
 5. The redacted bundle and generated website are updated deterministically.
 6. Deployment requires separate owner authorization.
 
+Source-native wording and phase remain visible, while approved variants resolve through the same immutable `sign_id`. Each atomic statistic is rendered once and referenced through every valid facet. A panel may not invent a fallback relationship, select one arbitrary family, or maintain a separate scientific mapping. If views disagree, repair the private relationship or exporter and regenerate the entire site.
+
 The public intake workflow only acknowledges or registers a request. It cannot download papers, perform source review, edit scientific data, open a scientific pull request, or publish results.
 
 ## Weighted analyses
@@ -49,11 +51,14 @@ The website preserves the previously defined weighting method and explains it in
 
 ## Current generated release
 
-- 57 reviewed source reports
-- 1,710 public findings
-- 1,216 source-reported statistics
-- 99 established atlas signs
-- 19 evidence-weighted lateralizing analyses from 69 historical contributions
+- 77 reviewed source reports consolidated into 73 canonical manuscripts
+- 4,120 public findings
+- 4,518 source-reported atomic statistics
+- 383 established atlas signs
+- 766 sign-axis summaries: one localization and one lateralization row per sign
+- 65 canonical manuscripts contribute weighted evidence; 2 remain linked with
+  authority metadata pending and 6 are context/reference works without a linked
+  sign-axis contribution
 
 ## Licensing
 
