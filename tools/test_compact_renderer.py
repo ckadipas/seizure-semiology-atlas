@@ -68,6 +68,22 @@ class CompactRendererTest(unittest.TestCase):
         self.assertIn("48", self.render["BA"].AREAS)
         self.assertIn("medial", self.render["BA"].views_with("48"))
 
+    def test_brodmann_hover_clears_off_an_area_and_when_views_change(self):
+        js = self.render["JS"]
+        self.assertIn("function resetBrainHover()", js)
+        self.assertRegex(
+            js,
+            r"if\(!hit\)\{resetBrainHover\(\);return;\}",
+        )
+        show_view = js.split("function showView(name){", 1)[1].split(
+            "function curView()", 1
+        )[0]
+        self.assertIn("resetBrainHover();", show_view)
+
+    def test_footer_omits_named_schools_and_keeps_the_submission_link(self):
+        self.assertNotIn("Schools referenced", self.render["h"])
+        self.assertIn("Contribute a paper or correction", self.render["h"])
+
     def test_nonidentical_leaf_classification_term_remains_a_visible_family(self):
         groups = self.render["classification_trees"]["LUDERS_5D_2005"]["groups"]
         leaf_terms = {

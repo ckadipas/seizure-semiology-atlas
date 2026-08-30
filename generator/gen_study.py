@@ -4754,19 +4754,24 @@ JS = (
       e.preventDefault(); render(e.target.dataset.tile);}
     if(e.key==='Escape') clear();
   });
+  function resetBrainHover(){
+    const sign=traced&&BRAIN_SIGNS[traced];
+    const tile=sel&&BRAIN_TILES[sel];
+    const tileIsVisible=tile&&(tile.buried||!tile.views||!tile.views.length||tile.views.indexOf(curView())>=0);
+    hover.textContent=sign
+      ? sign.n+' — '+sign.areas.length+(sign.areas.length===1?' area':' areas')+' highlighted'
+      : (tileIsVisible?tile.name:'Select a numbered area');
+  }
   card.addEventListener('mouseover',e=>{
     const hit=e.target.closest('.ba-hit,.ba-num');
-    if(!hit) return;
+    if(!hit){resetBrainHover();return;}
     /* a traced set owns the caption; hovering past it must not steal the line */
     if(traced&&!hit.classList.contains('trace')) return;
     const t=BRAIN_TILES[hit.dataset.tile]; if(!t) return;
     const n=t.signs.length;
     hover.textContent=(t.bas.length?'BA '+t.label+' — ':'')+t.name+(n?'  ·  '+n+(n===1?' sign':' signs'):'  ·  no signs');
   });
-  card.addEventListener('mouseleave',()=>{
-    const t=traced&&BRAIN_SIGNS[traced];
-    hover.textContent = t ? t.n+' — '+t.areas.length+(t.areas.length===1?' area':' areas')+' highlighted'
-                          : (sel?BRAIN_TILES[sel].name:'Select a numbered area');});
+  card.addEventListener('mouseleave',resetBrainHover);
 
   /* jump from the panel to the full sign card */
   panel.addEventListener('click',e=>{
@@ -4820,6 +4825,7 @@ JS = (
     card.querySelectorAll('.seg-b[data-view]').forEach(x=>{
       const on=x.dataset.view===name; x.classList.toggle('active',on); x.setAttribute('aria-selected',on);});
     svgs.forEach(s=>s.classList.toggle('show',s.dataset.view===name));
+    resetBrainHover();
   }
   function curView(){return (svgs.find(v=>v.classList.contains('show'))||svgs[0]).dataset.view;}
   card.querySelectorAll('.seg-b[data-view]').forEach(b=>
@@ -6486,7 +6492,6 @@ HEAD = """<!DOCTYPE html>
 
 <div class="footer">
   <strong>Educational use:</strong> This reference is designed for teaching and self-study by epilepsy trainees. Each evidence entry shows who was studied, what was counted, the reported value, and important cautions. Results from different studies are not combined. Real localization always integrates ictal EEG, imaging, neuropsychology, and history. &nbsp;|&nbsp;
-  <strong>Schools referenced:</strong> Paris SEEG (Bancaud, Talairach, Chauvel, Bartolomei, McGonigal); Cleveland Clinic (L&#252;ders, Kotagal, Bleasel, Dinner); Lyon SEEG (Isnard, Maugui&#232;re, Ryvlin, Ostrowsky); Montreal (Penfield, Jasper, Rasmussen). &nbsp;|&nbsp;
   <strong>Contribute a paper or correction:</strong> new evidence is welcome &mdash; <a href="https://github.com/ckadipas/seizure-semiology-atlas/issues/new/choose">submit it here</a>. Every submission is reviewed by the maintainers before it appears.
 </div>
 
