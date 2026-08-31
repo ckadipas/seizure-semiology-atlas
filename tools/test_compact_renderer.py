@@ -17,7 +17,6 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-CANONICAL_WEBSITE = ROOT.parent / "semiology_atlas_ledger" / "website"
 
 
 class AtlasBundleValidatorTest(unittest.TestCase):
@@ -857,7 +856,7 @@ class NeutralMembershipRendererTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.temporary = tempfile.TemporaryDirectory(
-            prefix="semiology-neutral-membership.", dir="/private/tmp"
+            prefix="semiology-neutral-membership."
         )
         cls.root = Path(cls.temporary.name) / "public"
         shutil.copytree(
@@ -1131,7 +1130,7 @@ class CanonicalV16SourceBackedSignTest(unittest.TestCase):
         )
 
     def test_current_v16_bundle_has_1073_source_backed_browser_signs(self):
-        bundle_path = ROOT.parent / "semiology_atlas_ledger" / "website" / "data" / "atlas_bundle.json"
+        bundle_path = ROOT / "data" / "atlas_bundle.json"
         bundle = json.loads(bundle_path.read_text())
         self.assertEqual("atlas-public-bundle-1.6.0", str(bundle["schema_version"]))
         linked_sign_ids = {
@@ -1147,21 +1146,25 @@ class CanonicalV16SourceBackedSignTest(unittest.TestCase):
         self.assertEqual("Alien limb phenomenon (ictal)", names_by_id["71"])
 
     def test_canonical_browser_groups_every_source_backed_sign(self):
-        canonical_root = ROOT.parent / "semiology_atlas_ledger" / "website"
-        with tempfile.TemporaryDirectory(prefix="semiology-canonical-browser.", dir="/private/tmp") as directory:
+        public_root = ROOT
+        with tempfile.TemporaryDirectory(prefix="semiology-public-browser.") as directory:
             copied_root = Path(directory) / "website"
             shutil.copytree(
-                canonical_root, copied_root,
+                public_root, copied_root,
                 ignore=shutil.ignore_patterns(".git", "docs", "__pycache__", "*.pyc"),
             )
             generator_path = str(copied_root / "generator")
             saved_brain_atlas = sys.modules.pop("brain_atlas", None)
+            saved_clinical_sign_cards = sys.modules.pop("clinical_sign_cards", None)
             try:
                 render = runpy.run_path(str(copied_root / "generator" / "gen_study.py"))
             finally:
                 sys.modules.pop("brain_atlas", None)
+                sys.modules.pop("clinical_sign_cards", None)
                 if saved_brain_atlas is not None:
                     sys.modules["brain_atlas"] = saved_brain_atlas
+                if saved_clinical_sign_cards is not None:
+                    sys.modules["clinical_sign_cards"] = saved_clinical_sign_cards
                 while generator_path in sys.path:
                     sys.path.remove(generator_path)
         browse_ids = {str(row["id"]) for row in render["BROWSE_SIGNS"]}
