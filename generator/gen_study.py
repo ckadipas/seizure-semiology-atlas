@@ -815,7 +815,7 @@ def is_lobe_level_subsection(label):
 # ---- build region-jump pills ----
 pills = []
 for r in region_order:
-    pills.append(f'<button class="pill" data-target="sec-{slug(r)}"><span class="pill-name">{esc(region_short[r])}</span><span class="pill-count" data-region="{esc(r)}">{region_counts[r]}</span></button>')
+    pills.append(f'<button class="pill" data-target="sec-{slug(r)}" style="--rc:{region_colors[r]}"><span class="pill-name">{esc(region_short[r])}</span><span class="pill-count" data-region="{esc(r)}">{region_counts[r]}</span></button>')
 pills_html = "\n".join(pills)
 
 # ---- SINGLE SOURCE OF TRUTH: link each curated card to its meta-analysis ledger
@@ -1007,8 +1007,16 @@ def ledger_evidence_block(cid, notes=""):
                 f'<span class="ev-paper-count">{len(paper["findings"])} finding{"s" if len(paper["findings"]) != 1 else ""}</span>'
                 '</div>'
                 f'{"".join(finding_blocks)}</li>')
-        heading = f'<div class="source-class-heading">Class {esc(evidence_class)}</div>' if evidence_class else ""
-        paper_blocks.append(heading + '<ul class="ev-list">' + "".join(blocks) + '</ul>')
+        paper_list = '<ul class="ev-list">' + "".join(blocks) + '</ul>'
+        if evidence_class:
+            paper_count = len(grouped_papers)
+            paper_blocks.append(
+                '<details class="history-results ev-class-group" open>'
+                f'<summary>Class {esc(evidence_class)} <span>{paper_count} manuscript{"s" if paper_count != 1 else ""}</span></summary>'
+                f'{paper_list}</details>'
+            )
+        else:
+            paper_blocks.append(paper_list)
     family_block = ""
     if families:
         family_rows = "".join(descriptive_family_row(row) for row in families)
@@ -1649,6 +1657,10 @@ for r in region_order:
         <span class="d-label">Lateralization</span>
         <span class="d-value">{lateralization_display(d)}</span>
       </div>
+      <div class="d-row d-phase">
+        <span class="d-label">Phase of Seizure</span>
+        <span class="d-value">{phase_of_seizure_display(d)}</span>
+      </div>
       <div class="d-row d-classification">
         <span class="d-label">ILAE Classification</span>
         <span class="d-value">{classification_card_display(d['id'], 'ILAE_SEIZURE_2025')}</span>
@@ -1656,10 +1668,6 @@ for r in region_order:
       <div class="d-row d-classification">
         <span class="d-label">Lüders Classification</span>
         <span class="d-value">{classification_card_display(d['id'], ('LUDERS_SSC_1998', 'LUDERS_5D_2005'))}</span>
-      </div>
-      <div class="d-row d-phase">
-        <span class="d-label">Phase of Seizure</span>
-        <span class="d-value">{phase_of_seizure_display(d)}</span>
       </div>
       {overview_block}
       {ev_block}
@@ -3566,9 +3574,9 @@ body.filtering .tb-dot{display:block}
 .region-nav{display:flex;gap:6px;overflow-x:auto;padding:6px 14px;-webkit-overflow-scrolling:touch;border-bottom:1px solid var(--line2);scrollbar-width:thin}
 .region-nav::-webkit-scrollbar{height:5px}
 .region-nav::-webkit-scrollbar-thumb{background:#cfd6e2;border-radius:3px}
-.pill{flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:#fff;color:var(--navy);border-radius:20px;padding:4px 11px;font-size:.75rem;font-weight:700;cursor:pointer;transition:all .12s;white-space:nowrap}
-.pill:hover{border-color:var(--teal);color:var(--teal-d);background:#f0fbfd}
-.pill-count{background:#eef1f6;color:var(--muted);border-radius:10px;padding:0 6px;font-size:.66rem;font-weight:700}
+.pill{flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;border:1px solid color-mix(in srgb,var(--rc,var(--navy)) 72%,#07131f);background:var(--rc,var(--navy));color:#fff;border-radius:20px;padding:4px 11px;font-size:.75rem;font-weight:700;cursor:pointer;transition:all .12s;white-space:nowrap}
+.pill:hover{border-color:#fff;background:color-mix(in srgb,var(--rc,var(--navy)) 82%,#07131f);color:#fff}
+.pill-count{background:rgba(255,255,255,.22);color:#fff;border-radius:10px;padding:0 6px;font-size:.66rem;font-weight:700}
 
 .toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:7px 14px}
 .search-wrap{position:relative;display:flex;gap:5px;align-items:center;flex:1 1 330px;max-width:560px}
@@ -3633,24 +3641,24 @@ main,.frontpage-fold,.callout{
 .browse-body{padding:5px 0 2px}
 .browse-section.collapsed .browse-body{display:none}
 .browse-subsection{margin:6px 0 6px 14px;border-left:2px solid #d8e1eb;padding-left:8px}
-.browse-subtoggle{width:100%;display:flex;align-items:center;gap:8px;background:#f4f7fa;color:var(--navy);border:1px solid var(--line);border-radius:6px;padding:6px 9px;font-family:inherit;font-size:.72rem;font-weight:800;cursor:pointer;text-align:left}
-.browse-subtoggle:hover{border-color:var(--teal);background:#f0fbfd}
+.browse-subtoggle{width:100%;display:flex;align-items:center;gap:8px;background:color-mix(in srgb,var(--group-color,var(--navy)) 70%,#263446);color:#fff;border:1px solid color-mix(in srgb,var(--group-color,var(--navy)) 72%,#07131f);border-radius:6px;padding:6px 9px;font-family:inherit;font-size:.72rem;font-weight:800;cursor:pointer;text-align:left}
+.browse-subtoggle:hover{border-color:#fff;background:color-mix(in srgb,var(--group-color,var(--navy)) 82%,#172334)}
 .browse-subsection.collapsed>.browse-subbody{display:none}
 .browse-subsection.collapsed>.browse-subtoggle .browse-chev{transform:rotate(-90deg)}
-.browse-subtoggle .browse-count{margin-left:auto;background:#e1e7ef;color:#536078}
+.browse-subtoggle .browse-count{margin-left:auto;background:rgba(255,255,255,.2);color:#fff}
 .browse-subbody{padding-top:1px}
 .region-category{margin:7px 0 9px 8px;border-left-width:3px}
-.region-category>.browse-subtoggle{background:#eef3f8;font-size:.76rem}
+.region-category>.browse-subtoggle{background:color-mix(in srgb,var(--group-color,var(--navy)) 62%,#334155);font-size:.76rem}
 .region-category>.browse-subbody{padding:2px 0 2px 4px}
 .browse-sign-wrap{margin:6px 0;border-radius:8px}
-.browse-sign{width:100%;display:flex;align-items:center;gap:10px;background:linear-gradient(120deg,color-mix(in srgb,var(--group-color,var(--navy)) 18%,#fff),color-mix(in srgb,var(--group-color,var(--navy)) 27%,#fff));border:1px solid color-mix(in srgb,var(--group-color,var(--navy)) 42%,#fff);border-left:4px solid var(--accent,#8ca0b8);border-radius:8px;padding:8px 12px;text-align:left;font-family:inherit;cursor:pointer}
-.browse-sign:hover{border-color:var(--group-color,var(--navy));background:color-mix(in srgb,var(--group-color,var(--navy)) 24%,#fff);box-shadow:0 2px 9px rgba(15,30,61,.14)}
-.browse-sign-wrap.open .browse-sign{border-color:var(--group-color,var(--navy));background:color-mix(in srgb,var(--group-color,var(--navy)) 28%,#fff);border-radius:8px 8px 0 0}
-.browse-arrow{color:var(--group-color,var(--navy));font-size:1rem}
-.browse-sign-name{flex:1;color:color-mix(in srgb,var(--group-color,var(--navy)) 78%,#07131f);font-size:.84rem;font-weight:700;line-height:1.3}
+.browse-sign{width:100%;display:flex;align-items:center;gap:10px;background:var(--group-color,var(--navy));color:#fff;border:1px solid color-mix(in srgb,var(--group-color,var(--navy)) 70%,#07131f);border-left:4px solid var(--accent,#8ca0b8);border-radius:8px;padding:8px 12px;text-align:left;font-family:inherit;cursor:pointer}
+.browse-sign:hover{border-color:#fff;background:color-mix(in srgb,var(--group-color,var(--navy)) 84%,#07131f);box-shadow:0 2px 9px rgba(15,30,61,.22)}
+.browse-sign-wrap.open .browse-sign{border-color:#fff;background:color-mix(in srgb,var(--group-color,var(--navy)) 78%,#07131f);border-radius:8px 8px 0 0}
+.browse-arrow{color:rgba(255,255,255,.88);font-size:1rem}
+.browse-sign-name{flex:1;color:#fff;font-size:.84rem;font-weight:700;line-height:1.3}
 .browse-meta{display:flex;align-items:center;justify-content:flex-end;gap:4px;flex-wrap:wrap;font-size:.64rem;color:var(--muted)}
-.browse-meta-chip{display:inline-flex;align-items:center;color:#415069;background:rgba(255,255,255,.88);border:1px solid color-mix(in srgb,var(--group-color,var(--navy)) 24%,#fff);border-radius:999px;padding:2px 7px;white-space:nowrap}
-.browse-meta-chip.region{color:color-mix(in srgb,var(--group-color,var(--navy)) 78%,#07131f);background:rgba(255,255,255,.92);border-color:color-mix(in srgb,var(--group-color,var(--navy)) 36%,#fff)}
+.browse-meta-chip{display:inline-flex;align-items:center;background:color-mix(in srgb,var(--group-color,var(--navy)) 72%,#111827);color:#fff;border:1px solid rgba(255,255,255,.42);border-radius:999px;padding:2px 7px;white-space:nowrap}
+.browse-meta-chip.region{color:#fff;background:color-mix(in srgb,var(--group-color,var(--navy)) 58%,#263446);border-color:rgba(255,255,255,.52)}
 .browse-subsection>.browse-subbody>.browse-sign-wrap{margin:4px 8px 4px 10px;border-radius:6px}
 .browse-subsection>.browse-subbody>.browse-sign-wrap>.browse-sign{gap:7px;border-left-width:3px;border-radius:6px;padding:4px 8px}
 .browse-subsection>.browse-subbody>.browse-sign-wrap>.browse-sign .browse-arrow{font-size:.82rem}
@@ -3829,8 +3837,8 @@ main,.frontpage-fold,.callout{
 
 @media (min-width:761px){
   .detail-inner{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:0 24px}
-  .d-loc,.d-lat{grid-column:span 3}
-  .d-classification,.d-phase{grid-column:span 2}
+  .d-loc,.d-lat,.d-phase{grid-column:span 2}
+  .d-classification{grid-column:span 3}
   .d-map,.d-cite{grid-column:1/-1}
   .evidence-overview,.card-source-shell{grid-column:1/-1}
 }
@@ -3870,7 +3878,6 @@ body.quiz .lib-chip{display:none}
 .ev-paper-group{padding-left:0!important;border-left:0!important}
 .ev-paper{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .ev-paper-file{overflow-wrap:anywhere}
-.source-class-heading{margin:8px 0 5px;padding:4px 8px;border-left:3px solid #0a6472;color:#0a6472;background:#edf8fa;font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em}
 .ev-paper-count{margin-left:auto;font-size:.68rem;font-weight:800;color:#0a6472;background:#e7f6f8;border-radius:999px;padding:2px 7px;white-space:nowrap}
 .reviewed-card-evidence{padding-left:10px;border-left:2px solid #e8b878}
 .ev-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
@@ -5162,8 +5169,8 @@ function appendSignBucket(parent,label,ids,contextRegion='',extraClass=''){
   toggle.append(chev,name,count); subsection.append(toggle,body); parent.append(subsection);
 }
 
-function appendBroadClassificationBucket(parent,label,ids,contextRegion=''){
-  appendSignBucket(parent,'General or source-wide '+String(label||'').toLocaleLowerCase()+' findings',ids,contextRegion,'broad-mappings');
+function appendDirectClassificationSigns(parent,label,ids,contextRegion=''){
+  sortSignIds(ids||[]).forEach(id=>appendBrowseSign(parent,id,label,contextRegion));
 }
 
 function buildBrowseView(mode){
@@ -5190,7 +5197,7 @@ function buildBrowseView(mode){
       const seen=new Set();
       (group.children||[]).forEach(child=>appendClassificationNode(body,child,null,seen));
       const general=eligibleIds([...(group.sign_ids||[]),...(group.broad_sign_ids||[])],null,seen,true);
-      appendBroadClassificationBucket(body,group.label,general);
+      appendDirectClassificationSigns(body,group.label,general);
     }
     section.append(toggle,body); fragment.append(section);
   });
@@ -5230,7 +5237,7 @@ function appendRegionCategoryContent(parent,category,mode,region){
   if(mode==='luders'||mode==='ilae'){
     (category.group.children||[]).forEach(child=>appendClassificationNode(parent,child,allowed,seen,region));
     const general=eligibleIds([...(category.group.sign_ids||[]),...(category.group.broad_sign_ids||[])],allowed,seen,true);
-    appendBroadClassificationBucket(parent,category.label,general,region);
+    appendDirectClassificationSigns(parent,category.label,general,region);
   }
   const remaining=eligibleIds(category.ids,allowed,seen,true);
   if(mode==='luders') appendSignBucket(parent,'Not yet placed within Lüders classification',remaining,region,'unclassified-mappings');

@@ -971,8 +971,8 @@ class NeutralMembershipRendererTest(unittest.TestCase):
         self.assertEqual(
             [
                 "Brain Region / Localization", "Lateralization",
-                "ILAE Classification", "Lüders Classification",
-                "Phase of Seizure", "Brief Summary",
+                "Phase of Seizure", "ILAE Classification",
+                "Lüders Classification", "Brief Summary",
             ],
             labels[:6],
         )
@@ -987,8 +987,8 @@ class NeutralMembershipRendererTest(unittest.TestCase):
             ".detail-inner{display:grid;grid-template-columns:repeat(6,minmax(0,1fr))",
             html,
         )
-        self.assertIn(".d-loc,.d-lat{grid-column:span 3}", html)
-        self.assertIn(".d-classification,.d-phase{grid-column:span 2}", html)
+        self.assertIn(".d-loc,.d-lat,.d-phase{grid-column:span 2}", html)
+        self.assertIn(".d-classification{grid-column:span 3}", html)
         self.assertIn(
             ".evidence-overview,.card-source-shell{grid-column:1/-1}", html
         )
@@ -999,12 +999,16 @@ class NeutralMembershipRendererTest(unittest.TestCase):
             html,
             r'class="region-section"[^>]+style="--group-color:#[0-9a-f]{6}"',
         )
-        self.assertIn("var(--group-color,var(--navy))", html)
-        self.assertNotIn(
-            ".browse-sign{width:100%;display:flex;align-items:center;gap:10px;"
-            "background:linear-gradient(120deg,#102a43,#173a54)",
+        self.assertIn("background:var(--group-color,var(--navy));color:#fff", html)
+        self.assertRegex(html, r'class="pill"[^>]+style="--rc:#[0-9a-f]{6}"')
+        self.assertIn("background:var(--rc,var(--navy));color:#fff", html)
+        self.assertNotIn("background:#f4f7fa;color:var(--navy)", html)
+        self.assertIn(
+            "background:color-mix(in srgb,var(--group-color,var(--navy)) 72%,#111827);color:#fff",
             html,
         )
+        self.assertNotIn("background:rgba(255,255,255,.88)", html)
+        self.assertNotIn("General or source-wide", html)
 
     def test_phase_display_normalizes_the_category_and_keeps_source_wording(self):
         display = self.render["phase_of_seizure_display"]({
@@ -1056,7 +1060,26 @@ class NeutralMembershipRendererTest(unittest.TestCase):
         html, linked_count, _ = self.render["ledger_evidence_block"](card["sign_id"])
         self.assertGreater(linked_count, 0)
         self.assertTrue(any(f"Class {value}" in html for value in expected_classes))
+        self.assertIn(
+            '<details class="history-results ev-class-group" open>', html
+        )
         self.assertNotIn("Class UNCLASSIFIED", html)
+
+        statistical_card = next(
+            row for row in cards
+            if any(
+                finding.get("statistics")
+                for source in self.render["source_groups_for_sign"](row["sign_id"]).values()
+                for finding, _relation in source["findings"]
+            )
+        )
+        statistical_html, _, _ = self.render["ledger_evidence_block"](
+            statistical_card["sign_id"]
+        )
+        self.assertRegex(
+            statistical_html,
+            r"Result reported in this paper:|results reported in this paper",
+        )
 
     def test_default_browser_excludes_source_less_signs(self):
         visible_names = {row["sign"] for row in self.render["BROWSE_SIGNS"]}
