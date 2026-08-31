@@ -5,13 +5,804 @@ import hashlib
 import json
 import re
 import runpy
+import shutil
 import subprocess
+import sys
+import tempfile
 import unittest
 from datetime import datetime, timezone
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+class AtlasBundleValidatorTest(unittest.TestCase):
+    @staticmethod
+    def neutral_membership_bundle():
+        bundle = json.loads((ROOT / "data" / "atlas_bundle.json").read_text())
+        bundle["schema_version"] = "atlas-public-bundle-1.6.0"
+        for source in bundle["corpus"]["sources"]:
+            for finding in source["findings"]:
+                finding["sign_ids"] = list(dict.fromkeys(
+                    str(sign_id)
+                    for field in ("exact_sign_ids", "related_sign_ids")
+                    for sign_id in finding.get(field) or []
+                ))
+                finding.pop("exact_sign_ids", None)
+                finding.pop("related_sign_ids", None)
+        context = bundle["evidence_context"]
+        for row in context["contexts"]:
+            row["sign_links"] = [
+                {"public_sign_id": public_sign_id}
+                for public_sign_id in dict.fromkeys(
+                    str(link["public_sign_id"])
+                    for link in row.get("sign_links") or []
+                )
+            ]
+        context_payload = dict(context)
+        context_payload.pop("semantic_digest")
+        context["semantic_digest"] = hashlib.sha256(json.dumps(
+            context_payload, sort_keys=True, separators=(",", ":"),
+            ensure_ascii=False,
+        ).encode()).hexdigest()
+        bundle["evidence_authority"]["current_projection_audit"][
+            "evidence_context_digest"
+        ] = context["semantic_digest"]
+        payload = dict(bundle)
+        payload.pop("semantic_digest")
+        bundle["semantic_digest"] = hashlib.sha256(json.dumps(
+            payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+        ).encode()).hexdigest()
+        return bundle
+
+    @staticmethod
+    def new_contract_bundle():
+        bundle = AtlasBundleValidatorTest.neutral_membership_bundle()
+        location_labels = {
+            "REG:TEMPORAL": "Temporal", "REG:FRONTAL": "Frontal",
+            "REG:PARIETAL": "Parietal", "REG:OCCIPITAL": "Occipital",
+            "REG:INSULAR": "Insular", "REG:LIMBIC": "Limbic",
+            "REG:DEEP_SUBCORTICAL": "Deep/Subcortical",
+        }
+        context = bundle["evidence_context"]
+        context["relationships"].pop("sign_axis_contexts", None)
+        for row in context["relationships"].get("statistic_signs") or []:
+            row.pop("relation", None)
+        context["accounting"].pop("sign_axis_contexts", None)
+        for row in context["contexts"]:
+            row.pop("sign_axis_context_link_ids", None)
+            row["axis_modifiers"] = []
+        context_by_finding = {
+            str(row["finding_ref"]): row for row in context["contexts"]
+        }
+        propagation_assertions = [
+            row for row in context["assertions_by_id"].values()
+            if str(row.get("normalized_value") or "")
+            == "REG:MULTIREGIONAL_PROPAGATION"
+        ]
+        for assertion in propagation_assertions:
+            finding_ref = str(assertion["finding_ref"])
+            finding_context = context_by_finding[finding_ref]
+            finding_context.setdefault("axis_modifiers", []).append({
+                "modifier_reference_id": f'AXIS_MODIFIER:{assertion["assertion_id"]}',
+                "assertion_id": str(assertion["assertion_id"]),
+                "finding_ref": finding_ref,
+                "axis": str(assertion["axis"]),
+                "key": "PROPAGATION",
+                "label": "Propagation",
+                "modifier_type": "PROPAGATION",
+                "normalized_value": "REG:MULTIREGIONAL_PROPAGATION",
+                "source_sign_ids": [],
+                "public_sign_ids": [
+                    str(link["public_sign_id"])
+                    for link in finding_context.get("sign_links") or []
+                ],
+            })
+        mapped_modifier_count = sum(
+            len(row.get("public_sign_ids") or [])
+            for context_row in context["contexts"]
+            for row in context_row.get("axis_modifiers") or []
+        )
+        context["accounting"]["structured_propagation"] = {
+            "structured_inputs": len(propagation_assertions),
+            "finding_context_modifier_references": len(propagation_assertions),
+            "mapped_sign_modifier_references_expected": mapped_modifier_count,
+            "mapped_sign_modifier_references_generated": 0,
+            "reported_target_contamination": 0,
+            "placement_contribution_leakage": 0,
+        }
+        synthesis = bundle["evidence_synthesis"]
+        for field in (
+            "finding_axes", "sign_finding_axes",
+            "terminal_classification_manifest", "terminal_classification_profile",
+        ):
+            synthesis.pop(field, None)
+        target_fields = {
+            "key", "label", "raw", "origins", "finding_refs", "target_level",
+            "region_id", "parent_region_id", "area_id", "brodmann_label",
+        }
+
+        def minimal_target(target, allowed_finding_refs):
+            projected = {
+                field: value for field, value in target.items() if field in target_fields
+            }
+            projected["raw"] = [
+                value for value in projected.get("raw") or []
+                if " ".join(re.findall(
+                    r"[a-z0-9]+", str(value or "").casefold()
+                )) not in {
+                    "propagation", "multiregional propagation",
+                    "reg multiregional propagation",
+                }
+            ]
+            allowed = {str(value) for value in allowed_finding_refs}
+            finding_refs = list(dict.fromkeys(
+                str(value) for value in (
+                    target.get("finding_refs")
+                    or [row.get("finding_ref") for row in target.get("details") or []]
+                ) if value and str(value) in allowed
+            ))
+            projected["finding_refs"] = finding_refs or list(allowed)
+            return projected
+
+        for card in synthesis["axis_summaries"]:
+            for field in (
+                "categorization_state", "terminal_classification",
+                "terminal_reason", "terminal_reason_text", "missing_relationship",
+                "supplemental_projection", "child_group_evidence", "exceptions",
+            ):
+                card.pop(field, None)
+            reported_targets = [
+                minimal_target(target, card.get("row_finding_refs") or [])
+                for target in card["target_contract"].get("reported_targets") or []
+                if " ".join(re.findall(
+                    r"[a-z0-9]+", str(target.get("key") or "").casefold()
+                )) != "reg multiregional propagation"
+            ]
+            card["target_contract"] = {"reported_targets": reported_targets}
+            if "limit this packet" in str(card.get("plain_summary") or "").casefold():
+                card["plain_summary"] = (
+                    "In the cited 49-case cohort, EEG abnormalities were left-sided "
+                    "in 38 cases, right-sided in 2, and unclear in 9."
+                )
+            card["plain_summary"] = re.sub(
+                r"(?<![A-Za-z0-9])F\d{3}(?![A-Za-z0-9])", "reviewed finding",
+                str(card.get("plain_summary") or ""),
+            ).replace("do not assign", "does not include")
+            for contribution in card.get("contributions") or []:
+                for field in (
+                    "projection_disposition", "counted_under_sign_id",
+                    "counted_under_label", "projection_reason",
+                    "projection_unselected_statistic_ids", "weight_status",
+                    "potential_weight",
+                ):
+                    contribution.pop(field, None)
+
+        cards_by_pair = {
+            (str(card["sign_id"]), str(card["axis"])): card
+            for card in synthesis["axis_summaries"]
+        }
+        head_id = "SGRP:b2d45c8a9bd12b5bcf07"
+        head_localization = cards_by_pair[(head_id, "LOCALIZATION")]
+        head_source = cards_by_pair[(head_id, "LATERALIZATION")]
+        for field in (
+            "context_ids", "contributions", "declared_source_work_ids",
+            "related_finding_refs", "row_finding_count", "row_finding_refs",
+            "row_lineage", "row_statistic_count", "row_statistic_ids",
+            "row_work_count", "row_work_ids",
+        ):
+            head_localization[field] = json.loads(json.dumps(head_source[field]))
+        required_localizations = {
+            head_id: "The source cohort designates temporal localization for this semiology.",
+            "SGRP:1834989c017725d8d64a": (
+                "The source cohort designates temporal localization for this "
+                "paroxysmal speech disturbance."
+            ),
+        }
+        for sign_id, summary in required_localizations.items():
+            card = cards_by_pair[(sign_id, "LOCALIZATION")]
+            card["plain_summary"] = summary
+            card["target_contract"] = {"reported_targets": [{
+                "key": "REG:TEMPORAL",
+                "label": "Temporal",
+                "raw": ["REG:TEMPORAL"],
+                "origins": ["SOURCE_COHORT_DESIGNATION"],
+                "finding_refs": [str(card["row_finding_refs"][0])],
+                "target_level": "REGION",
+                "region_id": "REG:TEMPORAL",
+            }]}
+            sign = next(row for row in bundle["signs"] if str(row["id"]) == sign_id)
+            sign["regions"] = ["Temporal"]
+            sign["region"] = sign["loc"] = "Temporal"
+            sign["sub"] = "Source-reported localization in linked evidence"
+            sign["subs_by_region"] = {
+                "Temporal": "Source-reported localization in linked evidence"
+            }
+        regions_by_sign = {str(sign["id"]): [] for sign in bundle["signs"]}
+        areas_by_sign = {str(sign["id"]): [] for sign in bundle["signs"]}
+        for card in synthesis["axis_summaries"]:
+            if card.get("axis") != "LOCALIZATION":
+                continue
+            sign_id = str(card["sign_id"])
+            for target in card["target_contract"]["reported_targets"]:
+                if (str(target.get("target_level") or "").upper() == "STATUS"
+                        or str(target.get("key") or "").casefold() == "nonassoc"):
+                    continue
+                region_id = next((
+                    str(value) for value in (
+                        target.get("region_id"), target.get("parent_region_id"),
+                        target.get("key"),
+                    ) if str(value or "") in location_labels
+                ), "")
+                if region_id and location_labels[region_id] not in regions_by_sign[sign_id]:
+                    regions_by_sign[sign_id].append(location_labels[region_id])
+                area_id = str(target.get("area_id") or "").removeprefix("BA:")
+                if area_id and area_id not in areas_by_sign[sign_id]:
+                    areas_by_sign[sign_id].append(area_id)
+        by_sign = bundle["brodmann"]["mapping"]["by_sign"]
+        for sign in bundle["signs"]:
+            sign_id = str(sign["id"])
+            regions = regions_by_sign[sign_id] or ["No localization stated"]
+            sign["regions"] = regions
+            sign["region"] = "; ".join(regions)
+            sign["loc"] = sign["region"]
+            if areas_by_sign[sign_id]:
+                by_sign[sign_id] = {
+                    "areas": areas_by_sign[sign_id], "sign": sign["sign"],
+                }
+            else:
+                by_sign.pop(sign_id, None)
+        bundle["evidence_authority"]["current_projection_audit"][
+            "localization_rows_checked_against_browse_regions"
+        ] = sum(bool(value) for value in regions_by_sign.values())
+        AtlasBundleValidatorTest.sync_sign_axis_summaries(bundle)
+        context_payload = dict(context)
+        context_payload.pop("semantic_digest")
+        context["semantic_digest"] = hashlib.sha256(json.dumps(
+            context_payload, sort_keys=True, separators=(",", ":"),
+            ensure_ascii=False,
+        ).encode()).hexdigest()
+        bundle["evidence_authority"]["current_projection_audit"][
+            "evidence_context_digest"
+        ] = context["semantic_digest"]
+        payload = dict(bundle)
+        payload.pop("semantic_digest")
+        bundle["semantic_digest"] = hashlib.sha256(json.dumps(
+            payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+        ).encode()).hexdigest()
+        return bundle
+
+    @staticmethod
+    def sync_sign_axis_summaries(bundle):
+        location_ids = {
+            "REG:TEMPORAL", "REG:FRONTAL", "REG:PARIETAL", "REG:OCCIPITAL",
+            "REG:INSULAR", "REG:LIMBIC", "REG:DEEP_SUBCORTICAL",
+        }
+        relationships = bundle["evidence_context"]["relationships"]
+        existing = {
+            str(row["synthesis_id"]): row
+            for row in relationships.get("sign_axis_summaries") or []
+        }
+        summaries = []
+        for card in bundle["evidence_synthesis"]["axis_summaries"]:
+            synthesis_id = str(card["synthesis_id"])
+            targets = card["target_contract"]["reported_targets"]
+            target_keys = sorted({
+                str(target["key"]) for target in targets if target.get("key")
+            })
+            region_ids = set()
+            if str(card["axis"]) == "LOCALIZATION":
+                for target in targets:
+                    if (
+                        str(target.get("target_level") or "").upper() == "STATUS"
+                        or str(target.get("key") or "").casefold() == "nonassoc"
+                    ):
+                        continue
+                    region_id = next((
+                        str(value) for value in (
+                            target.get("key"), target.get("region_id"),
+                            target.get("parent_region_id"),
+                        ) if str(value or "") in location_ids
+                    ), "")
+                    if region_id:
+                        region_ids.add(region_id)
+            summaries.append({
+                "sign_axis_summary_link_id": str(
+                    existing.get(synthesis_id, {}).get("sign_axis_summary_link_id")
+                    or f"SIGN_AXIS_SUMMARY:{synthesis_id}"
+                ),
+                "synthesis_id": synthesis_id,
+                "axis": str(card["axis"]),
+                "public_sign_ids": [str(card["sign_id"])],
+                "context_ids": list(card.get("context_ids") or []),
+                "region_ids": sorted(region_ids),
+                "brodmann_area_ids": [
+                    value[3:] for value in target_keys if value.startswith("BA:")
+                ],
+                "reported_target_keys": target_keys,
+                "modifiers": list(card["target_contract"].get("modifiers") or []),
+            })
+        relationships["sign_axis_summaries"] = summaries
+        bundle["evidence_context"]["accounting"]["sign_axis_summaries"] = len(
+            summaries
+        )
+
+    @staticmethod
+    def run_validator(bundle):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "atlas_bundle.json"
+            path.write_text(json.dumps(bundle), encoding="utf-8")
+            return subprocess.run(
+                [sys.executable, str(ROOT / "tools" / "validate_atlas_bundle.py"), str(path)],
+                capture_output=True,
+                text=True,
+            )
+
+    @staticmethod
+    def refresh_digests(bundle):
+        context = bundle["evidence_context"]
+        context_payload = dict(context)
+        context_payload.pop("semantic_digest")
+        context["semantic_digest"] = hashlib.sha256(json.dumps(
+            context_payload, sort_keys=True, separators=(",", ":"),
+            ensure_ascii=False,
+        ).encode()).hexdigest()
+        bundle["evidence_authority"]["current_projection_audit"][
+            "evidence_context_digest"
+        ] = context["semantic_digest"]
+        payload = dict(bundle)
+        payload.pop("semantic_digest")
+        bundle["semantic_digest"] = hashlib.sha256(json.dumps(
+            payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+        ).encode()).hexdigest()
+
+    @classmethod
+    def bundle_with_mapped_propagation_modifier(cls):
+        bundle = cls.new_contract_bundle()
+        card = next(
+            row for row in bundle["evidence_synthesis"]["axis_summaries"]
+            if row["target_contract"]["reported_targets"] and row["contributions"]
+        )
+        sign_id = str(card["sign_id"])
+        placement_refs = set(card["row_finding_refs"])
+        modifier_context = next(
+            row for row in bundle["evidence_context"]["contexts"]
+            if str(row["finding_ref"]) not in placement_refs
+            and str(row["source_work_id"]) not in set(card["row_work_ids"])
+            and not row.get("sign_links")
+            and not row.get("axis_modifiers")
+        )
+        modifier_ref = str(modifier_context["finding_ref"])
+        modifier_context["sign_links"] = [
+            *modifier_context.get("sign_links", []), {"public_sign_id": sign_id},
+        ]
+        finding = next(
+            row
+            for source in bundle["corpus"]["sources"]
+            for row in source["findings"]
+            if str(row["source_finding_ref"]) == modifier_ref
+        )
+        finding["sign_ids"] = list(dict.fromkeys([
+            *finding.get("sign_ids", []), sign_id,
+        ]))
+        assertion_id = "AXIS:public-modifier-contract-test"
+        bundle["evidence_context"]["assertions_by_id"][assertion_id] = {
+            "assertion_id": assertion_id,
+            "axis": str(card["axis"]),
+            "finding_ref": modifier_ref,
+            "normalized_value": "REG:MULTIREGIONAL_PROPAGATION",
+            "assertion_scope": "FINDING",
+            "reviewed_assertion_text": "",
+            "locators": "",
+            "support_page": None,
+            "support_excerpt": "",
+            "support_status": "SUPPORTED",
+        }
+        modifier_context["assertion_ids"] = list(dict.fromkeys([
+            *modifier_context.get("assertion_ids", []), assertion_id,
+        ]))
+        modifier_context.setdefault("axis_modifiers", []).append({
+            "modifier_reference_id": f"AXIS_MODIFIER:{assertion_id}",
+            "assertion_id": assertion_id,
+            "finding_ref": modifier_ref,
+            "axis": str(card["axis"]),
+            "key": "PROPAGATION",
+            "label": "Propagation",
+            "modifier_type": "PROPAGATION",
+            "normalized_value": "REG:MULTIREGIONAL_PROPAGATION",
+            "source_sign_ids": [],
+            "public_sign_ids": [sign_id],
+        })
+        bundle["evidence_context"]["accounting"]["assertions"] = len(
+            bundle["evidence_context"]["assertions_by_id"]
+        )
+        modifier = {
+            "key": "PROPAGATION",
+            "label": "Propagation",
+            "modifier_type": "PROPAGATION",
+            "raw": ["REG:MULTIREGIONAL_PROPAGATION"],
+            "origins": ["STRUCTURED_SOURCE_AXIS_ASSERTION"],
+            "finding_refs": [modifier_ref],
+            "assertion_ids": [assertion_id],
+        }
+        card["target_contract"]["modifiers"] = [modifier]
+        card["context_ids"] = list(dict.fromkeys([
+            *card.get("context_ids", []), str(modifier_context["context_id"]),
+        ]))
+        propagation_accounting = bundle["evidence_context"]["accounting"][
+            "structured_propagation"
+        ]
+        propagation_accounting["structured_inputs"] += 1
+        propagation_accounting["finding_context_modifier_references"] += 1
+        propagation_accounting["mapped_sign_modifier_references_expected"] += 1
+        propagation_accounting["mapped_sign_modifier_references_generated"] += 1
+        cls.sync_sign_axis_summaries(bundle)
+        cls.refresh_digests(bundle)
+        return bundle, card, modifier, modifier_context
+
+    def test_validator_accepts_minimal_target_contract(self):
+        bundle = self.new_contract_bundle()
+        self.assertEqual("atlas-public-bundle-1.6.0", bundle["schema_version"])
+        synthesis = bundle["evidence_synthesis"]
+        self.assertNotIn("terminal_classification_manifest", synthesis)
+        self.assertNotIn("terminal_classification_profile", synthesis)
+        self.assertNotIn("finding_axes", synthesis)
+        self.assertNotIn("sign_finding_axes", synthesis)
+        for card in synthesis["axis_summaries"]:
+            self.assertTrue({
+                "categorization_state", "terminal_classification", "terminal_reason",
+                "terminal_reason_text", "missing_relationship",
+                "supplemental_projection", "child_group_evidence", "exceptions",
+            }.isdisjoint(card))
+            self.assertEqual({"reported_targets"}, set(card["target_contract"]))
+            self.assertTrue(all(
+                set(target) <= {
+                    "key", "label", "raw", "origins", "finding_refs", "target_level",
+                    "region_id", "parent_region_id", "area_id", "brodmann_label",
+                }
+                and "details" not in target
+                and "contexts" not in target
+                and "scopes" not in target
+                for target in card["target_contract"]["reported_targets"]
+            ))
+            self.assertTrue(all(
+                " ".join(re.findall(
+                    r"[a-z0-9]+", str(target.get("key") or "").casefold()
+                )) != "reg multiregional propagation"
+                for target in card["target_contract"]["reported_targets"]
+            ))
+            for contribution in card.get("contributions") or []:
+                self.assertTrue({
+                    "projection_disposition", "counted_under_sign_id",
+                    "counted_under_label", "projection_reason",
+                    "projection_unselected_statistic_ids", "weight_status",
+                    "potential_weight",
+                }.isdisjoint(contribution))
+        self.assertTrue(all(
+            set(link) == {"public_sign_id"}
+            for row in bundle["evidence_context"]["contexts"]
+            for link in row.get("sign_links") or []
+        ))
+        self.assertTrue(all(
+            "sign_ids" in finding
+            and "exact_sign_ids" not in finding
+            and "related_sign_ids" not in finding
+            and len(finding["sign_ids"]) == len(set(finding["sign_ids"]))
+            for source in bundle["corpus"]["sources"]
+            for finding in source["findings"]
+        ))
+        result = self.run_validator(bundle)
+        self.assertEqual(0, result.returncode, result.stderr)
+        bundle["schema_version"] = "atlas-public-bundle-1.5.0"
+        result = self.run_validator(bundle)
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("unexpected bundle schema version", result.stderr)
+
+    def test_required_groups_expose_temporal_localization_without_internal_prose(self):
+        bundle = self.new_contract_bundle()
+        sign_labels = {str(sign["id"]): sign["sign"] for sign in bundle["signs"]}
+        required = {
+            "SGRP:b2d45c8a9bd12b5bcf07": "Ictal tonic head version",
+            "SGRP:1834989c017725d8d64a": "Paroxysmal speech disturbance",
+        }
+        cards = {
+            (str(card["sign_id"]), card["axis"]): card
+            for card in bundle["evidence_synthesis"]["axis_summaries"]
+        }
+        for sign_id, label in required.items():
+            self.assertEqual(label, sign_labels[sign_id])
+            card = cards[(sign_id, "LOCALIZATION")]
+            self.assertIn(
+                "Temporal",
+                {target["label"] for target in card["target_contract"]["reported_targets"]},
+            )
+            self.assertNotRegex(
+                card["plain_summary"],
+                r"(?i)limit this packet|do not assign|(?<![A-Za-z0-9])F\d{3}(?![A-Za-z0-9])",
+            )
+            self.assertNotIn("exceptions", card)
+
+        result = self.run_validator(bundle)
+        self.assertEqual(0, result.returncode, result.stderr)
+
+    def test_validator_accepts_mapped_modifier_without_count_or_weight_effect(self):
+        bundle, card, modifier, _context = (
+            self.bundle_with_mapped_propagation_modifier()
+        )
+        self.assertTrue(set(modifier["finding_refs"]).isdisjoint(
+            card["row_finding_refs"]
+        ))
+        self.assertEqual(card["row_finding_count"], len(card["row_finding_refs"]))
+        self.assertEqual(card["row_work_count"], len(card["contributions"]))
+
+        result = self.run_validator(bundle)
+
+        self.assertEqual(0, result.returncode, result.stderr)
+
+    def test_validator_rejects_uncontracted_evidence_context_fields(self):
+        def add_sequence_component_private_field(context):
+            component_id = "SEQCOMP:public-contract-test"
+            finding_context = context["contexts"][0]
+            context["sequence_components_by_id"][component_id] = {
+                "component_id": component_id,
+                "finding_ref": str(finding_context["finding_ref"]),
+                "sign_id": "SRC:public-contract-test",
+                "phase": "ICTAL",
+                "component_ordinal": 1,
+                "public_sign_ids": [],
+                "private_audit_note": "must not cross the public boundary",
+            }
+            finding_context["sequence_component_ids"].append(component_id)
+
+        cases = {
+            "top level": (
+                lambda context: context.__setitem__(
+                    "private_release_audit", {"owner_only": True}
+                ),
+                "evidence-context top-level fields changed",
+            ),
+            "context row": (
+                lambda context: context["contexts"][0].__setitem__(
+                    "private_audit_note", "must not cross the public boundary"
+                ),
+                "evidence-context row fields changed",
+            ),
+            "relationship collection": (
+                lambda context: context["relationships"].__setitem__(
+                    "private_review_links", []
+                ),
+                "evidence-context relationship fields changed",
+            ),
+            "finding-location row": (
+                lambda context: context["relationships"][
+                    "finding_locations"
+                ][0].__setitem__("private_audit_note", "owner only"),
+                "finding-location fields changed",
+            ),
+            "classification row": (
+                lambda context: context["relationships"][
+                    "classifications"
+                ][0].__setitem__("private_audit_note", "owner only"),
+                "classification-link fields changed",
+            ),
+            "assertion row": (
+                lambda context: next(iter(
+                    context["assertions_by_id"].values()
+                )).__setitem__("private_audit_note", "owner only"),
+                "axis-assertion fields changed",
+            ),
+            "statistic row": (
+                lambda context: next(iter(
+                    context["statistics_by_id"].values()
+                )).__setitem__("private_audit_note", "owner only"),
+                "statistic-context fields changed",
+            ),
+            "sequence-component row": (
+                add_sequence_component_private_field,
+                "sequence-component fields changed",
+            ),
+            "accounting": (
+                lambda context: context["accounting"].__setitem__(
+                    "private_audit_count", 1
+                ),
+                "evidence-context accounting does not reconcile",
+            ),
+        }
+        for label, (mutate, expected) in cases.items():
+            with self.subTest(label=label):
+                bundle = self.new_contract_bundle()
+                mutate(bundle["evidence_context"])
+                self.refresh_digests(bundle)
+
+                result = self.run_validator(bundle)
+
+                self.assertNotEqual(0, result.returncode)
+                self.assertIn(expected, result.stderr)
+
+    def test_validator_rejects_invalid_or_placement_driving_modifiers(self):
+        cases = {
+            "unexpected field": (
+                lambda _bundle, _card, modifier, _context:
+                modifier.__setitem__("details", []),
+                "modifier fields changed",
+            ),
+            "unknown type": (
+                lambda _bundle, _card, modifier, _context:
+                modifier.__setitem__("modifier_type", "PLACEMENT"),
+                "unknown target modifier",
+            ),
+            "count leakage": (
+                lambda _bundle, card, modifier, context: (
+                    card["row_finding_refs"].append(modifier["finding_refs"][0]),
+                    card["context_ids"].append(context["context_id"]),
+                    card.__setitem__("row_finding_count", card["row_finding_count"] + 1),
+                ),
+                "modifier-only finding entered placement counts",
+            ),
+            "weight leakage": (
+                lambda _bundle, card, _modifier, context: (
+                    card["row_work_ids"].append(str(context["source_work_id"])),
+                    card["contributions"].append({
+                        "work_id": str(context["source_work_id"]),
+                    }),
+                    card.__setitem__("row_work_count", card["row_work_count"] + 1),
+                ),
+                "modifier-only work entered placement weight",
+            ),
+        }
+        for label, (mutate, expected) in cases.items():
+            with self.subTest(label=label):
+                bundle, card, modifier, context = (
+                    self.bundle_with_mapped_propagation_modifier()
+                )
+                mutate(bundle, card, modifier, context)
+                self.refresh_digests(bundle)
+                result = self.run_validator(bundle)
+                self.assertNotEqual(0, result.returncode)
+                self.assertIn(expected, result.stderr)
+
+    def test_validator_rejects_propagation_hidden_in_reported_target_payload(self):
+        bundle = self.new_contract_bundle()
+        card = next(
+            row for row in bundle["evidence_synthesis"]["axis_summaries"]
+            if row["target_contract"]["reported_targets"]
+        )
+        card["target_contract"]["reported_targets"].append({
+            "key": "RAW:propagation-context",
+            "label": "Propagation",
+            "raw": ["REG:MULTIREGIONAL_PROPAGATION"],
+            "origins": ["STRUCTURED_SOURCE_AXIS_ASSERTION"],
+            "finding_refs": [card["row_finding_refs"][0]],
+            "target_level": "UNRESOLVED",
+        })
+        self.refresh_digests(bundle)
+
+        result = self.run_validator(bundle)
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("propagation is not a reported target", result.stderr)
+
+    def test_validator_rejects_sign_axis_summary_divergence(self):
+        mutations = {
+            "targets": lambda summary: summary["reported_target_keys"].append(
+                "REG:OCCIPITAL"
+            ),
+            "contexts": lambda summary: summary.__setitem__("context_ids", []),
+            "modifiers": lambda summary: summary.__setitem__("modifiers", []),
+        }
+        for label, mutate in mutations.items():
+            with self.subTest(label=label):
+                bundle, card, _modifier, _context = (
+                    self.bundle_with_mapped_propagation_modifier()
+                )
+                summary = next(
+                    row for row in bundle["evidence_context"]["relationships"][
+                        "sign_axis_summaries"
+                    ]
+                    if str(row["synthesis_id"]) == str(card["synthesis_id"])
+                )
+                mutate(summary)
+                self.refresh_digests(bundle)
+                result = self.run_validator(bundle)
+                self.assertNotEqual(0, result.returncode)
+                self.assertIn(
+                    "sign-axis summary differs from its referenced card",
+                    result.stderr,
+                )
+
+    def test_validator_rejects_duplicate_summary_and_inexact_accounting(self):
+        bundle = self.new_contract_bundle()
+        summaries = bundle["evidence_context"]["relationships"][
+            "sign_axis_summaries"
+        ]
+        summaries.append(json.loads(json.dumps(summaries[0])))
+        bundle["evidence_context"]["accounting"]["sign_axis_summaries"] += 1
+        self.refresh_digests(bundle)
+        duplicate = self.run_validator(bundle)
+        self.assertNotEqual(0, duplicate.returncode)
+        self.assertIn("duplicate sign-axis summary", duplicate.stderr)
+
+        bundle = self.new_contract_bundle()
+        bundle["evidence_context"]["accounting"]["sign_axis_summaries"] += 1
+        self.refresh_digests(bundle)
+        accounting = self.run_validator(bundle)
+        self.assertNotEqual(0, accounting.returncode)
+        self.assertIn("evidence-context accounting does not reconcile", accounting.stderr)
+
+        bundle = self.new_contract_bundle()
+        bundle["evidence_context"]["accounting"].pop("structured_propagation")
+        self.refresh_digests(bundle)
+        missing = self.run_validator(bundle)
+        self.assertNotEqual(0, missing.returncode)
+        self.assertIn("evidence-context accounting does not reconcile", missing.stderr)
+
+    def test_validator_rejects_axis_summary_exceptions_field(self):
+        bundle = self.new_contract_bundle()
+        bundle["evidence_synthesis"]["axis_summaries"][0]["exceptions"] = [
+            "Clinically clean prose still belongs outside the public card contract."
+        ]
+        payload = dict(bundle)
+        payload.pop("semantic_digest")
+        bundle["semantic_digest"] = hashlib.sha256(json.dumps(
+            payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+        ).encode()).hexdigest()
+        result = self.run_validator(bundle)
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("obsolete public axis-card field is present", result.stderr)
+
+    def test_validator_rejects_semantic_relation_on_active_sign_link(self):
+        bundle = self.new_contract_bundle()
+        link = next(
+            link
+            for row in bundle["evidence_context"]["contexts"]
+            for link in row.get("sign_links") or []
+        )
+        link["relation"] = "EXACT"
+        context = bundle["evidence_context"]
+        context_payload = dict(context)
+        context_payload.pop("semantic_digest")
+        context["semantic_digest"] = hashlib.sha256(json.dumps(
+            context_payload, sort_keys=True, separators=(",", ":"),
+            ensure_ascii=False,
+        ).encode()).hexdigest()
+        payload = dict(bundle)
+        payload.pop("semantic_digest")
+        bundle["semantic_digest"] = hashlib.sha256(json.dumps(
+            payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+        ).encode()).hexdigest()
+
+        result = self.run_validator(bundle)
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("sign link must be a neutral active membership", result.stderr)
+
+    def test_validator_rejects_legacy_finding_sign_membership_fields(self):
+        bundle = self.new_contract_bundle()
+        finding = bundle["corpus"]["sources"][0]["findings"][0]
+        finding["related_sign_ids"] = []
+        payload = dict(bundle)
+        payload.pop("semantic_digest")
+        bundle["semantic_digest"] = hashlib.sha256(json.dumps(
+            payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+        ).encode()).hexdigest()
+
+        result = self.run_validator(bundle)
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("finding sign membership must use sign_ids only", result.stderr)
+
+    def test_validator_rejects_internal_markers_in_public_summary_prose(self):
+        bundle = self.new_contract_bundle()
+        bundle["evidence_synthesis"]["axis_summaries"][0]["plain_summary"] = (
+            "Limit this packet to F019; do not assign this relationship."
+        )
+        payload = dict(bundle)
+        payload.pop("semantic_digest")
+        bundle["semantic_digest"] = hashlib.sha256(json.dumps(
+            payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+        ).encode()).hexdigest()
+        result = self.run_validator(bundle)
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("public display prose", result.stderr)
 
 
 def walk(nodes):
@@ -38,6 +829,147 @@ def weighted_rows(panel):
             {"attrs": match.group("attrs"), "summary": match.group("summary")}
         )
     return rows
+
+
+class NeutralMembershipRendererTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.temporary = tempfile.TemporaryDirectory(
+            prefix="semiology-neutral-membership.", dir="/private/tmp"
+        )
+        cls.root = Path(cls.temporary.name) / "public"
+        shutil.copytree(
+            ROOT,
+            cls.root,
+            ignore=shutil.ignore_patterns(".git", "docs", "__pycache__", "*.pyc"),
+        )
+        (cls.root / "data" / "atlas_bundle.json").write_text(
+            json.dumps(AtlasBundleValidatorTest.neutral_membership_bundle()),
+            encoding="utf-8",
+        )
+        cls.render = runpy.run_path(str(cls.root / "generator" / "gen_study.py"))
+
+    @classmethod
+    def tearDownClass(cls):
+        generator_path = str(cls.root / "generator")
+        while generator_path in sys.path:
+            sys.path.remove(generator_path)
+        cls.temporary.cleanup()
+
+    def test_every_active_sign_link_reaches_all_evidence_views(self):
+        context = self.render["CONTEXT"]
+        statistics_by_finding = {}
+        for statistic_id, statistic in context.statistics.items():
+            statistics_by_finding.setdefault(
+                str(statistic.get("finding_ref") or ""), []
+            ).append(statistic_id)
+        for finding_ref, finding_context in context.contexts_by_ref.items():
+            expected = {
+                str(link["public_sign_id"])
+                for link in finding_context.get("sign_links") or []
+            }
+            if not expected:
+                continue
+            self.assertEqual(
+                expected,
+                set(context.public_sign_ids_for_findings([finding_ref])),
+                finding_ref,
+            )
+            for statistic_id in statistics_by_finding.get(finding_ref, []):
+                self.assertTrue(
+                    expected.issubset(
+                        context.public_sign_ids_for_statistics([statistic_id])
+                    ),
+                    statistic_id,
+                )
+
+    def test_former_component_mapping_is_discoverable_without_identity_semantics(self):
+        finding_ref = (
+            "005b726587cb0812d005e9166b1191028be677a82ffd02c74d947a1f0718f85a:F037"
+        )
+        component_sign_id = "SGRP:fd24c9d1269173ceb2ed"
+        context = self.render["CONTEXT"]
+        links = context.contexts_by_ref[finding_ref]["sign_links"]
+        component_link = next(
+            link for link in links
+            if str(link["public_sign_id"]) == component_sign_id
+        )
+        self.assertEqual({"public_sign_id": component_sign_id}, component_link)
+        self.assertIn(
+            component_sign_id,
+            context.public_sign_ids_for_findings([finding_ref]),
+        )
+        source_finding = self.render["ledger_by_ref"][finding_ref]["finding"]
+        self.assertIn(component_sign_id, {
+            str(sign_id) for sign_id in source_finding["sign_ids"]
+        })
+        self.assertNotIn("exact_sign_ids", source_finding)
+        self.assertNotIn("related_sign_ids", source_finding)
+
+        cards = self.render["SYNTHESIS_CARDS_BY_SIGN"][component_sign_id]
+        self.assertTrue(all(
+            card["preferred_label"] == "Tonic arm posturing"
+            and "oculomotor-onset evolving motor phenotype" not in {
+                str(value).casefold() for value in card.get("identity_labels") or []
+            }
+            for card in cards
+        ))
+        self.assertNotRegex(
+            json.dumps(component_link, sort_keys=True),
+            r"(?i)exact|synonym|identity|relation",
+        )
+        filename = "sign-" + hashlib.sha256(
+            component_sign_id.encode()
+        ).hexdigest()[:24] + ".html"
+        fragment = self.render["detail_fragments"][filename]
+        self.assertNotIn('class="ev-map', fragment)
+        self.assertNotIn(">Direct match<", fragment)
+        self.assertNotIn(">Related finding<", fragment)
+
+    def test_mapped_propagation_modifier_renders_only_as_unobtrusive_note(self):
+        cards = json.loads(json.dumps(self.render["SYNTHESIS_CARDS"]))
+        card = next(
+            row for row in cards
+            if (row.get("target_contract") or {}).get("reported_targets")
+            and row.get("contributions")
+        )
+        target_keys = [
+            target["key"] for target in card["target_contract"]["reported_targets"]
+        ]
+        row_counts = (
+            card["row_finding_count"], card["row_statistic_count"],
+            card["row_work_count"],
+        )
+        total_weight = sum(
+            float(row.get("final_weight") or 0.0)
+            for row in card["contributions"]
+        )
+        card["target_contract"]["modifiers"] = [{
+            "key": "PROPAGATION", "label": "Propagation",
+            "modifier_type": "PROPAGATION",
+            "raw": ["REG:MULTIREGIONAL_PROPAGATION"],
+            "origins": ["STRUCTURED_SOURCE_AXIS_ASSERTION"],
+            "finding_refs": ["F:modifier-only"],
+            "assertion_ids": ["AXIS:modifier-only"],
+        }]
+
+        html = self.render["build_weighted_evidence"](cards)
+
+        self.assertEqual(1, html.count("Propagation noted in source context."))
+        self.assertIn('class="lr-modifier-note"', html)
+        self.assertNotIn(">Propagation<", html)
+        self.assertEqual(
+            target_keys,
+            [target["key"] for target in card["target_contract"]["reported_targets"]],
+        )
+        self.assertEqual(row_counts, (
+            card["row_finding_count"], card["row_statistic_count"],
+            card["row_work_count"],
+        ))
+        self.assertEqual(total_weight, sum(
+            float(row.get("final_weight") or 0.0)
+            for row in card["contributions"]
+        ))
 
 
 class CompactRendererTest(unittest.TestCase):
@@ -257,7 +1189,7 @@ class CompactRendererTest(unittest.TestCase):
             str(target.get("key") or "").strip().casefold()
             for card in self.render["SYNTHESIS_CARDS"]
             if card.get("axis") == "LATERALIZATION"
-            for target in (card.get("target_contract") or {}).get("reported_targets") or []
+            for target in self.render["public_reported_targets"](card)
             if str(target.get("key") or "").strip()
         }
         expected.add("notreported")
@@ -281,6 +1213,37 @@ class CompactRendererTest(unittest.TestCase):
         display = self.render["lateralization_display"](rapid_recovery)
         self.assertIn(">Right<", display)
         self.assertNotIn("Consistent", display)
+
+    def test_reported_targets_render_without_legacy_card_state_fields(self):
+        cards = json.loads(json.dumps(self.render["SYNTHESIS_CARDS"]))
+        for card in cards:
+            card.pop("exceptions", None)
+            for field in (
+                "categorization_state", "terminal_classification",
+                "terminal_reason", "terminal_reason_text", "missing_relationship",
+            ):
+                card.pop(field, None)
+        target_card = next(
+            card for card in cards
+            if (card.get("target_contract") or {}).get("reported_targets")
+            and card.get("contributions")
+        )
+        html = self.render["build_weighted_evidence"](cards)
+        self.assertRegex(
+            html,
+            rf'<details class="lr-row"[^>]+data-card-id="{re.escape(target_card["synthesis_id"])}"',
+        )
+        self.assertNotIn("Evidence linked; study weight pending", html)
+        self.assertNotIn("Background evidence (not counted twice)", html)
+        self.assertNotIn("Needs source review", html)
+        self.assertNotIn("data-card-state=", html)
+        self.assertNotIn('class="lr-exceptions"', html)
+
+    def test_propagation_is_not_rendered_as_a_target_label(self):
+        html = self.render["build_weighted_evidence"](
+            json.loads(json.dumps(self.render["SYNTHESIS_CARDS"]))
+        )
+        self.assertNotIn(">Multiregional/Propagation<", html)
 
     def test_context_dependent_summary_uses_the_specific_source_relationship(self):
         sign_id = "SGRP:76a39c9569c7472d08d2"
@@ -308,55 +1271,7 @@ class CompactRendererTest(unittest.TestCase):
                 "public_sign_ids": [],
             }]
         }
-        index.axis_contexts_by_finding = {"F:source": []}
         self.assertEqual(["Temporal"], index.region_labels_for_findings(["F:source"]))
-
-    def test_adjudicated_sign_link_reaches_reviewed_findings_and_statistics(self):
-        finding_ref = (
-            "c824399545b3427f14a20f00453bff7545f2ab64c291d7098ca60e4419a44ee4:F007"
-        )
-        statistic_ids = [
-            "STAT2:2a98ee300976a26e7f9eae37",
-            "STAT2:c259837e62e26b73ffc287a9",
-        ]
-        self.assertIn(
-            "43", self.render["CONTEXT"].public_sign_ids_for_findings([finding_ref])
-        )
-        for statistic_id in statistic_ids:
-            self.assertIn(
-                "43",
-                self.render["CONTEXT"].public_sign_ids_for_statistics([statistic_id]),
-            )
-
-    def test_every_adjudicated_sign_link_reaches_all_evidence_views(self):
-        context = self.render["CONTEXT"]
-        statistics_by_finding = {}
-        for statistic_id, statistic in context.statistics.items():
-            statistics_by_finding.setdefault(
-                str(statistic.get("finding_ref") or ""), []
-            ).append(statistic_id)
-        for finding_ref, rows in context.axis_contexts_by_finding.items():
-            expected = {
-                str(sign_id)
-                for row in rows
-                if row.get("relationship_eligible")
-                for sign_id in row.get("public_sign_ids") or []
-            }
-            if not expected:
-                continue
-            self.assertTrue(
-                expected.issubset(
-                    context.public_sign_ids_for_findings([finding_ref])
-                ),
-                finding_ref,
-            )
-            for statistic_id in statistics_by_finding.get(finding_ref, []):
-                self.assertTrue(
-                    expected.issubset(
-                        context.public_sign_ids_for_statistics([statistic_id])
-                    ),
-                    statistic_id,
-                )
 
     def test_spasm_browse_regions_match_the_shared_context(self):
         spasms = next(row for row in self.render["data"] if row["sign"] == "Epileptic spasms")
@@ -411,7 +1326,7 @@ class CompactRendererTest(unittest.TestCase):
             r'data-group-regions="[^"]*Occipital',
         )
         self.assertIn(
-            "Reported: Occipital",
+            "Occipital",
             rows[formed_name][0]["summary"],
         )
 
@@ -451,6 +1366,9 @@ class CompactRendererTest(unittest.TestCase):
             "normalization needed",
             "provenance only",
             "source linked finding axis",
+            "Limit this packet",
+            "do not assign",
+            "F019",
         ):
             self.assertNotIn(internal_text, panels)
         fear_filename = "sign-" + hashlib.sha256(b"2").hexdigest()[:24] + ".html"

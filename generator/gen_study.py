@@ -164,22 +164,13 @@ class EvidenceContextIndex:
             if ref in self.contexts_by_ref
         ]
 
-    def public_sign_ids_for_findings(self, finding_refs, *, exact_only=True):
-        allowed = {"EXACT"} if exact_only else {"EXACT", "RELATED"}
-        direct = [
+    def public_sign_ids_for_findings(self, finding_refs):
+        return self._unique(
             str(link["public_sign_id"])
             for finding_ref in finding_refs
             for link in (self.contexts_by_ref.get(str(finding_ref)) or {}).get("sign_links") or []
-            if str(link.get("relation") or "").upper() in allowed and link.get("public_sign_id")
-        ]
-        adjudicated = [
-            str(sign_id)
-            for finding_ref in finding_refs
-            for row in self.axis_contexts_by_finding.get(str(finding_ref), [])
-            if row.get("relationship_eligible")
-            for sign_id in row.get("public_sign_ids") or []
-        ]
-        return self._unique([*direct, *adjudicated])
+            if link.get("public_sign_id")
+        )
 
     def public_sign_ids_for_statistics(self, statistic_ids):
         linked = self._unique(
@@ -368,10 +359,8 @@ for _source in CORPUS["sources"]:
                 STATISTIC_CONTEXT_BY_ID[_statistic_id] = {
                     "source": _source, "finding": _row, "statistic": _statistic,
                 }
-        for _cid in _row["exact_sign_ids"]:
-            ledger_evidence_by_cardid.setdefault(_cid, []).append((_entry, "EXACT"))
-        for _cid in _row["related_sign_ids"]:
-            ledger_evidence_by_cardid.setdefault(_cid, []).append((_entry, "RELATED"))
+        for _cid in _row["sign_ids"]:
+            ledger_evidence_by_cardid.setdefault(_cid, []).append((_entry, None))
 
 # A reported number is one atomic record. Descriptive families are references
 # to that record, never alternate copies or competing scientific homes.
@@ -418,7 +407,7 @@ for _card in SYNTHESIS_CARDS:
     _seen_refs = {entry["finding"]["source_finding_ref"] for entry, _ in _linked}
     for _finding_ref in _card.get("audit_cited_finding_refs") or []:
         if _finding_ref in ledger_by_ref and _finding_ref not in _seen_refs:
-            _linked.append((ledger_by_ref[_finding_ref], "EXACT"))
+            _linked.append((ledger_by_ref[_finding_ref], None))
             _seen_refs.add(_finding_ref)
 
 # assign ids to new signs and append
@@ -897,14 +886,13 @@ def ledger_evidence_block(cid, notes=""):
     paper_blocks = []
     for paper in papers.values():
         finding_blocks = []
-        for row, relation in paper["findings"]:
+        for row, _relation in paper["findings"]:
             measure = statistic_block(row)
             source_role = ROLE_LABEL.get(row["evidence_role"], "Source information")
-            relation_label = "Direct match" if relation == "EXACT" else "Related finding"
             finding_blocks.append(
                 '<article class="reviewed-card-evidence">'
-                f'<div class="ev-finding"><span class="ev-map ev-map-{relation.lower()}">{relation_label}</span> '
-                f'<strong>{esc(row["source_term"])}</strong> &mdash; {esc(row["claim"])}</div>'
+                f'<div class="ev-finding"><strong>{esc(row["source_term"])}</strong> '
+                f'&mdash; {esc(row["claim"])}</div>'
                 f'{measure}'
                 '<details class="ev-trace"><summary>Source text and study details</summary>'
                 f'<div><strong>Location in paper:</strong> {esc(row["locators"])}</div>'
@@ -1298,6 +1286,24 @@ def relationship_targets(card):
     return values
 
 
+def axis_modifier_note(card, css_class="axis-modifier-note", tag="span"):
+    """Render structured context modifiers separately from placement targets."""
+    modifiers = ((card or {}).get("target_contract") or {}).get("modifiers") or []
+    if not modifiers:
+        return ""
+    if any(
+        str(item.get("key") or "") != "PROPAGATION"
+        or str(item.get("modifier_type") or "") != "PROPAGATION"
+        for item in modifiers
+    ):
+        raise AssertionError("Unsupported public axis modifier")
+    return (
+        f'<{tag} class="{css_class}">'
+        'Propagation noted in source context.'
+        f'</{tag}>'
+    )
+
+
 def lateralization_targets(sign_id):
     """Return every canonical target once for display and filtering."""
     values = OrderedDict()
@@ -1374,24 +1380,26 @@ def axis_pattern_badge(d, axis):
 def lateralization_display(d):
     card = axis_synthesis(d.get("id"), "LATERALIZATION")
     state = axis_pattern_badge(d, "LATERALIZATION")
+    modifier = axis_modifier_note(card)
     status = str((card or {}).get("pattern_status") or "")
     if status in {"NOT_REPORTED", "NON_LATERALIZING"}:
-        return state
+        return f"{state}{modifier}"
     targets = lateralization_target_chips(d.get("id"))
     note = "" if card else f'<span class="axis-note">{esc(d.get("lat", ""))}</span>'
     display = f'{targets}{state}{note}'
     if not display and card:
         summary = limited_sentences(card.get("plain_summary"), 1)
         display = f'<span class="axis-note">{esc(summary)}</span>'
-    return display
+    return f"{display}{modifier}"
 
 
 def localization_display(d):
     card = axis_synthesis(d.get("id"), "LOCALIZATION")
     state = axis_pattern_badge(d, "LOCALIZATION")
+    modifier = axis_modifier_note(card)
     status = str((card or {}).get("pattern_status") or "")
     if status in {"NOT_REPORTED", "NON_LOCALIZING"}:
-        return state
+        return f"{state}{modifier}"
     region_labels = {
         "reg:temporal": "Temporal", "temporal": "Temporal",
         "reg:frontal": "Frontal", "frontal": "Frontal",
@@ -1427,7 +1435,7 @@ def localization_display(d):
     if not display and card:
         summary = limited_sentences(card.get("plain_summary"), 1)
         display = f'<span class="axis-note">{esc(summary)}</span>'
-    return display
+    return f"{display}{modifier}"
 
 
 def compact_evidence_overview(d):
@@ -2180,10 +2188,6 @@ def build_reviewed_findings_panel(corpus):
             finding_ref = str(row.get("source_finding_ref") or "")
             finding_refs = [finding_ref] if finding_ref else []
             sign_ids = CONTEXT.public_sign_ids_for_findings(finding_refs)
-            if not sign_ids:
-                sign_ids = CONTEXT.public_sign_ids_for_findings(
-                    finding_refs, exact_only=False
-                )
             regions = CONTEXT.region_labels_for_findings(finding_refs)
             laterality = CONTEXT.laterality_for_findings(finding_refs)
             work_id = str(source.get("work_id") or "")
@@ -2898,6 +2902,7 @@ def build_weighted_evidence(cards):
             +f'<span>{esc(weight_summary)}{(" · " + esc(authority_mix)) if authority_mix else ""}</span></div>'
             +'</div>'
             +(f'<p class="lr-summary">{esc(summary)}</p>' if summary else "")
+            +axis_modifier_note(card, "lr-modifier-note", "p")
             +family_block(card, axis, statistic_ids)
             +exception_html
             +sources_html
@@ -2945,7 +2950,8 @@ def build_weighted_evidence(cards):
                 rows.append(
                     f'<span class="lr-unreported-sign" data-card-state-id="{esc(str(card.get("synthesis_id") or ""))}" data-card-axis="{axis}" data-card-state="NO_SOURCE_ASSOCIATION" '
                     f'data-search="{esc(search)}">{esc(label)}'
-                    +(f'<small>{esc(label_note)}</small>' if label_note else '')+'</span>'
+                    +(f'<small>{esc(label_note)}</small>' if label_note else '')
+                    +axis_modifier_note(card, "lr-modifier-note", "small")+'</span>'
                 )
             return "".join(rows)
         def linkage_rows(cards_to_render):
@@ -2962,6 +2968,7 @@ def build_weighted_evidence(cards):
                     f'<strong>{esc(label)}</strong>'
                     +(f'<small>{esc(label_note)}</small>' if label_note else '')
                     +"".join(f'<small>{esc(value)}</small>' for value in labels)
+                    +axis_modifier_note(card, "lr-modifier-note", "small")
                     +'<small>Needs source review before weighting.</small></div>'
                 )
             return "".join(rows)
@@ -2987,6 +2994,7 @@ def build_weighted_evidence(cards):
                     f'<strong>{esc(label)}</strong>'
                     +(f'<small>{esc(label_note)}</small>' if label_note else '')
                     +"".join(f'<small>{esc(value)}</small>' for value in labels)
+                    +axis_modifier_note(card, "lr-modifier-note", "small")
                     +f'<small>{esc(count_line)} · study weight pending</small></div>'
                 )
             return "".join(rows)
@@ -3025,6 +3033,7 @@ def build_weighted_evidence(cards):
                     f'<strong>{esc(label)}</strong>'
                     +(f'<small>{esc(label_note)}</small>' if label_note else '')
                     +"".join(f'<small>{esc(value)}</small>' for value in labels)
+                    +axis_modifier_note(card, "lr-modifier-note", "small")
                     +f'<small>{esc(note)}</small></div>'
                 )
             return "".join(rows)
@@ -3875,6 +3884,7 @@ main,.frontpage-fold,.callout{
 .region-chip{color:var(--region-chip);background:color-mix(in srgb,var(--region-chip) 10%,white);border:1px solid color-mix(in srgb,var(--region-chip) 45%,white)}
 .axis-display-note{max-width:1180px;margin:0 auto 8px;padding:0 18px;color:#6b7280;font-size:.68rem;text-align:right}
 .axis-note,.location-note{display:block;margin-top:6px;color:#334155;font-size:.8rem;line-height:1.42}
+.axis-modifier-note{display:block;margin-top:4px;color:#64748b;font-size:.72rem;font-style:italic;line-height:1.35}
 .d-metrics{display:flex;gap:10px;padding:11px 0;border-bottom:1px solid var(--line2);flex-wrap:wrap}
 .metric{flex:1;min-width:110px;background:#fff;border:1px solid var(--line);border-radius:8px;padding:8px 11px}
 .metric .d-label{margin-bottom:5px}
@@ -4219,6 +4229,7 @@ body.quiz .lib-chip{display:none}
 .lr-weightbar>span+span{border-left:2px solid #fff}
 .lr-weightbar .lr-primary{background:#123a52}.lr-weightbar .lr-secondary{background:#37a6b5}.lr-weightbar .lr-nonassoc{background:#9ca6b3}
 .lr-summary{margin:0;padding:10px 0 8px;color:#33465d;font-size:.78rem;line-height:1.48}
+.lr-modifier-note{display:block;margin:4px 0;color:#64748b;font-size:.68rem;font-style:italic;line-height:1.35}
 .lr-families{margin:0 0 8px;border:1px solid #cfe0ea;border-radius:8px;background:#f5fafc}
 .lr-families>summary{display:flex;gap:7px;align-items:center;padding:7px 10px;cursor:pointer;color:#15576a;font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.03em}
 .lr-families>summary span{margin-left:auto;background:#dceff4;border-radius:10px;padding:1px 6px}
@@ -4369,8 +4380,6 @@ body.quiz .lib-chip{display:none}
 .fx-context>summary{cursor:pointer;font-weight:700;color:var(--teal-d)}
 .fx-context>div{margin-top:5px;line-height:1.45}
 .fx-context code,.ev-trace code{font-size:.66rem;overflow-wrap:anywhere}
-.ev-map{display:inline-block;font-size:.58rem;font-weight:800;border:1px solid currentColor;border-radius:4px;padding:1px 5px}
-.ev-map-exact{color:#1a7a4a}.ev-map-related{color:#95691a}
 .reviewed-card-evidence{margin-bottom:14px}.ev-measure,.ev-owner{margin:6px 0;color:#475569}
 .ev-paper{margin-bottom:7px;padding:7px 9px;border:1px solid #dbe4ee;border-radius:6px;background:#f7fafc;color:#475569;line-height:1.4}
 .ev-paper>div+div{margin-top:3px}.ev-paper-file{color:var(--navy);font-weight:700;overflow-wrap:anywhere}.ev-paper-role{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:4px;background:#e8f4f7;color:#0e6675;font-size:.72em;font-weight:700}.ev-finding{margin:5px 0 3px}
