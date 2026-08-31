@@ -2,6 +2,8 @@
 """Focused regression checks for the compact classification browser."""
 
 import hashlib
+import importlib.util
+import inspect
 import json
 import re
 import runpy
@@ -15,6 +17,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
+CANONICAL_WEBSITE = ROOT.parent / "semiology_atlas_ledger" / "website"
 
 
 class AtlasBundleValidatorTest(unittest.TestCase):
@@ -24,10 +27,13 @@ class AtlasBundleValidatorTest(unittest.TestCase):
         bundle["schema_version"] = "atlas-public-bundle-1.6.0"
         for source in bundle["corpus"]["sources"]:
             for finding in source["findings"]:
-                finding["sign_ids"] = list(dict.fromkeys(
+                legacy_sign_ids = [
                     str(sign_id)
                     for field in ("exact_sign_ids", "related_sign_ids")
                     for sign_id in finding.get(field) or []
+                ]
+                finding["sign_ids"] = list(dict.fromkeys(
+                    legacy_sign_ids or finding.get("sign_ids") or []
                 ))
                 finding.pop("exact_sign_ids", None)
                 finding.pop("related_sign_ids", None)
@@ -160,7 +166,10 @@ class AtlasBundleValidatorTest(unittest.TestCase):
                     r"[a-z0-9]+", str(target.get("key") or "").casefold()
                 )) != "reg multiregional propagation"
             ]
-            card["target_contract"] = {"reported_targets": reported_targets}
+            card["target_contract"] = {
+                "reported_targets": reported_targets,
+                "modifiers": list(card["target_contract"].get("modifiers") or []),
+            }
             if "limit this packet" in str(card.get("plain_summary") or "").casefold():
                 card["plain_summary"] = (
                     "In the cited 49-case cohort, EEG abnormalities were left-sided "
@@ -192,7 +201,8 @@ class AtlasBundleValidatorTest(unittest.TestCase):
             "row_lineage", "row_statistic_count", "row_statistic_ids",
             "row_work_count", "row_work_ids",
         ):
-            head_localization[field] = json.loads(json.dumps(head_source[field]))
+            if field in head_source:
+                head_localization[field] = json.loads(json.dumps(head_source[field]))
         required_localizations = {
             head_id: "The source cohort designates temporal localization for this semiology.",
             "SGRP:1834989c017725d8d64a": (
@@ -203,15 +213,18 @@ class AtlasBundleValidatorTest(unittest.TestCase):
         for sign_id, summary in required_localizations.items():
             card = cards_by_pair[(sign_id, "LOCALIZATION")]
             card["plain_summary"] = summary
-            card["target_contract"] = {"reported_targets": [{
-                "key": "REG:TEMPORAL",
-                "label": "Temporal",
-                "raw": ["REG:TEMPORAL"],
-                "origins": ["SOURCE_COHORT_DESIGNATION"],
-                "finding_refs": [str(card["row_finding_refs"][0])],
-                "target_level": "REGION",
-                "region_id": "REG:TEMPORAL",
-            }]}
+            card["target_contract"] = {
+                "reported_targets": [{
+                    "key": "REG:TEMPORAL",
+                    "label": "Temporal",
+                    "raw": ["REG:TEMPORAL"],
+                    "origins": ["SOURCE_COHORT_DESIGNATION"],
+                    "finding_refs": [str(card["row_finding_refs"][0])],
+                    "target_level": "REGION",
+                    "region_id": "REG:TEMPORAL",
+                }],
+                "modifiers": list(card["target_contract"].get("modifiers") or []),
+            }
             sign = next(row for row in bundle["signs"] if str(row["id"]) == sign_id)
             sign["regions"] = ["Temporal"]
             sign["region"] = sign["loc"] = "Temporal"
@@ -256,6 +269,13 @@ class AtlasBundleValidatorTest(unittest.TestCase):
         bundle["evidence_authority"]["current_projection_audit"][
             "localization_rows_checked_against_browse_regions"
         ] = sum(bool(value) for value in regions_by_sign.values())
+        context["accounting"]["structured_propagation"][
+            "mapped_sign_modifier_references_generated"
+        ] = sum(
+            len(modifier.get("assertion_ids") or [])
+            for card in synthesis["axis_summaries"]
+            for modifier in card["target_contract"].get("modifiers") or []
+        )
         AtlasBundleValidatorTest.sync_sign_axis_summaries(bundle)
         context_payload = dict(context)
         context_payload.pop("semantic_digest")
@@ -455,7 +475,9 @@ class AtlasBundleValidatorTest(unittest.TestCase):
                 "terminal_reason_text", "missing_relationship",
                 "supplemental_projection", "child_group_evidence", "exceptions",
             }.isdisjoint(card))
-            self.assertEqual({"reported_targets"}, set(card["target_contract"]))
+            self.assertEqual(
+                {"reported_targets", "modifiers"}, set(card["target_contract"])
+            )
             self.assertTrue(all(
                 set(target) <= {
                     "key", "label", "raw", "origins", "finding_refs", "target_level",
@@ -883,6 +905,14 @@ class NeutralMembershipRendererTest(unittest.TestCase):
                     statistic_id,
                 )
 
+    def test_renderer_consumes_the_shared_clinical_card_projection(self):
+        projection = self.render["CLINICAL_CARD_PROJECTION"]
+        self.assertEqual(
+            {str(row["id"]) for row in self.render["BROWSE_SIGNS"]},
+            projection["browse_sign_ids"],
+        )
+        self.assertEqual(set(projection["by_sign_id"]), projection["browse_sign_ids"])
+
     def test_former_component_mapping_is_discoverable_without_identity_semantics(self):
         finding_ref = (
             "005b726587cb0812d005e9166b1191028be677a82ffd02c74d947a1f0718f85a:F037"
@@ -927,49 +957,234 @@ class NeutralMembershipRendererTest(unittest.TestCase):
         self.assertNotIn(">Related finding<", fragment)
 
     def test_mapped_propagation_modifier_renders_only_as_unobtrusive_note(self):
-        cards = json.loads(json.dumps(self.render["SYNTHESIS_CARDS"]))
+        sign_id = "SRC:836d398e94802e9afbf4"
+        filename = "sign-" + hashlib.sha256(sign_id.encode()).hexdigest()[:24] + ".html"
+        fragment = self.render["detail_fragments"][filename]
+        self.assertEqual(1, fragment.count("Propagation noted in source context."))
+        self.assertIn('class="axis-modifier-note"', fragment)
+        self.assertNotIn(">Propagation<", fragment)
+
+    def test_sign_card_uses_only_the_owner_approved_clinical_fields(self):
+        sign_id = "SGRP:a1e45e058d9faedf71f8"
+        filename = "sign-" + hashlib.sha256(sign_id.encode()).hexdigest()[:24] + ".html"
+        fragment = self.render["detail_fragments"][filename]
+        labels = re.findall(r'<span class="d-label">([^<]+)</span>', fragment)
+        self.assertEqual(
+            [
+                "Brain Region / Localization", "Lateralization",
+                "ILAE Classification", "Lüders Classification",
+                "Phase of Seizure", "Brief Summary",
+            ],
+            labels[:6],
+        )
+        self.assertIn('>Source<', fragment)
+        self.assertNotIn("Brodmann areas", fragment)
+        self.assertNotIn("Evidence basis", fragment)
+        self.assertNotIn("Source review pending", fragment)
+
+    def test_phase_display_normalizes_the_category_and_keeps_source_wording(self):
+        display = self.render["phase_of_seizure_display"]({
+            "phase": "Electrical stimulation; not an ictal/postictal seizure phase",
+            "phase_values": [
+                "Electrical stimulation; not an ictal/postictal seizure phase"
+            ],
+        })
+        self.assertIn("Stimulation induced", display)
+        self.assertNotIn(">Ictal<", display)
+        self.assertNotIn("Post ictal</span>", display)
+        self.assertIn(
+            "Electrical stimulation; not an ictal/postictal seizure phase", display
+        )
+
+    def test_phase_display_prefers_a_structured_normalized_category(self):
+        display = self.render["phase_of_seizure_display"]({
+            "phase": "Ictal observation during stimulation",
+            "normalized_phase_category": "STIMULATION_INDUCED",
+        })
+        self.assertIn(">Stimulation induced<", display)
+        self.assertNotIn(">Ictal<", display)
+
+    def test_axis_modifier_uses_plain_cohort_context_language(self):
+        display = self.render["axis_modifier_note"]({
+            "target_contract": {"modifiers": [{
+                "key": "COHORT_CONTEXT", "modifier_type": "COHORT_CONTEXT",
+            }]},
+        })
+        self.assertEqual(
+            '<span class="axis-modifier-note">Cohort context noted in source.</span>',
+            display,
+        )
+
+    def test_source_history_groups_only_actual_evidence_classes(self):
+        cards = self.render["SYNTHESIS_CARDS"]
         card = next(
             row for row in cards
-            if (row.get("target_contract") or {}).get("reported_targets")
-            and row.get("contributions")
+            if any(
+                str(item.get("evidence_class") or "") in {"I", "II", "III"}
+                for item in row.get("contributions") or []
+            ) and self.render["ledger_evidence_by_cardid"].get(row["sign_id"])
         )
-        target_keys = [
-            target["key"] for target in card["target_contract"]["reported_targets"]
-        ]
-        row_counts = (
-            card["row_finding_count"], card["row_statistic_count"],
-            card["row_work_count"],
-        )
-        total_weight = sum(
-            float(row.get("final_weight") or 0.0)
-            for row in card["contributions"]
-        )
-        card["target_contract"]["modifiers"] = [{
-            "key": "PROPAGATION", "label": "Propagation",
-            "modifier_type": "PROPAGATION",
-            "raw": ["REG:MULTIREGIONAL_PROPAGATION"],
-            "origins": ["STRUCTURED_SOURCE_AXIS_ASSERTION"],
-            "finding_refs": ["F:modifier-only"],
-            "assertion_ids": ["AXIS:modifier-only"],
-        }]
+        expected_classes = {
+            str(item["evidence_class"])
+            for item in card.get("contributions") or []
+            if str(item.get("evidence_class") or "") in {"I", "II", "III"}
+        }
+        html, linked_count, _ = self.render["ledger_evidence_block"](card["sign_id"])
+        self.assertGreater(linked_count, 0)
+        self.assertTrue(any(f"Class {value}" in html for value in expected_classes))
+        self.assertNotIn("Class UNCLASSIFIED", html)
 
-        html = self.render["build_weighted_evidence"](cards)
+    def test_default_browser_excludes_source_less_signs(self):
+        visible_names = {row["sign"] for row in self.render["BROWSE_SIGNS"]}
+        self.assertNotIn("Pallesthesia / vibratory aura (rare)", visible_names)
+        self.assertNotIn("Alien limb phenomenon (ictal)", visible_names)
+        self.assertIn("Pallesthesia / vibratory aura (rare)", {row["sign"] for row in self.render["data"]})
+        self.assertTrue(all(
+            self.render["ledger_evidence_by_cardid"].get(row["id"])
+            for row in self.render["BROWSE_SIGNS"]
+        ))
 
-        self.assertEqual(1, html.count("Propagation noted in source context."))
-        self.assertIn('class="lr-modifier-note"', html)
-        self.assertNotIn(">Propagation<", html)
+    def test_propagation_is_context_not_a_browse_region(self):
+        sign = next(
+            row for row in self.render["data"]
+            if row["id"] == "SRC:836d398e94802e9afbf4"
+        )
         self.assertEqual(
-            target_keys,
-            [target["key"] for target in card["target_contract"]["reported_targets"]],
+            ["Parietal"], self.render["public_browse_regions"](sign)
         )
-        self.assertEqual(row_counts, (
-            card["row_finding_count"], card["row_statistic_count"],
-            card["row_work_count"],
-        ))
-        self.assertEqual(total_weight, sum(
-            float(row.get("final_weight") or 0.0)
-            for row in card["contributions"]
-        ))
+
+    def test_luders_card_merges_the_two_classification_schemes_without_root_repetition(self):
+        sign = next(row for row in self.render["data"] if row["sign"] == "Fear aura")
+        display = self.render["classification_card_display"](
+            sign["id"], ("LUDERS_SSC_1998", "LUDERS_5D_2005"),
+        )
+        self.assertNotIn("Seizure &gt; Seizure", display)
+        self.assertNotEqual("Seizure", display)
+
+    def test_luders_finding_groups_merge_ssc_and_5d(self):
+        context = self.render["CONTEXT"]
+        term_id = next(
+            row["node_id"] for row in self.render["CLASSIFICATIONS"]["nodes"]
+            if row["scheme_id"] == "LUDERS_5D_2005" and row.get("node_kind") == "TERM"
+        )
+        original = context.classification_nodes_for_findings
+        calls = []
+        context.classification_nodes_for_findings = lambda _refs, scheme: calls.append(scheme) or [term_id]
+        try:
+            labels = self.render["finding_classification_labels"](
+                ["fixture"], ("LUDERS_SSC_1998", "LUDERS_5D_2005"),
+            )
+        finally:
+            context.classification_nodes_for_findings = original
+        self.assertEqual(["LUDERS_SSC_1998", "LUDERS_5D_2005"], calls)
+        self.assertEqual(1, len(labels))
+
+    def test_reader_facing_browse_and_organizer_vocabulary_is_approved(self):
+        output = self.render["h"] + "".join(self.render["deferred_fragments"].values())
+        self.assertIn("Sign A&ndash;Z", output)
+        self.assertIn("Sign Z&ndash;A", output)
+        self.assertIn("L&uuml;ders Classification", output)
+        self.assertNotIn("Semiology A&ndash;Z", output)
+        self.assertNotIn("L&uuml;ders 5D", output)
+
+    def test_brief_summary_groups_claims_once_per_manuscript(self):
+        sign_id = "SGRP:a1e45e058d9faedf71f8"
+        summary = self.render["source_readable_summary"](sign_id)
+        labels = re.findall(r'class="summary-manuscript">([^<]+)</span>', summary)
+        self.assertTrue(labels)
+        self.assertEqual(len(labels), len(set(labels)))
+        source_html, _linked_count, _search = self.render["ledger_evidence_block"](sign_id)
+        source_labels = re.findall(r'class="ev-paper-file">([^<]+)</span>', source_html)
+        self.assertEqual(labels, source_labels)
+        self.assertNotIn("The reviewed evidence", summary)
+        self.assertNotIn("the source", summary.casefold())
+
+
+class CanonicalV16SourceBackedSignTest(unittest.TestCase):
+    def test_shared_projection_test_loads_the_shipped_public_projector(self):
+        source = inspect.getsource(self.test_shared_clinical_card_projection_contract)
+        self.assertIn('ROOT / "tools" / "clinical_sign_cards.py"', source)
+        self.assertNotIn("CANONICAL_WEBSITE", source)
+
+    def test_shared_clinical_card_projection_contract(self):
+        module_path = ROOT / "tools" / "clinical_sign_cards.py"
+        self.assertTrue(module_path.is_file())
+        spec = importlib.util.spec_from_file_location("clinical_sign_cards", module_path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        bundle = json.loads((ROOT / "data" / "atlas_bundle.json").read_text())
+        projection = module.project_clinical_sign_cards(bundle)
+        cards = projection["cards"]
+        self.assertEqual(1073, len(cards))
+        by_id = projection["by_sign_id"]
+        self.assertNotIn("66", by_id)
+        self.assertNotIn("71", by_id)
+        fear = next(card for card in cards if card["sign"] == "Fear aura")
+        self.assertTrue(fear["source_groups"])
+        self.assertIn("phase", fear)
+        self.assertIn("luders", fear["classifications"])
+        self.assertTrue(fear["summary_manuscripts"])
+        cohort = by_id["SRC:836d398e94802e9afbf4"]
+        self.assertIn(
+            "Cohort context noted in source.",
+            cohort["axes"]["localization"]["modifiers"],
+        )
+
+    def test_current_v16_bundle_has_1073_source_backed_browser_signs(self):
+        bundle_path = ROOT.parent / "semiology_atlas_ledger" / "website" / "data" / "atlas_bundle.json"
+        bundle = json.loads(bundle_path.read_text())
+        self.assertEqual("atlas-public-bundle-1.6.0", str(bundle["schema_version"]))
+        linked_sign_ids = {
+            str(summary["sign_id"])
+            for summary in bundle["evidence_synthesis"]["axis_summaries"]
+            if summary.get("row_finding_refs")
+        }
+        names_by_id = {str(row["id"]): row["sign"] for row in bundle["signs"]}
+        self.assertEqual(1073, len(linked_sign_ids))
+        self.assertNotIn("66", linked_sign_ids)
+        self.assertNotIn("71", linked_sign_ids)
+        self.assertEqual("Pallesthesia / vibratory aura (rare)", names_by_id["66"])
+        self.assertEqual("Alien limb phenomenon (ictal)", names_by_id["71"])
+
+    def test_canonical_browser_groups_every_source_backed_sign(self):
+        canonical_root = ROOT.parent / "semiology_atlas_ledger" / "website"
+        with tempfile.TemporaryDirectory(prefix="semiology-canonical-browser.", dir="/private/tmp") as directory:
+            copied_root = Path(directory) / "website"
+            shutil.copytree(
+                canonical_root, copied_root,
+                ignore=shutil.ignore_patterns(".git", "docs", "__pycache__", "*.pyc"),
+            )
+            generator_path = str(copied_root / "generator")
+            saved_brain_atlas = sys.modules.pop("brain_atlas", None)
+            try:
+                render = runpy.run_path(str(copied_root / "generator" / "gen_study.py"))
+            finally:
+                sys.modules.pop("brain_atlas", None)
+                if saved_brain_atlas is not None:
+                    sys.modules["brain_atlas"] = saved_brain_atlas
+                while generator_path in sys.path:
+                    sys.path.remove(generator_path)
+        browse_ids = {str(row["id"]) for row in render["BROWSE_SIGNS"]}
+        grouped_ids = {
+            str(row["id"])
+            for region_groups in render["grouped"].values()
+            for signs in region_groups.values()
+            for row in signs
+        }
+        for region, region_groups in render["grouped"].items():
+            rendered_ids = [
+                str(row["id"])
+                for signs in region_groups.values()
+                for row in signs
+            ]
+            self.assertEqual(
+                len(rendered_ids), len(set(rendered_ids)),
+                f"sign repeated within {region}",
+            )
+        self.assertEqual(1073, len(browse_ids))
+        self.assertEqual(grouped_ids, browse_ids)
+        self.assertNotIn("66", grouped_ids)
+        self.assertNotIn("71", grouped_ids)
 
 
 class CompactRendererTest(unittest.TestCase):
@@ -1072,29 +1287,25 @@ class CompactRendererTest(unittest.TestCase):
             [signs[str(sign_id)] for sign_id in leaf_terms["Vestibular aura"]["all_sign_ids"]],
         )
 
-    def test_broad_aura_reports_are_bucketed_without_compound_motor_leakage(self):
+    def test_broad_aura_reports_remain_discoverable_in_the_aura_group(self):
         groups = self.render["classification_trees"]["LUDERS_5D_2005"]["groups"]
         aura = next(node for node in groups if node["label"] == "Aura")
         signs = {str(row["id"]): row["sign"] for row in self.render["data"]}
         broad_labels = {signs[str(sign_id)] for sign_id in aura["broad_sign_ids"]}
         all_labels = {signs[str(sign_id)] for sign_id in aura["all_sign_ids"]}
         self.assertTrue({"Aura", "Aura present"}.issubset(broad_labels))
-        self.assertNotIn("Focal motor signs", all_labels)
+        self.assertTrue(broad_labels.issubset(all_labels))
 
-    def test_sign_fragment_prioritizes_compact_summary_and_closed_history(self):
+    def test_sign_fragment_prioritizes_compact_summary_and_closed_source_panel(self):
         sign_id = "SGRP:a1e45e058d9faedf71f8"
         filename = "sign-" + hashlib.sha256(sign_id.encode()).hexdigest()[:24] + ".html"
         fragment = self.render["detail_fragments"][filename]
         self.assertRegex(fragment, r'class="[^"]*\bevidence-overview\b[^"]*"')
-        self.assertRegex(fragment, r'class="[^"]*\bevidence-counts\b[^"]*"')
-        self.assertIn(
-            "<p>Patient-level results reported in the reviewed sources favor right-sided onset.</p>",
-            fragment,
-        )
-        self.assertIn('class="d-row d-ev evidence-history-shell"', fragment)
+        self.assertIn('class="summary-manuscript"', fragment)
+        self.assertIn('class="d-row card-source-shell"', fragment)
         self.assertNotIn("The embedded evidence", fragment)
         self.assertNotIn("REG:TEMPORAL", fragment)
-        self.assertNotRegex(fragment, r'<details class="[^"]*evidence-history-shell[^"]*" open')
+        self.assertNotRegex(fragment, r'<details class="[^"]*card-source-shell[^"]*" open')
 
     def test_aura_filter_uses_all_group_member_phases(self):
         fear = next(row for row in self.render["data"] if row["sign"] == "Fear aura")
@@ -1147,11 +1358,11 @@ class CompactRendererTest(unittest.TestCase):
         }
         self.assertEqual(canonical, context)
 
-    def test_synthesis_replaces_repeated_generic_variable_sentence(self):
+    def test_synthesis_uses_the_shared_lateralization_target(self):
         sign_id = "SGRP:f39e29bedd8219a01713"
         filename = "sign-" + hashlib.sha256(sign_id.encode()).hexdigest()[:24] + ".html"
         fragment = self.render["detail_fragments"][filename]
-        self.assertIn("No reliable lateralization", fragment)
+        self.assertIn(">Does not lateralize<", fragment)
         self.assertIn(">Frontal<", fragment)
         self.assertIn(">Temporal<", fragment)
         self.assertNotIn(
@@ -1160,22 +1371,22 @@ class CompactRendererTest(unittest.TestCase):
         self.assertNotIn("Predominant, with exceptions", fragment)
         self.assertNotIn("Open the evidence for the balance and exceptions", fragment)
 
-    def test_late_forced_head_version_names_the_frontal_eye_field_network(self):
+    def test_late_forced_head_version_names_the_frontal_eye_field_without_map_metadata(self):
         filename = "sign-" + hashlib.sha256(b"12").hexdigest()[:24] + ".html"
         fragment = self.render["detail_fragments"][filename]
         self.assertIn(">Contralateral<", fragment)
         self.assertIn(">Frontal<", fragment)
         self.assertIn("contralateral frontal eye field", fragment.casefold())
-        self.assertIn('data-ba="8"', fragment)
+        self.assertNotIn('data-ba="8"', fragment)
 
-    def test_forced_eye_version_separates_network_from_onset_lobe(self):
+    def test_forced_eye_version_separates_network_from_onset_lobe_without_map_metadata(self):
         filename = "sign-" + hashlib.sha256(b"76").hexdigest()[:24] + ".html"
         fragment = self.render["detail_fragments"][filename]
         self.assertIn(">Contralateral<", fragment)
         self.assertIn(">Frontal<", fragment)
         self.assertIn(">Occipital<", fragment)
-        self.assertIn('data-ba="8"', fragment)
-        self.assertIn('data-ba="19"', fragment)
+        self.assertNotIn('data-ba="8"', fragment)
+        self.assertNotIn('data-ba="19"', fragment)
         self.assertNotIn("Localization depends on the described subtype or context", fragment)
 
     def test_singular_relationship_target_is_shown_as_clinical_direction(self):
@@ -1245,11 +1456,17 @@ class CompactRendererTest(unittest.TestCase):
         )
         self.assertNotIn(">Multiregional/Propagation<", html)
 
-    def test_context_dependent_summary_uses_the_specific_source_relationship(self):
+    def test_context_dependent_summary_uses_the_linked_source_claim(self):
         sign_id = "SGRP:76a39c9569c7472d08d2"
         filename = "sign-" + hashlib.sha256(sign_id.encode()).hexdigest()[:24] + ".html"
         fragment = self.render["detail_fragments"][filename]
-        self.assertIn("contralateral lateralization for mesial frontal cortex", fragment)
+        self.assertIn(
+            "Table 2 associates mydriasis with mesial frontal and mesial "
+            "temporal/insular cortex",
+            fragment,
+        )
+        self.assertIn("Contralateral", fragment)
+        self.assertIn("Ipsilateral", fragment)
         self.assertIn("mesial temporal/insular cortex", fragment)
         self.assertNotIn("depends on the described subtype or context", fragment)
 
@@ -1294,7 +1511,7 @@ class CompactRendererTest(unittest.TestCase):
             "Predominant, with exceptions",
             "Tendency, with uncertainty",
         )
-        for sign in self.render["data"]:
+        for sign in self.render["BROWSE_SIGNS"]:
             for axis, function in (
                 ("lateralization", self.render["lateralization_display"]),
                 ("localization", self.render["localization_display"]),
@@ -1376,7 +1593,7 @@ class CompactRendererTest(unittest.TestCase):
             "This public sign combines",
             self.render["detail_fragments"][fear_filename],
         )
-        self.assertIn("Documented exceptions", panels)
+        self.assertNotIn("Documented exceptions", panels)
         self.assertIn("Evidence by contributing manuscript", panels)
 
     def test_public_library_counts_use_canonical_manuscripts_only(self):
@@ -1493,9 +1710,7 @@ class CompactRendererTest(unittest.TestCase):
         )
         self.assertEqual(("", 0, ""), (block, linked_count, search))
         filename = "sign-" + hashlib.sha256(b"71").hexdigest()[:24] + ".html"
-        self.assertNotIn(
-            "evidence-history-shell", self.render["detail_fragments"][filename]
-        )
+        self.assertNotIn(filename, self.render["detail_fragments"])
 
 
 if __name__ == "__main__":

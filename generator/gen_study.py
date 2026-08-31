@@ -21,10 +21,14 @@ ROOT = _find_root(__file__)
 DOCS = os.path.join(ROOT, "docs"); os.makedirs(DOCS, exist_ok=True)
 from collections import Counter, OrderedDict
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(ROOT, "tools"))
 import brain_atlas as BA
+from clinical_sign_cards import normalize_phase, project_clinical_sign_cards
 
 with open(os.path.join(ROOT,"data","atlas_bundle.json"), encoding="utf-8") as f:
     ATLAS = json.load(f)
+CLINICAL_CARD_PROJECTION = project_clinical_sign_cards(ATLAS)
+CLINICAL_CARD_BY_ID = CLINICAL_CARD_PROJECTION["by_sign_id"]
 
 
 def release_updated_utc(atlas):
@@ -94,7 +98,6 @@ CONTEXT_REGION_LABEL_BY_ID = {
     "REG:PARIETAL": "Parietal", "REG:OCCIPITAL": "Occipital",
     "REG:INSULAR": "Insular", "REG:LIMBIC": "Limbic",
     "REG:DEEP_SUBCORTICAL": "Deep/Subcortical",
-    "REG:MULTIREGIONAL_PROPAGATION": "Multiregional/Propagation",
 }
 
 
@@ -127,16 +130,6 @@ class EvidenceContextIndex:
         self.lateralizations_by_finding = {}
         for row in relationships.get("finding_lateralizations") or []:
             self.lateralizations_by_finding.setdefault(str(row["finding_ref"]), []).append(row)
-        self.axis_contexts_by_finding = {}
-        self.axis_contexts_by_sign = {}
-        for row in relationships.get("sign_axis_contexts") or []:
-            self.axis_contexts_by_finding.setdefault(str(row["finding_ref"]), []).append(row)
-            for sign_id in row.get("public_sign_ids") or []:
-                self.axis_contexts_by_sign.setdefault(str(sign_id), []).append(row)
-        self.axis_summaries_by_sign = {}
-        for row in relationships.get("sign_axis_summaries") or []:
-            for sign_id in row.get("public_sign_ids") or []:
-                self.axis_summaries_by_sign.setdefault(str(sign_id), []).append(row)
         self.classifications_by_finding = {}
         self.classifications_by_sign = {}
         for row in relationships.get("classifications") or []:
@@ -164,13 +157,15 @@ class EvidenceContextIndex:
             if ref in self.contexts_by_ref
         ]
 
-    def public_sign_ids_for_findings(self, finding_refs):
-        return self._unique(
+    def public_sign_ids_for_findings(self, finding_refs, *, exact_only=True):
+        del exact_only
+        direct = [
             str(link["public_sign_id"])
             for finding_ref in finding_refs
             for link in (self.contexts_by_ref.get(str(finding_ref)) or {}).get("sign_links") or []
             if link.get("public_sign_id")
-        )
+        ]
+        return self._unique(direct)
 
     def public_sign_ids_for_statistics(self, statistic_ids):
         linked = self._unique(
@@ -179,10 +174,10 @@ class EvidenceContextIndex:
             for link in (self.statistics.get(str(statistic_id)) or {}).get("sign_links") or []
             for public_sign_id in link.get("public_sign_ids") or []
         )
-        adjudicated = self.public_sign_ids_for_findings(
+        direct = self.public_sign_ids_for_findings(
             self.finding_refs_for_statistics(statistic_ids)
         )
-        return self._unique([*linked, *adjudicated])
+        return self._unique([*linked, *direct])
 
     def relationship_rows_for_statistics(self, statistic_ids, rows_by_finding):
         rows = []
@@ -206,15 +201,7 @@ class EvidenceContextIndex:
                 statistic_ids, self.locations_by_finding
             )
         )
-        projected = self._unique(
-            CONTEXT_REGION_LABEL_BY_ID.get(str(region_id))
-            for link in self.relationship_rows_for_statistics(
-                statistic_ids, self.axis_contexts_by_finding
-            )
-            if str(link.get("axis")) == "LOCALIZATION"
-            for region_id in link.get("region_ids") or []
-        )
-        return direct + [value for value in projected if value not in direct]
+        return direct
 
     def laterality_for_statistics(self, statistic_ids):
         direct = self._unique(
@@ -223,17 +210,7 @@ class EvidenceContextIndex:
                 statistic_ids, self.lateralizations_by_finding
             )
         )
-        projected = self._unique(
-            str(value)
-            for link in self.relationship_rows_for_statistics(
-                statistic_ids, self.axis_contexts_by_finding
-            )
-            if str(link.get("axis")) == "LATERALIZATION"
-            for value in (
-                link.get("reported_target_keys") or link.get("normalized_values") or []
-            )
-        )
-        return direct + [value for value in projected if value not in direct]
+        return direct
 
     def region_labels_for_findings(self, finding_refs):
         direct = self._unique(
@@ -243,14 +220,7 @@ class EvidenceContextIndex:
             for finding_ref in finding_refs
             for link in self.locations_by_finding.get(str(finding_ref), [])
         )
-        projected = self._unique(
-            CONTEXT_REGION_LABEL_BY_ID.get(str(region_id))
-            for finding_ref in finding_refs
-            for link in self.axis_contexts_by_finding.get(str(finding_ref), [])
-            if str(link.get("axis")) == "LOCALIZATION"
-            for region_id in link.get("region_ids") or []
-        )
-        return direct + [value for value in projected if value not in direct]
+        return direct
 
     def region_labels_for_sign(self, sign_id):
         direct = self._unique(
@@ -259,16 +229,7 @@ class EvidenceContextIndex:
             ))
             for link in self.locations_by_sign.get(str(sign_id), [])
         )
-        projected = self._unique(
-            CONTEXT_REGION_LABEL_BY_ID.get(str(region_id))
-            for link in (
-                self.axis_contexts_by_sign.get(str(sign_id), [])
-                + self.axis_summaries_by_sign.get(str(sign_id), [])
-            )
-            if str(link.get("axis")) == "LOCALIZATION"
-            for region_id in link.get("region_ids") or []
-        )
-        return direct + [value for value in projected if value not in direct]
+        return direct
 
     def brodmann_areas_for_sign(self, sign_id):
         direct = self._unique(
@@ -276,16 +237,7 @@ class EvidenceContextIndex:
             for link in self.locations_by_sign.get(str(sign_id), [])
             if link.get("brodmann_area_id")
         )
-        projected = self._unique(
-            str(area_id)
-            for link in (
-                self.axis_contexts_by_sign.get(str(sign_id), [])
-                + self.axis_summaries_by_sign.get(str(sign_id), [])
-            )
-            if str(link.get("axis")) == "LOCALIZATION"
-            for area_id in link.get("brodmann_area_ids") or []
-        )
-        return direct + [value for value in projected if value not in direct]
+        return direct
 
     def laterality_for_findings(self, finding_refs):
         direct = self._unique(
@@ -293,16 +245,7 @@ class EvidenceContextIndex:
             for finding_ref in finding_refs
             for link in self.lateralizations_by_finding.get(str(finding_ref), [])
         )
-        projected = self._unique(
-            str(value)
-            for finding_ref in finding_refs
-            for link in self.axis_contexts_by_finding.get(str(finding_ref), [])
-            if str(link.get("axis")) == "LATERALIZATION"
-            for value in (
-                link.get("reported_target_keys") or link.get("normalized_values") or []
-            )
-        )
-        return direct + [value for value in projected if value not in direct]
+        return direct
 
     def classification_nodes_for_findings(self, finding_refs, scheme_id):
         return self._unique(
@@ -334,6 +277,65 @@ SYNTHESIS_CARDS_BY_SIGN = {
     str(sign_id): [SYNTHESIS_CARD_BY_ID[item_id] for item_id in item_ids]
     for sign_id, item_ids in (EVIDENCE_SYNTHESIS.get("cards_by_sign") or {}).items()
 }
+
+
+def is_propagation_value(value):
+    return " ".join(re.findall(
+        r"[a-z0-9]+", str(value or "").casefold()
+    )) in {"reg multiregional propagation", "multiregional propagation"}
+
+
+def is_propagation_target(target):
+    return any(is_propagation_value(value) for value in (
+        target.get("key"), target.get("label"), *(target.get("raw") or []),
+    ))
+
+
+def public_reported_targets(card):
+    """Return source-reported public targets; propagation is context, not a target."""
+    public_fields = {
+        "key", "label", "raw", "origins", "finding_refs", "target_level",
+        "region_id", "parent_region_id", "area_id", "brodmann_label",
+    }
+    return [
+        {field: value for field, value in target.items() if field in public_fields}
+        for target in ((card.get("target_contract") or {}).get("reported_targets") or [])
+        if target.get("key") and target.get("label") and not is_propagation_target(target)
+    ]
+
+
+def sign_axis_targets(sign_id, axis):
+    return [
+        target
+        for card in SYNTHESIS_CARDS_BY_SIGN.get(str(sign_id), [])
+        if str(card.get("axis") or "").upper() == axis
+        for target in public_reported_targets(card)
+    ]
+
+
+def target_regions_for_sign(sign_id):
+    regions = []
+    for target in sign_axis_targets(sign_id, "LOCALIZATION"):
+        if (str(target.get("target_level") or "").upper() == "STATUS"
+                or str(target.get("key") or "").casefold() == "nonassoc"):
+            continue
+        region_id = next((
+            str(value) for value in (
+                target.get("region_id"), target.get("parent_region_id"), target.get("key"),
+            ) if str(value or "") in CONTEXT_REGION_LABEL_BY_ID
+        ), "")
+        label = CONTEXT_REGION_LABEL_BY_ID.get(region_id)
+        if label and label not in regions:
+            regions.append(label)
+    return regions
+
+
+def target_brodmann_areas_for_sign(sign_id):
+    return list(OrderedDict.fromkeys(
+        str(target.get("area_id") or "").removeprefix("BA:")
+        for target in sign_axis_targets(sign_id, "LOCALIZATION")
+        if target.get("area_id")
+    ))
 DESCRIPTIVE_FAMILIES = EVIDENCE_SYNTHESIS.get("descriptive_families") or []
 DESCRIPTIVE_FAMILY_BY_ID = {row["analysis_id"]: row for row in DESCRIPTIVE_FAMILIES}
 DESCRIPTIVE_FAMILIES_BY_SIGN = {
@@ -359,7 +361,7 @@ for _source in CORPUS["sources"]:
                 STATISTIC_CONTEXT_BY_ID[_statistic_id] = {
                     "source": _source, "finding": _row, "statistic": _statistic,
                 }
-        for _cid in _row["sign_ids"]:
+        for _cid in _row.get("sign_ids") or []:
             ledger_evidence_by_cardid.setdefault(_cid, []).append((_entry, None))
 
 # A reported number is one atomic record. Descriptive families are references
@@ -405,7 +407,10 @@ for _card in SYNTHESIS_CARDS:
     _sid = int(_raw_sid) if _raw_sid.isdigit() else _raw_sid
     _linked = ledger_evidence_by_cardid.setdefault(_sid, [])
     _seen_refs = {entry["finding"]["source_finding_ref"] for entry, _ in _linked}
-    for _finding_ref in _card.get("audit_cited_finding_refs") or []:
+    for _finding_ref in OrderedDict.fromkeys(
+        (_card.get("row_finding_refs") or [])
+        + (_card.get("audit_cited_finding_refs") or [])
+    ):
         if _finding_ref in ledger_by_ref and _finding_ref not in _seen_refs:
             _linked.append((ledger_by_ref[_finding_ref], None))
             _seen_refs.add(_finding_ref)
@@ -415,6 +420,13 @@ _nextid = max(int(x["id"]) for x in data if str(x["id"]).isdigit()) + 1
 for ns in NEW_SIGNS:
     ns.setdefault("id", _nextid); _nextid += 1
     data.append(ns)
+
+# The default clinical browser contains only signs with retained source evidence.
+# Source-less concepts remain intact in the public bundle and private ledger.
+# Keep ``data`` complete: weighted evidence and relationship validation consume
+# the whole public graph, while browse/search consume this explicit projection.
+BROWSE_SIGN_IDS = CLINICAL_CARD_PROJECTION["browse_sign_ids"]
+BROWSE_SIGNS = [d for d in data if str(d["id"]) in BROWSE_SIGN_IDS]
 
 # attach evidence to each sign by matching its name (lowercased) against evidence keys
 for d in data:
@@ -440,7 +452,7 @@ LATERALIZATION_TARGET_LABELS = OrderedDict((
 ))
 evidcolor= {"I":"#1a7a4a","II":"#c47a00","III":"#c0392b","SRC":"#0e9db0"}
 
-region_order = ["Temporal","Frontal","Parietal","Occipital","Insular","Limbic","Deep/Subcortical","Multiregional/Propagation","No localization stated"]
+region_order = ["Temporal","Frontal","Parietal","Occipital","Insular","Limbic","Deep/Subcortical","No localization stated"]
 region_short = {"Temporal":"Temporal","Frontal":"Frontal","Parietal":"Parietal","Occipital":"Occipital","Insular":"Insular","Limbic":"Limbic","Deep/Subcortical":"Deep","Multiregional/Propagation":"Multiregional","No localization stated":"Unlocalized"}
 region_colors= {"Temporal":"#1a3a6b","Frontal":"#2d4a1e","Parietal":"#4a1e3d","Occipital":"#1e3d4a","Insular":"#4a3a1e","Limbic":"#51375c","Deep/Subcortical":"#3d2a0a","Multiregional/Propagation":"#1e1e4a","No localization stated":"#5f6878"}
 
@@ -574,10 +586,10 @@ def slug(s):
 
 
 def public_browse_regions(d):
-    # Navigation is a projection of exact finding-location links. Summary cards,
-    # sign names, and classification labels are never anatomy fallbacks.
-    positive = CONTEXT.region_labels_for_sign(str(d.get("id")))
-    return positive or ["No localization stated"]
+    card = CLINICAL_CARD_BY_ID.get(str(d.get("id") or ""))
+    if card:
+        return card["browse_regions"]
+    return [region for region in target_regions_for_sign(str(d.get("id"))) if region != "Multiregional/Propagation"] or ["No localization stated"]
 
 # Resolve each sign's location relationship once by immutable sign id.  Every
 # presentation below (cards, regional search references, and map) consumes this
@@ -585,10 +597,10 @@ def public_browse_regions(d):
 SIGN_LOCATION_BY_ID = OrderedDict()
 for d in data:
     mapping = BA.mapping_for_sign(d)
-    context_areas = CONTEXT.brodmann_areas_for_sign(str(d["id"]))
-    if set(mapping["areas"]) != set(context_areas):
+    target_areas = target_brodmann_areas_for_sign(str(d["id"]))
+    if set(mapping["areas"]) != set(target_areas):
         raise RuntimeError(
-            f'Brodmann mapping for sign {d["id"]} differs from the evidence context.'
+            f'Brodmann mapping for sign {d["id"]} differs from its reported targets.'
         )
     lobes = []
     for aid in mapping["areas"]:
@@ -602,19 +614,21 @@ for d in data:
 grouped = OrderedDict()
 for r in region_order:
     grouped[r] = OrderedDict()
-for d in data:
+for d in BROWSE_SIGNS:
     for region in public_browse_regions(d):
         if region not in grouped:
             continue
         sub_values = d.get("subsections_by_region", {}).get(region)
         if not sub_values:
-            combined = d.get("subs_by_region", {}).get(region, d["sub"])
+            combined = d.get("subs_by_region", {}).get(region) or d.get("sub") or ""
             sub_values = [part.strip() for part in str(combined).split(";") if part.strip()]
+        if not sub_values:
+            sub_values = ["Other"]
         for sub in dict.fromkeys(sub_values):
             grouped[region].setdefault(sub, []).append(d)
 
 area_signs_by_region = OrderedDict((r, OrderedDict()) for r in region_order)
-for d in data:
+for d in BROWSE_SIGNS:
     for aid in SIGN_LOCATION_BY_ID[d["id"]]["areas"]:
         lobe = BA.AREAS[aid]["lobe"]
         if lobe in area_signs_by_region:
@@ -626,20 +640,10 @@ def sign_search_text(d, area_ids=None):
     for aid in mapping["areas"] if area_ids is None else area_ids:
         area = BA.AREAS[aid]
         area_terms.extend([area["label"], area["name"], area["lobe"]])
-    evidence_terms = []
-    for entry, _relation in ledger_evidence_by_cardid.get(d["id"], []):
-        row = entry["finding"]
-        evidence_terms.extend([
-            row["source_term"], row["citation"], row["laterality_localization"],
-            entry["source"]["source_file"],
-        ])
-    return " ".join(str(x or "") for x in [
-        d["sign"], d["phase"], d["region"], d["sub"], d["loc"], d["notes"], d["cite"],
-        *area_terms, *evidence_terms,
-    ]).lower().replace('"', "")
+    return " ".join([CLINICAL_CARD_BY_ID[str(d["id"])]["search_text"], *area_terms]).casefold().replace('"', "")
 
-SIGN_BASE_SEARCH_BY_ID = {d["id"]: sign_search_text(d, []) for d in data}
-SIGN_SEARCH_BY_ID = {d["id"]: sign_search_text(d) for d in data}
+SIGN_BASE_SEARCH_BY_ID = {d["id"]: sign_search_text(d, []) for d in BROWSE_SIGNS}
+SIGN_SEARCH_BY_ID = {d["id"]: sign_search_text(d) for d in BROWSE_SIGNS}
 sign_search_json = json.dumps(
     {str(sign_id): value for sign_id, value in SIGN_SEARCH_BY_ID.items()},
     ensure_ascii=False,
@@ -672,7 +676,7 @@ def classification_tree(scheme_id, root_id):
     mapped_by_sign = {}
     for mapping in CLASSIFICATIONS["sign_mappings"]:
         node_id = mapping["node_id"]
-        if node_id in included:
+        if node_id in included and str(mapping["sign_id"]) in BROWSE_SIGN_IDS:
             mapped_by_sign.setdefault(str(mapping["sign_id"]), set()).add(node_id)
 
     def is_ancestor(candidate, node_id):
@@ -752,6 +756,56 @@ classification_trees = OrderedDict(
     (scheme_id, classification_tree(scheme_id, root_id))
     for scheme_id, root_id in classification_roots.items()
 )
+
+
+def merged_classification_nodes(nodes, parent_label=""):
+    """Merge equivalent SSC/5D labels without inventing cross-scheme links."""
+    merged = OrderedDict()
+    for node in nodes:
+        label = str(node.get("label") or "")
+        children = merged_classification_nodes(node.get("children") or [], label)
+        direct = list(node.get("sign_ids") or [])
+        broad = list(node.get("broad_sign_ids") or [])
+        # A retained root repeating its parent is hierarchy metadata, not a
+        # reader-facing Lüders category (avoid ``Seizure > Seizure``).
+        same_label_children = [child for child in children if child["label"].casefold() == label.casefold()]
+        children = [child for child in children if child not in same_label_children]
+        for child in same_label_children:
+            direct.extend(child["sign_ids"])
+            broad.extend(child["broad_sign_ids"])
+            children.extend(child["children"])
+        key = label.casefold()
+        bucket = merged.setdefault(key, {
+            "node_id": node["node_id"], "label": label,
+            "node_kind": node.get("node_kind", ""), "is_family": False,
+            "sign_ids": [], "broad_sign_ids": [], "all_sign_ids": [], "children": [],
+        })
+        bucket["sign_ids"].extend(direct)
+        bucket["broad_sign_ids"].extend(broad)
+        bucket["all_sign_ids"].extend(node.get("all_sign_ids") or [])
+        bucket["children"].extend(children)
+    for bucket in merged.values():
+        bucket["sign_ids"] = list(OrderedDict.fromkeys(bucket["sign_ids"]))
+        bucket["broad_sign_ids"] = list(OrderedDict.fromkeys(bucket["broad_sign_ids"]))
+        bucket["children"] = merged_classification_nodes(bucket["children"], bucket["label"])
+        bucket["all_sign_ids"] = list(OrderedDict.fromkeys(
+            bucket["all_sign_ids"] + bucket["sign_ids"] + bucket["broad_sign_ids"]
+            + [sign_id for child in bucket["children"] for sign_id in child["all_sign_ids"]]
+        ))
+        bucket["is_family"] = bool(bucket["children"])
+    return list(merged.values())
+
+
+_luders_trees = [classification_trees["LUDERS_5D_2005"]]
+if "LUDERS_SSC_1998" in {row.get("scheme_id") for row in CLASSIFICATIONS["nodes"]}:
+    _luders_trees.insert(0, classification_tree("LUDERS_SSC_1998", "LUDERS:SCHEME_ROOT"))
+classification_trees["LUDERS"] = {
+    "root_id": "LUDERS",
+    "root_label": "Lüders classification",
+    "groups": merged_classification_nodes(
+        [group for tree in _luders_trees for group in tree["groups"]]
+    ),
+}
 classification_trees_json = json.dumps(classification_trees, ensure_ascii=False, separators=(",", ":"))
 
 def is_lobe_level_subsection(label):
@@ -867,8 +921,48 @@ def top_sens(cid):
     best = max(blk["conditions"], key=lambda c: c["high"])
     return f'{best["mean"]:g}% in {best["cond"]}'
 
+def _publication_label(source, findings):
+    """Use one structured author-year citation or the preserved work label."""
+    citations = list(OrderedDict.fromkeys(
+        str(row.get("citation") or "").strip()
+        for row in findings
+        if str(row.get("citation") or "").strip().upper()
+        not in {"", "NONE", "NOT_REPORTED", "NOT_APPLICABLE"}
+    ))
+    if len(citations) == 1:
+        citation = citations[0]
+        match = re.match(r"\s*([A-Za-z][A-Za-z'\-]+)(?:\s+et\s+al\.?)?[,\s]+.*?\b((?:18|19|20)\d{2}[a-z]?)\b", citation)
+        if match:
+            return f"{match.group(1)} et al., {match.group(2)}"
+        return citation
+    profile = WORK_AUTHORITY_BY_ID.get(str(source.get("work_id") or "")) or {}
+    return public_value(profile.get("display_name"), public_value(source.get("source_file"), ""))
+
+
+def _evidence_class_for_work(sign_id, work_id):
+    classes = {
+        str(contribution.get("evidence_class") or "")
+        for card in SYNTHESIS_CARDS_BY_SIGN.get(str(sign_id), [])
+        for contribution in card.get("contributions") or []
+        if str(contribution.get("work_id") or "") == str(work_id)
+        and str(contribution.get("evidence_class") or "") in {"I", "II", "III"}
+    }
+    return next((value for value in ("I", "II", "III") if value in classes), "")
+
+
+def source_groups_for_sign(cid):
+    """Render the shared projector's class-scoped source groups."""
+    papers = OrderedDict()
+    for group in CLINICAL_CARD_BY_ID[str(cid)]["source_groups"]:
+        papers[group["source_group_id"]] = {
+            "source": group["source"], "findings": [(row, None) for row in group["findings"]],
+            "label": group["label"], "evidence_class": group["evidence_class"],
+        }
+    return papers
+
+
 def ledger_evidence_block(cid, notes=""):
-    """Render source history behind one compact sign summary."""
+    """Render source evidence without creating a second scientific view."""
     linked = ledger_evidence_by_cardid.get(cid, [])
     families = DESCRIPTIVE_FAMILIES_BY_SIGN.get(str(cid), [])
     informative_notes = str(notes or "").strip()
@@ -876,38 +970,45 @@ def ledger_evidence_block(cid, notes=""):
         informative_notes = ""
     if not linked and not families:
         return "", 0, ""
-    papers, search = {}, []
-    for entry, relation in linked:
-        source, row = entry["source"], entry["finding"]
-        paper = papers.setdefault(source["source_file"], {"source": source, "findings": []})
-        paper["findings"].append((row, relation))
+    papers, search = source_groups_for_sign(cid), []
+    for entry, _relation in linked:
+        row = entry["finding"]
         search.extend([row["source_term"], row["claim"], statistic_search_text(row), row["citation"],
                        row["evidence_text"], row["source_finding_ref"]])
+    paper_groups = OrderedDict()
+    for _work_id, paper in papers.items():
+        evidence_class = paper["evidence_class"]
+        paper_groups.setdefault(evidence_class, []).append(paper)
     paper_blocks = []
-    for paper in papers.values():
-        finding_blocks = []
-        for row, _relation in paper["findings"]:
-            measure = statistic_block(row)
-            source_role = ROLE_LABEL.get(row["evidence_role"], "Source information")
-            finding_blocks.append(
-                '<article class="reviewed-card-evidence">'
-                f'<div class="ev-finding"><strong>{esc(row["source_term"])}</strong> '
-                f'&mdash; {esc(row["claim"])}</div>'
-                f'{measure}'
-                '<details class="ev-trace"><summary>Source text and study details</summary>'
-                f'<div><strong>Location in paper:</strong> {esc(row["locators"])}</div>'
-                f'{cited_source_line(row)}'
-                f'<div><strong>Relevant source text:</strong> {esc(row["evidence_text"])}</div>'
-                f'<div><strong>Who was studied:</strong> {esc(row["population"])}</div>'
-                f'<div><strong>Source type:</strong> {esc(source_role)}</div>'
-                '</details></article>')
-        paper_blocks.append(
-            '<li class="ev-paper-group">'
-            '<div class="ev-paper">'
-            f'<strong>Reviewed paper:</strong> <span class="ev-paper-file">{esc(paper["source"]["source_file"])}</span>'
-            f'<span class="ev-paper-count">{len(paper["findings"])} finding{"s" if len(paper["findings"]) != 1 else ""}</span>'
-            '</div>'
-            f'{"".join(finding_blocks)}</li>')
+    for evidence_class, grouped_papers in paper_groups.items():
+        blocks = []
+        for paper in grouped_papers:
+            source = paper["source"]
+            findings = [row for row, _relation in paper["findings"]]
+            publication_label = paper["label"]
+            finding_blocks = []
+            for row, _relation in paper["findings"]:
+                measure = statistic_block(row)
+                finding_blocks.append(
+                    '<article class="reviewed-card-evidence">'
+                    f'<div class="ev-finding"><strong>{esc(row["source_term"])}</strong> '
+                    f'&mdash; {esc(row["claim"])}</div>'
+                    f'{measure}'
+                    '<details class="ev-trace"><summary>Source text and study details</summary>'
+                    f'<div><strong>Location in paper:</strong> {esc(row["locators"])}</div>'
+                    f'{cited_source_line(row) if str(row.get("citation") or "").strip() != publication_label else ""}'
+                    f'<div><strong>Relevant source text:</strong> {esc(row["evidence_text"])}</div>'
+                    f'<div><strong>Who was studied:</strong> {esc(row["population"])}</div>'
+                    '</details></article>')
+            blocks.append(
+                '<li class="ev-paper-group">'
+                '<div class="ev-paper">'
+                f'<strong>Manuscript:</strong> <span class="ev-paper-file">{esc(publication_label)}</span>'
+                f'<span class="ev-paper-count">{len(paper["findings"])} finding{"s" if len(paper["findings"]) != 1 else ""}</span>'
+                '</div>'
+                f'{"".join(finding_blocks)}</li>')
+        heading = f'<div class="source-class-heading">Class {esc(evidence_class)}</div>' if evidence_class else ""
+        paper_blocks.append(heading + '<ul class="ev-list">' + "".join(blocks) + '</ul>')
     family_block = ""
     if families:
         family_rows = "".join(descriptive_family_row(row) for row in families)
@@ -929,14 +1030,14 @@ def ledger_evidence_block(cid, notes=""):
         counts.append(f'{len(families)} result group{"s" if len(families) != 1 else ""}')
     count_label = " · ".join(counts) or "Background"
     return (
-        '<details class="d-row d-ev evidence-history-shell">'
-        f'<summary><span>Evidence history</span><span class="reviewed-evidence-count">{count_label}</span></summary>'
+        '<details class="d-row card-source-shell">'
+        f'<summary><span>Source</span><span class="reviewed-evidence-count">{count_label}</span></summary>'
         '<div class="reviewed-evidence-panel">'
         '<div class="ev-toolbar"><button type="button" data-ev-action="expand">Expand source details</button>'
         '<button type="button" data-ev-action="collapse">Collapse source details</button></div>'
         f'{note_block}'
         '<div class="reviewed-evidence-scroll">'
-        f'<ul class="ev-list">{"".join(paper_blocks)}</ul>{family_block}</div></div></details>',
+        f'{"".join(paper_blocks)}{family_block}</div></div></details>',
         len(linked),
         " ".join(search),
     )
@@ -975,6 +1076,17 @@ def public_value(value, fallback=""):
         return fallback
     text = str(value).strip()
     return fallback if text.upper() in _MISSING_PUBLIC_VALUES else text
+
+
+def public_display_prose(value):
+    text = public_value(value)
+    if (
+        "limit this packet" in text.casefold()
+        or "do not assign" in text.casefold()
+        or re.search(r"(?<![A-Za-z0-9])F\d{3}(?![A-Za-z0-9])", text)
+    ):
+        raise RuntimeError("Public display prose contains internal audit text.")
+    return text
 
 
 def public_context_value(value, fallback=""):
@@ -1245,45 +1357,17 @@ def limited_sentences(value, limit=2):
 
 
 def concise_axis_sentence(card):
-    text = limited_sentences(card.get("plain_summary"), 1)
-    axis = str(card.get("axis") or "finding").lower()
-    status = card.get("pattern_status")
-    if status == "PREDOMINANT_WITH_EXCEPTIONS":
-        if re.search(r"\bpredominantly\b", text, flags=re.I):
-            return text
-        match = re.search(r':\s*(.+?)[.]?$', text)
-        if match:
-            value = re.sub(r'\b(?:relationship|localization)\b', '', match.group(1), flags=re.I).strip(' .')
-            return f"Predominantly {value}."
-    if status == "NON_LATERALIZING":
-        targets = relationship_targets(card)
-        return "No single reliable side." if any(value != "nonassoc" for value in targets) else "No reliable hemispheric lateralization."
-    if status == "NON_LOCALIZING":
-        targets = relationship_targets(card)
-        return "Not specific to one region." if any(value != "nonassoc" for value in targets) else "No reliable anatomical localization."
-    return text.replace("The embedded evidence ", "The reviewed evidence ")
+    return limited_sentences(public_display_prose(card.get("plain_summary")), 1).replace(
+        "The embedded evidence ", "The reviewed evidence "
+    )
 
 
 def relationship_targets(card):
-    contract = (card or {}).get("target_contract")
-    exported = (contract or {}).get("reported_targets") or []
-    if contract is not None:
-        return list(OrderedDict.fromkeys(
-            str(item.get("key") or item.get("raw") or "").strip()
-            for item in exported if str(item.get("key") or item.get("raw") or "").strip()
-        ))
-    values = []
-    for relation in (card or {}).get("primary_relationships") or []:
-        raw_targets = relation.get("targets")
-        if raw_targets is None:
-            raw_targets = [relation.get("target")]
-        elif not isinstance(raw_targets, list):
-            raw_targets = [raw_targets]
-        for target in raw_targets:
-            value = str(target or "").strip()
-            if value and value not in values:
-                values.append(value)
-    return values
+    exported = public_reported_targets(card or {})
+    return list(OrderedDict.fromkeys(
+        str(item.get("key") or item.get("raw") or "").strip()
+        for item in exported if str(item.get("key") or item.get("raw") or "").strip()
+    ))
 
 
 def axis_modifier_note(card, css_class="axis-modifier-note", tag="span"):
@@ -1291,27 +1375,30 @@ def axis_modifier_note(card, css_class="axis-modifier-note", tag="span"):
     modifiers = ((card or {}).get("target_contract") or {}).get("modifiers") or []
     if not modifiers:
         return ""
-    if any(
-        str(item.get("key") or "") != "PROPAGATION"
-        or str(item.get("modifier_type") or "") != "PROPAGATION"
-        for item in modifiers
-    ):
-        raise AssertionError("Unsupported public axis modifier")
-    return (
-        f'<{tag} class="{css_class}">'
-        'Propagation noted in source context.'
-        f'</{tag}>'
-    )
+    modifier_labels = {
+        ("PROPAGATION", "PROPAGATION"): "Propagation noted in source context.",
+        ("COHORT_CONTEXT", "COHORT_CONTEXT"): "Cohort context noted in source.",
+        ("COHORT", "COHORT"): "Cohort context noted in source.",
+    }
+    labels = []
+    for item in modifiers:
+        label = modifier_labels.get((
+            str(item.get("key") or ""), str(item.get("modifier_type") or ""),
+        ))
+        if not label:
+            raise AssertionError("Unsupported public axis modifier")
+        if label not in labels:
+            labels.append(label)
+    return f'<{tag} class="{css_class}">{esc(" ".join(labels))}</{tag}>'
 
 
 def lateralization_targets(sign_id):
     """Return every canonical target once for display and filtering."""
     values = OrderedDict()
-    for card in SYNTHESIS_CARDS_BY_SIGN.get(str(sign_id), []):
-        if card.get("axis") != "LATERALIZATION":
-            continue
-        targets = ((card.get("target_contract") or {}).get("reported_targets") or [])
-        for target in targets:
+    card = CLINICAL_CARD_BY_ID.get(str(sign_id))
+    if not card:
+        return values
+    for target in card["axes"]["lateralization"]["targets"]:
             key = str(target.get("key") or "").strip().casefold()
             key = {"nonlat": "nonassoc", "non-lateralizing": "nonassoc"}.get(key, key)
             label = LATERALIZATION_TARGET_LABELS.get(key) or str(
@@ -1364,130 +1451,96 @@ def axis_synthesis(sign_id, axis):
 
 def axis_pattern_badge(d, axis):
     card = axis_synthesis(d.get("id"), axis)
-    if card:
-        status = str(card.get("pattern_status") or "").strip()
-        labels = {
-            "NOT_REPORTED": f'No reported {axis.lower()} relationship',
-            "NON_LATERALIZING": "No reliable lateralization",
-            "NON_LOCALIZING": "No reliable localization",
-        }
-        label = labels.get(status)
-        if label:
-            return f'<span class="axis-state">{esc(label)}</span>'
-    return ""
+    if card and relationship_targets(card):
+        return ""
+    return f'<span class="axis-state">No reported {axis.lower()} relationship</span>'
 
 
 def lateralization_display(d):
-    card = axis_synthesis(d.get("id"), "LATERALIZATION")
-    state = axis_pattern_badge(d, "LATERALIZATION")
-    modifier = axis_modifier_note(card)
-    status = str((card or {}).get("pattern_status") or "")
-    if status in {"NOT_REPORTED", "NON_LATERALIZING"}:
-        return f"{state}{modifier}"
+    axis = CLINICAL_CARD_BY_ID[str(d["id"])]["axes"]["lateralization"]
+    modifier = "".join(f'<span class="axis-modifier-note">{esc(value)}</span>' for value in axis["modifiers"])
+    if not axis["targets"]:
+        return f'<span class="axis-state">No reported lateralization relationship</span>{modifier}'
     targets = lateralization_target_chips(d.get("id"))
-    note = "" if card else f'<span class="axis-note">{esc(d.get("lat", ""))}</span>'
-    display = f'{targets}{state}{note}'
-    if not display and card:
-        summary = limited_sentences(card.get("plain_summary"), 1)
-        display = f'<span class="axis-note">{esc(summary)}</span>'
-    return f"{display}{modifier}"
+    return f"{targets}{modifier}"
 
 
 def localization_display(d):
-    card = axis_synthesis(d.get("id"), "LOCALIZATION")
-    state = axis_pattern_badge(d, "LOCALIZATION")
-    modifier = axis_modifier_note(card)
-    status = str((card or {}).get("pattern_status") or "")
-    if status in {"NOT_REPORTED", "NON_LOCALIZING"}:
-        return f"{state}{modifier}"
-    region_labels = {
-        "reg:temporal": "Temporal", "temporal": "Temporal",
-        "reg:frontal": "Frontal", "frontal": "Frontal",
-        "reg:parietal": "Parietal", "parietal": "Parietal",
-        "reg:occipital": "Occipital", "occipital": "Occipital",
-        "reg:insular": "Insular", "insular": "Insular",
-        "reg:limbic": "Limbic", "limbic": "Limbic",
-        "reg:deep_subcortical": "Deep/Subcortical",
-        "deep/subcortical": "Deep/Subcortical",
-        "reg:multiregional": "Multiregional",
-    }
-    regions = []
-    if card:
-        for target in relationship_targets(card):
-            region = region_labels.get(target.strip().lower())
-            if region and region not in regions:
-                regions.append(region)
-    else:
-        regions = list(OrderedDict.fromkeys(d.get("regions") or [d.get("region")]))
-        if len(regions) > 1:
-            regions = [region for region in regions if region != "No localization stated"]
+    dto = CLINICAL_CARD_BY_ID[str(d["id"])]
+    axis, regions = dto["axes"]["localization"], dto["browse_regions"]
+    modifier = "".join(f'<span class="axis-modifier-note">{esc(value)}</span>' for value in axis["modifiers"])
+    if not axis["targets"]:
+        return f'<span class="axis-state">No reported localization relationship</span>{modifier}'
+    labels = OrderedDict()
+    for region in regions:
+        if region:
+            labels.setdefault(region.casefold(), ("region", region))
+    for target in axis["targets"]:
+        if label := str(target.get("label") or "").strip():
+            labels.setdefault(label.casefold(), ("target", label))
     chips = "".join(
-        f'<span class="region-chip" style="--region-chip:{region_colors.get(region, "#7b8494")}">{esc(region)}</span>'
-        for region in regions if region
+        f'<span class="region-chip" style="--region-chip:{region_colors.get(label, "#7b8494")}">{esc(label)}</span>'
+        if kind == "region" else f'<span class="axis-chip">{esc(label)}</span>'
+        for kind, label in labels.values()
     )
-    loc_text = "" if card else str(d.get("loc") or "").strip()
-    listed = [part.strip() for part in loc_text.split(";") if part.strip()]
-    if listed and all(part in set(regions) | {"No localization stated"} for part in listed):
-        loc_text = ""
-    text = f'<span class="location-note">{esc(loc_text)}</span>' if loc_text else ""
     region_block = f'<span class="region-chips">{chips}</span>' if chips else ""
-    display = f'{region_block}{state}{text}'
-    if not display and card:
-        summary = limited_sentences(card.get("plain_summary"), 1)
-        display = f'<span class="axis-note">{esc(summary)}</span>'
-    return f"{display}{modifier}"
+    return f"{region_block}{modifier}"
+
+
+_PHASE_LABELS = {
+    "AURA": "Aura", "ICTAL": "Ictal", "POST_ICTAL": "Post ictal",
+    "PERIICTAL": "Periictal", "STIMULATION_INDUCED": "Stimulation induced",
+    "OTHER": "Other",
+}
+
+
+def phase_of_seizure_display(d):
+    """Prefer the bundle category; otherwise use bounded source wording."""
+    phase = CLINICAL_CARD_BY_ID.get(str(d.get("id") or ""), {}).get("phase") or normalize_phase(d)
+    source_wording, categories = phase["source_wording"], phase["categories"]
+    canonical = " / ".join(categories)
+    modifier = (
+        f'<small class="phase-source">Source wording: {esc(source_wording)}</small>'
+        if source_wording and source_wording.casefold() != canonical.casefold() else ""
+    )
+    return f'<span class="phase-categories">{esc(canonical)}</span>{modifier}'
+
+
+def classification_card_display(sign_id, scheme_ids):
+    """Render only the most-specific preserved mapping labels for one sign."""
+    scheme_ids = {scheme_ids} if isinstance(scheme_ids, str) else set(scheme_ids)
+    key = "ilae" if scheme_ids == {"ILAE_SEIZURE_2025"} else "luders"
+    labels = CLINICAL_CARD_BY_ID[str(sign_id)]["classifications"][key]
+    return esc("; ".join(labels) if labels else "Not reported")
+
+
+def source_readable_summary(sign_id):
+    """Render linked claims once beneath the same manuscript label as Source."""
+    groups = []
+    for paper in CLINICAL_CARD_BY_ID[str(sign_id)]["summary_manuscripts"]:
+        claims = list(OrderedDict.fromkeys(
+            limited_sentences(claim, 1)
+            for claim in paper["claims"] if limited_sentences(claim, 1)
+        ))
+        if not claims:
+            continue
+        label = paper["label"]
+        if not label:
+            continue
+        groups.append(
+            '<p class="summary-manuscript-group">'
+            f'<span class="summary-manuscript">{esc(label)}</span>: {esc(" ".join(claims))}'
+            '</p>'
+        )
+    return "".join(groups)
 
 
 def compact_evidence_overview(d):
-    cards = SYNTHESIS_CARDS_BY_SIGN.get(str(d["id"]), [])
-    works = set()
-    findings = set()
-    statistics = set()
-    for card in cards:
-        works.update(card.get("row_work_ids") or [])
-        findings.update(card.get("row_finding_refs") or [])
-        statistics.update(card.get("row_statistic_ids") or [])
-    raw_summary = limited_sentences(d.get("evidence_summary"), 2)
-    if raw_summary.startswith("This public sign combines "):
-        raw_summary = ""
-    summary = raw_summary
-    if d.get("support_items") and raw_summary:
-        first_sentence = limited_sentences(raw_summary, 1)
-        if ":" in first_sentence:
-            lead = first_sentence.split(":", 1)[0].strip()
-            if len(lead.split()) >= 5:
-                summary = lead.rstrip(".") + "."
-        elif ";" in first_sentence:
-            summary = first_sentence.split(";", 1)[0].rstrip(".") + "."
-    if not summary:
-        summaries = [concise_axis_sentence(card) for card in sorted(cards, key=lambda row: row.get("axis", ""))]
-        summary = " ".join(OrderedDict.fromkeys(value for value in summaries if value))
-    if not summary:
-        summary = limited_sentences(d.get("notes"), 2)
-    if summary.startswith("This public sign combines "):
-        summary = ""
-    count_items = [
-        (len(works), "paper"),
-        (len(findings), "finding"),
-        (len(statistics), "reported value"),
-    ]
-    counts = "".join(
-        f'<span><strong>{count}</strong> {label}{"s" if count != 1 else ""}</span>'
-        for count, label in count_items if count
-    )
-    basis = "Reviewed sources" if d.get("evid") == "SRC" else f'Evidence level {d.get("evid")}'
-    counts += f'<span class="evidence-basis-chip">{esc(basis)}</span>'
-    key_numbers = [
-        str(item.get("display") or "").strip()
-        for item in d.get("support_items") or []
-        if str(item.get("display") or "").strip()
-    ][:2]
-    numbers = "".join(f'<li>{esc(value)}</li>' for value in key_numbers)
-    numbers_block = f'<ul class="key-numbers">{numbers}</ul>' if numbers else ""
+    summary = source_readable_summary(d["id"])
     return (
-        '<div class="d-row evidence-overview"><span class="d-label">Summary</span>'
-        +(f'<p>{esc(summary)}</p>' if summary else '')
-        +f'<div class="evidence-counts">{counts}</div>{numbers_block}</div>'
+        '<div class="d-row evidence-overview"><span class="d-label">Brief Summary</span>'
+        +summary
+        +'</div>'
     )
 
 
@@ -1540,12 +1593,7 @@ def area_reference_blocks(region):
             lc, ec = d["latcode"], d["evid"]
             ref_search = f'{area["name"]} {area["label"]} {area["lobe"]}'.lower()
             detail_name = "sign-" + hashlib.sha256(str(d["id"]).encode("utf-8")).hexdigest()[:24] + ".html"
-            _nsrc = len(ledger_evidence_by_cardid.get(d.get("id"), []))
-            lib_chip = (f'<span class="chip lib-chip" title="Reviewed source findings">&#128218; {_nsrc}</span>'
-                        if _nsrc else '')
-            evid_chip = evidence_header_chip(ec)
             phase_search = "|".join(d.get("phase_values") or [d["phase"]])
-            lat_targets = lateralization_target_chips(d.get("id"))
             lat_facets = "|".join(lateralization_filter_values(d.get("id")))
             refs.append(f'''<div class="sign" id="area-sign-{slug(region)}-{aid}-{d['id']}"
     data-area-ref="true" data-id="{d['id']}" data-ba="{esc(aid)}" data-region="{esc(region)}"
@@ -1555,12 +1603,6 @@ def area_reference_blocks(region):
   <button class="sign-head" aria-expanded="false">
     <span class="chevron">&#8250;</span>
     <span class="sign-name">{esc(d['sign'])}</span>
-    <span class="head-chips">
-      <span class="chip phase-badge phase-{slug(d['phase'].split('/')[0])}">{esc(d['phase'])}</span>
-      {lat_targets}
-      {evid_chip}
-      {lib_chip}
-    </span>
   </button>
   <div class="detail" data-detail-path="fragments/{detail_name}">
     <div class="detail-loading">Loading details&hellip;</div>
@@ -1590,62 +1632,43 @@ for r in region_order:
         for d in signs:
             lc, ec = d["latcode"], d["evid"]
             accent = latcolor.get(lc,"#999")
-            _bmap = SIGN_LOCATION_BY_ID[d["id"]]
-            map_row = ""
-            if _bmap["areas"]:
-                _why = f'Show where {d["sign"]} localizes'
-                _chips = "".join(
-                    f'<button class="ba-chip{" bc-deep" if BA.AREAS[a].get("buried") else ""}" '
-                    f'data-ba="{a}" title="{esc(BA.AREAS[a]["name"])}">{BA.AREAS[a]["label"]}</button>'
-                    for a in _bmap["areas"])
-                map_row = (f'<div class="d-row d-map"><span class="d-label">Brodmann areas</span>'
-                           f'<span class="d-value"><span class="ba-chips">{_chips}</span>'
-                           f'<button class="map-jump" data-sign="{d["id"]}" '
-                           f'title="{esc(_why)}">Show on map &#8599;</button></span></div>')
             ev_block, _nsrc, ev_text = ledger_evidence_block(d.get("id"), d.get("notes"))
-            lib_chip = (f'<span class="chip lib-chip" title="Reviewed source findings">&#128218; {_nsrc}</span>'
-                        if _nsrc else '')
-            evid_chip = evidence_header_chip(ec)
             overview_block = compact_evidence_overview(d)
-            lat_targets = lateralization_target_chips(d.get("id"))
             lat_facets = "|".join(lateralization_filter_values(d.get("id")))
             loc_display = localization_display(d)
-            source_status_block = ('' if _nsrc else '''<div class="d-row d-cite source-review-pending">
-        <span class="d-label">Source review pending</span>
-        <span class="d-value">This summary does not yet have an individually reviewed paper linked to it.</span>
-      </div>''')
             search_str = ""
-            ppv_block = sens_block = ""
             detail_name = "sign-" + hashlib.sha256(str(d["id"]).encode("utf-8")).hexdigest()[:24] + ".html"
             detail_path = "fragments/" + detail_name
             if detail_name not in detail_fragments:
                 detail_fragments[detail_name] = f'''<div class="detail-inner">
+      <div class="d-row d-loc">
+        <span class="d-label">Brain Region / Localization</span>
+        <span class="d-value">{loc_display}</span>
+      </div>
       <div class="d-row d-lat">
         <span class="d-label">Lateralization</span>
         <span class="d-value">{lateralization_display(d)}</span>
       </div>
-      <div class="d-row d-loc">
-        <span class="d-label">Anatomical localization</span>
-        <span class="d-value">{loc_display}</span>
+      <div class="d-row d-classification">
+        <span class="d-label">ILAE Classification</span>
+        <span class="d-value">{classification_card_display(d['id'], 'ILAE_SEIZURE_2025')}</span>
       </div>
-      {map_row}
+      <div class="d-row d-classification">
+        <span class="d-label">Lüders Classification</span>
+        <span class="d-value">{classification_card_display(d['id'], ('LUDERS_SSC_1998', 'LUDERS_5D_2005'))}</span>
+      </div>
+      <div class="d-row d-phase">
+        <span class="d-label">Phase of Seizure</span>
+        <span class="d-value">{phase_of_seizure_display(d)}</span>
+      </div>
       {overview_block}
-      {source_status_block}
       {ev_block}
-      {sens_block}
-      {ppv_block}
     </div>'''
             phase_search = "|".join(d.get("phase_values") or [d["phase"]])
             rows.append(f'''<div class="sign" id="sign-{slug(r)}-{d['id']}" data-id="{d['id']}" data-region="{esc(r)}" data-regions="{esc('|'.join(public_browse_regions(d)))}" data-phase="{esc(d['phase'])}" data-phase-search="{esc(phase_search)}" data-lat-targets="{esc(lat_facets)}" data-evid="{ec}" data-search="{esc(search_str)}" style="--accent:{accent}">
   <button class="sign-head" aria-expanded="false">
     <span class="chevron">&#8250;</span>
     <span class="sign-name">{esc(d['sign'])}</span>
-    <span class="head-chips">
-      <span class="chip phase-badge phase-{slug(d['phase'].split('/')[0])}">{esc(d['phase'])}</span>
-      {lat_targets}
-      {evid_chip}
-      {lib_chip}
-    </span>
   </button>
   <div class="detail" data-detail-path="{detail_path}">
     <div class="detail-loading">Loading details&hellip;</div>
@@ -1936,12 +1959,14 @@ def linked_sign_region_label(sign_ids):
     return one_group_label(labels, "No region stated", "Multiple regions")
 
 
-def classification_group_label(sign_ids, scheme_id):
-    labels = [
+def classification_group_label(sign_ids, scheme_ids):
+    scheme_ids = (scheme_ids,) if isinstance(scheme_ids, str) else tuple(scheme_ids)
+    labels = list(OrderedDict.fromkeys(
         public_value((classification_nodes.get(node_id) or {}).get("label"))
+        for scheme_id in scheme_ids
         for node_id in CONTEXT.classification_nodes_for_signs(sign_ids, scheme_id)
-    ]
-    short_name = "ILAE" if scheme_id == "ILAE_SEIZURE_2025" else "Lüders"
+    ))
+    short_name = "ILAE" if scheme_ids == ("ILAE_SEIZURE_2025",) else "Lüders"
     return one_group_label(
         labels,
         f"No {short_name} placement",
@@ -1949,19 +1974,22 @@ def classification_group_label(sign_ids, scheme_id):
     )
 
 
-def finding_classification_labels(finding_refs, scheme_id):
+def finding_classification_labels(finding_refs, scheme_ids):
+    scheme_ids = (scheme_ids,) if isinstance(scheme_ids, str) else tuple(scheme_ids)
     labels = []
-    for node_id in CONTEXT.classification_nodes_for_findings(finding_refs, scheme_id):
-        node = classification_nodes.get(node_id) or {}
-        label = public_value(node.get("label"))
-        if label and label not in labels:
-            labels.append(label)
+    for scheme_id in scheme_ids:
+        for node_id in CONTEXT.classification_nodes_for_findings(finding_refs, scheme_id):
+            node = classification_nodes.get(node_id) or {}
+            label = public_value(node.get("label"))
+            if label and label not in labels:
+                labels.append(label)
+    labels = [label for label in labels if label.casefold() not in {"seizure", "seizures"}]
     if labels:
         return labels
     # A sign classification is a clearly labelled navigation fallback only; it
     # never becomes a finding/event classification in the evidence record.
     sign_ids = CONTEXT.public_sign_ids_for_findings(finding_refs)
-    fallback = classification_group_label(sign_ids, scheme_id)
+    fallback = classification_group_label(sign_ids, scheme_ids)
     return [f"Sign category: {fallback}"] if not fallback.startswith("No ") else [fallback]
 
 
@@ -2119,7 +2147,7 @@ def atomic_study_result_record(statistic_id, position):
             "phase": phases or ["Phase not stated"],
             "result": [metric_label(metric_key)],
             "ilae": finding_classification_labels(finding_refs, "ILAE_SEIZURE_2025"),
-            "luders": finding_classification_labels(finding_refs, "LUDERS_5D_2005"),
+            "luders": finding_classification_labels(finding_refs, ("LUDERS_SSC_1998", "LUDERS_5D_2005")),
         },
         "html": html,
     }
@@ -2154,10 +2182,10 @@ def build_descriptive_family_panel(_families):
         intro=intro,
         records=records,
         organizers=(
-            ("sign", "Semiology A–Z"), ("axis", "Evidence axis"),
+            ("sign", "Sign A–Z"), ("axis", "Evidence axis"),
             ("region", "Brain region"), ("manuscript", "Contributing manuscript"),
             ("phase", "Seizure phase"), ("result", "Result type"),
-            ("ilae", "ILAE 2025 classification"), ("luders", "Lüders 5D classification"),
+            ("ilae", "ILAE Classification"), ("luders", "Lüders Classification"),
         ),
         default_organizer="sign",
         item_label="study results",
@@ -2188,6 +2216,10 @@ def build_reviewed_findings_panel(corpus):
             finding_ref = str(row.get("source_finding_ref") or "")
             finding_refs = [finding_ref] if finding_ref else []
             sign_ids = CONTEXT.public_sign_ids_for_findings(finding_refs)
+            if not sign_ids:
+                sign_ids = CONTEXT.public_sign_ids_for_findings(
+                    finding_refs, exact_only=False
+                )
             regions = CONTEXT.region_labels_for_findings(finding_refs)
             laterality = CONTEXT.laterality_for_findings(finding_refs)
             work_id = str(source.get("work_id") or "")
@@ -2241,7 +2273,7 @@ def build_reviewed_findings_panel(corpus):
                         finding_refs, "ILAE_SEIZURE_2025"
                     ),
                     "luders": finding_classification_labels(
-                        finding_refs, "LUDERS_5D_2005"
+                        finding_refs, ("LUDERS_SSC_1998", "LUDERS_5D_2005")
                     ),
                 },
                 "html": row_html,
@@ -2252,10 +2284,10 @@ def build_reviewed_findings_panel(corpus):
         intro="Every reviewed finding remains available with its claim, manuscript, locator, reported values, and expandable source context. Open only the group you need; closed groups do not load thousands of hidden cards.",
         records=records,
         organizers=(
-            ("manuscript", "Contributing manuscript"), ("sign", "Semiology A–Z"),
+            ("manuscript", "Contributing manuscript"), ("sign", "Sign A–Z"),
             ("region", "Brain region"), ("phase", "Seizure phase"),
-            ("result", "Evidence type"), ("ilae", "ILAE 2025 classification"),
-            ("luders", "Lüders 5D classification"),
+            ("result", "Evidence type"), ("ilae", "ILAE Classification"),
+            ("luders", "Lüders Classification"),
         ),
         default_organizer="manuscript",
         item_label="findings",
@@ -2311,11 +2343,7 @@ def build_weighted_evidence(cards):
         "REG:PARIETAL": "Parietal", "REG:OCCIPITAL": "Occipital",
         "REG:INSULAR": "Insular", "REG:LIMBIC": "Limbic",
         "REG:DEEP_SUBCORTICAL": "Deep/Subcortical",
-        "REG:MULTIREGIONAL_PROPAGATION": "Multiregional/Propagation",
     }
-
-    def status_of(card):
-        return str(card.get("pattern_status") or card.get("pattern_label") or "NOT_REPORTED").upper()
 
     def count_value(card, field, fallback):
         try:
@@ -2379,6 +2407,10 @@ def build_weighted_evidence(cards):
         raw = public_value(value)
         if not raw:
             return None
+        if " ".join(re.findall(r"[a-z0-9]+", raw.casefold())) in {
+            "reg multiregional propagation", "multiregional propagation",
+        }:
+            return None
         if raw in location_labels:
             return (raw, location_labels[raw])
         token = raw.upper().replace("-", "_").replace(" ", "_")
@@ -2432,8 +2464,7 @@ def build_weighted_evidence(cards):
     def resolved_card_targets(card, axis):
         return [
             dict(item)
-            for item in ((card.get("target_contract") or {}).get("reported_targets") or [])
-            if item.get("key") and item.get("label")
+            for item in public_reported_targets(card)
         ]
 
     def evidence_support(card, axis):
@@ -2558,6 +2589,8 @@ def build_weighted_evidence(cards):
             values = targets
         labels = []
         for value in flatten_values(values):
+            if is_propagation_value(value):
+                continue
             target = target_from_value(axis, value)
             label = target[1] if target else public_context_value(value)
             if label and label not in labels:
@@ -2634,16 +2667,12 @@ def build_weighted_evidence(cards):
         return region_colors.get(target["label"], "#0e9db0")
 
     def bucket_of(card):
-        status = status_of(card)
-        if status in {"NON_LATERALIZING", "NON_LOCALIZING"}:
-            has_association = any(
-                item.get("key") != "nonassoc"
-                for item in ((card.get("target_contract") or {}).get("reported_targets") or [])
-            )
-            return "mixed" if has_association else "nonassoc"
-        if status in {"CONTEXT_SUBTYPE_DEPENDENT", "GENUINELY_MIXED"}:
+        targets = public_reported_targets(card)
+        has_association = any(item.get("key") != "nonassoc" for item in targets)
+        has_nonassociation = any(item.get("key") == "nonassoc" for item in targets)
+        if has_association and has_nonassociation:
             return "mixed"
-        return "association"
+        return "association" if has_association else "nonassoc"
 
     def aggregate_axis_cards(axis):
         """Consume the database-materialized one-row-per-public-sign axis contract."""
@@ -2663,56 +2692,18 @@ def build_weighted_evidence(cards):
             )
         return axis_cards
 
-    render_state_aliases = {
-        "EVIDENCE_BEARING_WEIGHTED": "EVIDENCE_BEARING_WEIGHTED",
-        "EVIDENCE_LINKED_CONTEXT_ONLY": "EVIDENCE_LINKED_CONTEXT_ONLY",
-        "EVIDENCE_LINKED_WEIGHT_PENDING": "EVIDENCE_LINKED_WEIGHT_PENDING",
-        "TARGET_LINKAGE_NEEDED": "RECORDED_TARGET_LINKAGE_NEEDED",
-        "RECORDED_TARGET_LINKAGE_NEEDED": "RECORDED_TARGET_LINKAGE_NEEDED",
-        "NO_SOURCE_TARGET": "NO_SOURCE_ASSOCIATION",
-        "NO_SOURCE_ASSOCIATION": "NO_SOURCE_ASSOCIATION",
-    }
-    render_states = (
-        "EVIDENCE_BEARING_WEIGHTED",
-        "EVIDENCE_LINKED_CONTEXT_ONLY",
-        "EVIDENCE_LINKED_WEIGHT_PENDING",
-        "RECORDED_TARGET_LINKAGE_NEEDED",
-        "NO_SOURCE_ASSOCIATION",
-    )
-
-    def render_categorization_state(card):
-        raw_state = str(card.get("categorization_state") or "")
-        if raw_state not in render_state_aliases:
-            raise ValueError(
-                f'Unrecognized categorization_state {raw_state!r} for '
-                f'{card.get("synthesis_id")!r}'
-            )
-        return render_state_aliases[raw_state]
-
     def card_label_parts(card):
         """Expose exact source terms while retaining the canonical group identity."""
         preferred = public_value(card.get("preferred_label"), "Unnamed semiology")
         identity_labels = unique_strings(card.get("identity_labels"))
         related_labels = unique_strings(card.get("related_context_labels"))
-        state = render_categorization_state(card)
         source_label = preferred
-        grouped_under = ""
-        if (
-            state != "EVIDENCE_BEARING_WEIGHTED"
-            and not identity_labels
-            and len(related_labels) == 1
-        ):
-            source_label = related_labels[0]
-            if source_label.casefold() != preferred.casefold():
-                grouped_under = f"Grouped under: {preferred}"
         displayed = display_sign_label(source_label)
         aliases = [
             value for value in identity_labels
             if value.casefold() not in {source_label.casefold(), preferred.casefold()}
         ]
-        if grouped_under:
-            note = grouped_under
-        elif aliases:
+        if aliases:
             visible = aliases[:3]
             note = "Source terms: " + "; ".join(visible)
             if len(aliases) > len(visible):
@@ -2728,33 +2719,6 @@ def build_weighted_evidence(cards):
             preferred, *identity_labels, *related_labels,
         ])
 
-    def public_target_labels(card, axis):
-        """Return concise, approved target labels for public summary cards."""
-        contract = card.get("target_contract") or {}
-        items = [
-            *(contract.get("reported_targets") or []),
-            *(contract.get("additional_linkage_targets") or []),
-        ]
-        has_directional = any(
-            item.get("key") != "nonassoc" for item in items
-        )
-        labels = []
-        for item in items:
-            label = public_value(item.get("label"))
-            if not label:
-                normalized = target_from_value(axis, item.get("raw"))
-                label = normalized[1] if normalized else ""
-            if item.get("key") == "nonassoc" and has_directional:
-                label = (
-                    "No single reliable side"
-                    if axis == "LATERALIZATION"
-                    else "Not specific to one region"
-                )
-            if label and label not in labels:
-                labels.append(label)
-        return labels
-
-
     def card_row(card, axis, analysis, order):
         source_label, label, label_note, source_terms = card_label_parts(card)
         sign_id = str(card.get("sign_id") or "")
@@ -2764,7 +2728,7 @@ def build_weighted_evidence(cards):
         findings = len(finding_refs)
         statistics = len(statistic_ids)
         groups = source_groups(card)
-        summary = public_value(card.get("plain_summary"))
+        summary = public_display_prose(card.get("plain_summary"))
         if summary.startswith("This public sign combines "):
             summary = ""
         reviewed_targets = resolved_card_targets(card, axis)
@@ -2772,12 +2736,10 @@ def build_weighted_evidence(cards):
             item for item in reviewed_targets if item.get("target_level") != "AREA"
         ]
         display_targets = organizational_targets or reviewed_targets
-        status = status_of(card)
         nonassociation_only = bool(display_targets) and all(
             target["key"] == "nonassoc" for target in display_targets
         )
         directional_targets = [target for target in display_targets if target["key"] != "nonassoc"]
-        context_specific = status in {"CONTEXT_SUBTYPE_DEPENDENT", "GENUINELY_MIXED"}
         if axis == "LOCALIZATION":
             group_regions = list(OrderedDict.fromkeys(
                 target["label"] for target in directional_targets if target.get("label")
@@ -2802,13 +2764,9 @@ def build_weighted_evidence(cards):
                     }
                 else:
                     prefix = ""
-            elif index == 0 and status == "PREDOMINANT_WITH_EXCEPTIONS":
-                prefix = "Predominant: "
             else:
-                prefix = "Reported: " if context_specific or index == 0 else "Also reported: "
-            chip_class = "lr-nonassoc" if is_nonassoc else (
-                "lr-primary" if index == 0 and status == "PREDOMINANT_WITH_EXCEPTIONS" else "lr-secondary"
-            )
+                prefix = "Reported: " if index == 0 else "Also reported: "
+            chip_class = "lr-nonassoc" if is_nonassoc else "lr-secondary"
             color = target_color(axis, target)
             chips.append(
                 f'<span class="lr-direction {chip_class}" style="--target-color:{color};color:{color};border-color:{color}">{esc(prefix + target["label"])}</span>'
@@ -2829,7 +2787,10 @@ def build_weighted_evidence(cards):
         exceptions = card.get("exceptions") or []
         if isinstance(exceptions, str):
             exceptions = [exceptions]
-        exception_rows = [esc(value) for value in exceptions if isinstance(value, str) and value.strip()]
+        exception_rows = [
+            esc(public_display_prose(value))
+            for value in exceptions if isinstance(value, str) and value.strip()
+        ]
         exception_html = (
             '<details class="lr-exceptions"><summary>Documented exceptions '
             +f'<span>{len(exception_rows)}</span></summary><ul>'
@@ -2885,7 +2846,7 @@ def build_weighted_evidence(cards):
             " ".join(source_terms), " ".join(groups.keys()), manuscript_search, axis,
         ]).casefold()
         return (
-            f'<details class="lr-row" data-card-state-id="{esc(str(card.get("synthesis_id") or ""))}" data-card-axis="{axis}" data-card-state="EVIDENCE_BEARING_WEIGHTED" '
+            f'<details class="lr-row" data-card-id="{esc(str(card.get("synthesis_id") or ""))}" data-card-axis="{axis}" '
             f'data-sign-id="{esc(sign_id)}" data-group-id="{esc(str(card.get("group_id") or ""))}" data-bucket="{bucket_of(card)}" data-name="{esc(label.casefold())}" '
             f'data-group-region="{esc(group_region)}" '
             f'data-group-regions="{esc("|".join(group_regions))}" '
@@ -2902,7 +2863,6 @@ def build_weighted_evidence(cards):
             +f'<span>{esc(weight_summary)}{(" · " + esc(authority_mix)) if authority_mix else ""}</span></div>'
             +'</div>'
             +(f'<p class="lr-summary">{esc(summary)}</p>' if summary else "")
-            +axis_modifier_note(card, "lr-modifier-note", "p")
             +family_block(card, axis, statistic_ids)
             +exception_html
             +sources_html
@@ -2913,32 +2873,23 @@ def build_weighted_evidence(cards):
     def axis_panel(axis):
         config = axis_config[axis]
         axis_cards = aggregate_axis_cards(axis)
-        weighted_cards, context_cards, pending_cards, linkage_cards, no_source_cards = [], [], [], [], []
+        target_cards, no_source_cards = [], []
         for card in axis_cards:
             analysis = evidence_support(card, axis)
-            state = render_categorization_state(card)
-            if state == "EVIDENCE_BEARING_WEIGHTED":
-                weighted_cards.append((card, analysis))
-            elif state == "EVIDENCE_LINKED_CONTEXT_ONLY":
-                context_cards.append(card)
-            elif state == "EVIDENCE_LINKED_WEIGHT_PENDING":
-                pending_cards.append(card)
-            elif state == "RECORDED_TARGET_LINKAGE_NEEDED":
-                linkage_cards.append(card)
-            elif state == "NO_SOURCE_ASSOCIATION":
-                no_source_cards.append(card)
+            if public_reported_targets(card):
+                target_cards.append((card, analysis))
             else:
-                raise AssertionError(f"Unhandled rendered card state: {state}")
-        weighted_cards.sort(key=lambda item: (
+                no_source_cards.append(card)
+        target_cards.sort(key=lambda item: (
             bucket_of(item[0]) == "nonassoc",
             -item[1]["total_weight"],
             -evidence_support_points(item[1]), -item[1]["work_count"],
             public_value(item[0].get("preferred_label")).casefold(),
         ))
-        rows = "".join(card_row(card, axis, analysis, order) for order, (card, analysis) in enumerate(weighted_cards))
-        association_count = sum(bucket_of(card) == "association" for card, _analysis in weighted_cards)
-        mixed_count = sum(bucket_of(card) == "mixed" for card, _analysis in weighted_cards)
-        nonassoc_count = sum(bucket_of(card) == "nonassoc" for card, _analysis in weighted_cards)
+        rows = "".join(card_row(card, axis, analysis, order) for order, (card, analysis) in enumerate(target_cards))
+        association_count = sum(bucket_of(card) == "association" for card, _analysis in target_cards)
+        mixed_count = sum(bucket_of(card) == "mixed" for card, _analysis in target_cards)
+        nonassoc_count = sum(bucket_of(card) == "nonassoc" for card, _analysis in target_cards)
         def omitted_rows(cards_to_render):
             rows = []
             for card in sorted(
@@ -2946,122 +2897,14 @@ def build_weighted_evidence(cards):
                 key=lambda row: card_label_parts(row)[1].casefold(),
             ):
                 _source_label, label, label_note, source_terms = card_label_parts(card)
-                search = " ".join([label, *source_terms, status_of(card)]).casefold()
+                search = " ".join([label, *source_terms]).casefold()
                 rows.append(
-                    f'<span class="lr-unreported-sign" data-card-state-id="{esc(str(card.get("synthesis_id") or ""))}" data-card-axis="{axis}" data-card-state="NO_SOURCE_ASSOCIATION" '
+                    f'<span class="lr-unreported-sign" data-card-id="{esc(str(card.get("synthesis_id") or ""))}" data-card-axis="{axis}" '
                     f'data-search="{esc(search)}">{esc(label)}'
-                    +(f'<small>{esc(label_note)}</small>' if label_note else '')
-                    +axis_modifier_note(card, "lr-modifier-note", "small")+'</span>'
+                    +(f'<small>{esc(label_note)}</small>' if label_note else '')+'</span>'
                 )
             return "".join(rows)
-        def linkage_rows(cards_to_render):
-            rows = []
-            for card in sorted(
-                cards_to_render,
-                key=lambda row: card_label_parts(row)[1].casefold(),
-            ):
-                _source_label, label, label_note, source_terms = card_label_parts(card)
-                labels = public_target_labels(card, axis)
-                rows.append(
-                    f'<div class="lr-unreported-sign" data-card-state-id="{esc(str(card.get("synthesis_id") or ""))}" data-card-axis="{axis}" data-card-state="RECORDED_TARGET_LINKAGE_NEEDED" '
-                    f'data-search="{esc((" ".join([label, *source_terms, *labels])).casefold())}">'
-                    f'<strong>{esc(label)}</strong>'
-                    +(f'<small>{esc(label_note)}</small>' if label_note else '')
-                    +"".join(f'<small>{esc(value)}</small>' for value in labels)
-                    +axis_modifier_note(card, "lr-modifier-note", "small")
-                    +'<small>Needs source review before weighting.</small></div>'
-                )
-            return "".join(rows)
-        def pending_rows(cards_to_render):
-            rows = []
-            for card in sorted(
-                cards_to_render,
-                key=lambda row: card_label_parts(row)[1].casefold(),
-            ):
-                _source_label, label, label_note, source_terms = card_label_parts(card)
-                labels = public_target_labels(card, axis)
-                papers = int(card.get("row_work_count") or 0)
-                findings = int(card.get("row_finding_count") or 0)
-                values = int(card.get("row_statistic_count") or 0)
-                count_line = (
-                    f'{papers} paper{"s" if papers != 1 else ""} · '
-                    f'{findings} finding{"s" if findings != 1 else ""} · '
-                    f'{values} reported value{"s" if values != 1 else ""}'
-                )
-                rows.append(
-                    f'<div class="lr-unreported-sign" data-card-state-id="{esc(str(card.get("synthesis_id") or ""))}" data-card-axis="{axis}" data-card-state="EVIDENCE_LINKED_WEIGHT_PENDING" '
-                    f'data-search="{esc((" ".join([label, *source_terms, *labels])).casefold())}">'
-                    f'<strong>{esc(label)}</strong>'
-                    +(f'<small>{esc(label_note)}</small>' if label_note else '')
-                    +"".join(f'<small>{esc(value)}</small>' for value in labels)
-                    +axis_modifier_note(card, "lr-modifier-note", "small")
-                    +f'<small>{esc(count_line)} · study weight pending</small></div>'
-                )
-            return "".join(rows)
-        def context_rows(cards_to_render):
-            rows = []
-            for card in sorted(
-                cards_to_render,
-                key=lambda row: card_label_parts(row)[1].casefold(),
-            ):
-                _source_label, label, label_note, source_terms = card_label_parts(card)
-                labels = public_target_labels(card, axis)
-                contributions = card.get("contributions") or []
-                shared = next(
-                    (
-                        item for item in contributions
-                        if item.get("projection_disposition") == "SHARED_SOURCE_CATEGORY"
-                    ),
-                    None,
-                )
-                cited = any(
-                    item.get("projection_disposition") == "CITED_CONTEXT_ONLY"
-                    for item in contributions
-                )
-                if shared:
-                    note = (
-                        "Same source category; counted once under "
-                        + public_value(shared.get("counted_under_label"), "the matching sign")
-                    )
-                elif cited:
-                    note = "Cited study result; retained as context and not independently weighted"
-                else:
-                    note = "Source context retained without independent weight"
-                rows.append(
-                    f'<div class="lr-unreported-sign" data-card-state-id="{esc(str(card.get("synthesis_id") or ""))}" data-card-axis="{axis}" data-card-state="EVIDENCE_LINKED_CONTEXT_ONLY" '
-                    f'data-search="{esc((" ".join([label, *source_terms, *labels, note])).casefold())}">'
-                    f'<strong>{esc(label)}</strong>'
-                    +(f'<small>{esc(label_note)}</small>' if label_note else '')
-                    +"".join(f'<small>{esc(value)}</small>' for value in labels)
-                    +axis_modifier_note(card, "lr-modifier-note", "small")
-                    +f'<small>{esc(note)}</small></div>'
-                )
-            return "".join(rows)
-        context_rows_html = context_rows(context_cards)
-        pending_rows_html = pending_rows(pending_cards)
-        linkage_rows_html = linkage_rows(linkage_cards)
         no_source_rows = omitted_rows(no_source_cards)
-        pending_section = (
-            '<details class="lr-unreported lr-weight-pending">'
-            f'<summary>Evidence linked; study weight pending <span class="lr-unreported-count">{len(pending_cards):,}</span></summary>'
-            '<p>Reviewed findings report a clinical relationship, but the manuscript does not yet have an approved study weight. The evidence remains visible and receives no numerical weight.</p>'
-            f'<div class="lr-unreported-grid">{pending_rows_html}</div></details>'
-            if pending_cards else ""
-        )
-        context_section = (
-            '<details class="lr-unreported lr-context-only">'
-            f'<summary>Background evidence (not counted twice) <span class="lr-unreported-count">{len(context_cards):,}</span></summary>'
-            '<p>These results remain visible but are not counted again.</p>'
-            f'<div class="lr-unreported-grid">{context_rows_html}</div></details>'
-            if context_cards else ""
-        )
-        linkage_section = (
-            '<details class="lr-unreported lr-linkage-needed">'
-            f'<summary>Needs source review <span class="lr-unreported-count">{len(linkage_cards):,}</span></summary>'
-            '<p>These signs are not weighted until their source relationship is clear.</p>'
-            f'<div class="lr-unreported-grid">{linkage_rows_html}</div></details>'
-            if linkage_cards else ""
-        )
         no_source_section = (
             '<details class="lr-unreported">'
             f'<summary>No {axis.casefold()} reported in linked evidence <span class="lr-unreported-count">{len(no_source_cards):,}</span></summary>'
@@ -3082,7 +2925,7 @@ def build_weighted_evidence(cards):
         hidden = "" if axis == "LATERALIZATION" else " hidden"
         return f'''<section class="weighted-axis-panel" data-axis-panel="{axis}"{hidden}>
 <div class="lr-wrap" data-axis="{axis}">
-  <div class="lr-intro"><strong>{len(weighted_cards):,} signs have weighted evidence on this axis.</strong> Each row keeps the manuscripts, findings, and reported values for that sign together. Clinical relationship labels come directly from the reviewed evidence. Manuscript weights summarize support; they never create or remove an anatomical or lateralizing relationship.</div>
+  <div class="lr-intro"><strong>{len(target_cards):,} signs have a reported relationship on this axis.</strong> Each row keeps the manuscripts, findings, and reported values for that sign together. Clinical relationship labels come directly from the reviewed evidence. Manuscript weights summarize support; they never create or remove an anatomical or lateralizing relationship.</div>
   <details class="lr-method"><summary>How weighting works</summary><div>
     {method_html}
     <p>All {source_report_count} reviewed reports are accounted for and represent {canonical_work_count} distinct manuscripts after duplicate files and report versions are combined. {weighted_work_count} manuscripts contribute weighted evidence; {pending_work_count} await evidence-weight review; and {context_work_count} provide context without a sign-specific localization or lateralization result.</p>
@@ -3092,21 +2935,18 @@ def build_weighted_evidence(cards):
     <input class="lr-search" type="search" placeholder="{esc(config["placeholder"])}" aria-label="Search {axis.casefold()} evidence">
     <button type="button" class="lr-reset">Reset</button>
     <div class="lr-filters" role="group" aria-label="Filter {axis.casefold()} summaries">
-      <button type="button" class="lr-filter on" data-filter="all">All weighted <i>{len(weighted_cards):,}</i></button>
+      <button type="button" class="lr-filter on" data-filter="all">All reported <i>{len(target_cards):,}</i></button>
       <button type="button" class="lr-filter" data-filter="association">{esc(config["reported"])} <i>{association_count:,}</i></button>
       <button type="button" class="lr-filter" data-filter="mixed">Mixed or context-specific <i>{mixed_count:,}</i></button>
       <button type="button" class="lr-filter" data-filter="nonassoc">{esc(config["nonassoc"])} <i>{nonassoc_count:,}</i></button>
     </div>
     <label class="lr-sort-label">Order
-      <select class="lr-sort"><option value="page">Match page organization</option><option value="weight">Most weighted evidence support</option><option value="name">Semiology A&ndash;Z</option><option value="manuscripts">Most manuscripts</option><option value="statistics">Most reported values</option></select>
+      <select class="lr-sort"><option value="page">Match page organization</option><option value="weight">Most weighted evidence support</option><option value="name">Sign A&ndash;Z</option><option value="manuscripts">Most manuscripts</option><option value="statistics">Most reported values</option></select>
     </label>
   </div>
   <div class="lr-visual-legend"><span><strong>Colored chips</strong> show reviewed relationships, not calculated percentages</span><span class="lr-legend-pips"><i class="on"></i><i class="on"></i><i class="on"></i> 1, 2, or 3+ contributing manuscripts (volume only)</span><span class="lr-neutral-note">Weights summarize support; they are not reliability, certainty, sensitivity, or specificity.</span></div>
   <div class="lr-visible-count"></div>
   <div class="lr-list">{rows}</div>
-  {context_section}
-  {pending_section}
-  {linkage_section}
   {no_source_section}
 </div></section>'''
 
@@ -3132,29 +2972,23 @@ def build_weighted_evidence(cards):
             "Every public sign must render on each weighted-evidence axis"
         )
     expected = [
-        (
-            str(card.get("synthesis_id") or ""),
-            str(card.get("axis") or "").upper(),
-            render_categorization_state(card),
-        )
+        (str(card.get("synthesis_id") or ""), str(card.get("axis") or "").upper())
         for card in rendered_cards
     ]
     rendered = re.findall(
-        r'data-card-state-id="([^"]+)" data-card-axis="([^"]+)" data-card-state="([^"]+)"',
+        r'data-card-id="([^"]+)" data-card-axis="([^"]+)"',
         panels,
     )
     if Counter(rendered) != Counter(expected):
         raise AssertionError(
-            "Generated card-state DOM is not an exact rendering of public sign-axis cards"
+            "Generated card DOM is not an exact rendering of public sign-axis cards"
         )
-    if len(rendered) != len({card_id for card_id, _axis, _state in rendered}):
-        raise AssertionError("Generated card-state DOM contains duplicate synthesis cards")
-    axis_counts = Counter(axis for _card_id, axis, _state in rendered)
-    state_counts = Counter(state for _card_id, _axis, state in rendered)
+    if len(rendered) != len({card_id for card_id, _axis in rendered}):
+        raise AssertionError("Generated card DOM contains duplicate synthesis cards")
+    axis_counts = Counter(axis for _card_id, axis in rendered)
     print(
-        f"Card-state DOM invariant: {len(rendered)} unique; "
+        f"Card DOM invariant: {len(rendered)} unique; "
         +", ".join(f"{axis}={axis_counts[axis]}" for axis in axis_config)
-        +"; "+", ".join(f"{state}={state_counts[state]}" for state in render_states)
     )
     return f'''<div class="lib weighted-evidence-section">
 <details class="frontpage-fold lib-details reliability-fold">
@@ -3809,11 +3643,11 @@ main,.frontpage-fold,.callout{
 .region-category>.browse-subtoggle{background:#eef3f8;font-size:.76rem}
 .region-category>.browse-subbody{padding:2px 0 2px 4px}
 .browse-sign-wrap{margin:6px 0;border-radius:8px}
-.browse-sign{width:100%;display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--line);border-left:4px solid var(--accent,#8ca0b8);border-radius:8px;padding:9px 12px;text-align:left;font-family:inherit;cursor:pointer}
-.browse-sign:hover{border-color:var(--teal);box-shadow:0 2px 9px rgba(15,30,61,.08)}
+.browse-sign{width:100%;display:flex;align-items:center;gap:10px;background:linear-gradient(120deg,#102a43,#173a54);border:1px solid #234b68;border-left:4px solid var(--accent,#8ca0b8);border-radius:8px;padding:8px 12px;text-align:left;font-family:inherit;cursor:pointer}
+.browse-sign:hover{border-color:#5eb9c6;box-shadow:0 2px 9px rgba(15,30,61,.18)}
 .browse-sign-wrap.open .browse-sign{border-color:var(--teal);border-radius:8px 8px 0 0}
-.browse-arrow{color:var(--teal-d);font-size:1rem}
-.browse-sign-name{flex:1;color:var(--navy);font-size:.86rem;font-weight:700;line-height:1.3}
+.browse-arrow{color:#7fd4e6;font-size:1rem}
+.browse-sign-name{flex:1;color:#f2f8fb;font-size:.84rem;font-weight:700;line-height:1.3}
 .browse-meta{display:flex;align-items:center;justify-content:flex-end;gap:4px;flex-wrap:wrap;font-size:.64rem;color:var(--muted)}
 .browse-meta-chip{display:inline-flex;align-items:center;background:#f2f5f8;border:1px solid #dce3eb;border-radius:999px;padding:2px 7px;white-space:nowrap}
 .browse-meta-chip.region{color:#0a6472;background:#edf8fa;border-color:#c4e5e9}
@@ -3823,7 +3657,7 @@ main,.frontpage-fold,.callout{
 .browse-subsection>.browse-subbody>.browse-sign-wrap>.browse-sign .browse-sign-name{font-size:.75rem;line-height:1.25}
 .browse-subsection>.browse-subbody>.browse-sign-wrap>.browse-sign .browse-meta{font-size:.6rem}
 .browse-subsection>.browse-subbody>.browse-sign-wrap>.browse-sign .browse-meta-chip{padding:1px 5px}
-.browse-detail{background:#fff;border:1px solid var(--teal);border-top:0;border-radius:0 0 8px 8px;padding:0 12px 10px}
+.browse-detail{background:#fbfcfe;border:1px solid var(--teal);border-top:0;border-radius:0 0 8px 8px;padding:0 12px 10px}
 .browse-detail>.detail{max-height:none!important;overflow:visible;padding-top:7px}
 
 .sub-block{margin:6px 0 8px}
@@ -3848,14 +3682,14 @@ main,.frontpage-fold,.callout{
 .frontpage-fold .forest-wrap,.frontpage-fold .callout{max-width:none;margin:0;padding:0}
 
 /* ---------- SIGN (collapsed row) ---------- */
-.sign{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:9px;margin:7px 0;overflow:hidden;transition:box-shadow .12s,border-color .12s}
-.sign:hover{box-shadow:0 2px 10px rgba(15,30,61,.08)}
-.sign.open{box-shadow:0 3px 14px rgba(15,30,61,.10)}
+.sign{background:linear-gradient(120deg,#102a43,#173a54);border:1px solid #234b68;border-left:4px solid var(--accent);border-radius:9px;margin:6px 0;overflow:hidden;transition:box-shadow .12s,border-color .12s}
+.sign:hover{box-shadow:0 2px 10px rgba(15,30,61,.18);border-color:#5eb9c6}
+.sign.open{box-shadow:0 3px 14px rgba(15,30,61,.22)}
 .sign.match{border-color:var(--teal);box-shadow:0 0 0 2px rgba(14,157,176,.18)}
-.sign-head{width:100%;display:flex;align-items:center;gap:11px;background:none;border:none;padding:12px 14px;cursor:pointer;text-align:left;font-family:inherit}
-.chevron{font-size:1.1rem;color:#9aa3b2;transition:transform .2s;flex:0 0 auto;line-height:1}
-.sign.open .chevron{transform:rotate(90deg);color:var(--teal-d)}
-.sign-name{flex:1;font-size:.94rem;font-weight:700;color:var(--navy);line-height:1.3}
+.sign-head{width:100%;display:flex;align-items:center;gap:11px;background:none;border:none;padding:9px 13px;cursor:pointer;text-align:left;font-family:inherit}
+.chevron{font-size:1.1rem;color:#9bd7e1;transition:transform .2s;flex:0 0 auto;line-height:1}
+.sign.open .chevron{transform:rotate(90deg);color:#fff}
+.sign-name{flex:1;font-size:.88rem;font-weight:700;color:#f2f8fb;line-height:1.3}
 .head-chips{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
 .chip{font-size:.64rem;font-weight:800;padding:2px 7px;border-radius:4px;letter-spacing:.03em;white-space:nowrap}
 .lat-chip{border:1px solid currentColor}
@@ -3885,6 +3719,8 @@ main,.frontpage-fold,.callout{
 .axis-display-note{max-width:1180px;margin:0 auto 8px;padding:0 18px;color:#6b7280;font-size:.68rem;text-align:right}
 .axis-note,.location-note{display:block;margin-top:6px;color:#334155;font-size:.8rem;line-height:1.42}
 .axis-modifier-note{display:block;margin-top:4px;color:#64748b;font-size:.72rem;font-style:italic;line-height:1.35}
+.phase-categories{font-weight:700;color:#173a54}
+.phase-source{display:block;margin-top:3px;color:#64748b;font-size:.72rem;line-height:1.35}
 .d-metrics{display:flex;gap:10px;padding:11px 0;border-bottom:1px solid var(--line2);flex-wrap:wrap}
 .metric{flex:1;min-width:110px;background:#fff;border:1px solid var(--line);border-radius:8px;padding:8px 11px}
 .metric .d-label{margin-bottom:5px}
@@ -3901,6 +3737,8 @@ main,.frontpage-fold,.callout{
 .evidence-overview{background:#f5f9fc;border:1px solid #d8e5ee;border-radius:9px;padding:10px 12px;margin-top:7px}
 .evidence-overview .d-label{color:#365d78}
 .evidence-overview p{margin:0;color:#334155;font-size:.82rem;line-height:1.45}
+.evidence-overview .summary-manuscript-group+.summary-manuscript-group{margin-top:7px}
+.summary-manuscript{color:#173a54;font-weight:750}
 .evidence-counts{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:8px}
 .evidence-counts>span{display:inline-flex;align-items:center;gap:3px;background:#fff;border:1px solid #d8e5ee;border-radius:999px;padding:3px 8px;color:#526276;font-size:.68rem}
 .evidence-counts strong{color:#17314f}
@@ -4010,13 +3848,13 @@ body.quiz .quiz-hint{display:block}
 body.quiz .lib-chip{display:none}
 .d-ev{background:#fffaf2;border:1px solid #f0dcbd;border-radius:9px;padding:10px 12px !important;margin-top:6px}
 .d-ev .d-label{color:#a15c00;margin-bottom:7px}
-.evidence-history-shell{padding:0!important;overflow:hidden}
-.evidence-history-shell>summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;color:#8a4b00;font-size:.78rem;font-weight:800}
-.evidence-history-shell>summary::-webkit-details-marker{display:none}
-.evidence-history-shell>summary::before{content:'\25B6';font-size:.64rem;color:#b66c0a;transition:transform .15s}
-.evidence-history-shell[open]>summary::before{transform:rotate(90deg)}
-.evidence-history-shell[open]>summary{border-bottom:1px solid #f0dcbd}
-.evidence-history-shell>summary>span:first-of-type{margin-right:auto;text-transform:uppercase;letter-spacing:.05em}
+.card-source-shell{padding:0!important;overflow:hidden}
+.card-source-shell>summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;color:#8a4b00;font-size:.78rem;font-weight:800}
+.card-source-shell>summary::-webkit-details-marker{display:none}
+.card-source-shell>summary::before{content:'\25B6';font-size:.64rem;color:#b66c0a;transition:transform .15s}
+.card-source-shell[open]>summary::before{transform:rotate(90deg)}
+.card-source-shell[open]>summary{border-bottom:1px solid #f0dcbd}
+.card-source-shell>summary>span:first-of-type{margin-right:auto;text-transform:uppercase;letter-spacing:.05em}
 .reviewed-evidence-count{color:#6b7280;font-size:.7rem;font-weight:700;text-transform:none;letter-spacing:0;text-align:right}
 .reviewed-evidence-panel{padding:0 10px 10px}
 .history-note{display:grid;grid-template-columns:minmax(90px,auto) 1fr;gap:8px;padding:8px 3px;border-bottom:1px solid #f4e5cd;color:#5c4b32;font-size:.74rem;line-height:1.4}
@@ -4034,6 +3872,7 @@ body.quiz .lib-chip{display:none}
 .ev-paper-group{padding-left:0!important;border-left:0!important}
 .ev-paper{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .ev-paper-file{overflow-wrap:anywhere}
+.source-class-heading{margin:8px 0 5px;padding:4px 8px;border-left:3px solid #0a6472;color:#0a6472;background:#edf8fa;font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em}
 .ev-paper-count{margin-left:auto;font-size:.68rem;font-weight:800;color:#0a6472;background:#e7f6f8;border-radius:999px;padding:2px 7px;white-space:nowrap}
 .reviewed-card-evidence{padding-left:10px;border-left:2px solid #e8b878}
 .ev-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
@@ -4229,7 +4068,6 @@ body.quiz .lib-chip{display:none}
 .lr-weightbar>span+span{border-left:2px solid #fff}
 .lr-weightbar .lr-primary{background:#123a52}.lr-weightbar .lr-secondary{background:#37a6b5}.lr-weightbar .lr-nonassoc{background:#9ca6b3}
 .lr-summary{margin:0;padding:10px 0 8px;color:#33465d;font-size:.78rem;line-height:1.48}
-.lr-modifier-note{display:block;margin:4px 0;color:#64748b;font-size:.68rem;font-style:italic;line-height:1.35}
 .lr-families{margin:0 0 8px;border:1px solid #cfe0ea;border-radius:8px;background:#f5fafc}
 .lr-families>summary{display:flex;gap:7px;align-items:center;padding:7px 10px;cursor:pointer;color:#15576a;font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.03em}
 .lr-families>summary span{margin-left:auto;background:#dceff4;border-radius:10px;padding:1px 6px}
@@ -4380,6 +4218,8 @@ body.quiz .lib-chip{display:none}
 .fx-context>summary{cursor:pointer;font-weight:700;color:var(--teal-d)}
 .fx-context>div{margin-top:5px;line-height:1.45}
 .fx-context code,.ev-trace code{font-size:.66rem;overflow-wrap:anywhere}
+.ev-map{display:inline-block;font-size:.58rem;font-weight:800;border:1px solid currentColor;border-radius:4px;padding:1px 5px}
+.ev-map-exact{color:#1a7a4a}.ev-map-related{color:#95691a}
 .reviewed-card-evidence{margin-bottom:14px}.ev-measure,.ev-owner{margin:6px 0;color:#475569}
 .ev-paper{margin-bottom:7px;padding:7px 9px;border:1px solid #dbe4ee;border-radius:6px;background:#f7fafc;color:#475569;line-height:1.4}
 .ev-paper>div+div{margin-top:3px}.ev-paper-file{color:var(--navy);font-weight:700;overflow-wrap:anywhere}.ev-paper-role{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:4px;background:#e8f4f7;color:#0e6675;font-size:.72em;font-weight:700}.ev-finding{margin:5px 0 3px}
@@ -4404,7 +4244,7 @@ body.quiz .lib-chip{display:none}
   .evidence-result-counts{align-items:flex-start;flex-direction:column;gap:2px}
   .evidence-statistic-head{align-items:flex-start;flex-direction:column}
   .reviewed-evidence-scroll{max-height:52vh}
-  .evidence-history-shell>summary{align-items:flex-start}
+  .card-source-shell>summary{align-items:flex-start}
   .reviewed-evidence-count{max-width:54%}
   .ev-toolbar{justify-content:stretch}
   .ev-toolbar button{flex:1}
@@ -5078,7 +4918,7 @@ document.addEventListener('click',event=>{
   if(!control) return;
   event.preventDefault();
   event.stopPropagation();
-  const shell=control.closest('.evidence-history-shell');
+  const shell=control.closest('.card-source-shell');
   if(!shell) return;
   const open=control.dataset.evAction==='expand';
   shell.querySelectorAll('details.ev-trace,details.ev-stats,details.history-results,details.syn-family').forEach(panel=>{ panel.open=open; });
@@ -5215,7 +5055,7 @@ function browseGroups(mode){
     if(descending) keys.reverse();
     return keys.map(label=>({label,sign_ids:grouped.get(label)}));
   }
-  const scheme=mode==='ilae'?'ILAE_SEIZURE_2025':'LUDERS_5D_2005';
+  const scheme=mode==='ilae'?'ILAE_SEIZURE_2025':'LUDERS';
   const tree=CLASSIFICATION_TREES[scheme]||{groups:[]};
   const mapped=new Set();
   const groups=(tree.groups||[]).filter(group=>{
@@ -5361,7 +5201,7 @@ function buildBrowseView(mode){
 
 function classificationRegionCategories(regionIds,mode){
   if(mode==='az') return [{label:'Signs A–Z',group:null,ids:sortSignIds(Array.from(regionIds))}];
-  const scheme=mode==='ilae'?'ILAE_SEIZURE_2025':'LUDERS_5D_2005';
+  const scheme=mode==='ilae'?'ILAE_SEIZURE_2025':'LUDERS';
   const tree=CLASSIFICATION_TREES[scheme]||{groups:[]};
   const preferred=mode==='luders'?['Aura','Seizure','Lateralizing signs','Diagnostic signs']:[];
   const ordered=preferred.length
@@ -5377,7 +5217,7 @@ function classificationRegionCategories(regionIds,mode){
   });
   const other=sortSignIds(Array.from(regionIds).filter(id=>!used.has(id)));
   if(other.length) categories.push({
-    label:mode==='ilae'?'Not yet placed within ILAE 2025':'Not yet placed within Lüders 5D',
+    label:mode==='ilae'?'Not yet placed within ILAE classification':'Not yet placed within Lüders classification',
     group:null,ids:other
   });
   return categories;
@@ -5395,8 +5235,8 @@ function appendRegionCategoryContent(parent,category,mode,region){
     appendBroadClassificationBucket(parent,category.label,general,region);
   }
   const remaining=eligibleIds(category.ids,allowed,seen,true);
-  if(mode==='luders') appendSignBucket(parent,'Not yet placed within Lüders 5D',remaining,region,'unclassified-mappings');
-  else if(mode==='ilae') appendSignBucket(parent,'Not yet placed within ILAE 2025',remaining,region,'unclassified-mappings');
+  if(mode==='luders') appendSignBucket(parent,'Not yet placed within Lüders classification',remaining,region,'unclassified-mappings');
+  else if(mode==='ilae') appendSignBucket(parent,'Not yet placed within ILAE classification',remaining,region,'unclassified-mappings');
   else remaining.forEach(id=>appendBrowseSign(parent,id,category.label,region));
 }
 
@@ -6329,16 +6169,16 @@ HEAD = """<!DOCTYPE html>
     <label class="browse-mode-field"><span class="ctrl-label">Organize signs by</span>
       <select id="browse-mode">
         <option value="region">Brain region</option>
-        <option value="az">Semiology A&ndash;Z</option>
-        <option value="za">Semiology Z&ndash;A</option>
-        <option value="ilae">ILAE 2025 classification</option>
-        <option value="luders">L&uuml;ders 5D classification</option>
+        <option value="az">Sign A&ndash;Z</option>
+        <option value="za">Sign Z&ndash;A</option>
+        <option value="ilae">ILAE Classification</option>
+        <option value="luders">L&uuml;ders Classification</option>
       </select>
     </label>
     <label class="browse-mode-field" id="region-order-field"><span class="ctrl-label">Within each region</span>
       <select id="region-order-mode">
-        <option value="luders">L&uuml;ders 5D</option>
-        <option value="ilae">ILAE 2025</option>
+        <option value="luders">L&uuml;ders Classification</option>
+        <option value="ilae">ILAE Classification</option>
         <option value="az">A&ndash;Z</option>
       </select>
     </label>
