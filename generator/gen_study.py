@@ -296,6 +296,7 @@ def public_reported_targets(card):
     public_fields = {
         "key", "label", "raw", "origins", "finding_refs", "target_level",
         "region_id", "parent_region_id", "area_id", "brodmann_label",
+        "brodmann_area_ids",
     }
     return [
         {field: value for field, value in target.items() if field in public_fields}
@@ -332,9 +333,12 @@ def target_regions_for_sign(sign_id):
 
 def target_brodmann_areas_for_sign(sign_id):
     return list(OrderedDict.fromkeys(
-        str(target.get("area_id") or "").removeprefix("BA:")
+        str(area_id).removeprefix("BA:")
         for target in sign_axis_targets(sign_id, "LOCALIZATION")
-        if target.get("area_id")
+        for area_id in [
+            target.get("area_id"), *(target.get("brodmann_area_ids") or [])
+        ]
+        if area_id
     ))
 DESCRIPTIVE_FAMILIES = EVIDENCE_SYNTHESIS.get("descriptive_families") or []
 DESCRIPTIVE_FAMILY_BY_ID = {row["analysis_id"]: row for row in DESCRIPTIVE_FAMILIES}
@@ -1008,22 +1012,20 @@ def ledger_evidence_block(cid, notes=""):
                 '</div>'
                 f'{"".join(finding_blocks)}</li>')
         paper_list = '<ul class="ev-list">' + "".join(blocks) + '</ul>'
-        if evidence_class:
-            paper_count = len(grouped_papers)
-            paper_blocks.append(
-                '<details class="history-results ev-class-group" open>'
-                f'<summary>Class {esc(evidence_class)} <span>{paper_count} manuscript{"s" if paper_count != 1 else ""}</span></summary>'
-                f'{paper_list}</details>'
-            )
-        else:
-            paper_blocks.append(paper_list)
+        paper_count = len(grouped_papers)
+        class_label = f"Class {esc(evidence_class)}" if evidence_class else "Other sources"
+        paper_blocks.append(
+            '<details class="history-results ev-class-group" open>'
+            f'<summary>{class_label} <span>{paper_count} manuscript{"s" if paper_count != 1 else ""}</span></summary>'
+            f'{paper_list}</details>'
+        )
     family_block = ""
     if families:
         family_rows = "".join(descriptive_family_row(row) for row in families)
         family_block = (
             '<details class="history-results">'
             f'<summary>Reported study results <span>{len(families)} groups</span></summary>'
-            f'<div class="syn-family-scroll">{family_rows}</div></details>'
+            f'<div class="source-family-list">{family_rows}</div></details>'
         )
     note_block = (
         f'<div class="history-note"><strong>Clinical context</strong><span>{esc(informative_notes)}</span></div>'
@@ -3875,6 +3877,7 @@ body.quiz .lib-chip{display:none}
 .ev-toolbar button{border:1px solid #d7ad70;background:#fff;color:#8a4b00;border-radius:6px;padding:5px 8px;font-family:inherit;font-size:.68rem;font-weight:700;cursor:pointer}
 .ev-toolbar button:hover{background:#fff1dc;border-color:#b87927}
 .reviewed-evidence-scroll{max-height:clamp(280px,48vh,560px);overflow-y:auto;overscroll-behavior:contain;padding:8px 5px 4px 2px;scrollbar-gutter:stable}
+.source-family-list{padding:6px 2px}
 .ev-paper-group{padding-left:0!important;border-left:0!important}
 .ev-paper{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .ev-paper-file{overflow-wrap:anywhere}

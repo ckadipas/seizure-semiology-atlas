@@ -13,6 +13,7 @@ import sys
 import tempfile
 import unittest
 from datetime import datetime, timezone
+from html.parser import HTMLParser
 from pathlib import Path
 
 
@@ -852,6 +853,53 @@ def weighted_rows(panel):
     return rows
 
 
+class _SourcePanelDom(HTMLParser):
+    """Collect source-panel structure without depending on formatting strings."""
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.stack = []
+        self.paper_labels = []
+        self.paper_groups_in_class = []
+        self.finding_count = 0
+        self.source_family_lists = 0
+        self.nested_family_scrolls = 0
+        self._paper_label = None
+
+    def handle_starttag(self, tag, attrs):
+        classes = set(dict(attrs).get("class", "").split())
+        ancestors = [item[1] for item in self.stack]
+        if tag == "li" and "ev-paper-group" in classes:
+            self.paper_groups_in_class.append(any(
+                "ev-class-group" in values for values in ancestors
+            ))
+        if tag == "article" and "reviewed-card-evidence" in classes:
+            self.finding_count += 1
+        if tag == "span" and "ev-paper-file" in classes:
+            self._paper_label = []
+        if "source-family-list" in classes:
+            self.source_family_lists += 1
+        if "syn-family-scroll" in classes:
+            self.nested_family_scrolls += 1
+        self.stack.append((tag, classes))
+
+    def handle_data(self, data):
+        if self._paper_label is not None:
+            self._paper_label.append(data)
+
+    def handle_endtag(self, tag):
+        if (
+            tag == "span" and self.stack
+            and "ev-paper-file" in self.stack[-1][1]
+        ):
+            self.paper_labels.append("".join(self._paper_label).strip())
+            self._paper_label = None
+        for index in range(len(self.stack) - 1, -1, -1):
+            if self.stack[index][0] == tag:
+                del self.stack[index:]
+                break
+
+
 class NeutralMembershipRendererTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -868,7 +916,19 @@ class NeutralMembershipRendererTest(unittest.TestCase):
             json.dumps(AtlasBundleValidatorTest.neutral_membership_bundle()),
             encoding="utf-8",
         )
-        cls.render = runpy.run_path(str(cls.root / "generator" / "gen_study.py"))
+        saved_modules = {
+            name: sys.modules.pop(name, None)
+            for name in ("brain_atlas", "clinical_sign_cards")
+        }
+        try:
+            cls.render = runpy.run_path(
+                str(cls.root / "generator" / "gen_study.py")
+            )
+        finally:
+            for name, module in saved_modules.items():
+                sys.modules.pop(name, None)
+                if module is not None:
+                    sys.modules[name] = module
 
     @classmethod
     def tearDownClass(cls):
@@ -1081,6 +1141,39 @@ class NeutralMembershipRendererTest(unittest.TestCase):
             r"Result reported in this paper:|results reported in this paper",
         )
 
+    def test_source_history_contains_unclassified_manuscripts_without_losing_data(self):
+        sign_id = "SGRP:0cfcf10847ac2585d07e"  # Tonic motor phenomenon
+        groups = self.render["source_groups_for_sign"](sign_id)
+        roh = next(group for group in groups.values() if group["label"] == "Roh · 1996")
+        self.assertEqual("", str(roh.get("evidence_class") or ""))
+
+        html, linked_count, _ = self.render["ledger_evidence_block"](sign_id)
+        parsed = _SourcePanelDom()
+        parsed.feed(html)
+
+        self.assertGreater(linked_count, 0)
+        self.assertCountEqual(
+            [group["label"] for group in groups.values()], parsed.paper_labels,
+        )
+        self.assertEqual(len(groups), len(parsed.paper_groups_in_class))
+        self.assertTrue(all(parsed.paper_groups_in_class))
+        self.assertEqual(
+            sum(len(group["findings"]) for group in groups.values()),
+            parsed.finding_count,
+        )
+        self.assertIn("Other sources", html)
+        self.assertNotIn("Class UNCLASSIFIED", html)
+
+    def test_source_panel_has_one_scroll_owner(self):
+        html, _, _ = self.render["ledger_evidence_block"](
+            "SGRP:0cfcf10847ac2585d07e"
+        )
+        parsed = _SourcePanelDom()
+        parsed.feed(html)
+
+        self.assertEqual(1, parsed.source_family_lists)
+        self.assertEqual(0, parsed.nested_family_scrolls)
+
     def test_default_browser_excludes_source_less_signs(self):
         visible_names = {row["sign"] for row in self.render["BROWSE_SIGNS"]}
         self.assertNotIn("Pallesthesia / vibratory aura (rare)", visible_names)
@@ -1257,6 +1350,40 @@ class CompactRendererTest(unittest.TestCase):
             if (view_name, area["id"]) in expected
         }
         self.assertEqual(expected, actual)
+
+    def test_brodmann_renderer_embeds_reference_plate_images(self):
+        for view_name in self.render["BA"].VIEWS:
+            view = re.search(
+                rf'<svg[^>]*data-view="{re.escape(view_name)}"[^>]*>(.*?)</svg>',
+                self.render["brain_fold"],
+                re.DOTALL,
+            )
+            self.assertIsNotNone(view, view_name)
+            self.assertIn('<image class="brain-photo"', view.group(1), view_name)
+
+    def test_compound_brodmann_relationship_reaches_all_explicit_areas(self):
+        sign_id = 76  # Ictal contralateral tonic eye deviation
+        source_sign_id = str(sign_id)
+        expected = {"24", "25", "32"}
+        summary = next(
+            row for row in self.render["ATLAS"]["evidence_context"]
+            ["relationships"]["sign_axis_summaries"]
+            if str(row["axis"]) == "LOCALIZATION"
+            and source_sign_id in {
+                str(value) for value in row["public_sign_ids"]
+            }
+        )
+        self.assertTrue(expected.issubset({
+            str(value) for value in summary["brodmann_area_ids"]
+        }))
+        self.assertTrue(expected.issubset(set(
+            self.render["SIGN_LOCATION_BY_ID"][sign_id]["areas"]
+        )))
+        area_lobe = self.render["BA"].AREAS["25"]["lobe"]
+        self.assertIn(source_sign_id, {
+            str(row["id"])
+            for row in self.render["area_signs_by_region"][area_lobe].get("25", [])
+        })
 
     def test_brodmann_editor_can_hide_a_label_without_removing_anatomy(self):
         medial = re.search(

@@ -536,6 +536,10 @@ for card in bundle["evidence_synthesis"]["axis_summaries"]:
         area_id = str(target.get("area_id") or "")
         if area_id:
             expected_areas_by_sign[sign_id].add(area_id.removeprefix("BA:"))
+        expected_areas_by_sign[sign_id].update(
+            str(value).removeprefix("BA:")
+            for value in target.get("brodmann_area_ids") or []
+        )
 for sign in signs:
     sign_id = str(sign["id"])
     expected_regions = expected_regions_by_sign[sign_id] or {"No localization stated"}
@@ -703,6 +707,7 @@ for card in cards:
         }
         hierarchy_fields = {
             "region_id", "parent_region_id", "area_id", "brodmann_label",
+            "brodmann_area_ids",
         }
         require(
             required_target_fields <= set(target)
@@ -715,6 +720,13 @@ for card in cards:
         require(unique(target["raw"]) and unique(target["origins"])
                 and unique(target["finding_refs"]),
                 "reported target duplicates provenance")
+        if "brodmann_area_ids" in target:
+            require(
+                isinstance(target["brodmann_area_ids"], list)
+                and bool(target["brodmann_area_ids"])
+                and unique([str(value) for value in target["brodmann_area_ids"]]),
+                "reported target has invalid Brodmann relationships",
+            )
         require(set(target["finding_refs"]) <= set(row_findings),
                 "reported target provenance is outside its source contribution rows")
         require(all(finding_ref in context_by_finding
@@ -795,6 +807,14 @@ for card in cards:
     positive, _ = relationship_profile(contract)
 
     target_keys = sorted({str(target["key"]) for target in targets})
+    summary_area_ids = {
+        value[3:] for value in target_keys if value.startswith("BA:")
+    }
+    summary_area_ids.update(
+        str(area_id)
+        for target in targets
+        for area_id in target.get("brodmann_area_ids") or []
+    )
     summary_region_ids = set()
     if axis == "LOCALIZATION":
         for target in positive:
@@ -813,9 +833,12 @@ for card in cards:
         "public_sign_ids": [str(card["sign_id"])],
         "context_ids": list(card.get("context_ids") or []),
         "region_ids": sorted(summary_region_ids),
-        "brodmann_area_ids": [
-            value[3:] for value in target_keys if value.startswith("BA:")
-        ],
+        "brodmann_area_ids": sorted(
+            summary_area_ids,
+            key=lambda value: (
+                not value.isdigit(), int(value) if value.isdigit() else value
+            ),
+        ),
         "reported_target_keys": target_keys,
         "modifiers": modifiers,
     }
