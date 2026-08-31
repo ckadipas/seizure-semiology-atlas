@@ -981,6 +981,31 @@ class NeutralMembershipRendererTest(unittest.TestCase):
         self.assertNotIn("Evidence basis", fragment)
         self.assertNotIn("Source review pending", fragment)
 
+    def test_sign_card_uses_the_approved_four_row_desktop_layout(self):
+        html = self.render["h"]
+        self.assertIn(
+            ".detail-inner{display:grid;grid-template-columns:repeat(6,minmax(0,1fr))",
+            html,
+        )
+        self.assertIn(".d-loc,.d-lat{grid-column:span 3}", html)
+        self.assertIn(".d-classification,.d-phase{grid-column:span 2}", html)
+        self.assertIn(
+            ".evidence-overview,.card-source-shell{grid-column:1/-1}", html
+        )
+
+    def test_expanded_sign_banners_inherit_the_parent_group_color(self):
+        html = self.render["h"]
+        self.assertRegex(
+            html,
+            r'class="region-section"[^>]+style="--group-color:#[0-9a-f]{6}"',
+        )
+        self.assertIn("var(--group-color,var(--navy))", html)
+        self.assertNotIn(
+            ".browse-sign{width:100%;display:flex;align-items:center;gap:10px;"
+            "background:linear-gradient(120deg,#102a43,#173a54)",
+            html,
+        )
+
     def test_phase_display_normalizes_the_category_and_keeps_source_wording(self):
         display = self.render["phase_of_seizure_display"]({
             "phase": "Electrical stimulation; not an ictal/postictal seizure phase",
