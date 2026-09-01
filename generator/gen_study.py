@@ -3315,7 +3315,7 @@ atlas_updates_html = """
         <li>Corrected relationships among equivalent semiology terms and clinical classifications.</li>
         <li>Corrected links among lateralization, localization, anatomical regions, Brodmann areas, and supporting publications.</li>
         <li>Aligned regional browsing, weighted evidence summaries, reviewed evidence, and source views so they use the same reviewed relationships.</li>
-        <li>Applied active search, controlled Phase of Seizure categories (including Stimulation induced), lateralization, evidence filters, and non-region organization to Brodmann-map signs, counts, density, and highlighted signs; a small filter indicator names the active constraints and confirms Brain Region is not applied, and a mobile-visible <em>Clear</em> control resets the search and map selection.</li>
+        <li>Applied active search, controlled Phase of Seizure categories (including Stimulation induced), lateralization, evidence filters, and non-region organization to Brodmann-map signs, counts, density, and highlighted signs; a small filter indicator names the active constraints and confirms Brain Region is not applied. On mobile, a visible <em>Clear</em> control resets the search and map selection, and the page header and persistent controls remain below the device status area.</li>
       </ul>
       <ul class="atlas-update-history">
         <li><strong>v1.4</strong> Consolidated regional, classification, reviewed-evidence, study-result, weighted-evidence, and source views.</li>
@@ -3571,7 +3571,7 @@ html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
 body{font-family:'Segoe UI','Helvetica Neue',Arial,sans-serif;background:var(--bg);color:var(--ink);font-size:15px;line-height:1.5}
 
 /* ---------- TITLE ---------- */
-.site-header{position:relative;background:linear-gradient(135deg,var(--navy) 0%,var(--navy2) 55%,#0a4a5a 100%);color:#fff;padding:16px 238px 14px 26px}
+.site-header{position:relative;background:linear-gradient(135deg,var(--navy) 0%,var(--navy2) 55%,#0a4a5a 100%);color:#fff;padding:calc(16px + env(safe-area-inset-top)) 238px 14px 26px}
 .site-header h1{font-size:1.5rem;font-weight:800;letter-spacing:.01em;margin-bottom:5px}
 .site-header p{font-size:.82rem;opacity:.92;max-width:80ch;line-height:1.5}
 .last-updated{position:absolute;top:17px;right:24px;color:rgba(255,255,255,.68);font-size:.69rem;font-weight:600;letter-spacing:.02em;white-space:nowrap}
@@ -3585,7 +3585,7 @@ body{font-family:'Segoe UI','Helvetica Neue',Arial,sans-serif;background:var(--b
 .header-badge{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.24);border-radius:5px;padding:3px 10px;font-size:.72rem;font-weight:600}
 
 /* ---------- STICKY HEAD ---------- */
-.sticky-head{position:sticky;top:0;z-index:100;background:#fff;box-shadow:0 2px 10px rgba(15,30,61,.09);border-bottom:1px solid var(--line)}
+.sticky-head{position:sticky;top:env(safe-area-inset-top);z-index:100;background:#fff;box-shadow:0 2px 10px rgba(15,30,61,.09);border-bottom:1px solid var(--line)}
 /* The toolbar is a third of a landscape phone. It collapses out of the way to a
    puck that stays put while the page scrolls, and brings everything back on a tap. */
 .tb-state{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
@@ -3597,11 +3597,11 @@ body{font-family:'Segoe UI','Helvetica Neue',Arial,sans-serif;background:var(--b
   cursor:pointer;flex:0 0 auto;font-family:inherit}
 .tb-toggle:hover{border-color:var(--teal);color:var(--teal-d);background:#f0fbfd}
 body.tb-collapsed .sticky-head{display:none}
-.tb-fab{display:none;position:fixed;top:9px;right:11px;z-index:220;width:42px;height:42px;
+.tb-fab{display:none;position:fixed;top:calc(9px + env(safe-area-inset-top));right:11px;z-index:220;width:42px;height:42px;
   align-items:center;justify-content:center;border-radius:50%;border:1px solid var(--line);
   background:rgba(255,255,255,.95);backdrop-filter:blur(7px);font-size:1rem;cursor:pointer;
   box-shadow:0 4px 16px rgba(15,30,61,.20)}
-@media(min-width:901px){.tb-fab{top:42px}}
+@media(min-width:901px){.tb-fab{top:calc(42px + env(safe-area-inset-top))}}
 .tb-fab:hover{border-color:var(--teal)}
 body.tb-collapsed .tb-fab{display:inline-flex}
 .tb-dot{position:absolute;top:5px;right:5px;width:9px;height:9px;border-radius:50%;
@@ -4368,7 +4368,7 @@ body.tb-collapsed .weighted-evidence-section>.reliability-fold{padding-right:0}
 
 /* ==================== MOBILE ==================== */
 @media (max-width:760px){
-  .site-header{padding:14px 16px 12px}
+  .site-header{padding:calc(14px + env(safe-area-inset-top)) 16px 12px}
   .site-header h1{font-size:1.12rem}
   .last-updated{font-size:.63rem;margin-top:5px}
   .search-wrap{flex:1 1 100%;max-width:none}

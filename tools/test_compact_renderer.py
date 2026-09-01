@@ -1943,6 +1943,21 @@ class CompactRendererTest(unittest.TestCase):
         self.assertIsNotNone(desktop_rule)
         self.assertGreaterEqual(int(desktop_rule.group(1)), updated_top + 22)
 
+    def test_mobile_top_controls_respect_iphone_safe_area(self):
+        css = self.render["CSS"]
+        self.assertRegex(
+            css,
+            r"\.site-header\{[^}]*padding:[^;}]*env\(safe-area-inset-top\)",
+        )
+        self.assertRegex(
+            css,
+            r"\.sticky-head\{[^}]*top:env\(safe-area-inset-top\)",
+        )
+        self.assertRegex(
+            css,
+            r"\.tb-fab\{[^}]*top:calc\([^)]*env\(safe-area-inset-top\)",
+        )
+
     def test_publication_changelog_is_compact_and_below_terminology(self):
         updates = re.search(
             r'<details class="lib-details atlas-updates-details">(.*?)</details>',

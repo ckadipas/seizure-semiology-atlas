@@ -45,6 +45,9 @@ Format loosely follows Keep a Changelog; dates are ISO-8601.
   under the overlay scrollbar and the collapsed-toolbar puck. Side padding now honours the
   safe-area inset, and widens to clear the puck whenever the toolbar is folded.
 ### Fixed
+- **The mobile header no longer sits beneath the iPhone camera and status bar.**
+  The page header, sticky controls, and collapsed-toolbar control now honor the top
+  safe-area inset while retaining the existing spacing on other displays.
 - **"Collapse all" collapsed almost nothing.** It closed the cards and the sub-region
   banners but left the summary panels and all seven region banners open, so on a phone it
   barely shortened the page. Both buttons now reach every level that folds — panels,
