@@ -1504,6 +1504,14 @@ _PHASE_LABELS = {
 }
 
 
+def phase_filter_categories(d):
+    """Return only exporter-projected controlled categories for filtering."""
+    categories = d.get("normalized_phase_category")
+    if not isinstance(categories, (list, tuple)):
+        return []
+    return [label for code, label in _PHASE_LABELS.items() if code in categories]
+
+
 def phase_of_seizure_display(d):
     """Prefer the bundle category; otherwise use bounded source wording."""
     phase = CLINICAL_CARD_BY_ID.get(str(d.get("id") or ""), {}).get("phase") or normalize_phase(d)
@@ -1603,7 +1611,7 @@ def area_reference_blocks(region):
             lc, ec = d["latcode"], d["evid"]
             ref_search = f'{area["name"]} {area["label"]} {area["lobe"]}'.lower()
             detail_name = "sign-" + hashlib.sha256(str(d["id"]).encode("utf-8")).hexdigest()[:24] + ".html"
-            phase_search = "|".join(d.get("phase_values") or [d["phase"]])
+            phase_search = "|".join(phase_filter_categories(d))
             lat_facets = "|".join(lateralization_filter_values(d.get("id")))
             refs.append(f'''<div class="sign" id="area-sign-{slug(region)}-{aid}-{d['id']}"
     data-area-ref="true" data-id="{d['id']}" data-ba="{esc(aid)}" data-region="{esc(region)}"
@@ -1674,7 +1682,7 @@ for r in region_order:
       {overview_block}
       {ev_block}
     </div>'''
-            phase_search = "|".join(d.get("phase_values") or [d["phase"]])
+            phase_search = "|".join(phase_filter_categories(d))
             rows.append(f'''<div class="sign" id="sign-{slug(r)}-{d['id']}" data-id="{d['id']}" data-region="{esc(r)}" data-regions="{esc('|'.join(public_browse_regions(d)))}" data-phase="{esc(d['phase'])}" data-phase-search="{esc(phase_search)}" data-lat-targets="{esc(lat_facets)}" data-evid="{ec}" data-search="{esc(search_str)}" style="--accent:{accent}">
   <button class="sign-head" aria-expanded="false">
     <span class="chevron">&#8250;</span>
@@ -3070,9 +3078,26 @@ def build_brain(signs):
     index = {}          # the same mapping read backwards: sign -> its areas + why
     for d in signs:
         m = SIGN_LOCATION_BY_ID[d["id"]]
+        area_terms = [
+            value
+            for aid in m["areas"]
+            for value in (
+                BA.AREAS[aid]["label"], BA.AREAS[aid]["name"], BA.AREAS[aid]["lobe"],
+            )
+        ]
+        phases = [str(value) for value in (d.get("phase_values") or [d.get("phase", "")]) if value]
+        phase_categories = phase_filter_categories(d)
+        search = " ".join(str(value) for value in [
+            SIGN_SEARCH_BY_ID.get(d["id"], ""), d.get("sign", ""), d.get("phase", ""),
+            *phases, d.get("loc", ""), d.get("sub", ""), d.get("notes", ""),
+            *area_terms,
+        ] if value).casefold().replace('"', "")
         index[str(d["id"])] = {"n": d["sign"], "areas": m["areas"], "via": m["via"],
                                "rule": m["rule"], "lc": d.get("latcode", "nonlat"),
-                               "loc": d.get("loc", "")}
+                               "loc": d.get("loc", ""), "q": search,
+                               "phs": "|".join(phase_categories).casefold(),
+                               "lats": lateralization_filter_values(d["id"]),
+                               "ev": d.get("evid", "III")}
         al = m["areas"]
         if not al:
             unplaced.append(d["sign"]); continue
@@ -3177,6 +3202,11 @@ def build_brain(signs):
       <button class="seg-b" data-hemi="R">Right</button>
     </div>
     <label class="brain-shade"><input type="checkbox" id="brain-density"> Shade by density</label>
+    <span class="brain-filter-indicator" id="brain-filter-indicator" role="status" aria-live="polite"
+      aria-label="Map filters active" title="Map filters active" hidden>
+      <svg class="brain-filter-funnel" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 3h12L9 8v4l-2 1V8z"/></svg>
+      <span>Map filtered</span>
+    </span>
     <span class="dens-key"><span class="dk-n">0</span><i class="dk-bar"></i>
       <span class="dk-n" id="dk-max"></span>&nbsp;signs per area</span>
   </div>
@@ -3285,6 +3315,7 @@ atlas_updates_html = """
         <li>Corrected relationships among equivalent semiology terms and clinical classifications.</li>
         <li>Corrected links among lateralization, localization, anatomical regions, Brodmann areas, and supporting publications.</li>
         <li>Aligned regional browsing, weighted evidence summaries, reviewed evidence, and source views so they use the same reviewed relationships.</li>
+        <li>Applied active search, controlled Phase of Seizure categories (including Stimulation induced), lateralization, evidence filters, and non-region organization to Brodmann-map signs, counts, density, and highlighted signs; a small filter indicator names the active constraints and confirms Brain Region is not applied, and a mobile-visible <em>Clear</em> control resets the search and map selection.</li>
       </ul>
       <ul class="atlas-update-history">
         <li><strong>v1.4</strong> Consolidated regional, classification, reviewed-evidence, study-result, weighted-evidence, and source views.</li>
@@ -3315,6 +3346,10 @@ CSS = r"""
 .brain-shade{display:inline-flex;align-items:center;gap:6px;font-size:.72rem;font-weight:600;color:var(--muted);
   cursor:pointer;margin-left:auto;user-select:none}
 .brain-shade input{accent-color:var(--teal);width:14px;height:14px}
+.brain-filter-indicator{display:inline-flex;align-items:center;gap:4px;padding:2px 6px;border:1px solid #b8d7dc;
+  border-radius:999px;background:#eef9fa;color:#0a6875;font-size:.66rem;font-weight:700;white-space:nowrap}
+.brain-filter-indicator[hidden]{display:none}
+.brain-filter-funnel{width:11px;height:11px;fill:currentColor;flex:none}
 
 .brain-grid{display:grid;grid-template-columns:1fr;gap:14px}
 @media(min-width:900px){.brain-grid{grid-template-columns:minmax(0,1.55fr) minmax(290px,1fr);gap:20px}}
@@ -4336,9 +4371,8 @@ body.tb-collapsed .weighted-evidence-section>.reliability-fold{padding-right:0}
   .site-header{padding:14px 16px 12px}
   .site-header h1{font-size:1.12rem}
   .last-updated{font-size:.63rem;margin-top:5px}
-  .search-wrap{flex:1 1 55%;max-width:none}
+  .search-wrap{flex:1 1 100%;max-width:none}
   #search-input{width:auto}
-  .search-clear{display:none}
   .browse-mode-field{flex:1 1 42%;min-width:150px}
   .filter-toggle{display:inline-flex;padding:6px 11px;font-size:.78rem}
   .filter-panel{display:none;flex:1 1 100%;width:100%;flex-direction:row;flex-wrap:wrap;gap:9px;padding-top:2px}
@@ -4376,6 +4410,7 @@ JS = (
     "const CLASSIFICATION_TREES=" + classification_trees_json + ";\n"
     + "const SIGN_SEARCH=" + sign_search_json + ";\n"
     + r"""
+let refreshBrainMap=()=>{};
 /* ---------- Brodmann map ---------- */
 (function(){
   const card=document.querySelector('.brain-card');
@@ -4392,11 +4427,71 @@ JS = (
                 right:'RIGHT',nonlat:'NON-LAT',variable:'VARIABLE'};
   const evColor={I:'#1a7a4a',II:'#c47a00',III:'#c0392b'};
   const traceBody=panel.querySelector('.bp-trace');
+  const filterIndicator=document.getElementById('brain-filter-indicator');
+  const brainCollator=new Intl.Collator(undefined,{numeric:true,sensitivity:'base'});
   let hemi='L', sel=null, traced=null;
 
+  function brainMapState(){
+    const query=appliedQuery;
+    const phase=fPhase.value;
+    const lateralization=fLat.value;
+    const evidence=fEvid.value;
+    const organization=browseMode.value==='region'?'':browseMode.value;
+    const label=control=>control.selectedOptions?.[0]?.textContent?.trim()||control.value;
+    const constraints=[];
+    if(query) constraints.push('Search: '+query);
+    if(phase) constraints.push('Phase: '+label(fPhase));
+    if(lateralization) constraints.push('Lateralization: '+label(fLat));
+    if(evidence) constraints.push('Evidence: '+label(fEvid));
+    if(organization) constraints.push('Organization: '+label(browseMode));
+    return {query,phase,lateralization,evidence,organization,constraints,active:constraints.length>0};
+  }
+
+  function brainSignMatches(sign,state=brainMapState()){
+    const metadata=BRAIN_SIGNS[String(sign.id??sign)];
+    if(!metadata) return false;
+    if(state.query&&!metadata.q.includes(state.query)) return false;
+    if(state.phase&&!metadata.phs.includes(state.phase.toLowerCase())) return false;
+    if(state.lateralization&&!metadata.lats.includes(state.lateralization)) return false;
+    if(state.evidence&&metadata.ev!==state.evidence) return false;
+    return true;
+  }
+  function brainSignIsVisible(signId,state=brainMapState()){
+    return brainSignMatches(String(signId),state);
+  }
+  function visibleBrainSigns(tile,state=brainMapState()){
+    return tile.signs.filter(sign=>brainSignMatches(sign,state));
+  }
+  function brainDisplayName(sign){
+    const original=String(sign.n||'').trim();
+    const stripped=original.replace(/^Focal\s+/i,'').trim();
+    return stripped===original||!stripped?original:stripped.charAt(0).toLocaleUpperCase()+stripped.slice(1);
+  }
+  function organizeBrainSigns(signs,state=brainMapState()){
+    const ordered=signs.slice();
+    if(!state.organization) return ordered;
+    const byName=(a,b)=>brainCollator.compare(brainDisplayName(a),brainDisplayName(b));
+    if(state.organization==='az'||state.organization==='za'){
+      ordered.sort(byName);
+      if(state.organization==='za') ordered.reverse();
+      return ordered;
+    }
+    const scheme=state.organization==='ilae'?'ILAE_SEIZURE_2025':'LUDERS';
+    const tree=CLASSIFICATION_TREES[scheme]||{groups:[]};
+    const rank=new Map();let next=0;
+    const take=id=>{id=String(id);if(!rank.has(id))rank.set(id,next++);};
+    const visit=node=>{
+      (node.children||[]).forEach(visit);
+      [...(node.sign_ids||[]),...(node.broad_sign_ids||[])].forEach(take);
+      (node.all_sign_ids||[]).forEach(take);
+    };
+    (tree.groups||[]).forEach(visit);
+    ordered.sort((a,b)=>(rank.get(String(a.id))??Number.MAX_SAFE_INTEGER)
+      -(rank.get(String(b.id))??Number.MAX_SAFE_INTEGER)||byName(a,b));
+    return ordered;
+  }
+
   /* density buckets + "has data" styling */
-  const counts=Object.values(BRAIN_TILES).map(t=>t.signs.length).filter(n=>n>0);
-  const maxN=Math.max(1,...counts);
   const RAMP=[[179,218,255],[173,182,250],[180,142,223],[187,102,176],[185,60,113],[172,1,26]];
   function densColour(t){                     /* t in 0..1 across the ramp */
     const x=Math.max(0,Math.min(1,t))*(RAMP.length-1), i=Math.min(RAMP.length-2,Math.floor(x)), f=x-i;
@@ -4407,19 +4502,43 @@ JS = (
     const lum=0.2126*L[0]+0.7152*L[1]+0.0722*L[2];
     return ['rgb('+c.join(',')+')', lum<0.30?'#fff':'#1e2a3d'];
   }
-  card.querySelectorAll('.ba-hit').forEach(p=>{
-    const n=+p.dataset.n||0;
-    if(n>0) p.classList.add('has');
-    const [fill,ink]=densColour(n>0?Math.sqrt(n/maxN):0);
-    const num=p.nextElementSibling;
-    if(n>0){ p.style.setProperty('--dens',fill); if(num) num.style.setProperty('--densink',ink); }
-  });
   const dkMax=document.getElementById('dk-max');
-  if(dkMax) dkMax.textContent=maxN;
-  card.querySelectorAll('.ba-num').forEach(t=>{
-    const tile=BRAIN_TILES[t.dataset.tile];
-    if(tile&&tile.signs.length) t.classList.add('has');
-  });
+  function refreshBrainDensity(){
+    const state=brainMapState();
+    const counts=Object.values(BRAIN_TILES).map(tile=>visibleBrainSigns(tile,state).length).filter(n=>n>0);
+    const maxN=Math.max(0,...counts);
+    card.querySelectorAll('.ba-hit').forEach(hit=>{
+      const tile=BRAIN_TILES[hit.dataset.tile];
+      const n=tile?visibleBrainSigns(tile,state).length:0;
+      hit.dataset.n=n;hit.classList.toggle('has',n>0);
+      const number=hit.nextElementSibling;
+      if(number) number.classList.toggle('has',n>0);
+      if(n>0){
+        const [fill,ink]=densColour(Math.sqrt(n/maxN));
+        hit.style.setProperty('--dens',fill);
+        if(number) number.style.setProperty('--densink',ink);
+      }else{
+        hit.style.removeProperty('--dens');
+        if(number) number.style.removeProperty('--densink');
+      }
+    });
+    card.querySelectorAll('.deep-chip').forEach(chip=>{
+      const tile=BRAIN_TILES[chip.dataset.tile];
+      const count=tile?visibleBrainSigns(tile,state).length:0;
+      const number=chip.querySelector('.dc-n');if(number)number.textContent=count;
+    });
+    if(dkMax) dkMax.textContent=maxN;
+  }
+  function refreshBrainFilterIndicator(){
+    const state=brainMapState();
+    if(!filterIndicator) return;
+    const description=state.active
+      ? 'Map constrained by '+state.constraints.join('; ')+'. Brain Region is not applied to this map.'
+      : 'No map-specific filter or organization is active.';
+    filterIndicator.hidden=!state.active;
+    filterIndicator.setAttribute('aria-label',description);
+    filterIndicator.title=description;
+  }
   const MARKS='.ba-hit,.ba-num,.deep-chip';
 
   /* which signs actually apply to the hemisphere on screen */
@@ -4439,6 +4558,8 @@ JS = (
 
   function render(tid){
     const t=BRAIN_TILES[tid]; if(!t) return;
+    const state=brainMapState();
+    const visibleSigns=organizeBrainSigns(visibleBrainSigns(t,state),state);
     sel=tid;
     card.querySelectorAll(MARKS).forEach(el=>
       el.classList.toggle('sel', el.dataset.tile===tid));
@@ -4451,13 +4572,16 @@ JS = (
     document.getElementById('bp-num').textContent=t.label;
     document.getElementById('bp-name').textContent=t.name;
     document.getElementById('bp-lobe').textContent=t.lobe;
-    const n=t.signs.length;
-    document.getElementById('bp-count').textContent=n?(n+(n===1?' sign':' signs')):'no signs in this dataset';
+    const n=visibleSigns.length;
+    document.getElementById('bp-count').textContent=n?(n+(n===1?' sign':' signs'))
+      :(state.active?'no signs match the active map constraints':'no signs in this dataset');
     hover.textContent=(t.bas.length?'BA '+t.label+' \u2014 ':'')+t.name;
     const list=document.getElementById('bp-list');
-    if(!n){list.innerHTML='<div class="bp-empty" style="padding:18px">No sign in the current dataset is'+
-      ' localized to this area. That is a gap in the evidence collected here, not proof the area is silent.</div>';revealPanel();return;}
-    list.innerHTML=t.signs.map(s=>{
+    if(!n){list.innerHTML='<div class="bp-empty" style="padding:18px">'+(state.active
+      ?'No sign in this area matches the active map constraints.'
+      :'No sign in the current dataset is localized to this area. That is a gap in the evidence collected here, not proof the area is silent.')+
+      '</div>';revealPanel();return;}
+    list.innerHTML=visibleSigns.map(s=>{
       const on=applies(s.lc);
       return '<button class="bp-row'+(on?'':' off')+'" data-sign="'+s.id+'">'+
         '<span class="bp-rname">'+esc(s.n)+
@@ -4487,6 +4611,7 @@ JS = (
     card.querySelectorAll('.sel').forEach(el=>el.classList.remove('sel'));
     clearTrace();
   }
+  document.addEventListener('atlas:clear-map',clear);
 
   /* ---------- the mapping read backwards: one sign -> all of its areas ----------
      Same source as the figure itself (data/brodmann_map.json, gated by
@@ -4503,7 +4628,7 @@ JS = (
 
   function traceSign(sid,scroll){
     const s=BRAIN_SIGNS[String(sid)];
-    if(!s||!s.areas.length) return false;
+    if(!s||!s.areas.length||!brainSignIsVisible(sid)) return false;
     traced=String(sid); sel=null;
     const set=s.areas;
     card.classList.add('tracing');
@@ -4534,7 +4659,7 @@ JS = (
         :(t.views||[]).map(v=>v.charAt(0).toUpperCase()+v.slice(1)).join(' · ');
       return '<button class="bt-row" data-tile="'+a+'"><span class="bt-num">'+esc(t.label)+'</span>'+
         '<span class="bt-name">'+esc(t.name)+'<span class="bt-where">'+esc(where)+'</span></span>'+
-        '<span class="bt-n" title="signs this atlas localizes here">'+t.signs.length+'</span></button>';
+        '<span class="bt-n" title="matching signs this atlas localizes here">'+visibleBrainSigns(t).length+'</span></button>';
     }).join('');
     const note = applies(s.lc) ? '' : 'Not expected from the hemisphere shown.';
     const why=document.getElementById('bt-why');
@@ -4576,7 +4701,7 @@ JS = (
     /* a traced set owns the caption; hovering past it must not steal the line */
     if(traced&&!hit.classList.contains('trace')) return;
     const t=BRAIN_TILES[hit.dataset.tile]; if(!t) return;
-    const n=t.signs.length;
+    const n=visibleBrainSigns(t).length;
     hover.textContent=(t.bas.length?'BA '+t.label+' — ':'')+t.name+(n?'  ·  '+n+(n===1?' sign':' signs'):'  ·  no signs');
   });
   card.addEventListener('mouseleave',resetBrainHover);
@@ -4670,6 +4795,15 @@ JS = (
   }));
   document.getElementById('brain-density').addEventListener('change',e=>
     card.classList.toggle('dens',e.target.checked));
+  refreshBrainMap=()=>{
+    refreshBrainDensity();
+    refreshBrainFilterIndicator();
+    if(traced){
+      if(brainSignIsVisible(traced)) traceSign(traced);
+      else clear();
+    }else if(sel) render(sel);
+    else resetBrainHover();
+  };
 
   /* ---------- label position editor ----------
      #edit-labels turns it on. Pick an area from the grouped list, the view zooms
@@ -5023,7 +5157,7 @@ document.querySelectorAll('.pill').forEach(p=>{
 function itemMatches(item){
   const reg=fRegion.value,ph=fPhase.value,lat=fLat.value,ev=fEvid.value;
   if(reg && item.dataset.region!==reg) return false;
-  if(ph && !((item.dataset.phaseSearch||item.dataset.phase||'').toLowerCase().includes(ph.toLowerCase()))) return false;
+  if(ph && !(item.dataset.phaseSearch||'').toLowerCase().includes(ph.toLowerCase())) return false;
   if(lat && !(item.dataset.latTargets||'').split('|').includes(lat)) return false;
   if(ev && item.dataset.evid!==ev) return false;
   const searchable=(SIGN_SEARCH[String(item.dataset.id)]||'')+' '+(item.dataset.search||'');
@@ -5367,6 +5501,7 @@ function filterAll(){
   resultCount.textContent=visible+' of '+uniqueSignCount+' signs shown';
   document.body.classList.toggle('filtering',active);
   noResults.style.display=visible===0?'block':'none';
+  refreshBrainMap();
   refreshStudyFamilyFilter(visibleIds,active);
 }
 
@@ -5436,7 +5571,11 @@ regionBrowseSections.addEventListener('click',handleBrowseContainerClick);
 function applySearch(){ appliedQuery=searchInput.value.toLowerCase().trim(); filterAll(); }
 searchSubmit.addEventListener('click',applySearch);
 searchInput.addEventListener('keydown',event=>{ if(event.key==='Enter'){ event.preventDefault(); applySearch(); } });
-searchClear.addEventListener('click',()=>{ searchInput.value=''; appliedQuery=''; filterAll(); searchInput.focus(); });
+searchClear.addEventListener('click',()=>{
+  searchInput.value=''; appliedQuery=''; filterAll();
+  document.dispatchEvent(new Event('atlas:clear-map'));
+  searchInput.focus();
+});
 [fRegion,fPhase,fLat,fEvid].forEach(el=>el.addEventListener('change',filterAll));
 browseMode.addEventListener('change',()=>setBrowseMode(browseMode.value));
 regionOrderMode.addEventListener('change',()=>{
@@ -6137,6 +6276,10 @@ lateralization_filter_options = "\n".join(
     for key, label in LATERALIZATION_TARGET_LABELS.items()
     if key in _active_lateralization_facets
 )
+phase_filter_options = "\n".join(
+    f'<option value="{esc(label)}">{esc(label)}</option>'
+    for label in _PHASE_LABELS.values()
+)
 
 HEAD = """<!DOCTYPE html>
 <html lang="en">
@@ -6173,7 +6316,7 @@ HEAD = """<!DOCTYPE html>
       <span class="search-icon">&#128269;</span>
       <input type="text" id="search-input" placeholder="Search signs, anatomy, or sources...">
       <button class="search-btn" id="search-submit" type="button">Search</button>
-      <button class="search-btn search-clear" id="search-clear" type="button">Clear</button>
+      <button class="search-btn search-clear" id="search-clear" type="button" aria-label="Clear search and Brodmann map selection">Clear</button>
     </div>
     <label class="browse-mode-field"><span class="ctrl-label">Organize signs by</span>
       <select id="browse-mode">
@@ -6208,11 +6351,7 @@ HEAD = """<!DOCTYPE html>
       <div class="filter-field"><span class="ctrl-label">Phase</span>
         <select id="filter-phase">
           <option value="">All Phases</option>
-          <option value="Aura">Aura</option>
-          <option value="Ictal">Ictal</option>
-          <option value="Postictal">Postictal</option>
-          <option value="Interictal">Interictal</option>
-          <option value="Peri-ictal">Peri-ictal</option>
+""" + phase_filter_options + """
         </select>
       </div>
       <div class="filter-field"><span class="ctrl-label">Lateralization</span>

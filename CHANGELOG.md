@@ -5,6 +5,14 @@ Format loosely follows Keep a Changelog; dates are ISO-8601.
 
 ## [Unreleased]
 ### Changed
+- **Brodmann-map signs now honor active top-level filters and organization.** Search,
+  phase, lateralization, evidence class, and every non-region organization mode constrain
+  map lists, counts, density, and highlighted signs. Brain Region and within-region order
+  do not affect the map. A small filter indicator names every active constraint and
+  explicitly confirms that Brain Region is not applied. The Phase of Seizure control uses
+  only controlled categories, including Stimulation induced; raw wording is not treated as
+  a filter category. On mobile, the visible **Clear** control resets the
+  search and map selection.
 - **"Source figures" is now "Source statistics".** The word meant extracted numbers, not
   images, and read as neither. The section is headed *each extracted statistic per
   publication (487 from 33 papers)* and introduced as *every extracted statistic per

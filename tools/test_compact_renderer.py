@@ -1416,6 +1416,103 @@ class CompactRendererTest(unittest.TestCase):
         )[0]
         self.assertIn("resetBrainHover();", show_view)
 
+    def test_brodmann_map_honors_nonregion_filters_and_organization(self):
+        js = self.render["JS"]
+        brain = js.split("/* ---------- Brodmann map ---------- */", 1)[1].split(
+            "const searchInput=", 1
+        )[0]
+        state_match = re.search(
+            r"function brainMapState\(\)\{(?P<body>.*?)\n  \}",
+            brain,
+            re.DOTALL,
+        )
+        self.assertIsNotNone(
+            state_match,
+            "generated map has no shared state for top filters and organization",
+        )
+        state = state_match.group("body")
+        for control in (
+            "appliedQuery", "fPhase.value", "fLat.value", "fEvid.value",
+            "browseMode.value",
+        ):
+            self.assertIn(control, state)
+        self.assertNotIn("fRegion", state)
+        self.assertNotIn("regionOrderMode", state)
+
+        render = brain.split("function render(tid){", 1)[1].split(
+            "function esc", 1
+        )[0]
+        self.assertIn("visibleBrainSigns(t", render)
+        self.assertNotIn("const n=t.signs.length", render)
+        self.assertNotIn("list.innerHTML=t.signs.map", render)
+        density = re.search(
+            r"function refreshBrainDensity\(\).*?visibleBrainSigns",
+            brain,
+            re.DOTALL,
+        )
+        self.assertIsNotNone(density)
+        trace = brain.split("function traceSign(sid,scroll){", 1)[1].split(
+            "/* clicking an area */", 1
+        )[0]
+        self.assertIn("brainSignIsVisible", trace)
+        self.assertIn("organizeBrainSigns", brain)
+        filter_all = js.split("function filterAll(){", 1)[1].split(
+            "function setBrowseMode", 1
+        )[0]
+        self.assertIn("refreshBrainMap();", filter_all)
+        self.assertEqual(
+            ["Stimulation induced"],
+            self.render["phase_filter_categories"](
+                {
+                    "normalized_phase_category": ["STIMULATION_INDUCED"],
+                    "phase": "ictal stimulation wording",
+                    "phase_values": ["Ictal"],
+                }
+            ),
+        )
+
+    def test_brodmann_map_filter_indicator_is_accessible_compact_and_shared(self):
+        indicator = re.search(
+            r'<[^>]+id="brain-filter-indicator"[^>]*>',
+            self.render["brain_fold"],
+        )
+        self.assertIsNotNone(
+            indicator,
+            "generated Brodmann map has no visible active-filter indicator",
+        )
+        tag = indicator.group(0)
+        self.assertIn("hidden", tag)
+        self.assertRegex(tag, r'aria-(?:label|live)="[^"]+"')
+        style = re.search(
+            r"\.brain-filter-indicator\{(?P<body>[^}]*)\}",
+            self.render["CSS"],
+        )
+        self.assertIsNotNone(style)
+        for property_name in ("font-size:", "padding:", "border-radius:"):
+            self.assertIn(property_name, style.group("body"))
+        brain = self.render["JS"].split(
+            "/* ---------- Brodmann map ---------- */", 1
+        )[1].split("const searchInput=", 1)[0]
+        self.assertIn("function refreshBrainFilterIndicator(){", brain)
+        indicator_update = brain.split(
+            "function refreshBrainFilterIndicator(){", 1
+        )[1].split("\n  }", 1)[0]
+        self.assertIn("brainMapState()", indicator_update)
+        self.assertIn(
+            'id="search-clear" type="button" aria-label="Clear search and Brodmann map selection">'
+            "Clear</button>",
+            self.render["h"],
+        )
+        self.assertNotIn(".search-clear{display:none}", self.render["CSS"])
+        self.assertIn(
+            ".search-wrap{flex:1 1 100%;max-width:none}", self.render["CSS"]
+        )
+        self.assertIn("document.addEventListener('atlas:clear-map',clear)", brain)
+        self.assertIn(
+            "document.dispatchEvent(new Event('atlas:clear-map'))",
+            self.render["JS"],
+        )
+
     def test_subcentral_area_is_not_interactive_on_the_medial_view(self):
         self.assertEqual(["lateral"], self.render["BA"].views_with("43"))
         medial = re.search(
@@ -1861,7 +1958,38 @@ class CompactRendererTest(unittest.TestCase):
         self.assertIn("<strong>v1.0&ndash;1.3</strong>", block)
         self.assertNotIn("Meaningful changes", block)
         self.assertNotIn("Small display and maintenance changes", block)
-        self.assertEqual(block.count("<li>"), 5)
+        visible_entries = [
+            re.sub(r"<[^>]+>", " ", item).casefold()
+            for item in re.findall(r"<li>(.*?)</li>", block, re.DOTALL)
+        ]
+        visible_map_filter = next(
+            (
+                item for item in visible_entries
+                if "brodmann" in item and "filter" in item
+            ),
+            "",
+        )
+        repository = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+        unreleased = repository.split("## [Unreleased]", 1)[1].split(
+            "\n## [", 1
+        )[0]
+        repository_map_filter = next(
+            (
+                item.casefold() for item in re.split(r"\n(?=- \*\*)", unreleased)
+                if "brodmann" in item.casefold() and "filter" in item.casefold()
+            ),
+            "",
+        )
+        self.assertTrue(
+            visible_map_filter and repository_map_filter,
+            "map-filter change must appear in both changelogs "
+            f"(visible={bool(visible_map_filter)}, repository={bool(repository_map_filter)})",
+        )
+        for entry in (visible_map_filter, repository_map_filter):
+            for term in ("organization", "region"):
+                self.assertIn(term, entry)
+            self.assertTrue("indicator" in entry or "icon" in entry)
+        self.assertEqual(block.count("<li>"), 6)
         for term in ("classifications", "lateralization", "localization", "anatomical regions"):
             self.assertIn(term, block)
         terminology = self.render["h"].index('<div class="abbrev">')
