@@ -1937,7 +1937,8 @@ class CompactRendererTest(unittest.TestCase):
             re.search(r"\.last-updated\{[^}]*top:(\d+)px", self.render["CSS"]).group(1)
         )
         desktop_rule = re.search(
-            r"@media\(min-width:901px\)\{\.tb-fab\{[^}]*top:(\d+)px",
+            r"@media\(min-width:901px\)\{\.tb-fab\{[^}]*"
+            r"top:calc\((\d+)px \+ env\(safe-area-inset-top\)\)",
             self.render["CSS"],
         )
         self.assertIsNotNone(desktop_rule)
