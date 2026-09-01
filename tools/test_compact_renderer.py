@@ -337,9 +337,17 @@ class AtlasBundleValidatorTest(unittest.TestCase):
                 "public_sign_ids": [str(card["sign_id"])],
                 "context_ids": list(card.get("context_ids") or []),
                 "region_ids": sorted(region_ids),
-                "brodmann_area_ids": [
-                    value[3:] for value in target_keys if value.startswith("BA:")
-                ],
+                "brodmann_area_ids": sorted(
+                    {
+                        value[3:]
+                        for value in target_keys
+                        if value.startswith("BA:")
+                    },
+                    key=lambda value: (
+                        not value.isdigit(),
+                        int(value) if value.isdigit() else value,
+                    ),
+                ),
                 "reported_target_keys": target_keys,
                 "modifiers": list(card["target_contract"].get("modifiers") or []),
             })
