@@ -40,9 +40,8 @@ def mapping_for_sign(sign):
 
     `via="sign"` — the map records an entry for this sign id, and `rule` is the
     sign name that entry was written against (the same string the gate checks for
-    drift). `via="sub"` — the sign inherits the rule for its sub-region, and
-    `rule` is that sub-region. `via="none"` — no areas; `rule` carries the reason
-    if one is declared under `mapping.unmapped`.
+    drift). `via="none"` — no explicit per-sign area is recorded; `rule` carries
+    the reason if one is declared under `mapping.unmapped`.
 
     Returning the provenance beside the ids is what lets the page state why a
     sign highlights where it does, rather than asserting it.
@@ -51,16 +50,21 @@ def mapping_for_sign(sign):
     entry = MAPPING["by_sign"].get(sid)
     if entry:
         names, via, rule = entry["areas"], "sign", entry.get("sign", "")
+        map_links = [
+            link for link in entry.get("map_links") or []
+            if str(link.get("area_id") or "") in names
+        ]
     else:
-        rule = sign.get("sub", "")
-        names, via = MAPPING["by_sub"].get(rule, []), "sub"
+        rule = MAPPING["unmapped"].get(sid, "")
+        names, via = [], "none"
+        map_links = []
     out, seen = [], set()
     for a in names:
         if a in AREAS and a not in seen:
             out.append(a); seen.add(a)
     if not out:
-        return {"areas": [], "via": "none", "rule": MAPPING["unmapped"].get(sid, "")}
-    return {"areas": out, "via": via, "rule": rule}
+        return {"areas": [], "via": "none", "rule": rule, "map_links": []}
+    return {"areas": out, "via": via, "rule": rule, "map_links": map_links}
 
 
 def areas_for_sign(sign):
