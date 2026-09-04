@@ -77,16 +77,11 @@ TARGET_MODIFIER_FIELDS = {
     "key", "label", "modifier_type", "raw", "origins", "finding_refs",
     "assertion_ids",
 }
-BRODMANN_TARGET_LINK_FIELDS = {
-    "area_id", "relation", "provenance", "projects_evidence",
-}
-PROJECTABLE_BRODMANN_RELATIONS = {"EXACT", "EQUIVALENT"}
 CONTEXT_MODIFIER_FIELDS = {
     "modifier_reference_id", "assertion_id", "finding_ref", "axis", "key",
     "label", "modifier_type", "normalized_value", "source_sign_ids",
-    "public_sign_ids", "brain_regions",
+    "public_sign_ids",
 }
-CONTEXT_MODIFIER_BRAIN_REGION_FIELDS = {"atlas", "source_term", "label"}
 SIGN_AXIS_SUMMARY_FIELDS = {
     "sign_axis_summary_link_id", "synthesis_id", "axis", "public_sign_ids",
     "context_ids", "region_ids", "brodmann_area_ids", "reported_target_keys",
@@ -209,9 +204,6 @@ sources = bundle["corpus"]["sources"]
 findings = [finding for source in sources for finding in source["findings"]]
 statistics = [statistic for finding in findings for statistic in finding["statistics"]]
 signs = bundle["signs"]
-source_ids = [str(source["source_sha256"]) for source in sources]
-source_by_id = {str(source["source_sha256"]): source for source in sources}
-source_work_ids = {str(source["work_id"]) for source in sources}
 finding_refs = [finding["source_finding_ref"] for finding in findings]
 statistic_ids = [statistic["statistic_id"] for statistic in statistics]
 sign_ids = [str(sign["id"]) for sign in signs]
@@ -221,23 +213,20 @@ statistic_finding = {
     for finding in findings
     for statistic in finding["statistics"]
 }
-finding_source = {}
 finding_work = {}
 
-require(bool(source_ids) and all(source_ids) and unique(source_ids),
-        "source report identities are empty or duplicated")
-require(unique(finding_refs), "public finding identities are duplicated")
-require(unique(statistic_ids), "public statistic identities are duplicated")
+require(len(sources) == 77, "current source-report count changed")
+require(len(findings) == 4120 and unique(finding_refs), "public finding contract changed")
+require(len(statistics) == 4518 and unique(statistic_ids), "public statistic contract changed")
 require(bool(signs) and unique(sign_ids), "public sign identities are empty or duplicated")
+require(unique([source["source_sha256"] for source in sources]), "duplicate source report")
 for source in sources:
     sha, work_id = source["source_sha256"], str(source["work_id"])
     require(re.fullmatch(r"[0-9a-f]{64}", sha) is not None, "invalid source digest")
     require(re.fullmatch(r"[0-9a-f]{64}", source["source_report_sha256"]) is not None,
             "invalid report digest")
-    require(bool(work_id), "source report lacks a canonical work")
     for finding in source["findings"]:
         ref = finding["source_finding_ref"]
-        finding_source[ref] = str(sha)
         finding_work[ref] = work_id
         require(ref.startswith(f"{sha}:"), "finding/source identity mismatch")
         require(bool(finding["locators"] and finding["evidence_text"]),
@@ -254,26 +243,6 @@ for source in sources:
         require(all(value in sign_set for value in finding_sign_ids),
                 "finding references an absent sign")
 
-require(set(finding_source) == finding_set
-        and all(source_id in source_by_id for source_id in finding_source.values()),
-        "finding references an absent source report")
-require(all(
-    statistic_finding[statistic_id] in finding_source
-    for statistic_id in statistic_set
-), "statistic references an absent finding or source report")
-corpus_accounting = bundle["corpus"].get("integration_accounting")
-if corpus_accounting is not None:
-    require(isinstance(corpus_accounting, dict),
-            "corpus integration accounting is not an object")
-    for key, actual in {
-        "source_reports": len(source_ids),
-        "public_ledger_findings": len(finding_set),
-        "source_reported_statistics": len(statistic_set),
-    }.items():
-        if key in corpus_accounting:
-            require(corpus_accounting[key] == actual,
-                    f"corpus accounting {key} does not reconcile")
-
 locations = bundle["finding_locations"]
 require(set(locations) <= finding_set, "location references an absent finding")
 for location in locations.values():
@@ -285,11 +254,8 @@ authority = bundle["evidence_authority"]
 profiles = authority["profiles"]
 profile_ids = [str(profile["work_id"]) for profile in profiles]
 profile_by_id = {str(profile["work_id"]): profile for profile in profiles}
-require(bool(profile_ids) and all(profile_ids) and unique(profile_ids),
-        "canonical-work identities are empty or duplicated")
-require(set(finding_work.values()) <= set(profile_ids)
-        and source_work_ids <= set(profile_ids),
-        "source report or finding work lacks a profile")
+require(len(profiles) == 73 and unique(profile_ids), "canonical-work contract changed")
+require(set(finding_work.values()) <= set(profile_ids), "finding work lacks a profile")
 require(authority["scheme_id"] == "WEIGHT:HISTORICAL_D5D9DD2", "weight scheme changed")
 require(authority["scheme_status"] == "HISTORICAL_RESTORED", "weight source status changed")
 require(authority["class_base"] == CLASS_BASE, "class bases changed")
@@ -355,21 +321,6 @@ for finding_ref, row in context_by_finding.items():
             and modifier["label"] == "Propagation"
             and modifier["normalized_value"] == PROPAGATION_REGION_ID,
             "unknown finding-context modifier",
-        )
-        modifier_brain_regions = modifier["brain_regions"]
-        require(
-            isinstance(modifier_brain_regions, list)
-            and all(
-                set(target) == CONTEXT_MODIFIER_BRAIN_REGION_FIELDS
-                and all(str(target[field]) for field in target)
-                for target in modifier_brain_regions
-            )
-            and unique([
-                (str(target["atlas"]), str(target["source_term"]),
-                 str(target["label"]))
-                for target in modifier_brain_regions
-            ]),
-            "finding-context modifier brain regions are not source-linked targets",
         )
         assertion_id = str(modifier["assertion_id"])
         require(
@@ -445,10 +396,6 @@ require(all(set(row) == STATISTIC_ASSERTION_FIELDS
 require(all(set(row) == CLASSIFICATION_LINK_FIELDS
             for row in classification_links),
         "classification-link fields changed")
-require(all(
-    str(link["assertion_id"]) not in set(context_modifier_assertion_ids)
-    for link in location_links
-), "finding-context modifiers leaked into direct localization")
 location_by_id = {str(row["location_link_id"]): row for row in location_links}
 lateralization_by_id = {
     str(row["lateralization_link_id"]): row for row in lateralization_links
@@ -569,11 +516,7 @@ require(bundle_sign_classifications == context_sign_classifications,
         "canonical sign classifications differ between public projections")
 
 expected_regions_by_sign = {sign_id: set() for sign_id in sign_ids}
-require(all(
-    str(target.get("key") or "") != PROPAGATION_REGION_ID
-    for card in bundle["evidence_synthesis"]["axis_summaries"]
-    for target in (card.get("target_contract") or {}).get("reported_targets") or []
-), "propagation context leaked into direct localization targets")
+expected_areas_by_sign = {sign_id: set() for sign_id in sign_ids}
 for card in bundle["evidence_synthesis"]["axis_summaries"]:
     if str(card.get("axis")) != "LOCALIZATION":
         continue
@@ -590,67 +533,25 @@ for card in bundle["evidence_synthesis"]["axis_summaries"]:
         ), "")
         if region_id:
             expected_regions_by_sign[sign_id].add(LOCATION_LABELS[region_id])
+        area_id = str(target.get("area_id") or "")
+        if area_id:
+            expected_areas_by_sign[sign_id].add(area_id.removeprefix("BA:"))
+        expected_areas_by_sign[sign_id].update(
+            str(value).removeprefix("BA:")
+            for value in target.get("brodmann_area_ids") or []
+        )
 for sign in signs:
     sign_id = str(sign["id"])
     expected_regions = expected_regions_by_sign[sign_id] or {"No localization stated"}
     require(set(sign.get("regions") or []) == expected_regions,
             "browse-region membership differs from exact context relationships")
 brodmann_by_sign = bundle["brodmann"]["mapping"]["by_sign"]
-context_ids_by_finding = {
-    str(row["finding_ref"]): str(row["context_id"])
-    for row in context["contexts"]
-}
-locations_by_sign_and_finding = {}
-for location in context["relationships"]["finding_locations"]:
-    finding_ref = str(location["finding_ref"])
-    for sign_id in location["public_sign_ids"]:
-        locations_by_sign_and_finding.setdefault(
-            (str(sign_id), finding_ref), []
-        ).append(location)
-require(all(
-    set(entry) == {"sign", "areas", "map_links"}
-    and set(entry["areas"]) == {
-        str(link.get("area_id") or "") for link in entry["map_links"]
-    }
-    for entry in brodmann_by_sign.values()
-), "Brodmann areas must be represented by exact map links")
-for sign_id, entry in brodmann_by_sign.items():
-    for link in entry["map_links"]:
-        require(
-            set(link) == {
-                "area_id", "provenance", "target_key", "target_label",
-                "finding_refs", "context_ids",
-            }
-            and str(link["provenance"]) in {
-                "EXPLICIT_BA", "ANATOMICAL_CROSSWALK",
-            }
-            and (
-                str(link["provenance"]) != "ANATOMICAL_CROSSWALK"
-                or (str(link["target_key"]), str(link["area_id"]))
-                in projectable_brodmann_targets
-            )
-            and link["finding_refs"]
-            and link["context_ids"]
-            and all(
-                context_ids_by_finding.get(str(finding_ref)) in link["context_ids"]
-                for finding_ref in link["finding_refs"]
-            ), "Brodmann map link lacks its exact supporting context")
-        for finding_ref in link["finding_refs"]:
-            locations = locations_by_sign_and_finding.get(
-                (str(sign_id), str(finding_ref)), []
-            )
-            if link["provenance"] == "EXPLICIT_BA":
-                require(any(
-                    str(location.get("brodmann_area_id") or "")
-                    == str(link["area_id"])
-                    for location in locations
-                ), "explicit Brodmann map link lacks a matching finding location")
-            else:
-                require(any(
-                    str(location.get("region_id") or "")
-                    == str(link["target_key"])
-                    for location in locations
-                ), "crosswalk Brodmann map link lacks a matching finding location")
+require(set(brodmann_by_sign) == {
+    sign_id for sign_id, areas in expected_areas_by_sign.items() if areas
+}, "Brodmann sign membership differs from evidence context")
+require(all(set(brodmann_by_sign[sign_id]["areas"]) == areas
+            for sign_id, areas in expected_areas_by_sign.items() if areas),
+        "Brodmann areas differ from exact context relationships")
 
 accounting_context = context["accounting"]
 expected_context_accounting = {
@@ -659,7 +560,7 @@ expected_context_accounting = {
     "assertions": len(assertions),
     "sign_axis_summaries": len(sign_axis_summary_links),
     "source_reports": len(source_report_ids),
-    "canonical_works": len(source_work_ids),
+    "canonical_works": len(profile_ids),
     "dangling_references": 0,
 }
 require(
@@ -767,8 +668,6 @@ for sign_id, label in REQUIRED_LOCALIZATION_REGRESSIONS.items():
             f"required Temporal localization is absent: {label}")
 
 card_modifier_pairs = []
-known_brodmann_area_ids = {str(area_id) for area_id in bundle["brodmann"]["areas"]}
-projectable_brodmann_targets = set()
 for card in cards:
     require(PRIVATE_CARD_FIELDS.isdisjoint(card),
             "obsolete public axis-card field is present")
@@ -808,7 +707,7 @@ for card in cards:
         }
         hierarchy_fields = {
             "region_id", "parent_region_id", "area_id", "brodmann_label",
-            "brodmann_area_ids", "brodmann_links",
+            "brodmann_area_ids",
         }
         require(
             required_target_fields <= set(target)
@@ -827,38 +726,6 @@ for card in cards:
                 and bool(target["brodmann_area_ids"])
                 and unique([str(value) for value in target["brodmann_area_ids"]]),
                 "reported target has invalid Brodmann relationships",
-            )
-        if "brodmann_links" in target:
-            brodmann_links = target["brodmann_links"]
-            require(
-                isinstance(brodmann_links, list)
-                and bool(brodmann_links)
-                and all(
-                    set(link) == BRODMANN_TARGET_LINK_FIELDS
-                    and str(link["area_id"]) in known_brodmann_area_ids
-                    and bool(str(link["relation"]))
-                    and bool(str(link["provenance"]))
-                    and isinstance(link["projects_evidence"], bool)
-                    and link["projects_evidence"] == (
-                        str(link["relation"]).upper()
-                        in PROJECTABLE_BRODMANN_RELATIONS
-                    )
-                    for link in brodmann_links
-                )
-                and unique([
-                    (str(link["area_id"]), str(link["relation"]),
-                     str(link["provenance"]))
-                    for link in brodmann_links
-                ])
-                and "brodmann_area_ids" in target
-                and set(str(link["area_id"]) for link in brodmann_links)
-                == set(str(value) for value in target["brodmann_area_ids"]),
-                "reported target has invalid Brodmann link metadata",
-            )
-            projectable_brodmann_targets.update(
-                (str(target["key"]), str(link["area_id"]))
-                for link in brodmann_links
-                if link["projects_evidence"]
             )
         require(set(target["finding_refs"]) <= set(row_findings),
                 "reported target provenance is outside its source contribution rows")

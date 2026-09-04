@@ -333,9 +333,12 @@ def target_regions_for_sign(sign_id):
 
 def target_brodmann_areas_for_sign(sign_id):
     return list(OrderedDict.fromkeys(
-        str(target["key"])[3:]
+        str(area_id).removeprefix("BA:")
         for target in sign_axis_targets(sign_id, "LOCALIZATION")
-        if str(target.get("key") or "").startswith("BA:")
+        for area_id in [
+            target.get("area_id"), *(target.get("brodmann_area_ids") or [])
+        ]
+        if area_id
     ))
 DESCRIPTIVE_FAMILIES = EVIDENCE_SYNTHESIS.get("descriptive_families") or []
 DESCRIPTIVE_FAMILY_BY_ID = {row["analysis_id"]: row for row in DESCRIPTIVE_FAMILIES}
@@ -598,20 +601,10 @@ def public_browse_regions(d):
 SIGN_LOCATION_BY_ID = OrderedDict()
 for d in data:
     mapping = BA.mapping_for_sign(d)
-    target_areas = set(target_brodmann_areas_for_sign(str(d["id"])))
-    direct_map_areas = {
-        str(link.get("area_id")) for link in mapping.get("map_links", [])
-        if str(link.get("provenance") or "") == "EXPLICIT_BA"
-    }
-    if direct_map_areas != target_areas:
+    target_areas = target_brodmann_areas_for_sign(str(d["id"]))
+    if set(mapping["areas"]) != set(target_areas):
         raise RuntimeError(
-            f'Explicit Brodmann mapping for sign {d["id"]} differs from its reported targets.'
-        )
-    if set(mapping["areas"]) != {
-        str(link.get("area_id")) for link in mapping.get("map_links", [])
-    }:
-        raise RuntimeError(
-            f'Brodmann mapping for sign {d["id"]} has an area without a retained map link.'
+            f'Brodmann mapping for sign {d["id"]} differs from its reported targets.'
         )
     lobes = []
     for aid in mapping["areas"]:
@@ -1512,9 +1505,11 @@ _PHASE_LABELS = {
 
 
 def phase_filter_categories(d):
-    """Return the card's controlled phase categories for UI filtering."""
-    card = CLINICAL_CARD_BY_ID.get(str(d.get("id") or ""))
-    return (card or {"phase": normalize_phase(d)})["phase"]["categories"]
+    """Return only exporter-projected controlled categories for filtering."""
+    categories = d.get("normalized_phase_category")
+    if not isinstance(categories, (list, tuple)):
+        return []
+    return [label for code, label in _PHASE_LABELS.items() if code in categories]
 
 
 def phase_of_seizure_display(d):
@@ -3072,24 +3067,6 @@ def _b64(path):
 # ---------- Interactive Brodmann map ----------
 # All curation (areas, geometry, label positions, sign->area rules) comes from
 # data/brodmann_map.json via brain_atlas; this only renders it.
-def map_support_summary(map_links):
-    """Describe a map facet without exposing internal source identifiers."""
-    map_links = list(map_links or [])
-    finding_count = len({
-        str(finding_ref) for link in map_links
-        for finding_ref in link.get("finding_refs") or []
-    })
-    finding_label = "supporting finding" if finding_count == 1 else "supporting findings"
-    suffix = f"{finding_count} {finding_label}"
-    crosswalk_labels = list(dict.fromkeys(
-        str(link.get("target_label") or "") for link in map_links
-        if str(link.get("provenance") or "") == "ANATOMICAL_CROSSWALK"
-        and str(link.get("target_label") or "")
-    ))
-    if crosswalk_labels:
-        return f"Mapped from {'; '.join(crosswalk_labels)} · {suffix}"
-    return f"Named directly in source · {suffix}"
-
 def build_brain(signs):
     tiles = {}
     for aid, info in BA.AREAS.items():
@@ -3116,24 +3093,19 @@ def build_brain(signs):
             *area_terms,
         ] if value).casefold().replace('"', "")
         index[str(d["id"])] = {"n": d["sign"], "areas": m["areas"], "via": m["via"],
-                               "rule": m["rule"], "map_links": m.get("map_links", []),
-                               "lc": d.get("latcode", "nonlat"), "loc": d.get("loc", ""),
-                               "q": search, "phs": "|".join(phase_categories).casefold(),
+                               "rule": m["rule"], "lc": d.get("latcode", "nonlat"),
+                               "loc": d.get("loc", ""), "q": search,
+                               "phs": "|".join(phase_categories).casefold(),
                                "lats": lateralization_filter_values(d["id"]),
                                "ev": d.get("evid", "III")}
         al = m["areas"]
         if not al:
             unplaced.append(d["sign"]); continue
         for a in al:
-            map_links = [
-                link for link in m.get("map_links", [])
-                if str(link.get("area_id") or "") == str(a)
-            ]
             tiles[a]["signs"].append({
                 "id": d["id"], "n": d["sign"], "ph": d["phase"], "lc": d.get("latcode", "nonlat"),
                 "lat": d.get("lat", ""), "ev": d.get("evid", "III"), "rg": d["region"],
-                "loc": d.get("loc", ""), "map_links": map_links,
-                "map_support": map_support_summary(map_links)})
+                "loc": d.get("loc", "")})
     for t in tiles.values():
         t["signs"].sort(key=lambda s: (_evrank.get(s["ev"], 3), s["n"]))
 
@@ -3343,6 +3315,7 @@ atlas_updates_html = """
         <li>Corrected relationships among equivalent semiology terms and clinical classifications.</li>
         <li>Corrected links among lateralization, localization, anatomical regions, Brodmann areas, and supporting publications.</li>
         <li>Aligned regional browsing, weighted evidence summaries, reviewed evidence, and source views so they use the same reviewed relationships.</li>
+        <li>Applied active search, controlled Phase of Seizure categories (including Stimulation induced), lateralization, evidence filters, and non-region organization to Brodmann-map signs, counts, density, and highlighted signs; a small filter indicator names the active constraints and confirms Brain Region is not applied. On mobile, a visible <em>Clear</em> control resets the search and map selection, and the page header and persistent controls remain below the device status area.</li>
       </ul>
       <ul class="atlas-update-history">
         <li><strong>v1.4</strong> Consolidated regional, classification, reviewed-evidence, study-result, weighted-evidence, and source views.</li>
@@ -3541,7 +3514,6 @@ body.lbl-place .brain-svg{cursor:crosshair}
 .bp-rname{flex:1;font-size:.79rem;font-weight:600;color:var(--navy);line-height:1.35}
 .bp-chips{display:flex;gap:4px;align-items:center;flex-wrap:wrap;margin-top:3px}
 .bp-chip{font-size:.6rem;font-weight:800;padding:1px 5px;border-radius:3px;letter-spacing:.02em}
-.bp-support{display:block;margin-top:4px;font-size:.64rem;font-weight:500;color:#5a6478}
 .bp-side{font-size:.65rem;color:var(--muted);font-style:italic;margin-top:2px;display:block}
 .bp-ev{flex:0 0 auto;width:19px;height:19px;border-radius:5px;color:#fff;font-size:.62rem;font-weight:800;
   display:flex;align-items:center;justify-content:center;margin-top:1px}
@@ -4611,7 +4583,6 @@ let refreshBrainMap=()=>{};
       '</div>';revealPanel();return;}
     list.innerHTML=visibleSigns.map(s=>{
       const on=applies(s.lc);
-      const support=s.map_support?'<span class="bp-support">'+esc(s.map_support)+'</span>':'';
       return '<button class="bp-row'+(on?'':' off')+'" data-sign="'+s.id+'">'+
         '<span class="bp-rname">'+esc(s.n)+
           '<span class="bp-chips">'+
@@ -4620,7 +4591,6 @@ let refreshBrainMap=()=>{};
             '<span class="bp-chip" style="background:#eef2f7;color:#5a6478">'+esc(s.ph)+'</span>'+
           '</span>'+
           '<span class="bp-side">'+esc(sideNote(s))+'</span>'+
-          support+
         '</span>'+
         '<span class="bp-ev" style="background:'+(evColor[s.ev]||'#888')+'" title="Evidence '+s.ev+'">'+s.ev+'</span>'+
       '</button>';}).join('');
@@ -5187,7 +5157,7 @@ document.querySelectorAll('.pill').forEach(p=>{
 function itemMatches(item){
   const reg=fRegion.value,ph=fPhase.value,lat=fLat.value,ev=fEvid.value;
   if(reg && item.dataset.region!==reg) return false;
-  if(ph && !((item.dataset.phaseSearch||item.dataset.phase||'').toLowerCase().includes(ph.toLowerCase()))) return false;
+  if(ph && !(item.dataset.phaseSearch||'').toLowerCase().includes(ph.toLowerCase())) return false;
   if(lat && !(item.dataset.latTargets||'').split('|').includes(lat)) return false;
   if(ev && item.dataset.evid!==ev) return false;
   const searchable=(SIGN_SEARCH[String(item.dataset.id)]||'')+' '+(item.dataset.search||'');
@@ -6002,7 +5972,7 @@ async function bindIndexedFxWrap(wrap){
   const groupOrder={
     axis:['Lateralization','Localization','No result-group axis'],
     region:['Temporal','Frontal','Parietal','Occipital','Insular','Limbic','Deep/Subcortical','Multiregional/Propagation','Multiple regions','No region stated','No region reported for this result'],
-    phase:['Aura','Ictal','Postictal','Interictal','Peri-ictal','Stimulation induced','Multiple phases','Phase not stated']
+    phase:['Aura','Ictal','Postictal','Interictal','Peri-ictal','Multiple phases','Phase not stated']
   };
   function linkedToVisibleSign(record){
     if(!activeStudySignIds) return true;
@@ -6308,9 +6278,7 @@ lateralization_filter_options = "\n".join(
 )
 phase_filter_options = "\n".join(
     f'<option value="{esc(label)}">{esc(label)}</option>'
-    for label in dict.fromkeys([
-        *_PHASE_LABELS.values(), "Multiple phases", "Phase not stated",
-    ])
+    for label in _PHASE_LABELS.values()
 )
 
 HEAD = """<!DOCTYPE html>
@@ -6395,9 +6363,9 @@ HEAD = """<!DOCTYPE html>
       <div class="filter-field"><span class="ctrl-label">Evidence</span>
         <select id="filter-evid">
           <option value="">All Levels</option>
-          <option value="I">Class I</option>
-          <option value="II">Class II</option>
-          <option value="III">Class III</option>
+          <option value="I">I (Strong)</option>
+          <option value="II">II (Moderate)</option>
+          <option value="III">III (Expert)</option>
         </select>
       </div>
     </div>

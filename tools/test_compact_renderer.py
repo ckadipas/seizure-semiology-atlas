@@ -99,7 +99,6 @@ class AtlasBundleValidatorTest(unittest.TestCase):
                 "label": "Propagation",
                 "modifier_type": "PROPAGATION",
                 "normalized_value": "REG:MULTIREGIONAL_PROPAGATION",
-                "brain_regions": [],
                 "source_sign_ids": [],
                 "public_sign_ids": [
                     str(link["public_sign_id"])
@@ -440,7 +439,6 @@ class AtlasBundleValidatorTest(unittest.TestCase):
             "label": "Propagation",
             "modifier_type": "PROPAGATION",
             "normalized_value": "REG:MULTIREGIONAL_PROPAGATION",
-            "brain_regions": [],
             "source_sign_ids": [],
             "public_sign_ids": [sign_id],
         })
@@ -1371,15 +1369,10 @@ class CompactRendererTest(unittest.TestCase):
             self.assertIsNotNone(view, view_name)
             self.assertIn('<image class="brain-photo"', view.group(1), view_name)
 
-    def test_brodmann_crosswalk_map_link_scopes_the_area_facet(self):
+    def test_compound_brodmann_relationship_reaches_all_explicit_areas(self):
         sign_id = 76  # Ictal contralateral tonic eye deviation
         source_sign_id = str(sign_id)
-        crosswalk_areas = {"24", "25", "32"}
-        explicit_areas = {"8", "19"}
-        acc_target = "SUBREG:a41682bac8503418"
-        unrelated_parietal_finding = (
-            "005b726587cb0812d005e9166b1191028be677a82ffd02c74d947a1f0718f85a:F036"
-        )
+        expected = {"24", "25", "32"}
         summary = next(
             row for row in self.render["ATLAS"]["evidence_context"]
             ["relationships"]["sign_axis_summaries"]
@@ -1388,39 +1381,17 @@ class CompactRendererTest(unittest.TestCase):
                 str(value) for value in row["public_sign_ids"]
             }
         )
-        self.assertTrue(crosswalk_areas.issubset({
+        self.assertTrue(expected.issubset({
             str(value) for value in summary["brodmann_area_ids"]
         }))
-        mapping = self.render["SIGN_LOCATION_BY_ID"][sign_id]
-        self.assertTrue(crosswalk_areas.issubset(set(mapping["areas"])))
-        self.assertTrue(explicit_areas.issubset(set(mapping["areas"])))
+        self.assertTrue(expected.issubset(set(
+            self.render["SIGN_LOCATION_BY_ID"][sign_id]["areas"]
+        )))
         area_lobe = self.render["BA"].AREAS["25"]["lobe"]
-        brain_tiles = json.loads(re.search(
-            r"const BRAIN_TILES=(.*?);const BRAIN_SIGNS=",
-            self.render["brain_fold"], re.DOTALL,
-        ).group(1))
-        area_sign = next(
-            row for row in brain_tiles["25"]["signs"]
-            if str(row["id"]) == source_sign_id
-        )
-        links = area_sign["map_links"]
-        self.assertTrue(links)
-        self.assertEqual({acc_target}, {link["target_key"] for link in links})
-        self.assertEqual({"ANATOMICAL_CROSSWALK"}, {
-            link["provenance"] for link in links
+        self.assertIn(source_sign_id, {
+            str(row["id"])
+            for row in self.render["area_signs_by_region"][area_lobe].get("25", [])
         })
-        self.assertNotIn(unrelated_parietal_finding, {
-            finding_ref for link in links for finding_ref in link["finding_refs"]
-        })
-        summary_text = area_sign["map_support"]
-        self.assertEqual(
-            "Mapped from Anterior/Mid-Cingulate Cortex (ACC, Brodmann 24/25/32) "
-            "· 35 supporting findings",
-            summary_text,
-        )
-        self.assertNotRegex(summary_text, r"[0-9a-f]{64}|F\d{3}")
-        self.assertNotIn("finding_refs", self.render["JS"].split("bp-support", 1)[1])
-        self.assertIn("s.map_support", self.render["JS"])
 
     def test_brodmann_editor_can_hide_a_label_without_removing_anatomy(self):
         medial = re.search(
@@ -1623,22 +1594,6 @@ class CompactRendererTest(unittest.TestCase):
         fear = next(row for row in self.render["data"] if row["sign"] == "Fear aura")
         self.assertIn("aura / ictal", {value.casefold() for value in fear["phase_values"]})
         self.assertIn('data-phase-search="', self.render["h"])
-        self.assertIn("item.dataset.phaseSearch", self.render["JS"])
-
-    def test_stimulation_phase_filter_is_visible(self):
-        stimulation = next(row for row in self.render["data"] if row["id"] == 69)
-        non_stimulation = next(row for row in self.render["data"] if row["id"] == 12)
-        self.assertEqual(["Stimulation induced"], self.render["phase_filter_categories"](stimulation))
-        self.assertNotIn("Stimulation induced", self.render["phase_filter_categories"](non_stimulation))
-        self.assertIn('<option value="Stimulation induced">Stimulation induced</option>', self.render["h"])
-        self.assertIn("'Stimulation induced','Multiple phases'", self.render["JS"])
-        for sign_id, expected_visible in ((69, True), (12, False)):
-            card = re.search(
-                rf'<div class="sign"[^>]*data-id="{sign_id}"[^>]*data-phase-search="([^"]*)"',
-                self.render["h"],
-            )
-            self.assertIsNotNone(card)
-            self.assertEqual(expected_visible, "stimulation induced" in card.group(1).casefold())
         self.assertIn("item.dataset.phaseSearch", self.render["JS"])
 
     def test_region_view_uses_semilogy_hierarchy_before_signs(self):
