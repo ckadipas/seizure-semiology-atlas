@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""Render the redacted atlas bundle as a dependency-free static website.
+"""Validate a prebuilt normalized release, or render the legacy atlas bundle.
+
+Normalized releases publish their committed website without regenerating it.
 
 Input: data/atlas_bundle.json, presentation-only Brodmann coordinates, and local
 image assets. Output: docs/ and its deferred HTML fragments. The generator
@@ -18,6 +20,8 @@ def _find_root(start):
         if p == d: return os.path.dirname(os.path.abspath(start))
         d = p
 ROOT = _find_root(__file__)
+if __name__ == "__main__" and os.path.isfile(os.path.join(ROOT, "review", "normalized-relationship-manifest.json")):
+    os.execv(sys.executable, [sys.executable, os.path.join(ROOT, "tools", "validate_normalized_atlas_release.py")])
 DOCS = os.path.join(ROOT, "docs"); os.makedirs(DOCS, exist_ok=True)
 from collections import Counter, OrderedDict
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))

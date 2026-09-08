@@ -24,13 +24,13 @@ jobs:
         run: python3 tools/validate_atlas_bundle.py
       - name: Run projection renderer regressions
         run: python3 tools/test_compact_renderer.py
-      - name: Build website
-        run: python3 generator/gen_study.py
       - name: Restore and revalidate the committed standalone release
         run: |
           git restore --source=HEAD --worktree docs
           rm -rf docs/fragments docs/icon-180.png docs/icon-512.png \
             docs/manifest.webmanifest docs/seizure_semiology_localization.html
           python3 tools/validate_normalized_atlas_release.py
+      - name: Build website
+        run: python3 generator/gen_study.py
       - name: Check generated files for malformed patches
         run: git diff --check

@@ -31,6 +31,8 @@ make serve
 
 The build runs compatibility checks, restores the committed current website, and validates its release identity. To change scientific data or the website, update the maintained private ledger or renderer and export a new release. Do not edit generated files independently.
 
+Cloudflare Pages uses `python3 generator/gen_study.py` with `docs` as its output directory. When a normalized release is present, this command validates the committed website without regenerating it. `make check-deployment` checks the same command and confirms it leaves the website unchanged.
+
 ## Scientific updates
 
 GitHub intake registers a submission for private source review. It cannot change scientific data or publish results. The owner approves source review and the exact proposed integration before a deterministic update; explicit approval for direct repository work applies to its stated scope. Deployment follows the authorized release scope.

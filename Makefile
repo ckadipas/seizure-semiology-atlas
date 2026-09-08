@@ -1,4 +1,4 @@
-.PHONY: build validate serve check-sync help
+.PHONY: build validate serve check-sync check-deployment help
 
 help:
 	@echo "targets:"
@@ -19,6 +19,10 @@ build: validate
 
 check-sync: build
 	git diff --exit-code docs/seizure_semiology_localization.html docs/index.html
+
+check-deployment:
+	python3 generator/gen_study.py
+	git diff --exit-code -- docs
 
 serve: build
 	cd docs && python3 -m http.server 8000
