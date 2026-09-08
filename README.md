@@ -1,65 +1,44 @@
 # Seizure Semiology Atlas
 
-A source-grounded educational reference for localizing and lateralizing seizure semiology. It is intended for teaching and self-study, not clinical decision-making. See [`DISCLAIMER.md`](DISCLAIMER.md).
+A source-grounded educational reference for localizing and lateralizing seizure semiology. See [DISCLAIMER.md](DISCLAIMER.md).
 
-## Source of truth
+## Website
 
-This public repository is a generated, redacted consumer of the private canonical Semiology Atlas database. Its only scientific website data input is [`data/atlas_bundle.json`](data/atlas_bundle.json), produced after private source review and owner approval. The bundle contains one generated `evidence_context` relationship graph: every region, classification, reviewed finding, study result, weighted summary, Brodmann association, manuscript view, filter, and count resolves through that graph. [`data/brodmann_map.json`](data/brodmann_map.json) supplies presentation-only label coordinates. Do not hand-edit the generated bundle or treat website prose as source evidence.
+Search once, then browse **Signs**, **Weighted evidence**, or **Sources**. Signs can be organized by brain region or classification. Weighted evidence uses the same organization, with separate localization and lateralization views. Sources collect each paper's results beneath its title, authors, and DOI.
 
-Other older files under `data/`, `enrichment/`, and `corpus/` are retained as historical artifacts. They do not drive the website build and are not independent scientific authorities.
+The Brodmann map shows numbered areas. Brain-region filters and classifications remain separate from Brodmann areas.
 
-| Path | Role |
+## Data and release files
+
+This repository receives generated data from the private SQLite evidence ledger. Scientific relationships are reviewed there and exported together; the public website is not an evidence source.
+
+| Path | Purpose |
 |---|---|
-| `data/atlas_bundle.json` | Generated public bundle and shared evidence-context graph for every scientific view. |
-| `data/brodmann_map.json` | Owner-edited presentation coordinates for Brodmann labels; no scientific mapping authority. |
-| `tools/validate_atlas_bundle.py` | Public-safe integrity and privacy check. |
-| `generator/gen_study.py` | Renders the self-contained website into `docs/`. |
-| `generator/brain_atlas.py` | Renders Brodmann anatomy from the bundle with label positions from the presentation map. |
-| `generator/assets/` | Reference brain plates. |
-| `docs/` | Generated website output. Do not hand-edit. |
+| `docs/index.html`, `docs/atlas_projection.mjs`, `docs/atlas-projection.json.gz` | Current standalone website and its generated data. |
+| `data/atlas_bundle.normalized.json.gz` | Compressed normalized relationship graph for the current release. |
+| `review/normalized-relationship-manifest.json` | Public release identity linking the generated artifacts. |
+| `release.json`, `CHANGELOG.md` | Version, date, and release notes. |
+| `tools/validate_normalized_atlas_release.py` | Checks that the current website and normalized graph belong to the same release. |
 
-Source PDFs, extracted full text, owner comments, review packets, and audit artifacts remain only in the private `ckadipas/semiology_refs` repository.
+The older `data/atlas_bundle.json`, `data/brodmann_map.json`, and legacy generator remain compatibility fixtures. They do not replace the current website. Source PDFs and private scientific review records are not distributed here.
 
-## Build locally
+## Local use
 
 ```bash
-make validate
 make build
 make serve
 ```
 
-The build uses the Python standard library and does not regenerate or consult the legacy enrichment pipeline.
+The build runs compatibility checks, restores the committed current website, and validates its release identity. To change scientific data or the website, update the maintained private ledger or renderer and export a new release. Do not edit generated files independently.
 
-## Updating the atlas
+## Scientific updates
 
-Scientific updates follow one path:
+GitHub intake registers a submission for private source review. It cannot change scientific data or publish results. The owner approves source review and the exact proposed integration before a deterministic update; explicit approval for direct repository work applies to its stated scope. Deployment follows the authorized release scope.
 
-1. A paper or correction is submitted and registered for owner Gate A.
-2. Source review and all audit material remain private.
-3. Unresolved sign identity, anatomy, evidence class, study type, sample size, and statistic-use questions are decided by the owner.
-4. The owner approves an exact Gate-B integration packet and public diff.
-5. The redacted bundle and generated website are updated deterministically.
-6. Deployment requires separate owner authorization.
+Source terms, citations, populations, and individual measurements remain traceable. Localization, lateralization, phase, and classification are separate relationships. An unspecified value on one axis does not erase an explicit value on another.
 
-Source-native wording and phase remain visible, while approved variants resolve through the same immutable `sign_id`. Each atomic statistic is rendered once and referenced through every valid facet. A panel may not invent a fallback relationship, select one arbitrary family, or maintain a separate scientific mapping. If views disagree, repair the private relationship or exporter and regenerate the entire site.
-
-The public intake workflow only acknowledges or registers a request. It cannot download papers, perform source review, edit scientific data, open a scientific pull request, or publish results.
-
-## Weighted analyses
-
-The website preserves the previously defined weighting method and explains it in ordinary language. Evidence class sets the starting score; the way seizure origin was confirmed (for example SEEG, postoperative outcome, video EEG, or review) adjusts it; and reported sample size adds a limited bonus. Every contributing study result and weight remains visible. No newly reviewed statistic enters a weighted analysis until the owner approves its source profile and its exact analytic use.
-
-## Current generated release
-
-- 77 reviewed source reports consolidated into 73 canonical manuscripts
-- 4,120 public findings
-- 4,518 source-reported atomic statistics
-- 378 established atlas signs
-- 756 sign-axis summaries: one localization and one lateralization row per sign
-- 66 canonical manuscripts contribute weighted evidence; 1 remains linked with
-  authority metadata pending and 6 are context/reference works without a linked
-  sign-axis contribution
+Weighted evidence retains the approved scoring method. A new study does not receive an evidence class or contribute to a score merely because it has been added to the database.
 
 ## Licensing
 
-Code: **MIT** ([`LICENSE`](LICENSE)). Dataset and documentation: **CC BY-NC-SA 4.0** ([`LICENSE-CONTENT`](LICENSE-CONTENT)). Source articles are not redistributed.
+Code: **MIT** ([LICENSE](LICENSE)). Dataset and documentation: **CC BY-NC-SA 4.0** ([LICENSE-CONTENT](LICENSE-CONTENT)). Source articles are not redistributed.
