@@ -29,7 +29,8 @@ jobs:
       - name: Restore and revalidate the committed standalone release
         run: |
           git restore --source=HEAD --worktree docs
-          git clean -fX docs
-          python3 tools/validate_atlas_bundle.py
+          rm -rf docs/fragments docs/icon-180.png docs/icon-512.png \
+            docs/manifest.webmanifest docs/seizure_semiology_localization.html
+          python3 tools/validate_normalized_atlas_release.py
       - name: Check generated files for malformed patches
         run: git diff --check

@@ -1,5 +1,9 @@
 # Changelog
 
+## [Unreleased]
+
+- **Brodmann filtering follows the active organization and region controls.** The map indicator names the filters currently applied.
+
 ## 1.5.0 — 2026-09-08
 
 - Simplified Signs, Weighted evidence, and Sources, with one search and consistent filters.

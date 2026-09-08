@@ -14,8 +14,8 @@ validate:
 build: validate
 	python3 generator/gen_study.py
 	git restore --source=HEAD --worktree docs
-	git clean -fX docs
-	python3 tools/validate_atlas_bundle.py
+	$(RM) -r docs/fragments docs/icon-180.png docs/icon-512.png docs/manifest.webmanifest docs/seizure_semiology_localization.html
+	python3 tools/validate_normalized_atlas_release.py
 
 check-sync: build
 	git diff --exit-code docs/seizure_semiology_localization.html docs/index.html
