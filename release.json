@@ -1,0 +1,13 @@
+{
+  "version": "1.5.0",
+  "released_at": "2026-09-08T07:13:54Z",
+  "changes": [
+    "A simpler layout for Signs, Weighted evidence, and Sources, with one search and consistent filters.",
+    "Shared regional ordering and foldable groups across Signs and Weighted evidence, with separate localization and lateralization views.",
+    "Ordered classification menus, evidence classes, and anatomy choices, with searchable lists.",
+    "Paper citations with recorded authors and DOI links, plus full-width, scrollable results.",
+    "Readable statistics tables that show shared context once and preserve differences between results.",
+    "Brodmann selections show the area number and name beneath the map. A short page guide explains navigation and scores.",
+    "Source-supported region and classification links are available through the same evidence records across the site."
+  ]
+}

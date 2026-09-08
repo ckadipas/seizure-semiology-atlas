@@ -1,0 +1,1643 @@
+<!doctype html>
+<html lang="en" data-projection="static" data-snapshot="217f894b33c6b150f1890d18f49b00cdb426b64b77336ae8838affc3174273f8">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Seizure Semiology — Interactive Study Reference</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --navy: #12234a;
+      --navy2: #1a2f5e;
+      --teal: #0e9db0;
+      --teal-d: #0a7a8a;
+      --bg: #f5f7fb;
+      --panel: #fff;
+      --ink: #1a1d2e;
+      --muted: #667085;
+      --line: #e3e8f0;
+      --line2: #eef1f6;
+      --gold: #d3a454;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--ink); }
+    .result { overflow-wrap: anywhere; }
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+    .page { width: min(1180px, calc(100% - 32px)); margin: 0 auto 56px; }
+    header { background: var(--navy); color: #fff; padding: 16px 0; }
+    header .page { margin-bottom: 0; }
+    header h1 { margin: 0 0 6px; font-size: clamp(1.15rem, 3vw, 1.65rem); letter-spacing: -.025em; }
+    header p { margin: 0; color: #d7e1f3; line-height: 1.5; font-size: .8rem; }
+    header .release-note { margin-top:4px; font-size:.72rem; color:#c3d1e8; }
+    .release-notes { margin-top:16px; padding:12px 16px; color:var(--muted); font-size:.8rem; line-height:1.6; }
+    .release-notes > summary { color:var(--navy); font-weight:650; cursor:pointer; }
+    .release-notes li + li { margin-top:5px; }
+    main { padding-top: 12px; }
+    .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; box-shadow: none; }
+    .page-guide { margin-bottom:12px; background:#fbfdfe; }
+    .page-guide > summary { padding:12px 15px; color:var(--teal-d); cursor:pointer; font-size:.85rem; font-weight:650; }
+    .guide-content { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:15px 26px; padding:3px 16px 17px; }
+    .guide-content h2 { margin:0 0 4px; color:var(--navy); font-size:.84rem; }
+    .guide-content p { margin:0; color:#46566e; font-size:.8rem; line-height:1.55; }
+    .guide-content strong { color:var(--navy); font-weight:650; }
+    .search-panel { padding: 12px; position: relative; z-index: 10; }
+    .search-row { display: grid; grid-template-columns: minmax(220px,1fr) auto auto; gap: 9px; }
+    .search-wrap { position: relative; }
+    .search-wrap input { width: 100%; min-height: 43px; border: 1px solid #cbd5e1; border-radius: 9px; padding: 9px 78px 9px 13px; color: var(--ink); background: #fff; }
+    .search-wrap input:focus, select:focus, summary:focus-visible, button:focus-visible { outline: 3px solid rgba(14,157,176,.2); outline-offset: 1px; border-color: var(--teal); }
+    .clear-search { position: absolute; right: 6px; top: 6px; bottom: 6px; border: 0; border-radius: 6px; background: transparent; color: var(--teal-d); font-weight: 750; padding: 0 8px; }
+    .primary, .quiet { min-height: 43px; border-radius: 9px; padding: 8px 14px; font-weight: 750; }
+    .primary { border: 1px solid var(--teal-d); color: #fff; background: var(--teal); }
+    .quiet { border: 1px solid var(--line); color: var(--navy); background: #fff; }
+    .filters { display: grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap: 8px; margin-top: 12px; }
+    .facet { position: relative; }
+    .facet summary { list-style: none; min-height:40px; border: 1px solid var(--line); border-radius: 8px; background: #f8fafc; color: var(--navy); padding: 10px 26px 10px 10px; font-size: .82rem; font-weight: 650; cursor: pointer; }
+    .facet summary::-webkit-details-marker { display: none; }
+    .facet summary::after { content: "▾"; position: absolute; right: 11px; color: var(--muted); }
+    .facet[open] summary { border-color: var(--teal); background: #f0fbfd; }
+    .facet-menu { position: absolute; top: calc(100% + 5px); left: 0; z-index: 20; width: min(350px, 82vw); padding: 7px; background: #fff; border: 1px solid var(--line); border-radius: 9px; box-shadow: 0 12px 28px rgba(18,35,74,.14); }
+    .facet:nth-child(5n) .facet-menu { left:auto; right:0; }
+    .facet-menu [data-options] { max-height:260px; overflow:auto; overscroll-behavior:contain; }
+    .facet-menu label { display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: start; padding: 7px 6px; border-radius: 6px; font-size: .8rem; line-height: 1.4; }
+    .facet-menu label:hover { background: #f3f8fa; }
+    .facet-menu input { margin-top: 2px; accent-color: var(--teal); }
+    .facet-count { color: var(--muted); font-variant-numeric: tabular-nums; }
+    .atlas-choice { display: flex; flex-direction: column; gap: 4px; font-size: .8rem; color: var(--navy); }
+    .atlas-choice select, .choice-search { min-height: 40px; width: 100%; border: 1px solid var(--line); border-radius: 7px; padding: 7px 9px; background: #fff; color: var(--ink); }
+    .choice-search { margin-bottom: 6px; font-size: 1rem; }
+    .choice-hint { margin: 7px; color: var(--muted); font-size: .78rem; line-height: 1.45; }
+    .choice-section { margin: 8px 6px 3px; color: var(--navy); font-size: .78rem; font-weight: 750; }
+    .region-filter summary { cursor: pointer; color: var(--navy); font-size: .82rem; font-weight: 650; }
+    .region-filter { flex:1; }
+    .region-filter[open] { flex-basis: 100%; }
+    .region-filter-body { display:flex; flex-wrap:wrap; align-items:flex-end; gap:10px; padding-top:10px; }
+    .region-filter .region-buttons { flex:1 1 520px; padding-bottom:0; }
+    .map-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+    .map-title-row { display:flex; flex-wrap:wrap; align-items:center; gap:6px 18px; }
+    .map-count-toggle { display:inline-flex; align-items:center; gap:6px; min-height:30px; font-size:.8rem; color:var(--muted); white-space:nowrap; cursor:pointer; }
+    .map-count-toggle input { margin:0; accent-color:var(--teal); }
+    .active-filters { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+    .active-filter { border: 1px solid #b9dfe4; border-radius: 999px; background: #eef9fa; color: #0a6875; padding: 3px 9px; font-size: .72rem; }
+    .map-panel { padding: 15px; margin: 16px 0; }
+    .section-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+    .section-head h2 { margin: 0; color: var(--navy); font-size: 1rem; }
+    .section-head p { margin: 2px 0 0; color: var(--muted); font-size: .75rem; }
+    .region-buttons { display: flex; flex-wrap: wrap; gap: 7px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+    .region-button { border: 1px solid var(--region-color,#c7d3e2); border-radius: 999px; background: var(--region-color,var(--navy)); color: #fff; padding: 5px 11px; font-size: .75rem; font-weight: 750; }
+    .region-button.selected { outline: 3px solid #58c6d4; outline-offset: 2px; }
+    .map-layout { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0,1fr); gap: 14px; align-items: stretch; margin-top: 12px; }
+    .brain-map { min-height: 230px; display: grid; place-items: center; border-radius: 10px; background: #fbfcfe; border: 1px solid var(--line2); overflow: hidden; }
+    .brain-map svg { display: block; width: 100%; max-height: 490px; }
+    .brain-figure { min-width:0; }
+    .brain-caption { display:flex; flex-wrap:wrap; gap:6px; padding-top:10px; color:var(--navy); font-size:.85rem; }
+    .map-note { padding: 14px; border: 1px solid var(--line); border-radius: 9px; color: var(--muted); font-size: .79rem; line-height: 1.5; }
+    .map-note strong { display: block; color: var(--navy); margin-bottom: 6px; }
+    .map-selection { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .map-chip { border-radius: 999px; background: #eef9fa; color: #0a6875; padding: 4px 9px; font-size: .72rem; }
+    .map-view { display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: .75rem; }
+    .map-view select { border: 1px solid var(--line); border-radius: 7px; background: #fff; color: var(--navy); padding: 6px 28px 6px 8px; }
+    .map-marker { cursor: pointer; }
+    .map-marker circle { fill: #fff; stroke: var(--teal-d); stroke-width: 3; }
+    .map-marker text { fill: var(--navy); font-size: 15px; font-weight: 800; pointer-events: none; }
+    .map-marker.selected circle { fill: var(--teal); stroke: #fff; stroke-width: 4; }
+    .map-marker.selected text { fill: #fff; }
+    .map-marker.zero circle { stroke: #7b8797; }
+    .map-marker .count-badge { fill: #e5f5f7; stroke: #a8d6dc; stroke-width: 1; }
+    .map-marker .count-label { fill: #075f6a; font-size: 9px; }
+    .results-panel { padding: 15px; }
+    .result-tools { display: flex; align-items: center; gap: 8px; }
+    .result-tools label { color: var(--muted); font-size: .75rem; }
+    .result-tools select { border: 1px solid var(--line); border-radius: 7px; background: #fff; color: var(--navy); padding: 6px 28px 6px 8px; font-size: .76rem; }
+    .result { border: 1px solid var(--line); border-radius: 10px; background: #fff; overflow: hidden; }
+    .source-term { margin-top: 3px; color: #475467; font-size: .78rem; }
+    .chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 9px; }
+    .chip { border-radius: 5px; background: #eef2f7; color: #526075; padding: 2px 7px; font-size: .68rem; line-height: 1.4; }
+    .chip.role { background: #fff4dc; color: #7a4b08; }
+    .source-block h4, .statistics h4 { margin: 0 0 5px; color: var(--navy); font-size: .73rem; text-transform: uppercase; letter-spacing: .045em; }
+    .citation { color: #344054; font-size: .79rem; line-height: 1.45; }
+    .locator { color: var(--teal-d); font-size: .72rem; font-weight: 700; margin-top: 4px; }
+    blockquote { margin: 8px 0 0; padding-left: 10px; border-left: 3px solid #c9d7e8; color: #596579; font-size: .77rem; line-height: 1.5; }
+    .anatomy-context { margin-top: 9px; color: #475467; font-size: .75rem; line-height: 1.45; }
+    .source-detail { margin-top: 7px; padding-left: 10px; border-left: 3px solid #c9d7e8; color: #596579; font-size: .74rem; line-height: 1.45; }
+    .source-detail strong { color: var(--navy); }
+    .source-detail small { display: block; color: var(--teal-d); margin-top: 2px; }
+    .show-map { margin-top: 9px; border: 1px solid #b9dfe4; border-radius: 7px; background: #f0fbfd; color: var(--teal-d); padding: 5px 9px; font-size: .72rem; font-weight: 750; }
+    .stat { border-top: 1px solid var(--line2); padding: 7px 0; font-size: .75rem; line-height: 1.42; }
+    .stat:first-of-type { border-top: 0; padding-top: 0; }
+    .stat strong { color: var(--navy); }
+    .stat-context { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:7px 14px; margin:3px 0 10px; padding:9px 10px; border:1px solid var(--line2); border-radius:7px; background:#fff; }
+    .stat-context div { min-width:0; }
+    .stat-context dt { color:var(--muted); font-size:.65rem; font-weight:750; letter-spacing:.035em; text-transform:uppercase; }
+    .stat-context dd { margin:2px 0 0; color:#46566e; font-size:.76rem; line-height:1.4; overflow-wrap:anywhere; }
+    .stat-table-wrap { overflow-x: auto; }
+    .stat-table { width: 100%; min-width:680px; border-collapse: collapse; font-size: .76rem; }
+    .stat-table th, .stat-table td { padding: 7px 9px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; line-height:1.4; overflow-wrap:anywhere; }
+    .stat-table thead th { color: var(--navy); background: #edf3f8; }
+    .stat-table tbody th { color:var(--navy); font-weight: 650; }
+    .stat-table td[data-field="value_text"], .stat-table td[data-field="counts"] { font-variant-numeric:tabular-nums; }
+    .empty, .loading, .error { padding: 32px 16px; text-align: center; color: var(--muted); font-size: .86rem; }
+    .error { color: #8b3341; }
+    .retry { display: block; margin: 12px auto 0; min-height: auto; }
+
+    .results-toolbar { display:flex; flex-wrap:wrap; align-items:flex-end; gap:10px; margin:0 0 14px; }
+    .browse-controls { display:flex; flex-wrap:wrap; align-items:flex-end; gap:10px; }
+    .results-toolbar > .browse-controls { margin:0; }
+    .weight-axis-row { flex-basis:100%; }
+    .region-controls { flex:1 0 100%; }
+    .browse-controls label { display:flex; flex-direction:column; gap:3px; text-transform:uppercase; font-size:.65rem; font-weight:700; color:var(--muted); }
+    .browse-controls select { font-size:.8rem; text-transform:none; border:1px solid var(--line); border-radius:6px; min-height:35px; padding:5px 8px; background:#fff; color:var(--ink); }
+    .toolbar-select-source { display:none; }
+    .toolbar-chooser { position:relative; min-width:170px; text-transform:none; }
+    .toolbar-chooser-button { display:flex; align-items:center; justify-content:space-between; gap:14px; width:100%; min-height:35px; border:1px solid var(--line); border-radius:6px; padding:5px 9px; background:#fff; color:var(--ink); font-size:.8rem; text-align:left; }
+    .toolbar-chooser-button::after { content:'▾'; color:var(--muted); font-size:.72rem; }
+    .toolbar-chooser-button[aria-expanded="true"] { border-color:var(--teal); box-shadow:0 0 0 2px #0e9db019; }
+    .toolbar-chooser-menu { position:absolute; top:calc(100% + 4px); left:0; z-index:30; display:grid; min-width:100%; width:max-content; max-width:min(340px,calc(100vw - 32px)); max-height:260px; overflow:auto; padding:5px; border:1px solid var(--line); border-radius:8px; background:#fff; box-shadow:0 12px 28px rgba(18,35,74,.16); }
+    .toolbar-chooser-menu[hidden] { display:none; }
+    .toolbar-chooser-option { border:0; border-radius:5px; padding:8px 9px; background:#fff; color:var(--ink); font-size:.8rem; text-align:left; white-space:normal; }
+    .toolbar-chooser-option:hover, .toolbar-chooser-option:focus { outline:0; background:#edf7f9; }
+    .toolbar-chooser-option[aria-selected="true"] { color:var(--teal-d); background:#e7f6f8; font-weight:750; }
+    .weight-choice { display:flex; flex-direction:column; gap:3px; text-transform:uppercase; font-size:.65rem; font-weight:700; color:var(--muted); }
+    .weight-choice .segmented { text-transform:none; }
+    #weightControls { align-items:flex-end; }
+    #weightHelp { min-height:35px; padding:5px 11px; font-size:.75rem; }
+    .segmented { display:flex; gap:2px; border-radius:7px; background:#eef1f7; padding:3px; }
+    .segmented button { background:transparent; border:0; color:#647089; border-radius:5px; min-height:34px; padding:5px 11px; font-size:.75rem; font-weight:750; }
+    .segmented button[aria-selected="true"], .segmented button[aria-pressed="true"] { background:#fff; color:var(--navy); box-shadow:0 1px 4px #24334c22; }
+    .map-results { max-height:320px; overflow:auto; margin-top:10px; }
+    .map-result { display:flex; justify-content:space-between; gap:8px; width:100%; border:0; border-bottom:1px solid var(--line); background:#fff; padding:9px 4px; text-align:left; color:var(--navy); font-size:.78rem; }
+    .map-result small { color:var(--muted); white-space:nowrap; }
+    .browse-region { margin:9px 0; --group-color:#596579; scroll-margin-top:12px; }
+    .browse-region > summary, .browse-section > summary, .browse-sign > summary { display:flex; align-items:center; gap:8px; cursor:pointer; list-style:none; background:var(--group-color); color:#fff; border-radius:6px; padding:8px 11px; }
+    .browse-region > summary { text-transform:uppercase; letter-spacing:.045em; font-size:.8rem; font-weight:800; }
+    .browse-region summary::-webkit-details-marker, .browse-section summary::-webkit-details-marker, .browse-sign summary::-webkit-details-marker { display:none; }
+    .browse-region > summary::before, .browse-section > summary::before, .browse-sign > summary::before { content:'▸'; flex-shrink:0; }
+    .browse-region[open] > summary::before, .browse-section[open] > summary::before, .browse-sign[open] > summary::before { content:'▾'; }
+    .browse-name { flex:1; min-width:0; overflow-wrap:anywhere; }
+    .browse-count { border-radius:999px; background:#ffffff26; padding:2px 7px; font-size:.65rem; font-weight:600; text-transform:none; letter-spacing:0; white-space:nowrap; }
+    .browse-body { padding-top:5px; }
+    .browse-section { border-left:3px solid #d8e1eb; margin:6px 0 6px 9px; padding-left:9px; }
+    .browse-section > summary { background:color-mix(in srgb,var(--group-color) 65%,#334155); font-size:.79rem; font-weight:700; }
+    .browse-sign { margin:5px 0 5px 8px; border-radius:7px; }
+    .browse-sign > summary { background:color-mix(in srgb,var(--group-color) 58%,#526174); border-left:3px solid #92a8bc; padding:6px 9px; font-size:.82rem; font-weight:650; }
+    .browse-sign[open] > summary { border-radius:6px 6px 0 0; }
+    .browse-sign > .browse-body { border:1px solid var(--teal); border-top:0; background:#fbfcfe; border-radius:0 0 7px 7px; padding:10px 14px; }
+    .context-note { font-size:.72rem; color:var(--muted); margin:0 0 10px; }
+    .context-grid { display:flex; flex-wrap:wrap; gap:4px 18px; margin:9px 0; }
+    .context-field { margin:0; min-width:0; font-size:.8rem; line-height:1.5; overflow-wrap:anywhere; }
+    .context-field:first-child { flex-basis:100%; }
+    .context-field h4 { margin:0 0 6px; font-size:.65rem; text-transform:uppercase; color:#8490a6; letter-spacing:.035em; }
+    .context-value { color:#46566e; }
+    .context-value + .context-value::before { content:' · '; }
+    .missing { color:var(--muted); font-size:.75rem; }
+    .sources-heading { display:flex; justify-content:space-between; margin:14px 0 8px; color:var(--navy); font-size:.9rem; }
+    .sources-heading span { font-size:.75rem; font-weight:500; }
+    .evidence-section { margin-top:9px; padding:8px; border:1px solid #e8d6b7; border-radius:7px; background:#fffaf3; }
+    .evidence-section > summary { font-size:.76rem; font-weight:750; color:#8a5209; cursor:pointer; }
+    .paper-section { margin:8px 0; padding:10px 12px; background:#fbfcfe; border:1px solid var(--line2); border-left:3px solid #b9dfe4; border-radius:8px; }
+    .paper-section > h3 { margin:0 0 4px; color:var(--navy); font-size:.88rem; line-height:1.4; }
+    .paper-meta { display:flex; flex-wrap:wrap; align-items:center; gap:4px 12px; margin:2px 0 5px; color:var(--muted); font-size:.74rem; line-height:1.4; }
+    .paper-authors { color:#526075; }
+    .paper-meta a { color:var(--teal-d); font-weight:700; }
+    .paper-disclosure { margin-top:7px; border-top:1px solid var(--line); }
+    .paper-disclosure > summary { margin:0 -5px; padding:7px 5px; color:var(--teal-d); cursor:pointer; font-size:.82rem; font-weight:700; }
+    .paper-disclosure[open] > summary { background:#eef7f9; }
+    .paper-reading { width:100%; max-height:72vh; overflow:auto; overscroll-behavior:contain; scrollbar-gutter:stable; padding:8px 12px 8px 0; }
+    .paper-reading:focus-visible { outline:2px solid var(--teal); outline-offset:2px; }
+    @media print { .paper-reading { max-height:none; overflow:visible; } }
+    .paper-section > summary { color:var(--navy); font-size:.8rem; cursor:pointer; line-height:1.4; }
+    .paper-section > summary small { display:block; color:var(--muted); margin-left:14px; }
+    .source-result { margin-top:7px; border-top:1px solid var(--line); padding:7px 0; }
+    .source-result > summary { color:var(--teal-d); font-size:.8rem; cursor:pointer; line-height:1.5; }
+    .source-result > summary small { display:block; font-size:.7rem; color:var(--muted); margin-left:14px; }
+    .source-result-body { padding:6px 2px; }
+    .source-result-single { border-top:0; padding-top:2px; }
+    .source-result-single + .source-result { margin-top:10px; }
+    .result-title { margin:0 0 4px; color:var(--navy); font-size:.82rem; line-height:1.45; }
+    .result-locator { margin:0 0 6px; }
+    .source-excerpt { margin:10px 0; font-size:.76rem; color:var(--teal-d); }
+    .source-excerpt > summary { cursor:pointer; }
+    .source-result .statistics { background:#f7fafc; padding:10px; margin-top:10px; }
+    @media(max-width:780px) {
+      .browse-region > summary { font-size:.75rem; }
+      .browse-count { font-size:.6rem; }
+      .browse-section { margin-left:4px; padding-left:5px; }
+      .browse-sign { margin-left:3px; }
+      .browse-sign > summary { font-size:.8rem; align-items:flex-start; flex-wrap:wrap; }
+      .browse-sign > summary .browse-count { margin-left:auto; }
+      .browse-sign > .browse-body { padding:10px 8px; }
+      .context-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+      .context-field, .context-field.classification { grid-column:span 1; }
+      .context-field:first-child { grid-column:1/-1; }
+      .brain-map { min-height:0; }
+      .brain-map svg { max-height:340px; }
+      .map-marker text { font-size:20px; }
+      .map-marker circle { r:18px; }
+      .map-note { padding:10px; }
+      .map-controls { gap:7px; }
+      .segmented button { padding:5px 9px; }
+      .results-panel, .map-panel { padding:10px; }
+      .result-tools .quiet { min-height:34px; font-size:.73rem; padding:5px 9px; }
+    }
+
+
+    .view-tabs { display:flex; gap:4px; flex-wrap:wrap; border-bottom:1px solid var(--line); margin:-3px 0 12px; padding-bottom:7px; }
+    .view-tabs button { border:1px solid transparent; border-radius:6px; padding:9px 13px; min-height:40px; color:var(--muted); background:transparent; font-size:.8rem; font-weight:750; }
+    .view-tabs button[aria-selected="true"] { color:var(--navy); background:#edf4f9; border-color:#cbdce9; box-shadow:inset 0 -2px var(--teal); }
+    .results-panel > .browse-controls { margin:0 0 14px; }
+    .results-panel > .context-note { margin-bottom:12px; line-height:1.5; }
+    .browse-evidence { margin:8px 0; }
+    .browse-evidence > summary { padding:9px 12px; background:var(--group-color); color:white; border-radius:6px; font-size:.83rem; cursor:pointer; }
+    .browse-evidence .browse-count { float:right; }
+    .weight-summary-meta { display:flex; flex-wrap:wrap; gap:5px; align-items:center; }
+    .weight-summary-meta .chip { margin:0; }
+    .weight-target { color:var(--target-color,#0e9db0); background:color-mix(in srgb,var(--target-color,#0e9db0) 12%,#fff); border:1px solid currentColor; font-weight:750; }
+    .weight-support { color:var(--navy); font-size:.72rem; font-weight:650; white-space:nowrap; }
+    .weight-pips { display:inline-flex; align-items:center; gap:3px; }
+    .weight-pips i { width:6px; height:6px; border-radius:50%; background:#d7dee7; }
+    .weight-pips i.on { background:var(--teal-d); }
+    .weight-card { margin:6px 0; border:1px solid var(--line); }
+    .weight-card > summary { display:grid; grid-template-columns:12px minmax(0,1fr) minmax(0,auto); align-items:start; background:white; color:var(--navy); border-left:3px solid var(--group-color); padding:12px; }
+    .weight-card > .browse-body { background:white; border-color:var(--line); }
+    .weight-card .browse-count { color:var(--muted); background:#f3f6fa; }
+    .weight-group > h3 { background:var(--group-color); color:white; padding:9px 12px; border-radius:6px; font-size:.85rem; margin:18px 0 8px; }
+    .weight-card > summary::before { grid-column:1; grid-row:1; }
+    .weight-card > summary .browse-name { grid-column:2; grid-row:1; }
+    .weight-card > summary .browse-count { grid-column:3; grid-row:1; white-space:normal; text-align:right; }
+    .weight-card > summary .weight-summary-meta { grid-column:2 / -1; grid-row:2; min-width:0; }
+    #weightMethod { width:min(520px,calc(100% - 32px)); border:1px solid var(--line); border-radius:12px; padding:24px; color:var(--ink); line-height:1.6; }
+    #weightMethod::backdrop { background:#12234a66; }
+    #weightMethod h2 { margin-top:0; font-size:1.1rem; color:var(--navy); }
+    @media(max-width:780px) {
+      .weight-card > summary { grid-template-columns:12px minmax(0,1fr); }
+      .weight-card > summary .browse-count { grid-column:2; grid-row:3; text-align:left; justify-self:start; }
+      .weight-support { white-space:normal; }
+      .view-tabs { display:grid; grid-template-columns:1fr 1.6fr 1fr; }
+      .view-tabs button { padding:8px 6px; }
+      .browse-controls label { flex:1; min-width:140px; }
+      .browse-controls select { max-width:100%; }
+      .toolbar-chooser { width:100%; min-width:0; }
+      .browse-section .browse-count { white-space:normal; text-align:right; max-width:42%; }
+      .browse-section > summary { align-items:flex-start; }
+    }
+
+    [hidden] { display: none !important; }
+    @media (max-width: 780px) {
+      .guide-content { grid-template-columns:1fr; }
+      .page { width: min(100% - 20px, 1320px); }
+      .search-panel { position: static; }
+      .filters { position: relative; grid-template-columns:repeat(2,minmax(0,1fr)); }
+      .facet { position: static; }
+      .facet summary { position: relative; }
+      .facet-menu { top: auto; left: 0; right: 0; width: 100%; }
+      .search-row { grid-template-columns: 1fr auto; }
+      .search-wrap { grid-column: 1 / -1; }
+      .map-layout { grid-template-columns: 1fr; }
+      .section-head { align-items: flex-start; flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="page">
+      <h1>Seizure Semiology — Interactive Study Reference</h1>
+      <p>Explore seizure signs and the studies behind them.</p>
+      <p id="releaseNote" class="release-note" hidden></p>
+    </div>
+  </header>
+
+  <main class="page">
+    <details id="pageGuide" class="panel page-guide">
+      <summary>How to use this page</summary>
+      <div class="guide-content">
+        <section><h2>Search and filter</h2><p>Search for a sign, anatomical term or citation. <strong>Anatomy</strong> and <strong>Semiology</strong> select what to look for; <strong>ILAE</strong> and <strong>Lüders</strong> select classification groups. <strong>Phase</strong> and <strong>Laterality</strong> select timing and side. The remaining filters narrow the evidence by class, type, paper or measurement. Filters apply across all three tabs; <strong>Clear filters</strong> starts over.</p></section>
+        <section><h2>Choose a tab</h2><p><strong>Signs</strong> groups signs by region or classification. <strong>Weighted evidence</strong> summarizes study support for brain regions (<strong>Localization</strong>) or side (<strong>Lateralization</strong>). <strong>Sources</strong> brings each paper’s results together.</p></section>
+        <section><h2>Arrange the results</h2><p>In Weighted evidence, <strong>Order</strong> chooses a ranked list or <strong>Current organization</strong>. For that organization, <strong>Organize signs by</strong> sets the main groups, <strong>Region order</strong> sorts the regions, and <strong>Within each group</strong> chooses the next level.</p></section>
+        <section><h2>Use the brain map</h2><p>Select a Brodmann number to filter by that area; its name appears below the brain. Surface and Left/Right controls change the illustration. <strong>Show counts</strong> adds the number of matching results at each marker.</p></section>
+        <section><h2>Read a paper</h2><p>Open <strong>Results</strong> beneath a paper’s title to read its findings, tables and source text. Longer papers scroll within that pane. DOI links open the article.</p></section>
+        <section><h2>Read the scores</h2><p>Dots indicate one, two, or three or more papers. A score combines study weights; it is not a probability. <strong>About the scores</strong> explains the calculation.</p></section>
+      </div>
+    </details>
+    <section class="panel search-panel" aria-label="Search and filters">
+      <form id="searchForm" class="search-row">
+        <div class="search-wrap">
+          <label for="search" hidden>Search findings</label>
+          <input id="search" type="search" autocomplete="off" placeholder="Search a sign, source term, anatomy or citation" disabled>
+          <button id="clearSearch" class="clear-search" type="button" hidden disabled>Clear</button>
+        </div>
+        <button class="primary" type="submit" disabled>Search</button>
+        <button id="clearAll" class="quiet" type="button" disabled>Clear filters</button>
+      </form>
+      <div id="filters" class="filters"></div>
+      <div id="activeFilters" class="active-filters" aria-live="polite"></div>
+    </section>
+
+    <section id="mapPanel" class="panel map-panel">
+      <div class="section-head">
+        <div>
+          <div class="map-title-row"><h2>Brodmann overview</h2><label class="map-count-toggle"><input id="mapCounts" type="checkbox"> Show counts</label></div>
+          <p>Select a numbered area to filter the evidence.</p>
+        </div>
+        <div class="map-controls">
+          <div id="mapViewWrap" hidden><div id="surfaceTabs" class="segmented" role="tablist" aria-label="Surface view"></div><select id="mapView" hidden aria-label="Surface"></select></div>
+          <div id="hemisphereTabs" class="segmented" role="group" aria-label="Hemisphere" title="Illustration orientation; laterality is an independent filter."><button type="button" data-hemisphere="left" aria-pressed="true">Left</button><button type="button" data-hemisphere="right" aria-pressed="false">Right</button></div><select id="mapHemisphere" hidden aria-label="Hemisphere"><option value="left">Left</option><option value="right">Right</option></select>
+        </div>
+      </div>
+      <div class="map-layout">
+        <div class="brain-figure"><div id="brainMap" class="brain-map" aria-label="Brodmann map"></div><div id="mapSelection" class="brain-caption" aria-live="polite"></div></div>
+        <div class="map-note">
+          <strong id="mapHeading">Select a result to inspect its anatomy</strong>
+          <span id="mapMessage">Choose a finding below to highlight its reported anatomy on the map.</span>
+          <div id="mapResults" class="map-results"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel results-panel" id="lowerPanel">
+      <div id="viewTabs" class="view-tabs" role="tablist" aria-label="Evidence views">
+        <button type="button" role="tab" id="tab-browse" data-view="browse" aria-selected="true" aria-controls="results">Signs</button>
+        <button type="button" role="tab" id="tab-weighted" data-view="weighted" aria-selected="false" aria-controls="results">Weighted evidence</button>
+        <button type="button" role="tab" id="tab-sources" data-view="sources" aria-selected="false" aria-controls="results">Sources</button>
+      </div>
+      <div id="resultsToolbar" class="results-toolbar">
+        <div id="weightAxisControl" class="browse-controls weight-axis-row" hidden>
+          <div class="weight-choice"><span>Evidence axis</span><div id="weightAxisTabs" class="segmented" role="group" aria-label="Evidence axis"><button type="button" data-weight-axis="LOCALIZATION" aria-pressed="true">Localization</button><button type="button" data-weight-axis="LATERALIZATION" aria-pressed="false">Lateralization</button></div></div>
+          <button id="weightHelp" type="button" class="quiet">About the scores</button>
+        </div>
+        <div id="weightControls" class="browse-controls" hidden>
+          <label for="weightSort">Order <select id="weightSort"><option value="page">Current organization</option><option value="weight">Highest score</option><option value="name">Sign A–Z</option><option value="manuscripts">Most papers</option><option value="statistics">Most reported values</option></select></label>
+        </div>
+        <div class="browse-controls" id="browseControls">
+          <label for="groupBy">Organize signs by <select id="groupBy"></select></label>
+          <label for="within" id="withinWrap">Within each group <select id="within"></select></label>
+        </div>
+        <div id="regionControls" class="browse-controls region-controls">
+          <label id="regionSortControl" for="regionSort">Region order <select id="regionSort"><option value="atlas">Atlas order</option><option value="name">Alphabetical</option><option value="signs">Most signs</option></select></label>
+          <details id="regionFilter" class="region-filter" hidden><summary>Filter by brain region</summary><div id="regionFilterBody" class="region-filter-body"><div id="regionButtons" class="region-buttons"></div></div></details>
+        </div>
+      </div>
+      <div class="section-head">
+        <div><h2 id="viewHeading">Signs</h2><p id="resultStatus" aria-live="polite">Loading…</p></div>
+        <div class="result-tools"><button id="expandGroups" type="button" class="quiet">Expand groups</button><button id="collapseGroups" type="button" class="quiet">Collapse all</button></div>
+      </div>
+      <div id="viewNote" class="context-note"></div>
+      <div id="results" class="loading" role="tabpanel" aria-labelledby="tab-browse">Loading evidence…</div>
+    </section>
+    <details id="releaseNotes" class="panel release-notes" hidden></details>
+  </main>
+  <dialog id="weightMethod">
+    <h2>About the scores</h2>
+    <p>Each study contributes once for a sign and for localization or lateralization. Its weight combines the recorded evidence class, study method, and sample size. The score adds these study weights.</p>
+    <p>Dots show the number of papers: one, two, or three or more. They do not indicate certainty. Scores are not probabilities or pooled study results.</p>
+    <p>When a filter selects only part of a study’s results, that study’s score is withheld. Reviews and cited reports remain available without counting the same study again.</p>
+    <form method="dialog"><button class="quiet">Close</button></form>
+  </dialog>
+
+  <script type="module">
+    import { atlasData, atlasGroups, atlasClassificationGroups, atlasCounts, atlasWeights } from './atlas_projection.mjs?v=029b27b139695165e39cd92b40094a4fe69775992b01ebbf769f387fc5b574a1';
+    (() => {
+      "use strict";
+
+      const detailGroups = new Map();
+      const REQUEST_TIMEOUT_MS = 30000;
+      const requestClient = (() => {
+        const key = "atlas-request-client";
+        try {
+          const existing = sessionStorage.getItem(key);
+          if (existing) return existing;
+          const created = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`;
+          sessionStorage.setItem(key, created);
+          return created;
+        } catch (_error) {
+          return globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`;
+        }
+      })();
+      const initialRequestGeneration = (() => {
+        try {
+          const value = Number(sessionStorage.getItem("atlas-request-generation"));
+          return Number.isSafeInteger(value) && value >= 0 ? value : 0;
+        } catch (_error) {
+          return 0;
+        }
+      })();
+      const state = {
+        catalogue: { facets: [], items: [], maps: null },
+        response: null,
+        loading: true,
+        pendingMapResult: null,
+        requestClient,
+        requestGeneration: initialRequestGeneration,
+        requestController: null,
+        requestTimer: null,
+        filters: {},
+        query: "",
+        groupBy: "region",
+        regionSort: "atlas",
+        within: "",
+        view: "browse",
+        weightAxis: "LOCALIZATION",
+        weightSort: {LOCALIZATION:"page",LATERALIZATION:"page"},
+        mapView: "",
+        mapHemisphere: "left",
+        mapCounts: false,
+        anatomyReference: "named",
+        optionSearch: {},
+        mapAnatomy: new Set(),
+        mapLabels: new Map(),
+        mapRegions: new Set(),
+        mapResultIds: new Set(),
+      };
+
+      const $ = (selector) => document.querySelector(selector);
+      const h = (value) => String(value ?? "").replace(/[&<>"']/g, character => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      })[character]);
+      const toolbarChoosers = new Map();
+      let openToolbarChooser = null;
+      function closeToolbarChooser(chooser, restoreFocus=false) {
+        if (!chooser) return;
+        chooser.menu.hidden = true;
+        chooser.button.setAttribute('aria-expanded','false');
+        if (openToolbarChooser === chooser) openToolbarChooser = null;
+        if (restoreFocus) chooser.button.focus();
+      }
+      function syncToolbarChooser(select) {
+        const chooser = toolbarChoosers.get(select);
+        if (!chooser) return;
+        const options = [...select.options];
+        const selectedOption = options.find(option=>option.value===select.value) || options[0];
+        chooser.button.textContent = selectedOption?.textContent || 'Select';
+        chooser.menu.innerHTML = options.map((option,index)=>`<button type="button" class="toolbar-chooser-option" role="option" data-index="${index}" aria-selected="${option===selectedOption}" ${option.disabled?'disabled':''}>${h(option.textContent)}</button>`).join('');
+      }
+      function installToolbarChooser(select) {
+        const label = select.closest('label');
+        const accessibleLabel = [...label.childNodes].find(node=>node.nodeType===Node.TEXT_NODE)?.textContent.trim() || select.id;
+        const chooser = document.createElement('span');
+        chooser.className = 'toolbar-chooser';
+        chooser.innerHTML = `<button type="button" class="toolbar-chooser-button" aria-haspopup="listbox" aria-expanded="false" aria-controls="${h(select.id)}ChooserList" aria-label="${h(accessibleLabel)}"></button><span id="${h(select.id)}ChooserList" class="toolbar-chooser-menu" role="listbox" aria-label="${h(accessibleLabel)}" hidden></span>`;
+        label.removeAttribute('for');
+        select.classList.add('toolbar-select-source');
+        select.setAttribute('aria-hidden','true');
+        select.tabIndex = -1;
+        select.after(chooser);
+        const entry = {select,root:chooser,button:chooser.firstElementChild,menu:chooser.lastElementChild};
+        toolbarChoosers.set(select,entry);
+        const focusOption = index => {
+          const options=[...entry.menu.querySelectorAll('[role=option]:not(:disabled)')];
+          if (!options.length) return;
+          options[Math.max(0,Math.min(index,options.length-1))].focus();
+        };
+        const open = position => {
+          if (openToolbarChooser && openToolbarChooser!==entry) closeToolbarChooser(openToolbarChooser);
+          syncToolbarChooser(select);
+          entry.menu.hidden=false;
+          entry.button.setAttribute('aria-expanded','true');
+          openToolbarChooser=entry;
+          const options=[...entry.menu.querySelectorAll('[role=option]:not(:disabled)')];
+          const selectedIndex=Math.max(0,options.findIndex(option=>option.getAttribute('aria-selected')==='true'));
+          requestAnimationFrame(()=>focusOption(position==='last'?options.length-1:selectedIndex));
+        };
+        entry.button.addEventListener('click',()=>entry.menu.hidden?open():closeToolbarChooser(entry));
+        entry.button.addEventListener('keydown',event=>{
+          if (!['Enter',' ','ArrowDown','ArrowUp','Home','End'].includes(event.key)) return;
+          event.preventDefault();
+          open(event.key==='ArrowUp'||event.key==='End'?'last':'selected');
+        });
+        entry.menu.addEventListener('click',event=>{
+          const option=event.target.closest('[role=option]');
+          if (!option) return;
+          select.selectedIndex=Number(option.dataset.index);
+          select.dispatchEvent(new Event('change',{bubbles:true}));
+          closeToolbarChooser(entry,true);
+        });
+        entry.menu.addEventListener('keydown',event=>{
+          const options=[...entry.menu.querySelectorAll('[role=option]:not(:disabled)')];
+          const index=options.indexOf(document.activeElement);
+          if (event.key==='Escape') { event.preventDefault(); closeToolbarChooser(entry,true); return; }
+          if (event.key==='Enter'||event.key===' ') { event.preventDefault(); document.activeElement.click(); return; }
+          if (!['ArrowDown','ArrowUp','Home','End'].includes(event.key)) return;
+          event.preventDefault();
+          const next=event.key==='Home'?0:event.key==='End'?options.length-1:(index+(event.key==='ArrowDown'?1:-1)+options.length)%options.length;
+          focusOption(next);
+        });
+        select.addEventListener('change',()=>syncToolbarChooser(select));
+        new MutationObserver(()=>syncToolbarChooser(select)).observe(select,{childList:true,subtree:true});
+        syncToolbarChooser(select);
+      }
+      const roleLabel = (value) => String(value ?? "").replace(/_/g, " ").toLowerCase().replace(/\b\w/g, letter => letter.toUpperCase());
+      let catalogueItems = new Map(), catalogueLabels = new Map(), resultCounts = new Map();
+      const facet = id => state.catalogue.facets.find(item => item.id === id);
+      const facetItems = id => catalogueItems.get(id) || [];
+      const selected = id => state.filters[id] || [];
+      const itemLabel = (facetId, itemId) => catalogueLabels.get(facetId)?.get(itemId) || "Selected value";
+
+      function requestContext() {
+        state.requestGeneration += 1;
+        try { sessionStorage.setItem("atlas-request-generation", String(state.requestGeneration)); } catch (_error) {}
+        if (state.requestTimer) clearTimeout(state.requestTimer);
+        if (state.requestController) state.requestController.abort();
+        const request = {
+          generation: state.requestGeneration,
+          controller: new AbortController(),
+          timedOut: false,
+        };
+        state.requestController = request.controller;
+        state.requestTimer = setTimeout(() => {
+          if (request.generation !== state.requestGeneration) return;
+          request.timedOut = true;
+          request.controller.abort();
+        }, REQUEST_TIMEOUT_MS);
+        return request;
+      }
+
+      function isCurrent(request) {
+        return request.generation === state.requestGeneration;
+      }
+
+      function requestUrl(path, request) {
+        const url = new URL(path, location.href);
+        url.searchParams.set("_client", state.requestClient);
+        url.searchParams.set("_generation", String(request.generation));
+        return `${url.pathname}${url.search}`;
+      }
+
+      function finishRequest(request) {
+        if (!isCurrent(request)) return false;
+        if (state.requestTimer) clearTimeout(state.requestTimer);
+        state.requestTimer = null;
+        state.requestController = null;
+        state.loading = false;
+        return true;
+      }
+
+      function removeFailure() {
+        $("#results .request-error")?.remove();
+      }
+
+      function setSearchReady(ready) {
+        document.querySelectorAll("#searchForm input, #searchForm button").forEach(control => { control.disabled = !ready; });
+      }
+
+      function validObject(value) {
+        return value != null && typeof value === "object" && !Array.isArray(value);
+      }
+
+      function validateCatalogue(payload) {
+        if (!validObject(payload) || !Array.isArray(payload.facets) || !Array.isArray(payload.items)) throw new Error("invalid catalogue");
+        if (!payload.facets.every(value => validObject(value) && typeof value.id === "string" && typeof value.label === "string")) throw new Error("invalid catalogue facets");
+        if (!payload.items.every(value => validObject(value) && typeof value.id === "string" && typeof value.facet === "string" && typeof value.label === "string")) throw new Error("invalid catalogue items");
+        if (payload.maps != null && !validObject(payload.maps)) throw new Error("invalid map catalogue");
+        return payload;
+      }
+
+      function validateQuery(payload) {
+        const countKeys = ["findings", "results", "statistics", "sources"];
+        if (!validObject(payload) || !Number.isInteger(payload.total) || payload.total < 0) throw new Error("invalid result total");
+        if (!validObject(payload.counts) || !countKeys.every(key => Number.isInteger(payload.counts[key]) && payload.counts[key] >= 0)) throw new Error("invalid result counts");
+        if (!validObject(payload.facets) || !Object.values(payload.facets).every(values => Array.isArray(values) && values.every(value => validObject(value) && typeof value.id === "string" && typeof value.label === "string" && Number.isInteger(value.count) && value.count >= 0))) throw new Error("invalid result facets");
+        if (!Array.isArray(payload.rows) || !payload.rows.every(row => validObject(row) && typeof row.id === "string" && validObject(row.facets) && Object.values(row.facets).every(values => Array.isArray(values) && values.every(validObject)) && Array.isArray(row.statistic_ids))) throw new Error("invalid result rows");
+        if (!validObject(payload.statistics)) throw new Error("invalid result statistics");
+        return payload;
+      }
+
+      function mergedFacetValues(values) {
+        const merged = new Map();
+        (values || []).forEach(value => {
+          const current = merged.get(value.id);
+          if (!current) {
+            merged.set(value.id, {
+              ...value,
+              scopes: value.scope ? [value.scope] : [],
+              source_terms: value.source_term ? [value.source_term] : [],
+              roles: value.role ? [value.role] : [],
+            });
+            return;
+          }
+          if (value.scope && !current.scopes.includes(value.scope)) current.scopes.push(value.scope);
+          if (value.source_term && !current.source_terms.includes(value.source_term)) current.source_terms.push(value.source_term);
+          if (value.role && !current.roles.includes(value.role)) current.roles.push(value.role);
+        });
+        return [...merged.values()];
+      }
+
+      function facetValueLabel(facetId, value) {
+        const scopes = value.scopes || (value.scope ? [value.scope] : []);
+        const roles = value.roles || (value.role ? [value.role] : []);
+        const qualifiers = [];
+        if (facetId === "anatomy" && scopes.length && scopes.every(scope => scope === "OVERLAP")) qualifiers.push("overlap mapping");
+        if (["anatomy", "laterality"].includes(facetId) && roles.length && roles.every(role => ["COHORT_CONTEXT", "COMPARATOR_CONTEXT"].includes(role))) {
+          if (roles.includes("COHORT_CONTEXT")) qualifiers.push("cohort");
+          if (roles.includes("COMPARATOR_CONTEXT")) qualifiers.push("comparison");
+        }
+        return [value.label, ...qualifiers].join(" · ");
+      }
+
+      function countFor(facetId, itemId) {
+        return resultCounts.get(facetId)?.get(itemId);
+      }
+
+      const alphabetical = (a, b) => a.label.localeCompare(b.label, 'en', {numeric: true, sensitivity: 'base'}) || a.id.localeCompare(b.id);
+      const classificationKinds = {
+        ilae: new Set(['MAIN_CLASS','GROUPING','SEIZURE_TYPE','BASIC_DESCRIPTOR','DESCRIPTOR_CATEGORY','MODIFIER_CATEGORY']),
+        luders: new Set(['PUBLIC_FAMILY','CATEGORY','TYPE','WORKSHEET_CATEGORY','ATTRIBUTE_CATEGORY','EVENT_CATEGORY']),
+      };
+      const phaseChoiceLabels = {'PHASE:PREICTAL':'Preictal (before seizure onset)','PHASE:AURA':'Aura (ictal symptom)','PHASE:ICTAL':'Ictal (during the seizure)','PHASE:POST_ICTAL':'Postictal (after the seizure)'};
+      function choicesByLabel(items) {
+        const choices = new Map();
+        items.forEach(item => {
+          const key = JSON.stringify([item.label,item.section||'']);
+          if (!choices.has(key)) choices.set(key, {...item, ids: []});
+          choices.get(key).ids.push(item.id);
+        });
+        return [...choices.values()];
+      }
+      function classificationChoices(facetId, options) {
+        const nodes = new Map(facetItems(facetId).map(item => [item.id, item]));
+        const children = new Map();
+        nodes.forEach(item => {
+          const parent = nodes.has(item.parent_id) ? item.parent_id : null;
+          if (!children.has(parent)) children.set(parent, []);
+          children.get(parent).push(item);
+        });
+        const included = new Set(options.map(item => item.id));
+        const ordered = [];
+        function visit(parent, section) {
+          (children.get(parent) || []).sort((a,b) => a.ordinal-b.ordinal || alphabetical(a,b)).forEach(item => {
+            const heading = item.kind === 'DESCRIPTOR_ROOT' ? 'Semiology categories'
+              : item.kind === 'ROOT' ? (facetId === 'ilae' ? 'Seizure classes and types' : '')
+              : facetId === 'luders' && (nodes.get(item.parent_id)?.kind === 'ROOT' || item.kind === 'ATTRIBUTE_CATEGORY') ? item.label : section;
+            if (included.has(item.id)) ordered.push({...item, section: heading});
+            visit(item.id, heading);
+          });
+        }
+        visit(null, '');
+        return ordered;
+      }
+
+      function renderChoiceList(facetId) {
+        const query = (state.optionSearch[facetId] || "").toLocaleLowerCase();
+        let options = facetItems(facetId).filter(item => (item.linked_count > 0 || selected(facetId).includes(item.id)) &&
+          (!classificationKinds[facetId] || classificationKinds[facetId].has(item.kind)) &&
+          (facetId !== "anatomy" || item.reference === state.anatomyReference));
+        if (facetId === "anatomy" && selected("region").length && !selected("anatomy").length && !query)
+          options = options.filter(item => countFor(facetId, item.id) > 0);
+        options = options.filter(item => item.label.toLocaleLowerCase().includes(query));
+        if (classificationKinds[facetId]) options = classificationChoices(facetId, options);
+        else if (facetId === 'phase') options.sort((a,b) => a.ordinal-b.ordinal || alphabetical(a,b));
+        else if (facetId === 'evidence_class') {
+          const order = ['I','II','III','UNCLASSIFIED'];
+          options.sort((a,b) => order.indexOf(a.label)-order.indexOf(b.label));
+        } else options.sort(alphabetical);
+        options = choicesByLabel(options);
+        const reference = state.catalogue.references?.find(item => item.id === state.anatomyReference);
+        const hasReferenceLinks = facetItems("anatomy").some(item => item.reference === state.anatomyReference && item.linked_count > 0);
+        const empty = facetId === "anatomy" && !hasReferenceLinks
+          ? `Finding links for ${reference?.label || "this atlas"} are not yet available.`
+          : "No matching choices. Change the search or clear the current filters.";
+        $(`[data-options="${facetId}"]`).innerHTML = options.length ? options.map((item,index) =>
+          `${item.section && item.section !== options[index-1]?.section ? `<div class="choice-section">${h(item.section)}</div>` : ''}<label><input type="checkbox" value="${h(item.id)}" data-items="${h(JSON.stringify(item.ids))}" ${item.ids.some(id=>selected(facetId).includes(id)) ? "checked" : ""}>
+            <span>${h(facetId==='evidence_class'&&item.label==='UNCLASSIFIED'?'Not classified':facetId==='phase'?(phaseChoiceLabels[item.id]||item.label):item.label)}</span></label>`).join("")
+          : `<p class="choice-hint">${h(empty)}</p>`;
+      }
+
+      function renderFilters() {
+        const open = new Set([...$("#filters").querySelectorAll("details[open]")].map(element => element.dataset.facet));
+        const renderFacet = definition => `<details class="facet" data-facet="${h(definition.id)}" ${open.has(definition.id) ? "open" : ""}>
+          <summary>${h(definition.id === "anatomy" ? "Anatomy" : definition.label)}${selected(definition.id).length ? ` (${new Set(selected(definition.id).map(id=>itemLabel(definition.id,id))).size})` : ""}</summary>
+          <div class="facet-menu">${definition.id === 'anatomy' ? `<label class="atlas-choice">Atlas<select id="anatomyReference">${(state.catalogue.references || []).map(item => `<option value="${h(item.id)}" ${item.id === state.anatomyReference ? "selected" : ""}>${h(item.label)}</option>`).join('')}</select></label>` : ''}
+            ${facetItems(definition.id).length > 12 ? `<input class="choice-search" type="search" data-choice-search="${definition.id}" aria-label="Find ${h(definition.label)}" placeholder="Type to find…" value="${h(state.optionSearch[definition.id] || "")}">` : ''}
+            <div data-options="${definition.id}"></div></div></details>`;
+        const order = ['anatomy','sign','ilae','luders','phase','laterality','evidence_class','evidence','source','metric'];
+        $("#filters").innerHTML = order.map(id => facet(id)).filter(Boolean).map(renderFacet).join('');
+        open.forEach(id => { if (facet(id)) renderChoiceList(id); });
+        renderActiveFilters();
+      }
+
+      function renderActiveFilters() {
+        $("#activeFilters").innerHTML = state.catalogue.facets.flatMap(definition =>
+          choicesByLabel(selected(definition.id).map(id=>({id,label:itemLabel(definition.id,id)}))).map(item => `<button class="active-filter" type="button" data-facet="${h(definition.id)}" data-items="${h(JSON.stringify(item.ids))}">${h(definition.label)}: ${h(item.label)} ×</button>`)
+        ).join("");
+      }
+
+      const browseModes = {
+        region: {label:'Brain region', within:[['luders','Lüders classification'],['ilae','ILAE classification'],['','A–Z semiology']]},
+        ilae: {label:'ILAE classification', within:[['','A–Z semiology'],['region','Brain region']]},
+        luders: {label:'Lüders classification', within:[['','A–Z semiology'],['region','Brain region']]},
+        '': {label:'A–Z semiology', within:[]},
+      };
+      function renderGroupChoices() {
+        const options=browseModes[state.groupBy].within;
+        if(!options.some(([id])=>id===state.within))state.within=options[0]?.[0]||'';
+        $('#groupBy').innerHTML=Object.entries(browseModes).map(([id,mode])=>'<option value="'+id+'" '+(id===state.groupBy?'selected':'')+'>'+mode.label+'</option>').join('');
+        $('#withinWrap').hidden=!options.length;
+        $('#within').innerHTML=options.map(([id,label])=>'<option value="'+id+'" '+(id===state.within?'selected':'')+'>'+label+'</option>').join('');
+        syncToolbarChooser($('#groupBy'));
+        syncToolbarChooser($('#within'));
+      }
+
+      function toggleFilter(facetId, itemId, enabled = !selected(facetId).includes(itemId)) {
+        const values = new Set(selected(facetId));
+        const itemIds = Array.isArray(itemId) ? itemId : [itemId];
+        itemIds.forEach(id => enabled ? values.add(id) : values.delete(id));
+        if (values.size) state.filters[facetId] = [...values];
+        else delete state.filters[facetId];
+        state.pendingMapResult = null;
+        if (facetId === "anatomy" && !enabled) itemIds.forEach(id=>{state.mapAnatomy.delete(id);state.mapLabels.delete(id);});
+        renderActiveFilters();
+        runQuery();
+      }
+
+      function mapConfig() {
+        const maps = state.catalogue.maps || {};
+        if (maps.views) {
+          const keys = Object.keys(maps.views);
+          if (!state.mapView || !maps.views[state.mapView]) state.mapView = maps.default_view || keys[0] || "";
+          return maps.views[state.mapView] || {};
+        }
+        return maps;
+      }
+
+      function markerRows(config) {
+        if (Array.isArray(config.markers)) return config.markers;
+        if (Array.isArray(config.areas)) return config.areas.map(marker => ({
+          ...marker,
+          anatomy_id: marker.anatomy_id || marker.id,
+          x: marker.x ?? marker.label?.[0],
+          y: marker.y ?? marker.label?.[1],
+        }));
+        return Object.entries(config.markers || {}).flatMap(([anatomyId, value]) =>
+          (Array.isArray(value) ? value : [value]).map(marker => ({ ...marker, anatomy_id: anatomyId }))
+        );
+      }
+
+      function compareRegions(a,b) {
+        const rank = label => { const index=regionOrder.indexOf(label); return index<0?99:index; };
+        return Number(!a.id)-Number(!b.id) ||
+          (state.regionSort === 'signs' ? (b.signCount||0)-(a.signCount||0)
+            : state.regionSort === 'atlas' ? rank(a.label)-rank(b.label) : 0) || alphabetical(a,b);
+      }
+      function orderedRegionGroups(rows) {
+        return atlasGroups(rows,'region').map(group => ({...group, signCount:atlasCounts(group.rows).signs})).sort(compareRegions);
+      }
+      function renderRegionControls() {
+        const groupedByRegion = state.view !== 'sources' &&
+          (state.view !== 'weighted' || state.weightSort[state.weightAxis] === 'page') &&
+          (state.groupBy === 'region' || state.within === 'region');
+        const regionFilter = $('#regionFilter');
+        const regionSortControl = $('#regionSortControl');
+        if (groupedByRegion && state.view === 'weighted') $('#withinWrap').before(regionSortControl);
+        else if (groupedByRegion) $('#browseControls').append(regionSortControl);
+        else $('#regionFilterBody').prepend(regionSortControl);
+        regionFilter.hidden = groupedByRegion;
+        $('#regionControls').hidden = state.view === 'sources' || groupedByRegion;
+        const region = facet("region");
+        const groups = new Map(orderedRegionGroups(state.response?.rows || []).map(group => [group.id, group]));
+        const regionItems = region ? facetItems(region.id).map(item=>({...item,signCount:groups.get(item.id)?.signCount||0})).sort(compareRegions) : [];
+        $("#regionButtons").innerHTML = regionItems.length ? regionItems.map(item => {
+          const active = selected(region.id).includes(item.id);
+          const count = state.regionSort === 'signs' ? ` · ${quantity(groups.get(item.id)?.signCount||0,'sign')}` : '';
+          return `<button class="region-button ${active ? "selected" : ""}" type="button" aria-pressed="${active}" data-region="${h(item.id)}" style="--region-color:${regionColors[item.label] || '#596579'}" ${!state.response ? "disabled" : ""}>${h(item.label+count)}</button>`;
+        }).join("") : `<span class="map-note">No regional facet is available for this result set.</span>`;
+      }
+
+      function renderMap() {
+        const controlsDisabled = !state.response;
+        const config = mapConfig();
+        const views = state.catalogue.maps?.views || {};
+        $("#surfaceTabs").innerHTML = Object.keys(views).map(id => `<button type="button" role="tab" data-surface="${h(id)}" aria-selected="${id === state.mapView}">${h(id[0].toUpperCase()+id.slice(1))}</button>`).join("");
+        $("#hemisphereTabs").querySelectorAll("button").forEach(button => button.setAttribute("aria-pressed", String(button.dataset.hemisphere === state.mapHemisphere)));
+        $("#mapViewWrap").hidden = Object.keys(views).length < 2;
+        $("#mapView").innerHTML = Object.entries(views).map(([id, view]) =>
+          `<option value="${h(id)}" ${id === state.mapView ? "selected" : ""}>${h(view.label || roleLabel(id))}</option>`
+        ).join("");
+        const viewBox = Array.isArray(config.view_box || config.viewBox) ? (config.view_box || config.viewBox) : [0, 0, 1000, 620];
+        const imageUrl = config.image_url || (config.image?.file ? `generator/assets/${config.image.file}` : "generator/assets/brain_lateral.jpg");
+        const image = config.image || { x: 92.6, y: 36.9, width: 793.4, height: 530.3 };
+        const flipPlate = !config.bilateral_plate && state.mapHemisphere === "right";
+        const markers = markerRows(config).filter(marker =>
+          Number.isFinite(Number(marker.x)) && Number.isFinite(Number(marker.y)) &&
+          (!config.bilateral_plate || marker.hemisphere === state.mapHemisphere)
+        ).map(marker => ({ ...marker, x: flipPlate ? viewBox[2] - Number(marker.x) : Number(marker.x) }));
+        $("#mapHemisphere").value = state.mapHemisphere;
+        $("#brainMap").innerHTML = `<svg viewBox="${viewBox.map(Number).join(" ")}" role="group" aria-label="${h(state.mapHemisphere)} hemisphere, ${h(state.mapView)} surface, Brodmann areas">
+          <g ${flipPlate ? `transform="translate(${viewBox[2]},0) scale(-1,1)"` : ""}><image href="${h(imageUrl)}" x="${Number(image.x ?? 0)}" y="${Number(image.y ?? 0)}" width="${Number(image.width ?? image.w ?? viewBox[2])}" height="${Number(image.height ?? image.h ?? viewBox[3])}" preserveAspectRatio="none"></image></g>
+          ${markers.map(marker => {
+            const count = state.response ? countFor("anatomy", marker.anatomy_id) ?? 0 : null;
+            const countText = count == null ? "…" : Number(count).toLocaleString();
+            const active = state.mapAnatomy.has(marker.anatomy_id) || selected("anatomy").includes(marker.anatomy_id);
+            const label = marker.display_label || marker.short_label || marker.label_text || itemLabel("anatomy", marker.anatomy_id);
+            return `<g class="map-marker ${active ? "selected" : ""} ${count === 0 ? "zero" : ""}" data-anatomy="${h(marker.anatomy_id)}" tabindex="${controlsDisabled ? "-1" : "0"}" role="button" aria-disabled="${controlsDisabled}" aria-label="${h(`Brodmann area ${label}, ${countText} linked results`)}"><title>${h(`BA ${label}: ${countText} linked results`)}</title><circle cx="${Number(marker.x)}" cy="${Number(marker.y)}" r="15"></circle><text x="${Number(marker.x)}" y="${Number(marker.y) + 4}" text-anchor="middle">${h(label)}</text>${state.mapCounts ? `<rect class="count-badge" x="${Number(marker.x) + 11}" y="${Number(marker.y) - 25}" rx="5" width="${Math.max(18, countText.length * 7 + 8)}" height="14"></rect><text class="count-label" x="${Number(marker.x) + 16}" y="${Number(marker.y) - 15}">${h(countText)}</text>` : ""}</g>`;
+          }).join("")}
+        </svg>`;
+
+        const anatomy = facet("anatomy");
+        const selectedAnatomy = [...new Set([...state.mapAnatomy,...selected('anatomy')])];
+        const labels = anatomy ? selectedAnatomy.map(id => {
+          const item = facetItems('anatomy').find(value=>value.id===id);
+          const label = state.mapLabels.get(id) || itemLabel(anatomy.id,id);
+          return item?.area_name ? label+' — '+item.area_name : label;
+        }) : [];
+        $("#mapHeading").textContent = labels.length ? "Selected source-supported anatomy" : "Select a result to inspect its anatomy";
+        const selectedMarkerCount = markers.filter(marker => selectedAnatomy.includes(marker.anatomy_id)).length;
+        $("#mapMessage").textContent = labels.length && !selectedMarkerCount
+          ? "The reported anatomy remains listed below; it has no marker on this Brodmann illustration."
+          : "Choose a finding below to highlight its reported anatomy on the map.";
+        $("#mapSelection").innerHTML = labels.map(label => `<span class="map-chip">${h(label)}</span>`).join("");
+        const mappedRows = (state.response?.rows || []).filter(row => rowFacetValues(row, "anatomy").some(value => state.mapAnatomy.has(value.id)));
+        $("#mapResults").innerHTML = atlasGroups(mappedRows,"sign").map(group => `<button type="button" class="map-result" data-result="${h(group.rows[0].id)}"><span>${h(group.label)}</span><small>${group.rows.length} results ›</small></button>`).join("");
+      }
+
+      function rowFacetValues(row, facetId) {
+        return Array.isArray(row.facets?.[facetId]) ? row.facets[facetId] : [];
+      }
+
+      function sourceAnatomy(row) {
+        return Array.isArray(row.source_anatomy) ? row.source_anatomy : [];
+      }
+
+      function citationText(value) {
+        const text=String(value||'').trim();
+        return /^(none|null|n\/a)$/i.test(text)?'':text;
+      }
+
+      function groupedSourceAnatomy(row) {
+        const groups = new Map();
+        for (const value of sourceAnatomy(row)) {
+          const excerpt = String(value.source_excerpt || "").trim();
+          const key = JSON.stringify([excerpt || value.source_term || "", value.locator || "", value.role || "",
+            value.context_qualifier || "", value.context_polarity || "", value.context_modality || "",
+            value.decision_role || '']);
+          if (!groups.has(key)) groups.set(key, { value, terms: new Set(), support: [] });
+          if (value.source_term) groups.get(key).terms.add(value.source_term);
+          const supportKey = JSON.stringify([value.role || "", excerpt]);
+          if ((value.role || excerpt) && !groups.get(key).support.some(item => item.key === supportKey)) groups.get(key).support.push({ key: supportKey, role: value.role || "", excerpt });
+        }
+        return [...groups.values()];
+      }
+
+      function sourceModifiers(row) {
+        const seen = new Set();
+        return (Array.isArray(row.modifiers) ? row.modifiers : []).filter(modifier => {
+          const key = [modifier.modifier_type, modifier.modifier_text, modifier.target_axis, modifier.target_label, modifier.locator, modifier.source_excerpt].join("\u0000");
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+      }
+
+      function renderStatistics(statistics, row) {
+        if (!statistics.length) return '';
+        const text = value => value == null ? '' : String(value).trim();
+        const missingValues = new Set(['NOT_APPLICABLE','NOT_REPORTED']);
+        const literalPattern = value => text(value).split(/\s+/).map(part =>
+          part.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('\\s+');
+        const containsLiteral = (reported, value) => value && new RegExp(
+          '(^|[^0-9A-Za-z])'+literalPattern(value)+'(?=$|[^0-9A-Za-z])','i'
+        ).test(reported);
+        const counts = statistic => {
+          const numerator=text(statistic.numerator), denominator=text(statistic.denominator);
+          if (!numerator && !denominator) return '';
+          const reported=text(statistic.measure)+' '+text(statistic.value_text);
+          if (numerator && denominator) {
+            return containsLiteral(reported,numerator+'/'+denominator) ? '' : numerator+' / '+denominator;
+          }
+          return containsLiteral(reported,numerator||denominator) ? '' : (numerator ? 'Numerator: '+numerator : 'Denominator: '+denominator);
+        };
+        const shown = (statistic, key) => {
+          if (key === 'source_locator') return sourceLocator(statistic.source_locator);
+          if (key === 'evidence_role') return text(statistic.evidence_role) ? roleLabel(statistic.evidence_role) : '';
+          if (key === 'independent_evidence') return statistic.independent_evidence === 0 ? 'Not an independent observation' : statistic.independent_evidence === 1 ? 'Independent observation' : '';
+          if (key === 'uncertainty') return statisticUncertainty(statistic).lines.join(' · ');
+          if (key === 'counts') return counts(statistic);
+          const value=text(statistic[key]);
+          return missingValues.has(value) ? '' : value;
+        };
+        const contextFields = [
+          ['population','Population'], ['subgroup','Group'], ['comparator','Comparison'],
+          ['unit','Unit'], ['timepoint','Timepoint'], ['endpoint','Endpoint'],
+          ['metric_type','Measurement type'], ['analysis_unit','Analysis unit'], ['phase','Phase'],
+          ['anatomy_laterality_context','Anatomy / lateralization context'],
+          ['source_locator','Statistic locator'], ['evidence_role','Evidence type'],
+          ['independent_evidence','Evidence independence']
+        ];
+        const common = [], varyingContext = [];
+        for (const field of contextFields) {
+          const values = statistics.map(value => shown(value, field[0]));
+          if (!values.some(Boolean)) continue;
+          (values.every(value => value === values[0]) ? common : varyingContext).push(field);
+        }
+        const cardLocator = sourceLocator(row?.source?.locator);
+        const cardRoles = new Set((row?.facets?.evidence || []).map(value => String(value.id || '').replace(/^EVIDENCE:/,'')));
+        const sharedUnit = common.some(([key]) => key === 'unit') ? shown(statistics[0],'unit') : '';
+        const visibleCommon = common.filter(([key]) => {
+          const value = shown(statistics[0], key);
+          if (key === 'source_locator' && comparableText(value) === comparableText(cardLocator)) return false;
+          if (key === 'evidence_role' && cardRoles.has(statistics[0].evidence_role)) return false;
+          if (key === 'phase' && value === text(row?.source_phase)) return false;
+          if (key === 'metric_type' && value === 'PERCENTAGE' && sharedUnit === '%') return false;
+          return key !== 'independent_evidence' || statistics[0].independent_evidence === 0;
+        });
+        const measureRepeatsValue = statistics.every(value =>
+          !text(value.measure) || !text(value.value_text) || comparableText(value.measure) === comparableText(value.value_text));
+        const varyingOrder = [
+          'subgroup','comparator','unit','timepoint','endpoint','metric_type','analysis_unit',
+          'population','phase','anatomy_laterality_context','source_locator','evidence_role','independent_evidence'
+        ];
+        const varyingByKey = new Map(varyingContext.map(field => [field[0],field]));
+        const rowFields = [
+          ...(measureRepeatsValue ? [] : [['measure','Measurement']]),
+          ['value_text','Result'], ['counts','Counts'],
+          ...varyingOrder.flatMap(key => varyingByKey.has(key) ? [varyingByKey.get(key)] : []),
+          ['uncertainty','Uncertainty / test']
+        ].filter(([key]) => statistics.some(value => shown(value,key)));
+        const context = visibleCommon.length ? '<dl class="stat-context">'+visibleCommon.map(([key,label])=>
+          '<div><dt>'+h(label)+'</dt><dd>'+h(shown(statistics[0],key))+'</dd></div>').join('')+'</dl>' : '';
+        const table = '<div class="stat-table-wrap"><table class="stat-table" aria-label="Reported statistics"><thead><tr>'+rowFields.map(([,label])=>
+          '<th scope="col">'+h(label)+'</th>').join('')+'</tr></thead><tbody>'+statistics.map(statistic=>
+          '<tr data-statistic="'+h(statistic.statistic_id)+'">'+rowFields.map(([key],index)=>{
+            const tag=index===0?'th':'td', scope=index===0?' scope="row"':'', value=shown(statistic,key)||'—';
+            return '<'+tag+scope+' data-field="'+h(key)+'">'+h(value)+'</'+tag+'>';
+          }).join('')+'</tr>').join('')+'</tbody></table></div>';
+        return context + table;
+      }
+
+      function statisticUncertainty(statistic) {
+        const values=[statistic.uncertainty,statistic.uncertainty_json].map(uncertaintyDisplay);
+        return {lines:[...new Set(values.flatMap(value=>value.lines))],extra:[]};
+      }
+
+      function uncertaintyDisplay(raw) {
+        if (raw == null || raw === "" || raw === "null") return { lines: [], extra: [] };
+        let value = raw;
+        if (typeof raw === "string" && /^[\[{]/.test(raw.trim())) {
+          try { value = JSON.parse(raw); } catch (_error) { return { lines: [raw], extra: [] }; }
+        }
+        if (typeof value !== "object") return { lines: [String(value)], extra: [] };
+        if (Array.isArray(value)) return { lines: value.map(item=>nestedSourceValues([item])).filter(Boolean), extra: [] };
+
+        const lines = [];
+        const consumed = new Set(['owner_decision','synthesis_status']);
+        const first = (...keys) => keys.find(key => value[key] != null && String(value[key]).trim() !== "");
+        const lowerKey = first("lower", "lower_bound", "ci_lower");
+        const upperKey = first("upper", "upper_bound", "ci_upper");
+        if (lowerKey && upperKey) {
+          const labelKey = first("kind", "type");
+          const levelKey = first("confidence_level", "level");
+          const unitKey = first("unit");
+          const label = labelKey ? String(value[labelKey]).replaceAll('_',' ') : "Reported interval";
+          const unit = unitKey ? String(value[unitKey]) : '';
+          lines.push(value.value_text || `${levelKey ? value[levelKey]+'% ' : ''}${label}: ${value[lowerKey]}${unit}–${value[upperKey]}${unit}`);
+          [lowerKey, upperKey, labelKey, levelKey, unitKey, 'value_text'].filter(Boolean).forEach(key => consumed.add(key));
+        }
+        const known = {
+          confidence_interval: "Confidence interval", ci: "Confidence interval",
+          p_value: "P value", p: "P value", standard_error: "Standard error",
+          standard_deviation: "Standard deviation", sd: "Standard deviation",
+          interquartile_range: "Interquartile range", range: "Range",
+        };
+        Object.entries(known).forEach(([key, label]) => {
+          if (!consumed.has(key) && value[key] != null && String(value[key]).trim() !== "") {
+            lines.push(`${label}: ${plainSourceValue(value[key])}`);
+            consumed.add(key);
+          }
+        });
+        Object.entries(value).filter(([key]) => !consumed.has(key)).forEach(([key,item]) => {
+          const displayed=nestedSourceValues([item]);
+          if(displayed)lines.push(`${key.replaceAll('_',' ')}: ${displayed}`);
+        });
+        return { lines, extra: [] };
+      }
+
+      function sourceLocator(value) {
+        if (!value) return '';
+        let parsed = value;
+        if (typeof value === 'string') {
+          if (!/^[\[{]/.test(value.trim())) return value;
+          try { parsed = JSON.parse(value); } catch { return value; }
+        }
+        return (Array.isArray(parsed) ? parsed : [parsed]).map(item => {
+          if (typeof item === 'string') return item;
+          return [item.object, item.page != null ? 'p. ' + item.page : '', item.position].filter(Boolean).join(' · ');
+        }).filter(Boolean).join('; ');
+      }
+
+      function plainSourceValue(value) {
+        if (value == null) return "";
+        if (Array.isArray(value)) return value.map(plainSourceValue).filter(Boolean).join("–");
+        if (typeof value === "object") return Object.values(value).map(plainSourceValue).filter(Boolean).join("; ");
+        return String(value);
+      }
+
+      function nestedSourceValues(values) {
+        const display = value => {
+          if (value == null || value === '') return '';
+          if (Array.isArray(value)) return value.map(display).filter(Boolean).join('; ');
+          if (typeof value === 'object') return Object.entries(value).filter(([key])=>!['owner_decision','synthesis_status'].includes(key)).map(([key,item]) => {
+            const shown=display(item);
+            return shown ? `${key.replaceAll('_',' ')}: ${shown}` : '';
+          }).filter(Boolean).join('; ');
+          return String(value);
+        };
+        return values.map(display).filter(Boolean).join(' · ');
+      }
+
+
+      const regionColors = {Temporal:'#1a3a6b',Frontal:'#2d4a1e',Parietal:'#4a1e3d',Occipital:'#1e3d4a',Insular:'#4a3a1e',Limbic:'#51375c','Deep/Subcortical':'#3d2a0a'};
+      const regionOrder = Object.keys(regionColors);
+      const lateralityColors = {contra:'#c0392b',ipsi:'#2471a3',dominant:'#8e44ad',nondominant:'#1a7a4a',right:'#d35400',left:'#2471a3',bilateral:'#5b6472',nonlat:'#6b7280',variable:'#95691a'};
+      const uniqueValues = (rows, axis) => mergedFacetValues(rows.flatMap(row => rowFacetValues(row, axis)));
+      const uniqueCount = (rows, axis) => uniqueValues(rows, axis).length;
+
+      function mapButton(rows, label = 'Show on map') {
+        const anatomy = uniqueValues(rows, 'anatomy');
+        if (!anatomy.length) return '';
+        return '<button class="show-map" type="button" data-anatomy="'+h(JSON.stringify(anatomy.map(x=>x.id)))+'" data-anatomy-labels="'+h(JSON.stringify(Object.fromEntries(anatomy.map(x=>[x.id,facetValueLabel('anatomy',x)]))))+'" data-regions="'+h(JSON.stringify(uniqueValues(rows,'region').map(x=>x.id)))+'" data-results="'+h(JSON.stringify(rows.map(row=>row.id)))+'">'+h(label)+'</button>';
+      }
+
+      function contextFields(rows) {
+        const fields=['anatomy','laterality','phase','ilae','luders'].flatMap(axis=>{
+          if(axis==='phase'&&rows.length===1&&rows[0].source_phase)return ['<p class="source-term context-field"><strong>Phase:</strong> '+h(rows[0].source_phase)+'</p>'];
+          const values=uniqueValues((axis==='ilae'||axis==='luders')?rows.map(row=>({...row,facets:{...row.facets,[axis]:(row.facets[axis]||[]).filter(value=>value.assigned)}})):rows,axis);
+          if(!values.length)return [];
+          const label={anatomy:'Region',laterality:'Lateralization',phase:'Phase',ilae:'ILAE',luders:'Lüders'}[axis];
+          return ['<p class="source-term context-field '+(axis==='ilae'||axis==='luders'?'classification':'')+'"><strong>'+label+':</strong> '+values.map(value=>'<span class="context-value">'+h(facetValueLabel(axis,value))+'</span>').join(' ')+'</p>'];
+        });
+        return fields.length?'<div class="context-grid">'+fields.join('')+'</div>':'';
+      }
+
+      function evidenceRoleChips(row) {
+        const values = mergedFacetValues(rowFacetValues(row, "evidence"));
+        if (!values.length) return "";
+        return '<div class="chips">'+values.map(value => {
+          const label = value.label || (value.role ? roleLabel(value.role) : roleLabel(String(value.id || "").replace(/^EVIDENCE:/, "")));
+          return '<span class="chip role">'+h(label)+'</span>';
+        }).join('')+'</div>';
+      }
+
+      function renderSourceAnatomy(row, seenExcerpts=new Set()) {
+        const contextLabels = {
+          MEASURED_TRACT_ASSOCIATION: 'Measured tract association',
+          HYPOTHESIZED_MECHANISM: 'Hypothesized mechanism',
+          POSSIBLE_PROPAGATION: 'Possible propagation; source hypothesis',
+          CASE_ICTAL_EEG_ONSET: 'Seizure onset recorded by EEG in this case',
+          NEGATIVE_ANATOMY_NONINVOLVEMENT: 'Reported absence of involvement',
+          CITED_NEUROPATHOLOGY_DIRECT_RELEVANCE_UNKNOWN: 'Cited neuropathology; direct relevance uncertain',
+          PET_HYPOMETABOLISM: 'PET hypometabolism',
+          CASE_MRI_LESION: 'MRI lesion in this case',
+        };
+        return groupedSourceAnatomy(row).map(group => {
+          const value = group.value;
+          const qualifiers=[];
+          if(value.decision_role==='CONTEXT')qualifiers.push(contextLabels[value.context_qualifier]||roleLabel(value.context_qualifier||'SOURCE_REPORTED_CONTEXT'));
+          if(value.context_polarity&&value.context_polarity!=='POSITIVE_ASSOCIATION')qualifiers.push(roleLabel(value.context_polarity));
+          if(value.context_modality)qualifiers.push(roleLabel(value.context_modality));
+          const support=group.support.flatMap(item=>{
+            const excerpt=String(item.excerpt||'').trim(),key=comparableText(excerpt);
+            if(!excerpt||seenExcerpts.has(key))return [];
+            seenExcerpts.add(key);
+            return ['<blockquote>'+h(excerpt)+'</blockquote>'];
+          }).join('');
+          const label = {COHORT_CONTEXT:'Study cohort anatomy',COMPARATOR_CONTEXT:'Comparison anatomy',
+            ONSET:'Seizure onset',STIMULATION:'Stimulation site',NETWORK:'Network',
+            SYMPTOMATOGENIC:'Symptom-producing region',LESION:'Lesion location'}[value.role] || 'Reported anatomy';
+          return '<div class="source-detail"><strong>'+label+':</strong> '+h([...group.terms].join('; '))+
+            (qualifiers.length?' · '+qualifiers.map(h).join(' · '):'')+
+            (value.locator&&value.locator!==row.source?.locator?'<small>'+h(sourceLocator(value.locator))+'</small>':'')+support+'</div>';
+        }).join('');
+      }
+
+      function renderRow(row, options = {}) {
+        const source=row.source||{};
+        const statistics=(row.statistic_ids||[]).map(id=>state.response.statistics[id]).filter(Boolean);
+        const title=row.term||row.sign_label||'Reported finding';
+        const repeatedTitle=String(title).trim().toLocaleLowerCase()===String(options.signLabel||'').trim().toLocaleLowerCase();
+        const findingCitation=citationText(source.citation);
+        const findingCitationIsNew=findingCitation&&![options.paperTitle,options.paperCitation].some(value=>comparableText(value)===comparableText(findingCitation));
+        const statisticsBlock=statistics.length?'<div class="statistics"><h4>Reported statistics</h4>'+renderStatistics(statistics,row)+'</div>':'';
+        const sourceTitle=citationText(source.title);
+        const seenExcerpts=new Set();
+        const anatomyBlock=renderSourceAnatomy(row,seenExcerpts);
+        const modifierBlock=sourceModifiers(row).map(value=>{
+          const excerpt=String(value.source_excerpt||'').trim(),key=comparableText(excerpt);
+          const quote=excerpt&&!seenExcerpts.has(key)?(seenExcerpts.add(key),'<blockquote>'+h(excerpt)+'</blockquote>'):'';
+          return '<div class="source-detail"><strong>'+h(roleLabel(value.modifier_type)+(value.modifier_type==='SOURCE_CONDITION'&&value.target_label?' for '+value.target_label:''))+':</strong> '+h(value.modifier_text||'')+
+            (value.locator&&value.locator!==source.locator?'<small>'+h(sourceLocator(value.locator))+'</small>':'')+quote+'</div>';
+        }).join('');
+        const sourceExcerpt=String(source.excerpt||'').trim(),sourceExcerptKey=comparableText(sourceExcerpt);
+        const sourceText=sourceExcerpt&&!seenExcerpts.has(sourceExcerptKey)?(seenExcerpts.add(sourceExcerptKey),'<div class="source-detail"><strong>Source text:</strong><blockquote>'+h(sourceExcerpt)+'</blockquote></div>'):'';
+        const body=(options.includeSource&&(sourceTitle||findingCitation)?'<div class="citation">'+(sourceTitle?'<strong>'+h(sourceTitle)+'</strong>'+(findingCitation?'<br>':''):'')+h(findingCitation)+'</div>':'')+
+          (!repeatedTitle?'<h4 class="result-title">'+h(title)+'</h4>':'')+
+          (source.locator?'<p class="locator result-locator">'+h(sourceLocator(source.locator))+'</p>':'')+
+          (!options.includeSource&&findingCitationIsNew?'<div class="citation"><strong>Source cited for this finding:</strong> '+h(findingCitation)+'</div>':'')+
+          evidenceRoleChips(row)+
+          contextFields([row])+anatomyBlock+statisticsBlock+modifierBlock+sourceText+
+          mapButton([row])+
+          renderSequence(row.sequence||[],source.locator);
+        return '<article class="source-result'+(options.single?' source-result-single':'')+'" data-result="'+h(row.id)+'"><div class="source-result-body">'+body+'</div></article>';
+      }
+
+      function renderSequence(components, mainLocator='') {
+        if(!components.length)return '';
+        const sources=[...new Map(components.map(value=>[JSON.stringify([value.source_sequence_text,value.source_locator]),value])).values()];
+        return '<div class="source-detail"><strong>Sequence reported for this finding:</strong>'+sources.map(value=>
+          (value.source_sequence_text?'<blockquote>'+h(value.source_sequence_text)+'</blockquote>':'')+
+          (value.source_locator&&value.source_locator!==mainLocator?'<div class="locator">'+h(sourceLocator(value.source_locator))+'</div>':'')).join('')+
+          '<ol>'+components.map(value=>'<li value="'+Number(value.component_ordinal)+'">'+h(value.source_term)+' — '+h(roleLabel(value.source_role))+(value.phase?' · '+h(value.phase):'')+(value.simultaneous_group_id?' · Reported simultaneous group':'')+'</li>').join('')+'</ol></div>';
+      }
+
+
+      const quantity=(number,label,plural=label+'s')=>number.toLocaleString()+' '+(number===1?label:plural);
+      const sourceItem = id => state.catalogue.items.find(item=>item.facet==='source'&&item.id===id);
+      const comparableText = value => String(value || '').trim().replace(/\s+/g,' ').toLocaleLowerCase();
+      function disclosure(kind, label, rows, color='#596579', open=false, extra={}) {
+        const key=String(detailGroups.size);
+        detailGroups.set(key,{kind,label,rows,color,...extra});
+        const c=atlasCounts(rows);
+        const count=extra.countLabel || (kind==='sign' ? quantity(c.sources,'paper') : kind==='source' ? '' : quantity(c.signs,'sign'));
+        const styleKind=['source','weight'].includes(kind)?'sign':kind==='classification'?'section':kind;
+        return '<details class="browse-'+styleKind+(kind==='weight'?' weight-card':'')+'" data-browse="'+key+'" style="--group-color:'+color+'" '+(open?'open':'')+'><summary><span class="browse-name">'+h(label)+'</span>'+(extra.summaryMeta||'')+(count?'<span class="browse-count">'+count+'</span>':'')+'</summary><div class="browse-body" data-content></div></details>';
+      }
+      function signRows(rows,color,sourceScoped=false,sourceId='') {
+        return atlasGroups(rows,'sign').map(group=>disclosure('sign',group.label,group.rows,color,false,{sourceScoped,sourceId})).join('');
+      }
+      function regionRows(rows, nested=false) {
+        return orderedRegionGroups(rows)
+          .map(group=>disclosure(nested?'section':'region',group.id?group.label:'No linked region',group.rows,regionColors[group.label]||'#596579')).join('');
+      }
+      function classificationRows(rows,facet,color='#596579') {
+        return atlasClassificationGroups(rows,facet,state.catalogue.items).map(node=>classificationNode(node,facet,color)).join('');
+      }
+      function classificationNode(node,facet,color) {
+        if (!node.id) {
+          const clinical=node.rows.filter(row=>row.record_kind!=='CONTEXT_ONLY');
+          const context=node.rows.filter(row=>row.record_kind==='CONTEXT_ONLY');
+          return (clinical.length ? disclosure('classification','Classification not linked',clinical,color,false,{node:{...node,rows:clinical,directRows:clinical},facet}) : '')+
+            (context.length ? disclosure('context','Study context and comparisons',context,color,false,{countLabel:quantity(atlasCounts(context).sources,'paper')}) : '');
+        }
+        return disclosure('classification',node.label,node.rows,color,false,{node,facet});
+      }
+      function sourceAuthors(source) {
+        try {
+          const values=JSON.parse(source.authors_json||'[]');
+          if(!Array.isArray(values))return [];
+          return values.map(value=>typeof value==='string'?value:value?.display_name).map(value=>String(value||'').trim()).filter(Boolean);
+        } catch (_error) { return []; }
+      }
+      function sourceHeader(id,rows,includeCounts=false,displayedTitle='') {
+        const source=sourceItem(id)?.bibliography||{};
+        const authors=sourceAuthors(source);
+        const citation=citationText(source.citation_text);
+        const detail=displayedTitle ? citation.replace(displayedTitle,'').trim() : citation;
+        const meta=(authors.length?'<span class="paper-authors" title="'+h(authors.join(', '))+'">'+h(authors[0])+(authors.length>1?' et al.':'')+'</span>':'')+
+          (source.doi?'<a href="https://doi.org/'+h(encodeURIComponent(source.doi))+'" target="_blank" rel="noopener">'+h(source.doi)+'</a>':'');
+        return (meta?'<div class="paper-meta">'+meta+'</div>':'')+
+          (detail&&comparableText(detail)!==comparableText(displayedTitle)?'<div class="citation">'+h(detail)+'</div>':'');
+      }
+      function paperSection(paper, signLabel) {
+        const key=String(detailGroups.size);
+        detailGroups.set(key,{kind:'paper',...paper,signLabel});
+        return '<section class="paper-section"><h3>'+h(paper.label)+'</h3>'+sourceHeader(paper.id,paper.rows,false,paper.label)+
+          '<details class="paper-disclosure" data-browse="'+key+'"><summary>Results</summary><div class="paper-reading" data-content tabindex="0" role="region" aria-label="Results from '+h(paper.label)+'"></div></details></section>';
+      }
+      function fillDisclosure(element) {
+        if (!element.open || element.dataset.loaded) return;
+        const group=detailGroups.get(element.dataset.browse);
+        if (!group) return;
+        const body=element.querySelector(':scope > [data-content]');
+        element.dataset.loaded='true';
+        if(group.kind==='paper') {
+          const bibliography=sourceItem(group.id)?.bibliography||{};
+          const paperCitation=citationText(bibliography.citation_text)||citationText(bibliography.title);
+          body.innerHTML=group.rows.map(row=>renderRow(row,{signLabel:group.signLabel,single:group.rows.length===1,paperTitle:group.label,paperCitation})).join('');
+        } else if(group.kind==='sign'&&group.sourceScoped) {
+          const source=sourceItem(group.sourceId)||{};
+          const bibliography=source.bibliography||{};
+          body.innerHTML=group.rows.map(row=>renderRow(row,{signLabel:group.label,single:group.rows.length===1,paperTitle:source.label||'',paperCitation:citationText(bibliography.citation_text)||citationText(bibliography.title)})).join('');
+        } else if(group.kind==='sign') {
+          body.innerHTML=atlasGroups(group.rows,'source').map(paper=>paperSection(paper,group.label)).join('');
+        } else if(group.kind==='context') {
+          body.innerHTML=atlasGroups(group.rows,'source').map(paper=>paperSection(paper)).join('');
+        } else if(group.kind==='classification') {
+          body.innerHTML=group.node.children.map(node=>classificationNode(node,group.facet,group.color)).join('')+
+            (state.groupBy!=='region'&&state.within==='region'?regionRows(group.node.directRows,true):signRows(group.node.directRows,group.color));
+        } else if(group.kind==='region' && state.within) {
+          body.innerHTML=classificationRows(group.rows,state.within,group.color);
+        } else if(group.kind==='source') {
+          const bibliography=sourceItem(group.sourceId)?.bibliography||{};
+          body.innerHTML=sourceHeader(group.sourceId,group.rows,false,group.label)+group.rows.map(row=>renderRow(row,{paperTitle:group.label,paperCitation:citationText(bibliography.citation_text)})).join('');
+        } else if(group.kind==='weight-group') {
+          const byId=new Map(state.response.rows.map(row=>[row.id,row]));
+          body.innerHTML=group.weights.map(weight=>weightCard(weight,byId)).join('');
+        } else if(group.kind==='weight') {
+          body.innerHTML=renderWeightDetails(group.weight);
+        } else body.innerHTML=signRows(group.rows,group.color);
+      }
+
+      function renderWeighted(rows) {
+        const byId=new Map(rows.map(row=>[row.id,row]));
+        const summaries=atlasWeights(state.response,state.weightAxis)
+          .filter(weight=>weightRelationshipRows(weight,byId).length);
+        const mainOrder=weightedMainOrder(rows);
+        const metrics=new Map(summaries.map(weight=>[weight.id,weightCounts(weight,weightRelationshipRows(weight,byId))]));
+        summaries.sort((a,b)=>compareWeights(a,b,mainOrder,metrics));
+        $('#resultStatus').textContent=quantity(summaries.length,'sign');
+        const cards=state.weightSort[state.weightAxis]==='page' && state.groupBy
+          ? weightPageGroups(summaries,rows,byId).map(group=>disclosure('region',group.label,group.rows||rows,group.color,false,{kind:'weight-group',weights:group.weights,countLabel:quantity(group.weights.length,'sign')})).join('')
+          : summaries.map(weight=>weightCard(weight,byId)).join('');
+        return cards||'<p class="empty">No evidence matches this selection.</p>';
+      }
+      function weightAxisValues(row) {
+        if(state.weightAxis==='LOCALIZATION')return sourceAnatomy(row)
+          .filter(value=>value.item_id&&value.target_id&&value.target_label)
+          .map(value=>({id:value.target_id,label:value.target_label,color:regionColors[value.target_label]||'#0e9db0'}));
+        return rowFacetValues(row,'laterality').map(value=>({id:value.id,label:value.label,color:lateralityColors[value.id.replace(/^LATERALITY:/,'')]||'#0e9db0'}));
+      }
+      function weightRelationshipRows(weight,byId) {
+        return (weight.result_ids||[]).map(id=>byId.get(id)).filter(row=>row&&weightAxisValues(row).length);
+      }
+      function weightRelationships(rows) {
+        return [...new Map(rows.flatMap(weightAxisValues).map(value=>[value.id,value])).values()];
+      }
+      function weightCounts(weight,contexts) {
+        const contributions=weight.contributions||[];
+        return {
+          manuscripts:new Set(contexts.map(row=>row.source?.id).filter(Boolean)).size,
+          contributors:new Set(contributions.filter(value=>Number(value.final_weight)>0).map(value=>value.source_id).filter(Boolean)).size,
+          findings:atlasCounts(contexts).findings,
+          statistics:new Set(contexts.flatMap(row=>row.statistic_ids||[])).size,
+          support:contributions.reduce((sum,value)=>sum+(weightPending(value)?0:Number(value.final_weight)||0),0),
+          pending:contributions.some(weightPending),
+        };
+      }
+      function weightPending(value) {
+        return value.final_weight==null||['NOT_APPLIED_WEIGHT_METADATA_UNRESOLVED','NOT_APPLIED_STUDY_WEIGHT_PENDING'].includes(value.weight_status);
+      }
+      function weightCard(weight,byId) {
+        const contexts=weightRelationshipRows(weight,byId);
+        const counts=weightCounts(weight,contexts);
+        return disclosure('weight',weight.label,contexts,'#315a68',false,{weight,
+          countLabel:quantity(counts.manuscripts,'paper'),
+          summaryMeta:weightSummaryMeta(weight,counts,state.weightAxis==='LOCALIZATION'
+            ? uniqueValues(contexts,'region').map(value=>({...value,color:regionColors[value.label]||'#596579'}))
+            : weightRelationships(contexts))});
+      }
+      function weightedMainOrder(rows) {
+        const order=new Map();
+        const addSigns=values=>atlasGroups(values,'sign').forEach(group=>{if(group.id&&!order.has(group.id))order.set(group.id,order.size);});
+        const addRegions=values=>orderedRegionGroups(values)
+          .forEach(group=>addSigns(group.rows));
+        const addClassifications=(values,facet)=>{
+          const visit=node=>{node.children.forEach(visit);state.within==='region'?addRegions(node.directRows):addSigns(node.directRows);};
+          atlasClassificationGroups(values,facet,state.catalogue.items).forEach(visit);
+        };
+        if(state.groupBy==='region') orderedRegionGroups(rows)
+          .forEach(group=>state.within?addClassifications(group.rows,state.within):addSigns(group.rows));
+        else if(state.groupBy) addClassifications(rows,state.groupBy);
+        else addSigns(rows);
+        return order;
+      }
+      function compareWeights(a,b,mainOrder,metrics) {
+        const left=metrics.get(a.id),right=metrics.get(b.id);
+        const sort=state.weightSort[state.weightAxis];
+        if(sort==='name')return a.label.localeCompare(b.label);
+        if(sort==='manuscripts')return right.manuscripts-left.manuscripts||right.statistics-left.statistics||a.label.localeCompare(b.label);
+        if(sort==='statistics')return right.statistics-left.statistics||right.manuscripts-left.manuscripts||a.label.localeCompare(b.label);
+        if(sort==='weight')return right.support-left.support||right.manuscripts-left.manuscripts||a.label.localeCompare(b.label);
+        return (mainOrder.get(a.sign_id)??Number.MAX_SAFE_INTEGER)-(mainOrder.get(b.sign_id)??Number.MAX_SAFE_INTEGER)||a.label.localeCompare(b.label);
+      }
+      function weightPageGroups(summaries,rows,byId) {
+        if(!state.groupBy)return [{label:'A–Z semiology',color:'#344a67',weights:summaries}];
+        const definitions=state.groupBy==='region'
+          ? orderedRegionGroups(rows).map(group=>({...group,label:group.id?group.label:'No linked region',color:regionColors[group.label]||'#596579'}))
+          : weightClassificationGroups(rows,state.groupBy);
+        const represented=new Set(),groups=[];
+        for(const definition of definitions) {
+          const resultIds=new Set(definition.rows.map(row=>row.id));
+          const weights=summaries.filter(weight=>weightRelationshipRows(weight,byId).some(row=>resultIds.has(row.id)));
+          if(!weights.length)continue;
+          weights.forEach(weight=>represented.add(weight.id));
+          groups.push({label:definition.label,color:definition.color,rows:definition.rows,weights});
+        }
+        const remaining=summaries.filter(weight=>!represented.has(weight.id));
+        if(remaining.length)groups.push({label:'Other evidence-bearing signs',color:'#596579',weights:remaining});
+        return groups;
+      }
+      function weightClassificationGroups(rows,facet) {
+        const groups=[];
+        const visit=(node,path=[])=>{
+          const labels=[...path,node.id?node.label:'Classification not linked'];
+          if(node.directRows.length)groups.push({...node,rows:node.directRows,label:labels.join(' → '),color:'#344a67'});
+          node.children.forEach(child=>visit(child,labels));
+        };
+        atlasClassificationGroups(rows,facet,state.catalogue.items).forEach(node=>visit(node));
+        return groups;
+      }
+      function weightSummaryMeta(weight,counts,relationships) {
+        const targets=relationships.map(value=>'<span class="chip weight-target" style="--target-color:'+h(value.color)+'">'+h(value.label)+'</span>').join('');
+        const pipCount=Math.min(3,Math.max(1,counts.manuscripts));
+        const pips='<span class="weight-pips" role="img" aria-label="'+h(quantity(counts.manuscripts,'paper'))+'" title="'+h(quantity(counts.manuscripts,'paper'))+'">'+[0,1,2].map(index=>'<i class="'+(index<pipCount?'on':'')+'"></i>').join('')+'</span>';
+        const support=weight.complete&&!counts.pending&&counts.support>0
+          ? '<span class="weight-support">Score '+h(counts.support.toLocaleString(undefined,{maximumFractionDigits:2}))+'</span>' : '';
+        return '<span class="weight-summary-meta">'+targets+pips+support+'</span>';
+      }
+      function renderWeightDetails(weight) {
+        const byId=new Map(state.response.rows.map(row=>[row.id,row]));
+        const rows=(weight.result_ids||[]).map(id=>byId.get(id)).filter(Boolean);
+        return atlasGroups(rows,'source').map(paper=>paperSection(paper,weight.label)).join('');
+      }
+
+      function renderResults() {
+        detailGroups.clear();
+        renderRegionControls();
+        const rows=state.response?.rows||[];
+        const view=state.view;
+        const titles={browse:'Signs',weighted:'Weighted evidence',sources:'Sources'};
+        $('#viewHeading').textContent=titles[view];
+        $('#resultStatus').textContent=state.response
+          ? (rows.length?(view==='sources'?quantity(atlasCounts(rows).sources,'paper'):quantity(atlasCounts(rows).signs,'sign')):'No results match the current search and filters.')
+          : (state.loading?'Loading evidence…':'Evidence results are unavailable.');
+        const weightedPage=view==='weighted'&&state.weightSort[state.weightAxis]==='page';
+        $('#browseControls').hidden=view!=='browse'&&!weightedPage;
+        $('#weightAxisControl').hidden=view!=='weighted';
+        $('#weightControls').hidden=view!=='weighted';
+        if(view==='weighted') {
+          $('#weightSort').value=state.weightSort[state.weightAxis];
+          syncToolbarChooser($('#weightSort'));
+          $('#weightAxisTabs').querySelectorAll('[data-weight-axis]').forEach(item=>item.setAttribute('aria-pressed',String(item.dataset.weightAxis===state.weightAxis)));
+        }
+        $('#viewTabs').querySelectorAll('button').forEach(button=>{
+          const active=button.dataset.view===view;
+          button.setAttribute('aria-selected',String(active));button.tabIndex=active?0:-1;
+        });
+        $('#results').setAttribute('aria-labelledby','tab-'+view);
+        $('#viewNote').textContent='';
+        $('#viewNote').hidden=true;
+        if(!state.response) {
+          if(state.loading) {
+            $('#results').className='loading';
+            $('#results').textContent='Loading evidence…';
+          }
+          return;
+        }
+        $('#results').className=rows.length?'':'empty';
+        let content='';
+        if(view==='sources') content=atlasGroups(rows,'source').map(paper=>paperSection(paper)).join('');
+        else if(view==='weighted') content=renderWeighted(rows);
+        else if(!state.groupBy)content=signRows(rows,'#344a67');
+        else if(state.groupBy==='region')content=regionRows(rows);
+        else content=classificationRows(rows,state.groupBy);
+        $('#results').innerHTML=content||'<p class="empty">No evidence results match these selections.</p>';
+      }
+
+      function renderFailure(message, retry) {
+        state.loading = false;
+        if (state.response) renderResults();
+        const notice = `<div class="error request-error">${h(message)}<button class="quiet retry" type="button" data-retry>Retry</button></div>`;
+        if (state.response) $("#results").insertAdjacentHTML("afterbegin", notice);
+        else {
+          $("#results").className = "";
+          $("#results").innerHTML = notice;
+        }
+        $("#results [data-retry]").addEventListener("click", retry);
+        renderMap();
+      }
+
+      async function runQuery() {
+        const request = requestContext();
+        state.loading = true;
+        removeFailure();
+        if (state.response) $("#resultStatus").textContent = "Updating results…";
+        else {
+          $("#results").className = "loading";
+          $("#results").textContent = "Loading evidence…";
+        }
+        renderMap();
+        const parameters = new URLSearchParams({
+          q: state.query,
+          filters: JSON.stringify(state.filters),
+          limit: "all",
+        });
+        try {
+          const payload = validateQuery(await atlasData(requestUrl(`/api/query?${parameters}`, request), request.controller.signal));
+          if (!isCurrent(request)) return;
+          state.response = payload;
+          resultCounts = new Map(Object.entries(payload.facets).map(([id, values]) => [id, new Map(values.map(value => [value.id, value.count]))]));
+          finishRequest(request);
+          const responseIds = new Set(payload.rows.map(row=>row.id));
+          if(state.mapResultIds.size && [...state.mapResultIds].some(id=>!responseIds.has(id))) {
+            state.mapAnatomy.clear();
+            state.mapLabels.clear();
+            state.mapRegions.clear();
+            state.mapResultIds.clear();
+          }
+          renderFilters();
+          renderMap();
+          renderResults();
+          if (state.pendingMapResult) openMapResult(state.pendingMapResult);
+        } catch (_error) {
+          if (!isCurrent(request)) return;
+          finishRequest(request);
+          $("#resultStatus").textContent = "Evidence results are unavailable.";
+          renderFailure(state.response
+            ? `${request.timedOut ? "The update took longer than 30 seconds." : "Could not update the evidence results."} The previous results remain below.`
+            : request.timedOut ? "Evidence results took longer than 30 seconds to load. Please retry."
+              : "Could not load evidence results. Check that the local review page is available.", runQuery);
+        }
+      }
+
+      async function start() {
+        const request = requestContext();
+        state.loading = true;
+        removeFailure();
+        setSearchReady(false);
+        try {
+          const payload = validateCatalogue(await atlasData(requestUrl("/api/catalogue", request), request.controller.signal));
+          if (!isCurrent(request)) return;
+          state.catalogue = payload;
+          if (payload.release?.version && payload.release?.released_at) {
+            const release = payload.release;
+            const date = new Date(release.released_at).toLocaleDateString('en-US', {year:'numeric',month:'short',day:'numeric',timeZone:'UTC'});
+            $('#releaseNote').textContent = `v${release.version} · Updated ${date}`;
+            $('#releaseNote').hidden = false;
+            $('#releaseNotes').innerHTML = `<summary>What's new in v${h(release.version)}</summary><ul>${(release.changes || []).map(change=>`<li>${h(change)}</li>`).join('')}</ul>`;
+            $('#releaseNotes').hidden = false;
+          }
+          catalogueItems = new Map(payload.facets.map(facet => [facet.id, payload.items.filter(item => item.facet === facet.id)]));
+          catalogueLabels = new Map([...catalogueItems].map(([id, items]) => [id, new Map(items.map(item => [item.id, item.label]))]));
+          finishRequest(request);
+          setSearchReady(true);
+          renderFilters();
+          renderGroupChoices();
+          renderMap();
+          await runQuery();
+        } catch (_error) {
+          if (!isCurrent(request)) return;
+          finishRequest(request);
+          $("#resultStatus").textContent = "Atlas data are unavailable.";
+          renderFailure(request.timedOut
+            ? "Atlas data took longer than 30 seconds to load. Please retry."
+            : "Could not open the atlas. Check that the local review page is available.", start);
+        }
+      }
+
+      $("#searchForm").addEventListener("submit", event => {
+        event.preventDefault();
+        state.query = $("#search").value.trim();
+        runQuery();
+      });
+      $("#search").addEventListener("input", event => { $("#clearSearch").hidden = !event.target.value; });
+      $("#clearSearch").addEventListener("click", () => {
+        $("#search").value = "";
+        $("#clearSearch").hidden = true;
+        state.query = "";
+        runQuery();
+      });
+      $("#clearAll").addEventListener("click", () => {
+        state.filters = {};
+        state.query = "";
+        state.pendingMapResult = null;
+        state.optionSearch = {};
+        $("#filters").querySelectorAll("details[open]").forEach(menu => { menu.open = false; });
+        state.mapAnatomy.clear();
+        state.mapLabels.clear();
+        state.mapRegions.clear();
+        state.mapResultIds.clear();
+        $("#search").value = "";
+        $("#clearSearch").hidden = true;
+        renderFilters();
+        runQuery();
+      });
+      $("#filters").addEventListener("change", event => {
+        if (event.target.id === "anatomyReference") {
+          state.anatomyReference = event.target.value;
+          state.optionSearch.anatomy = "";
+          renderFilters();
+        } else if (event.target.type === "checkbox") toggleFilter(event.target.closest("[data-facet]").dataset.facet, JSON.parse(event.target.dataset.items), event.target.checked);
+      });
+      $("#filters").addEventListener("input", event => {
+        const facetId = event.target.dataset.choiceSearch;
+        if (facetId) { state.optionSearch[facetId] = event.target.value; renderChoiceList(facetId); }
+      });
+      $("#filters").addEventListener("toggle", event => {
+        if (!event.target.matches('details[data-facet]') || !event.target.open) return;
+        $("#filters").querySelectorAll('details[open]').forEach(menu => { if (menu !== event.target) menu.open=false; });
+        renderChoiceList(event.target.dataset.facet);
+      }, true);
+      document.addEventListener("click", event => {
+        const clickedPath = event.composedPath();
+        $("#filters").querySelectorAll("details[open]").forEach(menu => { if (!clickedPath.includes(menu)) menu.open = false; });
+        if (openToolbarChooser && !clickedPath.includes(openToolbarChooser.root)) closeToolbarChooser(openToolbarChooser);
+      });
+      document.addEventListener("keydown", event => {
+        if (event.key !== "Escape") return;
+        const menus = [...$("#filters").querySelectorAll("details[open]")];
+        if (!menus.length) return;
+        event.preventDefault();
+        menus.forEach(menu => { menu.open = false; });
+        menus[0].querySelector("summary").focus();
+      });
+      $("#activeFilters").addEventListener("click", event => {
+        const button = event.target.closest("button");
+        if (button) toggleFilter(button.dataset.facet, JSON.parse(button.dataset.items), false);
+      });
+      $("#regionButtons").addEventListener("click", event => {
+        const button = event.target.closest("button[data-region]");
+        if (button) toggleFilter("region", button.dataset.region);
+      });
+      $('#regionSort').addEventListener('change', event => {state.regionSort=event.target.value;renderResults();});
+      $("#mapView").addEventListener("change", event => {
+        state.mapView = event.target.value;
+        renderMap();
+      });
+      $("#mapHemisphere").addEventListener("change", event => { state.mapHemisphere = event.target.value; renderMap(); });
+      $("#mapCounts").addEventListener("change", event => { state.mapCounts = event.target.checked; renderMap(); });
+      function selectMapMarker(target) {
+        if (!state.response) return;
+        const marker = target.closest("[data-anatomy]");
+        if (!marker) return;
+        const anatomyId = marker.dataset.anatomy;
+        state.mapAnatomy = selected("anatomy").includes(anatomyId) ? new Set() : new Set([anatomyId]);
+        state.mapLabels = new Map();
+        state.mapRegions.clear();
+        state.mapResultIds.clear();
+        toggleFilter("anatomy", anatomyId);
+      }
+      $("#brainMap").addEventListener("click", event => selectMapMarker(event.target));
+      $("#brainMap").addEventListener("keydown", event => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          selectMapMarker(event.target);
+        }
+      });
+      $("#groupBy").addEventListener("change", event => { state.pendingMapResult = null; state.groupBy = event.target.value; renderGroupChoices(); renderResults(); });
+      $("#results").addEventListener("click", event => {
+        const button = event.target.closest("button[data-anatomy]");
+        if (!button) return;
+        state.mapAnatomy = new Set(JSON.parse(button.dataset.anatomy));
+        state.mapLabels = new Map(Object.entries(JSON.parse(button.dataset.anatomyLabels)));
+        state.mapRegions = new Set(JSON.parse(button.dataset.regions));
+        state.mapResultIds = new Set(JSON.parse(button.dataset.results));
+        const views = state.catalogue.maps?.views || {};
+        if (!markerRows(mapConfig()).some(marker => state.mapAnatomy.has(marker.anatomy_id))) state.mapView = Object.keys(views).find(id => markerRows(views[id]).some(marker => state.mapAnatomy.has(marker.anatomy_id))) || state.mapView;
+        renderMap();
+        $("#mapPanel").scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+
+
+      $('#results').addEventListener('toggle', event => {
+        if(event.target.matches('details[data-browse]')) fillDisclosure(event.target);
+      },true);
+      $('#within').addEventListener('change', event => {state.pendingMapResult=null;state.within=event.target.value; renderResults();});
+      $('#expandGroups').addEventListener('click',()=>{
+        $('#results').querySelectorAll(':scope > details, :scope > .weight-group > details, :scope > .paper-section > details').forEach(element=>{element.open=true;fillDisclosure(element);});
+        $('#results').querySelectorAll('.browse-section').forEach(element=>{element.open=true;fillDisclosure(element);});
+      });
+      $('#collapseGroups').addEventListener('click',()=>$('#results').querySelectorAll('details[open]').forEach(element=>{element.open=false;}));
+      $('#surfaceTabs').addEventListener('click',event=>{const button=event.target.closest('[data-surface]');if(button){state.mapView=button.dataset.surface;renderMap();}});
+      $('#hemisphereTabs').addEventListener('click',event=>{const button=event.target.closest('[data-hemisphere]');if(button){state.mapHemisphere=button.dataset.hemisphere;renderMap();}});
+      function openMapResult(id) {
+        if(!id)return;
+        if(state.loading){state.pendingMapResult=id;return;}
+        state.pendingMapResult=null;
+        if(!state.response?.rows.some(row=>row.id===id))return;
+        state.view='browse';state.groupBy='';renderGroupChoices();renderResults();
+        let container=$('#results');
+        while(container) {
+          const element=[...container.querySelectorAll(':scope > details[data-browse], :scope > .paper-section > details[data-browse]')].find(item=>detailGroups.get(item.dataset.browse)?.rows.some(row=>row.id===id));
+          if(!element)break;
+          element.open=true;fillDisclosure(element);
+          container=element.querySelector(':scope > [data-content]');
+        }
+        const result=[...container.querySelectorAll('.source-result')].find(item=>item.dataset.result===id);
+        if(result){for(let parent=result;parent&&parent!==$('#results');parent=parent.parentElement)if(parent.tagName==='DETAILS')parent.open=true;result.scrollIntoView({behavior:'smooth',block:'center'});}
+      }
+      $('#mapResults').addEventListener('click',event=>openMapResult(event.target.closest('[data-result]')?.dataset.result));
+
+
+      $('#viewTabs').addEventListener('click',event=>{
+        const button=event.target.closest('[data-view]');
+        if(button){state.pendingMapResult=null;state.view=button.dataset.view;renderResults();}
+      });
+      $('#viewTabs').addEventListener('keydown',event=>{
+        if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;
+        event.preventDefault();
+        const buttons=[...$('#viewTabs').querySelectorAll('[role=tab]')];
+        const index=buttons.indexOf(document.activeElement);
+        const next=event.key==='Home'?0:event.key==='End'?buttons.length-1:(index+(event.key==='ArrowRight'?1:-1)+buttons.length)%buttons.length;
+        buttons[next].click();buttons[next].focus();
+      });
+      $('#weightAxisTabs').addEventListener('click',event=>{
+        const button=event.target.closest('[data-weight-axis]');
+        if(!button)return;
+        state.weightAxis=button.dataset.weightAxis;
+        renderResults();
+      });
+      $('#weightSort').addEventListener('change',event=>{state.weightSort[state.weightAxis]=event.target.value;renderResults();});
+      $('#weightHelp').addEventListener('click',()=>$('#weightMethod').showModal());
+      ['groupBy','within','regionSort','weightSort'].forEach(id=>installToolbarChooser($('#'+id)));
+      start();
+    })();
+  </script>
+</body>
+</html>

@@ -13,6 +13,9 @@ validate:
 
 build: validate
 	python3 generator/gen_study.py
+	git restore --source=HEAD --worktree docs
+	git clean -fX docs
+	python3 tools/validate_atlas_bundle.py
 
 check-sync: build
 	git diff --exit-code docs/seizure_semiology_localization.html docs/index.html
