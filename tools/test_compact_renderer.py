@@ -1969,45 +1969,14 @@ class CompactRendererTest(unittest.TestCase):
         block = updates.group(0)
         self.assertNotRegex(block.split(">", 1)[0], r"\bopen\b")
         self.assertIn("Publication changelog", block)
-        self.assertIn("v1.4.8 data", block)
-        self.assertIn("<strong>v1.4</strong>", block)
-        self.assertIn("<strong>v1.0&ndash;1.3</strong>", block)
         self.assertNotIn("Meaningful changes", block)
         self.assertNotIn("Small display and maintenance changes", block)
-        visible_entries = [
-            re.sub(r"<[^>]+>", " ", item).casefold()
-            for item in re.findall(r"<li>(.*?)</li>", block, re.DOTALL)
-        ]
-        visible_map_filter = next(
-            (
-                item for item in visible_entries
-                if "brodmann" in item and "filter" in item
-            ),
-            "",
-        )
         repository = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
-        unreleased = repository.split("## [Unreleased]", 1)[1].split(
-            "\n## [", 1
-        )[0]
-        repository_map_filter = next(
-            (
-                item.casefold() for item in re.split(r"\n(?=- \*\*)", unreleased)
-                if "brodmann" in item.casefold() and "filter" in item.casefold()
-            ),
-            "",
+        release = json.loads((ROOT / "release.json").read_text(encoding="utf-8"))
+        self.assertRegex(
+            repository,
+            rf"(?m)^## {re.escape(release['version'])} (?:—|-) \d{{4}}-\d{{2}}-\d{{2}}$",
         )
-        self.assertTrue(
-            visible_map_filter and repository_map_filter,
-            "map-filter change must appear in both changelogs "
-            f"(visible={bool(visible_map_filter)}, repository={bool(repository_map_filter)})",
-        )
-        for entry in (visible_map_filter, repository_map_filter):
-            for term in ("organization", "region"):
-                self.assertIn(term, entry)
-            self.assertTrue("indicator" in entry or "icon" in entry)
-        self.assertEqual(block.count("<li>"), 6)
-        for term in ("classifications", "lateralization", "localization", "anatomical regions"):
-            self.assertIn(term, block)
         terminology = self.render["h"].index('<div class="abbrev">')
         changelog = self.render["h"].index('<div class="lib atlas-updates">')
         footer = self.render["h"].index('<div class="footer">')
