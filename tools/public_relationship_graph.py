@@ -2308,25 +2308,35 @@ class PublicRelationshipGraph:
         for row in self.citation_links:
             finding_ref = str(row["finding_ref"])
             citation_id = str(row["citation_id"])
-            cited_work_id = str(row["cited_work_id"])
+            cited_work_id = (
+                str(row["cited_work_id"])
+                if row["cited_work_id"] is not None else None
+            )
             finding = self.findings.get(finding_ref)
             pair = (finding_ref, citation_id)
+            evidence_role = str(row["evidence_role"])
+            resolution_status = str(row["resolution_status"])
+            identity_valid = (
+                cited_work_id in self.works
+                and resolution_status == "EXACT_STRUCTURED_LINK"
+                if cited_work_id is not None
+                else evidence_role == "CITED_STUDY_RESTATEMENT"
+                and resolution_status == "SOURCE_NATIVE_CITATION_ONLY"
+            )
             if (
                 not finding
                 or pair in citation_pairs
-                or cited_work_id not in self.works
-                or str(row["evidence_role"])
-                != str(finding.get("evidence_role") or "")
+                or not identity_valid
+                or evidence_role != str(finding.get("evidence_role") or "")
                 or str(row["citation_relation"])
                 != (
                     "CITED_RESTATEMENT_OF"
-                    if str(row["evidence_role"]) == "CITED_STUDY_RESTATEMENT"
+                    if evidence_role == "CITED_STUDY_RESTATEMENT"
                     else "CITES_WORK"
                 )
                 or not str(row["citation_as_printed"])
                 or not str(row["source_locator"])
                 or not str(row["source_excerpt"])
-                or str(row["resolution_status"]) != "EXACT_STRUCTURED_LINK"
                 or not str(row["resolution_basis"])
                 or row["independent_evidence"] is not False
                 or str(row["activation_state"]) != "ACTIVE"
@@ -2345,6 +2355,7 @@ class PublicRelationshipGraph:
                 str(row["citation_relation"]), str(row["citation_id"]),
             )
             for row in self.citation_links
+            if row["cited_work_id"] is not None
         }
         actual_refs = set()
         for row in self.reference_rows("FINDING_CITED_WORK"):

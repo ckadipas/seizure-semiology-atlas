@@ -1,13 +1,12 @@
 {
-  "version": "1.5.0",
-  "released_at": "2026-09-08T07:13:54Z",
+  "version": "1.5.1",
+  "released_at": "2026-09-08T18:15:19Z",
   "changes": [
-    "A simpler layout for Signs, Weighted evidence, and Sources, with one search and consistent filters.",
-    "Shared regional ordering and foldable groups across Signs and Weighted evidence, with separate localization and lateralization views.",
-    "Ordered classification menus, evidence classes, and anatomy choices, with searchable lists.",
-    "Paper citations with recorded authors and DOI links, plus full-width, scrollable results.",
-    "Readable statistics tables that show shared context once and preserve differences between results.",
-    "Brodmann selections show the area number and name beneath the map. A short page guide explains navigation and scores.",
-    "Source-supported region and classification links are available through the same evidence records across the site."
+    "Added results from Rech et al. (2019), Zhou et al. (2022), Ghita et al. (2026), and Lu et al. (2026), with their authors and DOI links.",
+    "Preserved manuscript-defined anatomical regions in regional browsing.",
+    "Kept stimulation findings, seizure observations, study methods, and cited results distinct within each paper.",
+    "Simplified paper submissions to a paper link or attachment and an optional note.",
+    "Restored the release date and time in the banner, shown in Central Time.",
+    "Added collapsible filters below search and a collapsible Brodmann overview that opens by default."
   ]
 }

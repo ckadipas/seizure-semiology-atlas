@@ -5,15 +5,15 @@ Copyright (c) 2026 CM Kadipasaoglu
 The curated dataset (data/), enrichment findings, corpus summary, and prose
 documentation in this repository are licensed under:
 
-    Creative Commons Attribution-ShareAlike 4.0 International
-    (CC BY-SA 4.0)
+    Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International
+    (CC BY-NC-SA 4.0)
 
-Human-readable summary:  https://creativecommons.org/licenses/by-sa/4.0/
-Full legal code:         https://creativecommons.org/licenses/by-sa/4.0/legalcode
+Human-readable summary:  https://creativecommons.org/licenses/by-nc-sa/4.0/
+Full legal code:         https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode
 
-You may share and adapt this material with attribution and under the same
-license. This is an educational reference compiled from the scientific
-literature.
+You may share and adapt this material for noncommercial purposes with
+attribution and under the same license. This is an educational reference
+compiled from the scientific literature.
 
 Preferred attribution:
 
@@ -24,6 +24,10 @@ The license applies only to original atlas content and the original selection,
 coordination, and arrangement of the compiled material. It does not claim
 ownership of scientific facts, clinical concepts, source publications, or
 third-party material.
+
+The copyright holder may separately authorize commercial uses of original
+content they own. This license does not revoke permissions granted for earlier
+versions under CC BY-SA 4.0.
 
 This repository does NOT redistribute the source journal articles themselves;
 only short, attributed factual extractions are included, consistent with fair

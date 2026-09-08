@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-projection="static" data-snapshot="217f894b33c6b150f1890d18f49b00cdb426b64b77336ae8838affc3174273f8">
+<html lang="en" data-projection="static" data-snapshot="b7b387b339c24da61262fe6f3327d3b682c2bafedbd923ea644475f1dea12e30">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -51,7 +51,12 @@
     .primary, .quiet { min-height: 43px; border-radius: 9px; padding: 8px 14px; font-weight: 750; }
     .primary { border: 1px solid var(--teal-d); color: #fff; background: var(--teal); }
     .quiet { border: 1px solid var(--line); color: var(--navy); background: #fff; }
-    .filters { display: grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap: 8px; margin-top: 12px; }
+    .filter-disclosure { margin-top:12px; }
+    .filter-disclosure > summary { display:flex; align-items:center; gap:7px; width:max-content; list-style:none; color:var(--navy); cursor:pointer; font-size:.82rem; font-weight:700; }
+    .filter-disclosure > summary::-webkit-details-marker { display:none; }
+    .filter-disclosure > summary::before { content:'▸'; color:var(--teal-d); }
+    .filter-disclosure[open] > summary::before { content:'▾'; }
+    .filters { display: grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap: 8px; margin-top: 10px; }
     .facet { position: relative; }
     .facet summary { list-style: none; min-height:40px; border: 1px solid var(--line); border-radius: 8px; background: #f8fafc; color: var(--navy); padding: 10px 26px 10px 10px; font-size: .82rem; font-weight: 650; cursor: pointer; }
     .facet summary::-webkit-details-marker { display: none; }
@@ -80,7 +85,12 @@
     .map-count-toggle input { margin:0; accent-color:var(--teal); }
     .active-filters { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
     .active-filter { border: 1px solid #b9dfe4; border-radius: 999px; background: #eef9fa; color: #0a6875; padding: 3px 9px; font-size: .72rem; }
-    .map-panel { padding: 15px; margin: 16px 0; }
+    .map-panel.browse-section { margin:16px 0; padding:0; border-left:1px solid var(--line); overflow:hidden; --group-color:var(--navy); }
+    .map-panel > summary { border-radius:11px; padding:11px 15px; }
+    .map-panel > summary .browse-name { flex:0 1 auto; }
+    .map-panel > summary .map-count-toggle { color:inherit; margin-left:10px; font-weight:500; }
+    .map-panel[open] > summary { border-radius:11px 11px 6px 6px; }
+    .map-panel-body { padding:15px; }
     .section-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
     .section-head h2 { margin: 0; color: var(--navy); font-size: 1rem; }
     .section-head p { margin: 2px 0 0; color: var(--muted); font-size: .75rem; }
@@ -329,30 +339,35 @@
         <button class="primary" type="submit" disabled>Search</button>
         <button id="clearAll" class="quiet" type="button" disabled>Clear filters</button>
       </form>
-      <div id="filters" class="filters"></div>
+      <details class="filter-disclosure">
+        <summary>Filters</summary>
+        <div id="filters" class="filters"></div>
+      </details>
       <div id="activeFilters" class="active-filters" aria-live="polite"></div>
     </section>
 
-    <section id="mapPanel" class="panel map-panel">
-      <div class="section-head">
-        <div>
-          <div class="map-title-row"><h2>Brodmann overview</h2><label class="map-count-toggle"><input id="mapCounts" type="checkbox"> Show counts</label></div>
-          <p>Select a numbered area to filter the evidence.</p>
+    <details id="mapPanel" class="panel map-panel browse-section" open>
+      <summary><span class="browse-name">Brodmann overview</span><label class="map-count-toggle"><input id="mapCounts" type="checkbox"> Show counts</label></summary>
+      <div class="map-panel-body">
+        <div class="section-head">
+          <div>
+            <p>Select a numbered area to filter the evidence.</p>
+          </div>
+          <div class="map-controls">
+            <div id="mapViewWrap" hidden><div id="surfaceTabs" class="segmented" role="tablist" aria-label="Surface view"></div><select id="mapView" hidden aria-label="Surface"></select></div>
+            <div id="hemisphereTabs" class="segmented" role="group" aria-label="Hemisphere" title="Illustration orientation; laterality is an independent filter."><button type="button" data-hemisphere="left" aria-pressed="true">Left</button><button type="button" data-hemisphere="right" aria-pressed="false">Right</button></div><select id="mapHemisphere" hidden aria-label="Hemisphere"><option value="left">Left</option><option value="right">Right</option></select>
+          </div>
         </div>
-        <div class="map-controls">
-          <div id="mapViewWrap" hidden><div id="surfaceTabs" class="segmented" role="tablist" aria-label="Surface view"></div><select id="mapView" hidden aria-label="Surface"></select></div>
-          <div id="hemisphereTabs" class="segmented" role="group" aria-label="Hemisphere" title="Illustration orientation; laterality is an independent filter."><button type="button" data-hemisphere="left" aria-pressed="true">Left</button><button type="button" data-hemisphere="right" aria-pressed="false">Right</button></div><select id="mapHemisphere" hidden aria-label="Hemisphere"><option value="left">Left</option><option value="right">Right</option></select>
+        <div class="map-layout">
+          <div class="brain-figure"><div id="brainMap" class="brain-map" aria-label="Brodmann map"></div><div id="mapSelection" class="brain-caption" aria-live="polite"></div></div>
+          <div class="map-note">
+            <strong id="mapHeading">Select a result to inspect its anatomy</strong>
+            <span id="mapMessage">Choose a finding below to highlight its reported anatomy on the map.</span>
+            <div id="mapResults" class="map-results"></div>
+          </div>
         </div>
       </div>
-      <div class="map-layout">
-        <div class="brain-figure"><div id="brainMap" class="brain-map" aria-label="Brodmann map"></div><div id="mapSelection" class="brain-caption" aria-live="polite"></div></div>
-        <div class="map-note">
-          <strong id="mapHeading">Select a result to inspect its anatomy</strong>
-          <span id="mapMessage">Choose a finding below to highlight its reported anatomy on the map.</span>
-          <div id="mapResults" class="map-results"></div>
-        </div>
-      </div>
-    </section>
+    </details>
 
     <section class="panel results-panel" id="lowerPanel">
       <div id="viewTabs" class="view-tabs" role="tablist" aria-label="Evidence views">
@@ -1457,7 +1472,7 @@
           state.catalogue = payload;
           if (payload.release?.version && payload.release?.released_at) {
             const release = payload.release;
-            const date = new Date(release.released_at).toLocaleDateString('en-US', {year:'numeric',month:'short',day:'numeric',timeZone:'UTC'});
+            const date = new Date(release.released_at).toLocaleString('en-US', {year:'numeric',month:'short',day:'numeric',hour:'numeric',minute:'2-digit',timeZone:'America/Chicago',timeZoneName:'short'});
             $('#releaseNote').textContent = `v${release.version} · Updated ${date}`;
             $('#releaseNote').hidden = false;
             $('#releaseNotes').innerHTML = `<summary>What's new in v${h(release.version)}</summary><ul>${(release.changes || []).map(change=>`<li>${h(change)}</li>`).join('')}</ul>`;
@@ -1551,6 +1566,7 @@
         renderMap();
       });
       $("#mapHemisphere").addEventListener("change", event => { state.mapHemisphere = event.target.value; renderMap(); });
+      $(".map-count-toggle").addEventListener("click", event => event.stopPropagation());
       $("#mapCounts").addEventListener("change", event => { state.mapCounts = event.target.checked; renderMap(); });
       function selectMapMarker(target) {
         if (!state.response) return;
@@ -1581,6 +1597,7 @@
         const views = state.catalogue.maps?.views || {};
         if (!markerRows(mapConfig()).some(marker => state.mapAnatomy.has(marker.anatomy_id))) state.mapView = Object.keys(views).find(id => markerRows(views[id]).some(marker => state.mapAnatomy.has(marker.anatomy_id))) || state.mapView;
         renderMap();
+        $("#mapPanel").open = true;
         $("#mapPanel").scrollIntoView({ behavior: "smooth", block: "start" });
       });
 
