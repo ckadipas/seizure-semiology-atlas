@@ -1,7 +1,7 @@
 name: Intake acknowledgement
 
-# When a submission issue is opened (any issue that attaches a document or photos),
-# post a short receipt so the maintainer and submitter know the next step. An
+# When a paper-intake issue is opened, post a short receipt so the maintainer
+# and submitter know the next step. An
 # "approved" label registers the request for private Gate A preparation. This
 # workflow only comments and is safe to run on every qualifying opened issue.
 
@@ -14,8 +14,8 @@ permissions:
 
 jobs:
   ack:
-    # Only acknowledge issues that actually carry an attachment (a submission).
-    if: contains(github.event.issue.body, 'user-attachments')
+    # The issue form applies this label to DOI-, link-, and attachment-based submissions.
+    if: contains(github.event.issue.labels.*.name, 'intake')
     runs-on: ubuntu-latest
     steps:
       - env:

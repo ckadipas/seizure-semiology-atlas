@@ -1,64 +1,26 @@
 name: "📄 Submit a paper for intake"
-description: Propose a new paper/resource to be screened, categorized, and integrated.
-title: "[intake] <Author YEAR> — <short title>"
+description: Share a DOI, link, or attachment for private source review.
+title: "[intake] "
 labels: ["intake"]
 body:
   - type: markdown
     attributes:
       value: |
-        Use this to nominate a paper for the corpus. The maintainers will screen
-        it, extract the figures, and wire the source-grounded findings into the
-        dataset.
+        Share one paper. Paste its DOI or a stable link below, or drag an
+        attachment into the same field. You do not need to extract findings,
+        classify the study, or complete bibliographic fields.
 
-        **Do not attach the full PDF of a copyrighted article to a shareable repo.**
-        Provide the DOI/link; maintainers keep working PDFs in the local,
-        git-ignored `corpus/pdfs/` folder.
-  - type: input
-    id: citation
-    attributes:
-      label: Citation (Author et al. YEAR)
-      placeholder: "Maillard et al. 2004"
-    validations: { required: true }
-  - type: input
+        Prefer a DOI or publisher link for copyrighted articles. Attach a file
+        only when you have permission to share it in a public GitHub issue.
+  - type: textarea
     id: doi
     attributes:
-      label: DOI or stable link
+      label: Paper DOI, link, or attachment
+      description: Paste one DOI or stable link, or drag the paper or page images here.
+      placeholder: "https://doi.org/10.…"
     validations: { required: true }
-  - type: input
-    id: journal
-    attributes:
-      label: Journal / source
   - type: textarea
     id: relevance
     attributes:
-      label: Why is it relevant?
-      description: Which signs or regions does it inform? What figures does it add?
-    validations: { required: true }
-  - type: dropdown
-    id: type
-    attributes:
-      label: Study type
-      options:
-        - Primary series (defined cohort, explicit ground truth)
-        - SEEG / anatomo-electro-clinical
-        - Review / synthesis
-        - Case report / small series
-        - Other
-    validations: { required: true }
-  - type: dropdown
-    id: reliability
-    attributes:
-      label: Reliability self-check
-      description: See README §Design decisions — be wary of literature-mined meta-analyses with incoherent sign categories.
-      options:
-        - "Disciplined sign definitions + explicit ground truth"
-        - "Mixed / needs scrutiny"
-        - "Unsure — please assess"
-    validations: { required: true }
-  - type: checkboxes
-    id: permission
-    attributes:
-      label: Rights
-      options:
-        - label: I confirm only short, attributed factual extractions will be added (the full article will not be redistributed in this repo).
-          required: true
+      label: Note (optional)
+      description: Add anything that may help the maintainers review this paper.
