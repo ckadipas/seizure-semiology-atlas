@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-projection="static" data-snapshot="b7b387b339c24da61262fe6f3327d3b682c2bafedbd923ea644475f1dea12e30">
+<html lang="en" data-projection="static" data-snapshot="c7b0654f1d474bda0b665062553c41233c33930635960df5b3f016f980d7c028">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -807,7 +807,8 @@
         regionFilter.hidden = groupedByRegion;
         $('#regionControls').hidden = state.view === 'sources' || groupedByRegion;
         const region = facet("region");
-        const groups = new Map(orderedRegionGroups(state.response?.rows || []).map(group => [group.id, group]));
+        const rows=(state.response?.rows||[]).filter(row=>state.view!=='browse'||row.record_kind!=='CONTEXT_ONLY');
+        const groups = new Map(orderedRegionGroups(rows).map(group => [group.id, group]));
         const regionItems = region ? facetItems(region.id).map(item=>({...item,signCount:groups.get(item.id)?.signCount||0})).sort(compareRegions) : [];
         $("#regionButtons").innerHTML = regionItems.length ? regionItems.map(item => {
           const active = selected(region.id).includes(item.id);
@@ -873,7 +874,7 @@
 
       function citationText(value) {
         const text=String(value||'').trim();
-        return /^(none|null|n\/a)$/i.test(text)?'':text;
+        return /^(none|null|n\/a)$/i.test(text)?'':text.replace(/\bet al\.\s*\./gi,'et al.');
       }
 
       function groupedSourceAnatomy(row) {
@@ -911,7 +912,8 @@
           '(^|[^0-9A-Za-z])'+literalPattern(value)+'(?=$|[^0-9A-Za-z])','i'
         ).test(reported);
         const counts = statistic => {
-          const numerator=text(statistic.numerator), denominator=text(statistic.denominator);
+          const present = value => missingValues.has(text(value)) ? '' : text(value);
+          const numerator=present(statistic.numerator), denominator=present(statistic.denominator);
           if (!numerator && !denominator) return '';
           const reported=text(statistic.measure)+' '+text(statistic.value_text);
           if (numerator && denominator) {
@@ -926,6 +928,12 @@
           if (key === 'uncertainty') return statisticUncertainty(statistic).lines.join(' · ');
           if (key === 'counts') return counts(statistic);
           const value=text(statistic[key]);
+          if (
+            key === 'metric_type'
+            && (comparableText(value.replaceAll('_',' '))
+              === comparableText(text(statistic.measure).replaceAll('_',' '))
+              || containsLiteral(text(statistic.measure).replaceAll('_',' '), value.replaceAll('_',' ')))
+          ) return '';
           return missingValues.has(value) ? '' : value;
         };
         const contextFields = [
@@ -989,7 +997,13 @@
           try { value = JSON.parse(raw); } catch (_error) { return { lines: [raw], extra: [] }; }
         }
         if (typeof value !== "object") return { lines: [String(value)], extra: [] };
-        if (Array.isArray(value)) return { lines: value.map(item=>nestedSourceValues([item])).filter(Boolean), extra: [] };
+        if (Array.isArray(value)) return {
+          lines: value.flatMap(item=>uncertaintyDisplay(item).lines).filter(Boolean), extra: []
+        };
+
+        if (value.value_text != null && String(value.value_text).trim() !== '') {
+          return { lines: [String(value.value_text).trim()], extra: [] };
+        }
 
         const lines = [];
         const consumed = new Set(['owner_decision','synthesis_status']);
@@ -1048,17 +1062,23 @@
         const display = value => {
           if (value == null || value === '') return '';
           if (Array.isArray(value)) return value.map(display).filter(Boolean).join('; ');
-          if (typeof value === 'object') return Object.entries(value).filter(([key])=>!['owner_decision','synthesis_status'].includes(key)).map(([key,item]) => {
+          if (typeof value === 'object') {
+            if (value.value_text != null && String(value.value_text).trim() !== '') return String(value.value_text).trim();
+            if (value.status === 'NOT_REPORTED' || value.status === 'NOT_APPLICABLE') return '';
+            if (value.status === 'REPORTED' && Object.hasOwn(value,'value')) return display(value.value);
+            return Object.entries(value).filter(([key])=>!['owner_decision','synthesis_status'].includes(key)).map(([key,item]) => {
             const shown=display(item);
             return shown ? `${key.replaceAll('_',' ')}: ${shown}` : '';
           }).filter(Boolean).join('; ');
-          return String(value);
+          }
+          const shown=String(value);
+          return ['NOT_REPORTED','NOT_APPLICABLE'].includes(shown) ? '' : shown;
         };
         return values.map(display).filter(Boolean).join(' · ');
       }
 
 
-      const regionColors = {Temporal:'#1a3a6b',Frontal:'#2d4a1e',Parietal:'#4a1e3d',Occipital:'#1e3d4a',Insular:'#4a3a1e',Limbic:'#51375c','Deep/Subcortical':'#3d2a0a'};
+      const regionColors = {Temporal:'#1a3a6b',Frontal:'#2d4a1e','Central / perirolandic':'#456579',Parietal:'#4a1e3d',Occipital:'#1e3d4a',Insular:'#4a3a1e',Limbic:'#51375c','Deep/Subcortical':'#3d2a0a'};
       const regionOrder = Object.keys(regionColors);
       const lateralityColors = {contra:'#c0392b',ipsi:'#2471a3',dominant:'#8e44ad',nondominant:'#1a7a4a',right:'#d35400',left:'#2471a3',bilateral:'#5b6472',nonlat:'#6b7280',variable:'#95691a'};
       const uniqueValues = (rows, axis) => mergedFacetValues(rows.flatMap(row => rowFacetValues(row, axis)));
@@ -1072,7 +1092,13 @@
 
       function contextFields(rows) {
         const fields=['anatomy','laterality','phase','ilae','luders'].flatMap(axis=>{
-          if(axis==='phase'&&rows.length===1&&rows[0].source_phase)return ['<p class="source-term context-field"><strong>Phase:</strong> '+h(rows[0].source_phase)+'</p>'];
+          if(axis==='phase'&&rows.length===1&&rows[0].source_phase) {
+            const sourcePhase=String(rows[0].source_phase).trim();
+            if(!/^(NOT_APPLICABLE|NOT_REPORTED|NONE|NULL)$/i.test(sourcePhase)) {
+              const label=/^[A-Z0-9_]+$/.test(sourcePhase)?roleLabel(sourcePhase):sourcePhase;
+              return ['<p class="source-term context-field"><strong>Phase:</strong> '+h(label)+'</p>'];
+            }
+          }
           const values=uniqueValues((axis==='ilae'||axis==='luders')?rows.map(row=>({...row,facets:{...row.facets,[axis]:(row.facets[axis]||[]).filter(value=>value.assigned)}})):rows,axis);
           if(!values.length)return [];
           const label={anatomy:'Region',laterality:'Lateralization',phase:'Phase',ilae:'ILAE',luders:'Lüders'}[axis];
@@ -1177,7 +1203,7 @@
         return atlasGroups(rows,'sign').map(group=>disclosure('sign',group.label,group.rows,color,false,{sourceScoped,sourceId})).join('');
       }
       function regionRows(rows, nested=false) {
-        return orderedRegionGroups(rows)
+        return orderedRegionGroups(rows.filter(row=>row.record_kind!=='CONTEXT_ONLY'))
           .map(group=>disclosure(nested?'section':'region',group.id?group.label:'No linked region',group.rows,regionColors[group.label]||'#596579')).join('');
       }
       function classificationRows(rows,facet,color='#596579') {
@@ -1203,7 +1229,7 @@
         const source=sourceItem(id)?.bibliography||{};
         const authors=sourceAuthors(source);
         const citation=citationText(source.citation_text);
-        const detail=displayedTitle ? citation.replace(displayedTitle,'').trim() : citation;
+        const detail=citationText(displayedTitle ? citation.replace(displayedTitle,'') : citation);
         const meta=(authors.length?'<span class="paper-authors" title="'+h(authors.join(', '))+'">'+h(authors[0])+(authors.length>1?' et al.':'')+'</span>':'')+
           (source.doi?'<a href="https://doi.org/'+h(encodeURIComponent(source.doi))+'" target="_blank" rel="noopener">'+h(source.doi)+'</a>':'');
         return (meta?'<div class="paper-meta">'+meta+'</div>':'')+
@@ -1212,7 +1238,12 @@
       function paperSection(paper, signLabel) {
         const key=String(detailGroups.size);
         detailGroups.set(key,{kind:'paper',...paper,signLabel});
+        const sourceSelection=selected('source');
+        const alreadyComplete=!state.query&&Object.keys(state.filters).length===1&&sourceSelection.length===1&&sourceSelection[0]===paper.id;
+        const showAll=(state.query||Object.keys(state.filters).length)&&!alreadyComplete
+          ? '<button class="quiet" type="button" data-view-paper="'+h(paper.id)+'">View all results from this paper</button>' : '';
         return '<section class="paper-section"><h3>'+h(paper.label)+'</h3>'+sourceHeader(paper.id,paper.rows,false,paper.label)+
+          showAll+
           '<details class="paper-disclosure" data-browse="'+key+'"><summary>Results</summary><div class="paper-reading" data-content tabindex="0" role="region" aria-label="Results from '+h(paper.label)+'"></div></details></section>';
       }
       function fillDisclosure(element) {
@@ -1366,11 +1397,15 @@
         detailGroups.clear();
         renderRegionControls();
         const rows=state.response?.rows||[];
+        const clinicalRows=rows.filter(row=>row.record_kind!=='CONTEXT_ONLY');
+        const contextRows=rows.filter(row=>row.record_kind==='CONTEXT_ONLY');
         const view=state.view;
         const titles={browse:'Signs',weighted:'Weighted evidence',sources:'Sources'};
         $('#viewHeading').textContent=titles[view];
         $('#resultStatus').textContent=state.response
-          ? (rows.length?(view==='sources'?quantity(atlasCounts(rows).sources,'paper'):quantity(atlasCounts(rows).signs,'sign')):'No results match the current search and filters.')
+          ? (rows.length?(view==='sources'?quantity(atlasCounts(rows).sources,'paper'):view==='browse'&&!clinicalRows.length
+            ? '0 signs · '+quantity(atlasCounts(contextRows).sources,'paper')+' matched study text'
+            : quantity(atlasCounts(clinicalRows).signs,'sign')):'No results match the current search and filters.')
           : (state.loading?'Loading evidence…':'Evidence results are unavailable.');
         const weightedPage=view==='weighted'&&state.weightSort[state.weightAxis]==='page';
         $('#browseControls').hidden=view!=='browse'&&!weightedPage;
@@ -1399,9 +1434,10 @@
         let content='';
         if(view==='sources') content=atlasGroups(rows,'source').map(paper=>paperSection(paper)).join('');
         else if(view==='weighted') content=renderWeighted(rows);
-        else if(!state.groupBy)content=signRows(rows,'#344a67');
-        else if(state.groupBy==='region')content=regionRows(rows);
-        else content=classificationRows(rows,state.groupBy);
+        else if(!clinicalRows.length&&contextRows.length)content='<p class="empty">This search matched study text rather than a clinical sign. <button class="quiet" type="button" data-view-context-sources>View the matched study text in Sources</button></p>';
+        else if(!state.groupBy)content=signRows(clinicalRows,'#344a67');
+        else if(state.groupBy==='region')content=regionRows(clinicalRows);
+        else content=classificationRows(clinicalRows,state.groupBy);
         $('#results').innerHTML=content||'<p class="empty">No evidence results match these selections.</p>';
       }
 
@@ -1588,6 +1624,15 @@
       });
       $("#groupBy").addEventListener("change", event => { state.pendingMapResult = null; state.groupBy = event.target.value; renderGroupChoices(); renderResults(); });
       $("#results").addEventListener("click", event => {
+        const contextButton=event.target.closest('[data-view-context-sources]');
+        if(contextButton){state.view='sources';renderResults();return;}
+        const paperButton=event.target.closest('[data-view-paper]');
+        if(paperButton){
+          state.filters={source:[paperButton.dataset.viewPaper]};
+          state.query='';state.pendingMapResult=null;state.optionSearch={};state.view='sources';
+          $("#search").value='';$("#clearSearch").hidden=true;
+          renderFilters();runQuery();return;
+        }
         const button = event.target.closest("button[data-anatomy]");
         if (!button) return;
         state.mapAnatomy = new Set(JSON.parse(button.dataset.anatomy));

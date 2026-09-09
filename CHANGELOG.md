@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.5.2 — 2026-09-08
+
+- Corrected regional browsing for the four newly added manuscripts while retaining all 77 papers.
+- Linked Five Sign findings to the shared insulo-opercular network, preserving the combined-network statistics and each finding’s anatomical role.
+- Corrected Lu source-context anatomy and Zhou stimulation-site references, retaining reported values and distinguishing repeated results.
+- Kept study context in Sources and added access to every result from a paper when a search shows only a subset.
+- Added Central / perirolandic browsing and retained precise source anatomy within the established regional groups.
+- Preserved source terms whose broader anatomy remains unresolved, with checks preventing dropped or borrowed localization links.
+- Retained the compact paper layout, author citations, collapsible filters, and Brodmann overview.
+
 ## 1.5.1 — 2026-09-08
 
 - Added results from Rech et al. (2019), Zhou et al. (2022), Ghita et al. (2026), and Lu et al. (2026), with their authors and DOI links.
