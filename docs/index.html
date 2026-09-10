@@ -34,6 +34,12 @@
     .release-notes { margin-top:16px; padding:12px 16px; color:var(--muted); font-size:.8rem; line-height:1.6; }
     .release-notes > summary { color:var(--navy); font-weight:650; cursor:pointer; }
     .release-notes li + li { margin-top:5px; }
+    .site-footer { padding:20px 22px; border-top:3px solid #b5dce2; background:#edf3f8; border-radius:10px; color:#46566e; font-size:.8rem; line-height:1.65; }
+    .site-footer nav { display:flex; flex-wrap:wrap; gap:10px 24px; margin-bottom:12px; }
+    .site-footer a { color:var(--teal-d); text-underline-offset:3px; }
+    .site-footer nav a { font-weight:650; }
+    .site-footer p { margin:7px 0 0; }
+    .site-footer strong { color:var(--navy); }
     main { padding-top: 12px; }
     .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; box-shadow: none; }
     .page-guide { margin-bottom:12px; background:#fbfdfe; }
@@ -401,6 +407,17 @@
     </section>
     <details id="releaseNotes" class="panel release-notes" hidden></details>
   </main>
+  <footer class="page site-footer" aria-label="Submission, disclaimer and licensing">
+    <nav aria-label="Atlas resources">
+      <a href="https://github.com/ckadipas/seizure-semiology-atlas/issues/new?template=new-paper.yml">Submit a paper</a>
+      <a href="https://github.com/ckadipas/seizure-semiology-atlas/blob/main/DISCLAIMER.md">Full disclaimer</a>
+      <a href="https://github.com/ckadipas/seizure-semiology-atlas/blob/main/LICENSE-CONTENT">Content license · CC BY-NC-SA 4.0</a>
+      <a href="https://github.com/ckadipas/seizure-semiology-atlas/blob/main/LICENSE">Code license · MIT</a>
+    </nav>
+    <p><strong>Educational use only.</strong> This reference is not a medical device or a clinical decision-support tool. Do not use it to diagnose, localize, or make treatment or surgical decisions for an individual patient.</p>
+    <p>Original Atlas content and dataset: <strong>CC BY-NC-SA 4.0</strong>. Code: <strong>MIT</strong>. Source publications and other third-party material retain their own rights.</p>
+    <p>© 2026 CM Kadipasaoglu</p>
+  </footer>
   <dialog id="weightMethod">
     <h2>About the scores</h2>
     <p>Each study contributes once for a sign and for localization or lateralization. Its weight combines the recorded evidence class, study method, and sample size. The score adds these study weights.</p>

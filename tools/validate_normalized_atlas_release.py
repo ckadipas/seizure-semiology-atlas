@@ -7,6 +7,7 @@ import argparse
 from copy import deepcopy
 import gzip
 import hashlib
+from html.parser import HTMLParser
 import json
 from pathlib import Path, PurePosixPath
 import re
@@ -42,6 +43,42 @@ PUBLIC_RECEIPT_FIELDS = {
 def require(condition, message):
     if not condition:
         raise ValueError(message)
+
+
+def validate_site_footer(html):
+    """Require submission access and legal notices on the delivered page."""
+    class Footer(HTMLParser):
+        def __init__(self):
+            super().__init__()
+            self.active = False
+            self.links = set()
+            self.text = []
+
+        def handle_starttag(self, tag, attrs):
+            if tag == 'footer':
+                self.active = True
+            if self.active and tag == 'a':
+                self.links.add(dict(attrs).get('href'))
+
+        def handle_endtag(self, tag):
+            if tag == 'footer':
+                self.active = False
+
+        def handle_data(self, data):
+            if self.active:
+                self.text.append(data)
+
+    footer = Footer()
+    footer.feed(html)
+    repository = 'https://github.com/ckadipas/seizure-semiology-atlas'
+    expected = {repository + '/issues/new?template=new-paper.yml'} | {
+        repository + '/blob/main/' + name
+        for name in ('DISCLAIMER.md', 'LICENSE-CONTENT', 'LICENSE')
+    }
+    require(expected <= footer.links, 'site footer submission or legal links are missing')
+    notice = ' '.join(footer.text)
+    require(all(text in notice for text in ('Educational use only', 'CC BY-NC-SA 4.0', 'MIT')),
+            'site footer educational-use or licensing notice is missing')
 
 
 def validate_brodmann_panel(brodmann):
@@ -101,6 +138,7 @@ def validate_explorer(receipt):
     }
     require(actual_files == expected_files, "public explorer file set differs")
     html = html_path.read_text(encoding="utf-8")
+    validate_site_footer(html)
     require(
         f'data-projection="static" data-snapshot="{snapshot_sha256}"' in html
         and f"from './atlas_projection.mjs?v={receipt['module_sha256']}'" in html,
@@ -171,7 +209,13 @@ def main():
     )
     parser.add_argument("--canonical-db", type=Path)
     parser.add_argument("--relationship-manifest", type=Path)
+    parser.add_argument("--site-footer", type=Path, help="Check only a rendered page's submission and legal footer")
     args = parser.parse_args()
+
+    if args.site_footer:
+        validate_site_footer(args.site_footer.read_text(encoding="utf-8"))
+        print('Site footer submission and legal notices: PASS')
+        return
 
     bundle_bytes = args.bundle.read_bytes()
     if args.bundle.suffix == ".gz":

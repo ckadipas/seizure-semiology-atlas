@@ -1,5 +1,10 @@
 # Changelog
 
+## Website update — 2026-09-10
+
+- Restored the footer with direct access to paper submission, the educational-use disclaimer, and the separate content and code licenses.
+- Paper submission uses one required DOI, link, or attachment field and an optional note. The v1.5.2 manuscript data is unchanged.
+
 ## 1.5.2 — 2026-09-08
 
 - Corrected regional browsing for the four newly added manuscripts while retaining all 77 papers.

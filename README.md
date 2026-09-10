@@ -8,6 +8,11 @@ Search once, then browse **Signs**, **Weighted evidence**, or **Sources**. Signs
 
 The Brodmann map shows numbered areas. Brain-region filters and classifications remain separate from Brodmann areas.
 
+The page footer links to the simplified paper submission form, full disclaimer,
+content license, and code license. The educational-use notice and license names
+remain visible. Public synchronization and deployment validation require these
+footer resources; verify their visibility and destinations on the deployed site.
+
 ## Data and release files
 
 This repository receives generated data from the private SQLite evidence ledger. Scientific relationships are reviewed there and exported together; the public website is not an evidence source.
