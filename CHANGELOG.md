@@ -3,6 +3,7 @@
 ## Website update — 2026-09-10
 
 - Restored the footer with direct access to paper submission, the educational-use disclaimer, and the separate content and code licenses.
+- Preserved the full personal-capacity, institutional non-endorsement, affiliation, and copyright notices in the footer and linked disclaimer.
 - Paper submission uses one required DOI, link, or attachment field and an optional note. The v1.5.2 manuscript data is unchanged.
 
 ## 1.5.2 — 2026-09-08

@@ -76,9 +76,18 @@ def validate_site_footer(html):
         for name in ('DISCLAIMER.md', 'LICENSE-CONTENT', 'LICENSE')
     }
     require(expected <= footer.links, 'site footer submission or legal links are missing')
-    notice = ' '.join(footer.text)
+    notice = ' '.join(' '.join(footer.text).split())
     require(all(text in notice for text in ('Educational use only', 'CC BY-NC-SA 4.0', 'MIT')),
             'site footer educational-use or licensing notice is missing')
+    disclaimer_path = ROOT / 'website/DISCLAIMER.md' if (ROOT / 'website').is_dir() else ROOT / 'DISCLAIMER.md'
+    disclaimer = disclaimer_path.read_text(encoding='utf-8')
+    for heading in ('Independence and affiliations', 'Copyright and attribution'):
+        section = re.search(r'^## ' + re.escape(heading) + r'\n(.*?)(?=^## |\Z)',
+                            disclaimer, re.MULTILINE | re.DOTALL)
+        require(section is not None, f'full disclaimer is missing {heading}')
+        for paragraph in section.group(1).strip().split('\n\n'):
+            require(' '.join(paragraph.split()) in notice,
+                    f'site footer omits or changes disclaimer wording: {heading}')
 
 
 def validate_brodmann_panel(brodmann):

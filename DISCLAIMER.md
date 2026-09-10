@@ -13,3 +13,13 @@ This repository and the interactive reference it produces are intended solely fo
 
 The authors and contributors accept no liability for any use of this material in
 patient care.
+
+## Independence and affiliations
+
+This atlas is independently created and maintained in a personal capacity. It is not an official product of, and does not represent, any employer, university, hospital, health system, professional society, or other institution with which the author is or has been affiliated. Unless expressly stated, no such institution has sponsored, reviewed, approved, or endorsed this atlas.
+
+Any professional affiliation mentioned is provided solely for biographical identification. The views and editorial judgments expressed are the author’s own.
+
+## Copyright and attribution
+
+Copyright is claimed only in the atlas’s original software, explanatory text, original graphics, and original selection, coordination, and arrangement of the compiled material—not in underlying scientific facts, clinical concepts, source publications, or third-party material. Cited works remain attributable to their respective authors and publishers; inclusion does not imply ownership or endorsement.
