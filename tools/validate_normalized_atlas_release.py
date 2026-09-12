@@ -168,6 +168,8 @@ def validate_explorer(receipt):
     )
     validate_explorer_files(docs, projection)
     html = html_path.read_text(encoding="utf-8")
+    if projection.get("catalogue", {}).get("maps", {}).get("local_surfaces"):
+        require('data-label-editing="disabled"' in html, "public label editing must be disabled")
     validate_site_footer(html)
     require(
         f'data-projection="static" data-snapshot="{snapshot_sha256}"' in html

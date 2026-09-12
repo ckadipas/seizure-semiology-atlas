@@ -401,18 +401,22 @@ class SurfaceCanvas {
 }
 
 export class SurfacePanel {
-  constructor(host, catalogue, onViewChange, onSelection, onClear) {
+  constructor(host, catalogue, onViewChange, onSelection, onClear, allowEditing=true) {
+    this.allowEditing=allowEditing;
     this.host=host;this.catalogue=catalogue;this.palette=new Map(catalogue.palette.map(row=>[row.index,row]));
     this.onViewChange=onViewChange;this.onSelection=onSelection;this.selection=[];this.groups=catalogue.groups||[];this.groupSelection=[];
-    try{this.markerPositions=JSON.parse(localStorage.getItem('atlas-brodmann-positions')||'{}');}catch{this.markerPositions={};}
-    try{this.markerNodes=JSON.parse(localStorage.getItem('atlas-brodmann-nodes')||'{}');}catch{this.markerNodes={};}
+    this.markerPositions={};this.markerNodes={};
+    if(allowEditing){
+      try{this.markerPositions=JSON.parse(localStorage.getItem('atlas-brodmann-positions')||'{}');}catch{this.markerPositions={};}
+      try{this.markerNodes=JSON.parse(localStorage.getItem('atlas-brodmann-nodes')||'{}');}catch{this.markerNodes={};}
+    }
     const defaults=catalogue.label_assignments;
     if(defaults){
-      let revision;try{revision=localStorage.getItem('atlas-brodmann-label-revision');}catch{}
-      if(revision!==defaults.revision){
+      let revision;if(allowEditing)try{revision=localStorage.getItem('atlas-brodmann-label-revision');}catch{}
+      if(!allowEditing||revision!==defaults.revision){
         this.markerNodes=Object.fromEntries(defaults.labels.map(({anchor_key,...node})=>[anchor_key,node]));
         this.saveLabelAssignments();
-        try{localStorage.setItem('atlas-brodmann-label-revision',defaults.revision);}catch{}
+        if(allowEditing)try{localStorage.setItem('atlas-brodmann-label-revision',defaults.revision);}catch{}
       }
     }
     this.markers=[];
@@ -420,41 +424,43 @@ export class SurfacePanel {
     this.canvas=host.querySelector('canvas');this.status=host.querySelector('.surface-status');
     this.atlas=host.querySelector('.surface-atlas');this.layer='all';this.options=[];this.brodmannSelection=new Set();
     const labelControls=document.createElement('div');labelControls.className='surface-label-controls';
-    labelControls.innerHTML='<span>Approximate positions. Tap to select. To move or remove one, turn on Edit labels, then drag it or select it and choose Remove label.</span>';
+    labelControls.innerHTML='<span>Approximate positions. Tap to select.'+(allowEditing?' To move or remove one, turn on Edit labels, then drag it or select it and choose Remove label.':'')+'</span>';
     host.querySelector('.surface-stage').after(labelControls);
-    const editControl=document.createElement('div');editControl.innerHTML='<label><input type="checkbox"> Edit labels</label>';
-    labelControls.after(editControl);editControl.className='surface-label-controls';this.editControl=editControl;
-    this.editToggle=editControl.querySelector('input');
-    this.removeLabel=document.createElement('button');this.removeLabel.type='button';this.removeLabel.textContent='Remove label';this.removeLabel.disabled=true;this.removeLabel.hidden=true;
-    this.restoreLabels=document.createElement('button');this.restoreLabels.type='button';this.restoreLabels.textContent='Restore removed labels';this.restoreLabels.hidden=true;
-    editControl.append(this.removeLabel,this.restoreLabels);
-    this.editToggle.addEventListener('change',()=>{
-      host.querySelector('.surface-stage').classList.toggle('surface-edit-labels',this.editToggle.checked);
-      this.removeLabel.hidden=this.restoreLabels.hidden=!this.editToggle.checked;
-      this.selectLabelForEditing(null);
-    });
-    this.removeLabel.addEventListener('click',()=>{
-      const marker=this.editingMarker;if(!marker)return;
-      this.markerNodes[marker.nodeKey]={...this.markerNodes[marker.nodeKey],label:marker.label,view:marker.view,hemisphere:marker.hemisphere,hidden:true};
-      this.saveLabelAssignments();this.setBrodmann(...this.brodmannArgs);
-    });
-    this.restoreLabels.addEventListener('click',()=>{
-      this.restoredKeys=Object.keys(this.markerNodes).filter(key=>this.markerNodes[key].hidden);
-      for(const node of Object.values(this.markerNodes))delete node.hidden;
-      this.saveLabelAssignments();this.setBrodmann(...this.brodmannArgs);
-      undoRestore.hidden=false;
-    });
-    const undoRestore=document.createElement('button');undoRestore.type='button';undoRestore.textContent='Undo restore';undoRestore.hidden=true;editControl.append(undoRestore);
-    undoRestore.addEventListener('click',()=>{
-      for(const key of this.restoredKeys||[])this.markerNodes[key].hidden=true;
-      this.saveLabelAssignments();this.setBrodmann(...this.brodmannArgs);undoRestore.hidden=true;
-    });
-    const exportButton=document.createElement('button');exportButton.type='button';exportButton.textContent='Export node assignments';editControl.append(exportButton);
-    exportButton.addEventListener('click',()=>{
-      const data=this.labelAssignments();
-      const url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));
-      const link=document.createElement('a');link.href=url;link.download='cortical-label-positions.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
-    });
+    if(allowEditing){
+      const editControl=document.createElement('div');editControl.innerHTML='<label><input type="checkbox"> Edit labels</label>';
+      labelControls.after(editControl);editControl.className='surface-label-controls';this.editControl=editControl;
+      this.editToggle=editControl.querySelector('input');
+      this.removeLabel=document.createElement('button');this.removeLabel.type='button';this.removeLabel.textContent='Remove label';this.removeLabel.disabled=true;this.removeLabel.hidden=true;
+      this.restoreLabels=document.createElement('button');this.restoreLabels.type='button';this.restoreLabels.textContent='Restore removed labels';this.restoreLabels.hidden=true;
+      editControl.append(this.removeLabel,this.restoreLabels);
+      this.editToggle.addEventListener('change',()=>{
+        host.querySelector('.surface-stage').classList.toggle('surface-edit-labels',this.editToggle?.checked);
+        this.removeLabel.hidden=this.restoreLabels.hidden=!this.editToggle?.checked;
+        this.selectLabelForEditing(null);
+      });
+      this.removeLabel.addEventListener('click',()=>{
+        const marker=this.editingMarker;if(!marker)return;
+        this.markerNodes[marker.nodeKey]={...this.markerNodes[marker.nodeKey],label:marker.label,view:marker.view,hemisphere:marker.hemisphere,hidden:true};
+        this.saveLabelAssignments();this.setBrodmann(...this.brodmannArgs);
+      });
+      this.restoreLabels.addEventListener('click',()=>{
+        this.restoredKeys=Object.keys(this.markerNodes).filter(key=>this.markerNodes[key].hidden);
+        for(const node of Object.values(this.markerNodes))delete node.hidden;
+        this.saveLabelAssignments();this.setBrodmann(...this.brodmannArgs);
+        undoRestore.hidden=false;
+      });
+      const undoRestore=document.createElement('button');undoRestore.type='button';undoRestore.textContent='Undo restore';undoRestore.hidden=true;editControl.append(undoRestore);
+      undoRestore.addEventListener('click',()=>{
+        for(const key of this.restoredKeys||[])this.markerNodes[key].hidden=true;
+        this.saveLabelAssignments();this.setBrodmann(...this.brodmannArgs);undoRestore.hidden=true;
+      });
+      const exportButton=document.createElement('button');exportButton.type='button';exportButton.textContent='Export node assignments';editControl.append(exportButton);
+      exportButton.addEventListener('click',()=>{
+        const data=this.labelAssignments();
+        const url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));
+        const link=document.createElement('a');link.href=url;link.download='cortical-label-positions.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+      });
+    }
     for(const mesh of catalogue.meshes)for(const index of Object.keys(mesh.label_counts).map(Number)) {
       if(this.palette.get(index).name!=='unknown'&&!this.options.some(row=>row.index===index))this.options.push({index});
     }
@@ -512,13 +518,15 @@ export class SurfacePanel {
   }
 
   saveLabelAssignments() {
+    if(!this.allowEditing)return;
     try{localStorage.setItem('atlas-brodmann-positions',JSON.stringify(this.markerPositions));localStorage.setItem('atlas-brodmann-nodes',JSON.stringify(this.markerNodes));}catch{}
   }
   labelAssignments() {
     return {format:'cortical-label-nodes-1',index_base:0,labels:Object.entries(this.markerNodes).map(([anchor_key,node])=>({...node,anchor_key}))};
   }
   selectLabelForEditing(marker) {
-    this.editingMarker=this.editToggle.checked?marker:null;
+    if(!this.allowEditing)return;
+    this.editingMarker=this.editToggle?.checked?marker:null;
     for(const entry of this.markers)entry.button.dataset.editing=String(entry===this.editingMarker);
     this.removeLabel.disabled=!this.editingMarker;
     this.removeLabel.textContent=this.editingMarker?`Remove BA ${marker.label} (${marker.hemisphere}, ${marker.view})`:'Remove label';
@@ -596,10 +604,11 @@ export class SurfacePanel {
       this.markers.push(entry);
       let drag=null,moved=false;
       button.addEventListener('pointerdown',event=>{
+        if(!this.allowEditing)return;
         moved=false;
         if(event.pointerType==='touch'&&!this.canvas.hidden&&!this.host.querySelector('.surface-stage').classList.contains('surface-edit-labels'))return;
         if(event.button!==0)return;event.stopPropagation();button.setPointerCapture(event.pointerId);
-        if(this.editToggle.checked)this.selectLabelForEditing(entry);
+        if(this.editToggle?.checked)this.selectLabelForEditing(entry);
         const box=overlay.getBoundingClientRect(),label=button.getBoundingClientRect();
         drag={x:event.clientX,y:event.clientY,left:label.x+label.width/2-box.x,top:label.y+label.height/2-box.y};moved=false;
       });
@@ -631,7 +640,7 @@ export class SurfacePanel {
       for(const type of ['pointercancel','lostpointercapture'])button.addEventListener(type,()=>{drag=null;this.layoutLabels();});
       button.addEventListener('click',event=>{
         if(moved&&event.detail>0){event.preventDefault();event.stopPropagation();return;}
-        if(this.editToggle.checked){event.stopPropagation();this.selectLabelForEditing(entry);return;}
+        if(this.editToggle?.checked){event.stopPropagation();this.selectLabelForEditing(entry);return;}
         if(!marker.anatomy_id)this.status.textContent=`BA ${marker.short_label} · No evidence mapping is available yet.`;
       });
       overlay.append(button);
@@ -671,7 +680,7 @@ export class SurfacePanel {
     const brodmann=this.atlas.value==='brodmann';
     this.host.querySelector('.surface-ba-labels').hidden=!brodmann;
     this.host.querySelector('.surface-label-controls > span').hidden=!brodmann;
-    this.host.querySelector('.surface-stage').classList.toggle('surface-edit-labels',brodmann&&this.editToggle.checked);
+    this.host.querySelector('.surface-stage').classList.toggle('surface-edit-labels',brodmann&&this.editToggle?.checked);
     if(this.renderer)this.renderer.pickingEnabled=!brodmann;
     this.host.querySelector('.surface-help').textContent='Drag to rotate · pinch or scroll to zoom · tap '+(brodmann?'Brodmann labels':'regions')+' to select';
     const images=this.layer==='images',plates=this.host.querySelector('.surface-plates');
@@ -679,7 +688,7 @@ export class SurfacePanel {
     this.host.querySelector('.surface-help').hidden=images;
     this.host.querySelector('.surface-reset').disabled=images;
     this.host.querySelector('.surface-label-controls').hidden=['mesial','insula'].includes(this.layer);
-    this.editControl.hidden=!brodmann||['mesial','insula'].includes(this.layer);
+    if(this.editControl)this.editControl.hidden=!brodmann||['mesial','insula'].includes(this.layer);
     this.host.querySelector('.surface-stage').classList.toggle('surface-specialized',['mesial','insula'].includes(this.layer));
     if(images){
       plates.replaceChildren();

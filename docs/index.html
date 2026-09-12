@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-projection="static" data-snapshot="5d54556fe0aa73faf7058ecead36e7c626f15b061e1283be5e0a90937ba258f1">
+<html lang="en" data-projection="static" data-snapshot="5d54556fe0aa73faf7058ecead36e7c626f15b061e1283be5e0a90937ba258f1" data-label-editing="disabled">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -925,14 +925,14 @@
           if (!surfacePanel && !surfacePanelLoading) {
             surfacePanelLoading = true;
             host.textContent = 'Loading surfaces…';
-            import('./atlas_surface.mjs?v=e25049d16398be7d8e586c49901d14b97a5c18737ba35eda7e658cb7cdf35687').then(({SurfacePanel}) => {
+            import('./atlas_surface.mjs?v=278bfee0d4e7b623d84288b5a3f3a23cffa8d4c7a5882454e09647f8dd930c12').then(({SurfacePanel}) => {
               surfacePanel = new SurfacePanel(host, {...localSurfaces,groups:state.catalogue.maps.region_groups,brodmann:facetItems('anatomy').filter(row=>row.reference==='ATLAS:BRODMANN').sort((a,b)=>a.label.localeCompare(b.label,undefined,{numeric:true}))}, (view, hemisphere) => {
                 state.mapView=view;state.mapHemisphere=hemisphere;renderMap();
               }, (rows,groups) => {
                 state.surfaceAnatomy=[...new Set(rows.map(row=>row.anatomy_id).filter(Boolean))];
                 if(groups.length)state.filters.region=groups;else delete state.filters.region;
                 runQuery();
-              }, () => { clearMapSelection(); renderFilters(); runQuery(); });
+              }, () => { clearMapSelection(); renderFilters(); runQuery(); }, document.documentElement.dataset.labelEditing!=='disabled');
               host.querySelector('.surface-label-controls > span').before($('.map-count-toggle'));
               surfacePanel.setView(state.mapView,state.mapHemisphere);
               renderMap();
