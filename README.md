@@ -36,7 +36,9 @@ make serve
 
 The build runs compatibility checks, restores the committed current website, and validates its release identity. To change scientific data or the website, update the maintained private ledger or renderer and export a new release. Do not edit generated files independently.
 
-Cloudflare Pages uses `python3 generator/gen_study.py` with `docs` as its output directory. When a normalized release is present, this command validates the committed website without regenerating it. `make check-deployment` checks the same command and confirms it leaves the website unchanged.
+`python3 generator/gen_study.py` validates the committed website without regenerating a normalized release. Production uploads follow a merged pull request and successful validation of its exact commit; automatic Git deployments are disabled.
+
+The proprietary viewer meshes and Brodmann node assignments are added from private storage only when staging a deployment. They are not included in this repository. Reference images are excluded from production. The live WebGL viewer still delivers its required geometry and label positions to visitors' browsers, where they can be extracted. A source checkout without the separate viewer assets can browse the evidence but cannot display the 3D map.
 
 ## Scientific updates
 

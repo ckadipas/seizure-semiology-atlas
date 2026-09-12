@@ -410,15 +410,6 @@ export class SurfacePanel {
       try{this.markerPositions=JSON.parse(localStorage.getItem('atlas-brodmann-positions')||'{}');}catch{this.markerPositions={};}
       try{this.markerNodes=JSON.parse(localStorage.getItem('atlas-brodmann-nodes')||'{}');}catch{this.markerNodes={};}
     }
-    const defaults=catalogue.label_assignments;
-    if(defaults){
-      let revision;if(allowEditing)try{revision=localStorage.getItem('atlas-brodmann-label-revision');}catch{}
-      if(!allowEditing||revision!==defaults.revision){
-        this.markerNodes=Object.fromEntries(defaults.labels.map(({anchor_key,...node})=>[anchor_key,node]));
-        this.saveLabelAssignments();
-        if(allowEditing)try{localStorage.setItem('atlas-brodmann-label-revision',defaults.revision);}catch{}
-      }
-    }
     this.markers=[];
     host.innerHTML=`<div class="surface-toolbar"><label><select class="surface-atlas" aria-label="Atlas"><option value="dkt40">DKT40 Atlas</option><option value="brodmann">Brodmann Labels</option></select></label><div class="surface-roi"><span>Cortical Region of Interest</span><details class="surface-regions"><summary>All Regions</summary><div class="surface-region-menu"><input type="search" aria-label="Search cortical regions" placeholder="Search regions…"><div class="surface-region-list"></div></div></details></div><button type="button" class="surface-clear">Clear selection</button><button type="button" class="surface-reset">Reset view</button></div><div class="surface-stage"><div class="surface-plates" hidden></div><canvas tabindex="0" aria-label="DKT40 cortical surface. Drag or use arrow keys to rotate; pinch, scroll, or use plus and minus to zoom. "></canvas><div class="surface-ba-labels"></div></div><div class="surface-status" role="status">Loading surfaces…</div><div class="surface-boundary"></div><div class="surface-help">Drag to rotate · pinch or scroll to zoom · tap regions to select</div>`;
     this.canvas=host.querySelector('canvas');this.status=host.querySelector('.surface-status');
@@ -498,7 +489,11 @@ export class SurfacePanel {
     this.syncRegionMenu();this.filterRegionMenu();
     host.querySelector('.surface-clear').addEventListener('click',onClear);
     host.querySelector('.surface-reset').addEventListener('click',()=>this.update(true));
-    this.ready=Promise.all(catalogue.meshes.map(mesh=>loadMesh(mesh,this.palette))).then(meshes=>{
+    this.ready=Promise.all([
+      Promise.all(catalogue.meshes.map(mesh=>loadMesh(mesh,this.palette))),
+      this.loadLabelAssignments(catalogue.label_assignments),
+    ]).then(([meshes])=>{
+      if(this.brodmannArgs)this.setBrodmann(...this.brodmannArgs);
       this.renderer=new SurfaceCanvas(this.canvas,meshes,(rows,error)=>{
         if(error){this.status.textContent=error;return;}
         if(rows.some(row=>this.palette.get(row.index).name==='unknown'))return;
@@ -515,6 +510,25 @@ export class SurfacePanel {
       };
       host.dataset.ready='true';this.select(this.selection,false);this.update();
     }).catch(error=>{this.status.textContent=error.message;host.dataset.error='true';});
+  }
+
+  async loadLabelAssignments(defaults) {
+    if(!defaults)return;
+    if(defaults.file){
+      if(defaults.file!=='brodmann-label-nodes.json')throw new Error('Unsupported label assignment file.');
+      const response=await fetch(`/local-surfaces/${defaults.file}`,{cache:'no-store'});
+      if(!response.ok)throw new Error('The Brodmann labels could not be loaded.');
+      const data=await response.arrayBuffer();
+      const digest=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',data)),value=>value.toString(16).padStart(2,'0')).join('');
+      if(digest!==defaults.revision)throw new Error('Brodmann labels do not match this release.');
+      defaults={...JSON.parse(new TextDecoder().decode(data)),revision:defaults.revision};
+    }
+    let revision;if(this.allowEditing)try{revision=localStorage.getItem('atlas-brodmann-label-revision');}catch{}
+    if(!this.allowEditing||revision!==defaults.revision){
+      this.markerNodes=Object.fromEntries(defaults.labels.map(({anchor_key,...node})=>[anchor_key,node]));
+      this.saveLabelAssignments();
+      if(this.allowEditing)try{localStorage.setItem('atlas-brodmann-label-revision',defaults.revision);}catch{}
+    }
   }
 
   saveLabelAssignments() {

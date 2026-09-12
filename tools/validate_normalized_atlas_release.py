@@ -106,8 +106,9 @@ def receipt_digest(receipt):
     return actual
 
 
-def validate_explorer_files(docs, projection):
+def validate_explorer_files(docs, projection, *, surface_mode="public"):
     """Check the exact runtime assets before publishing or serving a release."""
+    require(surface_mode in {"public", "private", "deployment"}, "unknown surface validation mode")
     maps = (projection.get("catalogue") or {}).get("maps") or {}
     views = maps.get("views")
     require(isinstance(views, dict) and views, "public explorer map views are absent")
@@ -124,20 +125,35 @@ def validate_explorer_files(docs, projection):
         html = (docs / "index.html").read_text(encoding="utf-8")
         require(f"import('./atlas_surface.mjs?v={file_sha256(docs / 'atlas_surface.mjs')}')" in html,
                 "public surface module binding differs")
+        if surface_mode != "private":
+            require(surfaces["images"] == [], "reference images must remain private")
+            require(set(surfaces) == {"title", "palette", "meshes", "images", "label_assignments"},
+                    "unexpected public surface catalogue fields")
         for record in surfaces["meshes"] + surfaces["images"]:
             name = record["file"]
             require(isinstance(name, str) and re.fullmatch(r"[A-Za-z0-9_.-]+", name)
                     and name not in {".", ".."}, "public surface asset path is unsafe")
             relative = "local-surfaces/" + name
-            expected.add(relative)
-            require(file_sha256(docs / relative) == record["sha256"],
-                    "public surface asset digest differs: " + name)
-        if surfaces.get("label_assignments"):
+            if surface_mode != "public":
+                expected.add(relative)
+                require(file_sha256(docs / relative) == record["sha256"],
+                        "surface asset digest differs: " + name)
+        if assignments := surfaces.get("label_assignments"):
             relative = "local-surfaces/brodmann-label-nodes.json"
-            expected.add(relative)
-            labels = json.loads((docs / relative).read_text(encoding="utf-8"))
-            require(labels == {k: v for k, v in surfaces["label_assignments"].items()
-                               if k != "revision"}, "public label assignments differ")
+            if surface_mode == "private":
+                expected.add(relative)
+                labels = json.loads((docs / relative).read_text(encoding="utf-8"))
+                require(labels == {k: v for k, v in assignments.items() if k != "revision"},
+                        "private label assignments differ")
+            else:
+                require(set(assignments) == {"file", "revision"}
+                        and assignments["file"] == "brodmann-label-nodes.json"
+                        and re.fullmatch(r"[0-9a-f]{64}", str(assignments["revision"])),
+                        "public projection must reference labels without embedding node data")
+                if surface_mode == "deployment":
+                    expected.add(relative)
+                    require(file_sha256(docs / relative) == assignments["revision"],
+                            "deployed label assignments differ")
     actual = {p.relative_to(docs).as_posix() for p in docs.rglob("*") if p.is_file()}
     require(actual == expected, "public explorer file set differs")
     require(all(not (docs / p).is_symlink() for p in expected), "public explorer contains a symlink")

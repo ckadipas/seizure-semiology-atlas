@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-projection="static" data-snapshot="5d54556fe0aa73faf7058ecead36e7c626f15b061e1283be5e0a90937ba258f1" data-label-editing="disabled">
+<html lang="en" data-projection="static" data-snapshot="f7cd4747856d1bd0deedff777ab08bade34ba1c1dbb67e5c9212d9c20f2c4f35" data-label-editing="disabled">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -925,7 +925,7 @@
           if (!surfacePanel && !surfacePanelLoading) {
             surfacePanelLoading = true;
             host.textContent = 'Loading surfaces…';
-            import('./atlas_surface.mjs?v=278bfee0d4e7b623d84288b5a3f3a23cffa8d4c7a5882454e09647f8dd930c12').then(({SurfacePanel}) => {
+            import('./atlas_surface.mjs?v=f992912b7859606cce938963c96b555e25aa90aac80a514eaa36107b545dbc8a').then(({SurfacePanel}) => {
               surfacePanel = new SurfacePanel(host, {...localSurfaces,groups:state.catalogue.maps.region_groups,brodmann:facetItems('anatomy').filter(row=>row.reference==='ATLAS:BRODMANN').sort((a,b)=>a.label.localeCompare(b.label,undefined,{numeric:true}))}, (view, hemisphere) => {
                 state.mapView=view;state.mapHemisphere=hemisphere;renderMap();
               }, (rows,groups) => {
