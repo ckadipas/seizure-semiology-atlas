@@ -52,7 +52,10 @@ export async function atlasData(path, signal) {
 export function atlasPivot(snapshot, parameters) {
   const query = atlasAsciiLower((parameters.get('q') || '').trim());
   const filters = Object.entries(JSON.parse(parameters.get('filters') || '{}'));
+  const regions = JSON.parse(parameters.get('regions') || '[]');
+  if (!Array.isArray(regions) || regions.some(id => typeof id !== 'string')) throw new Error('Invalid region selection');
   const rows = snapshot.rows.filter(row =>
+    regions.every(id => (row.facets.anatomy || []).some(value => value.id === id)) &&
     filters.every(([facet, ids]) => !ids.length || (row.facets[facet] || []).some(value => ids.includes(value.id))) &&
     (!query || [...row.search_text, ...Object.values(row.facets).flat().map(value => value.label)]
       .some(text => atlasAsciiLower(text).includes(query))));

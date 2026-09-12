@@ -1,5 +1,14 @@
 # Changelog
 
+## 2 — 2026-09-12
+
+- Explore the interactive 3D cortical map on desktop or mobile.
+- Choose DKT40 regions or Brodmann labels, with searchable lists and multiple area selection.
+- Read linked signs, study evidence and paper details beside the map.
+- Use the updated Brodmann label placements for both sides of the brain.
+- Clear all map selections together and show result counts for Brodmann labels.
+- Updated the plain-language guide to searching, selecting areas and reading results.
+
 ## Website update — 2026-09-10
 
 - Restored the footer with direct access to paper submission, the educational-use disclaimer, and the separate content and code licenses.

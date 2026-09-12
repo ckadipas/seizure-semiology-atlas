@@ -1,13 +1,12 @@
 {
-  "version": "1.5.2",
-  "released_at": "2026-09-09T02:21:48Z",
+  "version": "2",
+  "released_at": "2026-09-12T06:37:31Z",
   "changes": [
-    "Corrected regional browsing for the four newly added manuscripts while retaining all 77 papers.",
-    "Linked Five Sign findings to the shared insulo-opercular network, preserving the combined-network statistics and each finding’s anatomical role.",
-    "Corrected Lu source-context anatomy and Zhou stimulation-site references, retaining reported values and distinguishing repeated results.",
-    "Kept study context in Sources and added access to every result from a paper when a search shows only a subset.",
-    "Added Central / perirolandic browsing and retained precise source anatomy within the established regional groups.",
-    "Preserved source terms whose broader anatomy remains unresolved, with checks preventing dropped or borrowed localization links.",
-    "Retained the compact paper layout, author citations, collapsible filters, and Brodmann overview."
+    "Explore the interactive 3D cortical map on desktop or mobile.",
+    "Choose DKT40 regions or Brodmann labels, with searchable lists and multiple area selection.",
+    "Read linked signs, study evidence and paper details beside the map.",
+    "Use the updated Brodmann label placements for both sides of the brain.",
+    "Clear all map selections together and show result counts for Brodmann labels.",
+    "Updated the plain-language guide to searching, selecting areas and reading results."
   ]
 }

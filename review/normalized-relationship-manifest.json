@@ -1,14 +1,14 @@
 {
-  "bundle_content_sha256": "2ecd71143199e9f184930c4c0c5271584c0d6657e53465082b31826d8ca6936d",
-  "bundle_file_sha256": "ea8dc26766ea5865c091b32c8413510a38ea15e7b6216a4dd057d0400751a677",
+  "bundle_content_sha256": "e5709e69aa8a14f2e05b9bdbeea3e7916d696019a44969be2c5d11bff73d4414",
+  "bundle_file_sha256": "9c6d6271eeae1f0bc5e08a466778d14993170676cee807edfa121b7b66a4283e",
   "bundle_schema_version": "atlas-public-bundle-1.17.0",
-  "database_sha256": "1deb48b3e9b1b46d8f3ffd8367ddb88a2cefe90e5c7b2b2bb517ed54be38abdd",
+  "database_sha256": "979a6177914ce23517b345c7dc7a2ea1b81406e94f34c46f189608933d2d405a",
   "graph_schema_version": "atlas-normalized-relationship-graph-1.17.0",
-  "graph_sha256": "8d063be4cd438ad9f7b3ab39d9d65f1cbb4b0791f80934c5452ef007c7d03f47",
-  "module_sha256": "029b27b139695165e39cd92b40094a4fe69775992b01ebbf769f387fc5b574a1",
-  "projection_file_sha256": "02e8e5e301e4d2caf52fcaa8a061ce012fd12f61f077afbfb402c62887ef1b39",
-  "release_id": "semiology-atlas-v1.5.2",
+  "graph_sha256": "dd9bba7eb199ede50568f4da82010bcae8719641df15bbd10c2c84f0a87a72ee",
+  "module_sha256": "5445a1dac41f1cd377efc0abb09aa991583b4fae7ddd8a945db61713f9d07425",
+  "projection_file_sha256": "69dce7c8538565f8bbe99867dafe79be99f83d0604321375d36fd319fbd7dc38",
+  "release_id": "semiology-atlas-v1.5.6",
   "schema_version": "atlas-public-release-receipt-1.1.0",
-  "semantic_digest": "a1a6231da26028193d39687878b08f2bb386ca0473d2a9c97ff96f7bdf1dcbb7",
-  "snapshot_sha256": "c7b0654f1d474bda0b665062553c41233c33930635960df5b3f016f980d7c028"
+  "semantic_digest": "a27b4b0af80472983f460ac6d0ea1e870e68e42b921dc4a1b23a2791337ed699",
+  "snapshot_sha256": "5d54556fe0aa73faf7058ecead36e7c626f15b061e1283be5e0a90937ba258f1"
 }

@@ -6,7 +6,7 @@ A source-grounded educational reference for localizing and lateralizing seizure 
 
 Search once, then browse **Signs**, **Weighted evidence**, or **Sources**. Signs can be organized by brain region or classification. Weighted evidence uses the same organization, with separate localization and lateralization views. Sources collect each paper's results beneath its title, authors, and DOI.
 
-The Brodmann map shows numbered areas. Brain-region filters and classifications remain separate from Brodmann areas.
+The interactive 3D cortical map offers DKT40 regions and Brodmann labels. Select areas on the brain or use the searchable checklists to browse their linked evidence. Drag to rotate and pinch or scroll to zoom.
 
 The page footer links to the simplified paper submission form, full disclaimer,
 content license, and code license. The educational-use notice and license names

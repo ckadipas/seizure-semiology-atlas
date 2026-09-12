@@ -106,6 +106,44 @@ def receipt_digest(receipt):
     return actual
 
 
+def validate_explorer_files(docs, projection):
+    """Check the exact runtime assets before publishing or serving a release."""
+    maps = (projection.get("catalogue") or {}).get("maps") or {}
+    views = maps.get("views")
+    require(isinstance(views, dict) and views, "public explorer map views are absent")
+    expected = {"index.html", "atlas_projection.mjs", "atlas-projection.json.gz"}
+    for view in views.values():
+        relative = PurePosixPath(str((view or {}).get("image_url") or ""))
+        require(relative.parts[:2] == ("generator", "assets")
+                and not relative.is_absolute() and ".." not in relative.parts,
+                "public explorer map asset path is unsafe")
+        expected.add(relative.as_posix())
+    surfaces = maps.get("local_surfaces")
+    if surfaces:
+        expected.add("atlas_surface.mjs")
+        html = (docs / "index.html").read_text(encoding="utf-8")
+        require(f"import('./atlas_surface.mjs?v={file_sha256(docs / 'atlas_surface.mjs')}')" in html,
+                "public surface module binding differs")
+        for record in surfaces["meshes"] + surfaces["images"]:
+            name = record["file"]
+            require(isinstance(name, str) and re.fullmatch(r"[A-Za-z0-9_.-]+", name)
+                    and name not in {".", ".."}, "public surface asset path is unsafe")
+            relative = "local-surfaces/" + name
+            expected.add(relative)
+            require(file_sha256(docs / relative) == record["sha256"],
+                    "public surface asset digest differs: " + name)
+        if surfaces.get("label_assignments"):
+            relative = "local-surfaces/brodmann-label-nodes.json"
+            expected.add(relative)
+            labels = json.loads((docs / relative).read_text(encoding="utf-8"))
+            require(labels == {k: v for k, v in surfaces["label_assignments"].items()
+                               if k != "revision"}, "public label assignments differ")
+    actual = {p.relative_to(docs).as_posix() for p in docs.rglob("*") if p.is_file()}
+    require(actual == expected, "public explorer file set differs")
+    require(all(not (docs / p).is_symlink() for p in expected), "public explorer contains a symlink")
+    return expected
+
+
 def validate_explorer(receipt):
     docs = ROOT / "docs"
     compressed = docs / "atlas-projection.json.gz"
@@ -128,24 +166,7 @@ def validate_explorer(receipt):
         and file_sha256(compressed) == receipt["projection_file_sha256"],
         "public explorer content digest differs from the release receipt",
     )
-    views = ((projection.get("catalogue") or {}).get("maps") or {}).get("views")
-    require(isinstance(views, dict) and views, "public explorer map views are absent")
-    expected_files = {
-        "index.html", "atlas_projection.mjs", "atlas-projection.json.gz",
-    }
-    for view in views.values():
-        relative = PurePosixPath(str((view or {}).get("image_url") or ""))
-        require(
-            relative.parts[:2] == ("generator", "assets")
-            and not relative.is_absolute() and ".." not in relative.parts,
-            "public explorer map asset path is unsafe",
-        )
-        expected_files.add(relative.as_posix())
-    actual_files = {
-        path.relative_to(docs).as_posix()
-        for path in docs.rglob("*") if path.is_file()
-    }
-    require(actual_files == expected_files, "public explorer file set differs")
+    validate_explorer_files(docs, projection)
     html = html_path.read_text(encoding="utf-8")
     validate_site_footer(html)
     require(

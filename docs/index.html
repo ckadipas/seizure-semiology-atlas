@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-projection="static" data-snapshot="c7b0654f1d474bda0b665062553c41233c33930635960df5b3f016f980d7c028">
+<html lang="en" data-projection="static" data-snapshot="5d54556fe0aa73faf7058ecead36e7c626f15b061e1283be5e0a90937ba258f1">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -25,7 +25,7 @@
     .result { overflow-wrap: anywhere; }
     button, input, select { font: inherit; }
     button { cursor: pointer; }
-    .page { width: min(1180px, calc(100% - 32px)); margin: 0 auto 56px; }
+    .page { width: calc(100% - 32px); margin: 0 auto 56px; }
     header { background: var(--navy); color: #fff; padding: 16px 0; }
     header .page { margin-bottom: 0; }
     header h1 { margin: 0 0 6px; font-size: clamp(1.15rem, 3vw, 1.65rem); letter-spacing: -.025em; }
@@ -88,6 +88,7 @@
     .map-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
     .map-title-row { display:flex; flex-wrap:wrap; align-items:center; gap:6px 18px; }
     .map-count-toggle { display:inline-flex; align-items:center; gap:6px; min-height:30px; font-size:.8rem; color:var(--muted); white-space:nowrap; cursor:pointer; }
+    .map-count-toggle:has(input:disabled) { opacity:.45; cursor:default; }
     .map-count-toggle input { margin:0; accent-color:var(--teal); }
     .active-filters { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
     .active-filter { border: 1px solid #b9dfe4; border-radius: 999px; background: #eef9fa; color: #0a6875; padding: 3px 9px; font-size: .72rem; }
@@ -103,9 +104,48 @@
     .region-buttons { display: flex; flex-wrap: wrap; gap: 7px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
     .region-button { border: 1px solid var(--region-color,#c7d3e2); border-radius: 999px; background: var(--region-color,var(--navy)); color: #fff; padding: 5px 11px; font-size: .75rem; font-weight: 750; }
     .region-button.selected { outline: 3px solid #58c6d4; outline-offset: 2px; }
-    .map-layout { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0,1fr); gap: 14px; align-items: stretch; margin-top: 12px; }
+    .map-layout { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0,1fr); gap: 14px; align-items: start; margin-top: 12px; }
+    #mapEvidence { min-width:0; }
+    #mapEvidence .results-panel { margin:0; max-height:780px; max-height:85dvh; overflow:auto; overscroll-behavior:contain; }
+    .selection-heading { margin:0 0 14px; padding-bottom:12px; border-bottom:1px solid var(--line); font-size:1.15rem; line-height:1.4; color:var(--navy); }
     .brain-map { min-height: 230px; display: grid; place-items: center; border-radius: 10px; background: #fbfcfe; border: 1px solid var(--line2); overflow: hidden; }
     .brain-map svg { display: block; width: 100%; max-height: 490px; }
+    .brain-map.surface-host { display:block; padding:10px; background:#fff; }
+    .surface-toolbar { display:flex; gap:8px; flex-wrap:wrap; align-items:end; font-size:.75rem; }
+    .surface-toolbar label { display:grid; gap:4px; flex:1 1 170px; min-width:0; }
+    .surface-toolbar select { width:100%; min-width:0; max-width:100%; padding:7px; }
+    .surface-roi { flex:1 1 210px; min-width:0; display:grid; gap:4px; }
+    .surface-regions { position:relative; }
+    .surface-regions summary { padding:8px; border:1px solid var(--line); border-radius:5px; cursor:pointer; }
+    .surface-region-menu { position:absolute; z-index:8; top:100%; left:0; width:min(330px,75vw); padding:10px; border:1px solid var(--line); border-radius:6px; background:white; box-shadow:0 6px 18px #18284120; }
+    .surface-region-menu input[type=search] { width:100%; padding:8px; margin-bottom:7px; }
+    .surface-region-list { max-height:300px; overflow:auto; }
+    .surface-region-list label { display:flex; align-items:center; gap:8px; padding:7px 2px; cursor:pointer; }
+    .surface-region-list input { flex:0 0 auto; }
+    .surface-stage { position:relative; width:100%; }
+    .surface-ba-labels { position:absolute; inset:0; pointer-events:none; }
+    .surface-ba { position:absolute; transform:translate(-50%,-50%); display:grid; place-items:center; min-width:28px; height:28px; padding:0; border:0; background:transparent; color:var(--navy); font-size:10px; font-weight:600; line-height:1.15; pointer-events:auto; touch-action:none; }
+    .surface-ba-number { position:relative; padding:2px 3px; border-radius:3px; background:#ffffffb8; }
+    .surface-ba-count { position:absolute; left:calc(100% - 1px); bottom:65%; padding:1px 3px; border:1px solid white; border-radius:6px; background:var(--teal-d); color:white; font-size:8px; line-height:1.1; font-weight:600; }
+    .surface-region-list .surface-group { font-weight:650; }
+    .paper-result-summary { color:var(--muted); margin:6px 0; }
+    .surface-ba:is(:hover,:focus-visible) .surface-ba-number { background:white; }
+    .surface-ba[aria-pressed=true] .surface-ba-number { background:var(--teal-d); color:white; }
+    .surface-ba[data-editing=true] .surface-ba-number { outline:2px solid var(--teal-d); outline-offset:2px; background:#fff; }
+    .surface-specialized .surface-ba-labels { display:none; }
+    .surface-label-controls { display:flex; align-items:center; flex-wrap:wrap; gap:8px; font-size:.72rem; margin-top:7px; }
+    .surface-label-controls label { display:inline-flex; align-items:center; gap:5px; white-space:nowrap; }
+    .surface-label-controls span { color:var(--muted); margin-left:auto; max-width:62%; }
+    .surface-label-controls button { margin-left:auto; min-height:32px; padding:5px 9px; border:1px solid var(--line); border-radius:6px; background:#fff; }
+    .surface-toolbar button,.surface-boundary button { padding:7px 10px; border:1px solid var(--line); border-radius:6px; background:#fff; }
+    .surface-host canvas { display:block; width:100%; height:clamp(290px,46vh,510px); touch-action:none; user-select:none; cursor:grab; }
+    .surface-host canvas:active { cursor:grabbing; }
+    .surface-host canvas:focus-visible { outline:2px solid var(--navy); outline-offset:-2px; }
+    .surface-host [hidden] { display:none; }
+    .surface-plates img { display:block; width:100%; height:clamp(290px,46vh,510px); object-fit:contain; }
+    .surface-status { color:var(--navy); font-weight:650; font-size:.85rem; padding-top:7px; }
+    .surface-help { font-size:.72rem; color:var(--muted); margin-top:5px; }
+    .surface-boundary { display:flex; flex-wrap:wrap; gap:6px; }
     .brain-figure { min-width:0; }
     .brain-caption { display:flex; flex-wrap:wrap; gap:6px; padding-top:10px; color:var(--navy); font-size:.85rem; }
     .map-note { padding: 14px; border: 1px solid var(--line); border-radius: 9px; color: var(--muted); font-size: .79rem; line-height: 1.5; }
@@ -181,9 +221,6 @@
     .segmented { display:flex; gap:2px; border-radius:7px; background:#eef1f7; padding:3px; }
     .segmented button { background:transparent; border:0; color:#647089; border-radius:5px; min-height:34px; padding:5px 11px; font-size:.75rem; font-weight:750; }
     .segmented button[aria-selected="true"], .segmented button[aria-pressed="true"] { background:#fff; color:var(--navy); box-shadow:0 1px 4px #24334c22; }
-    .map-results { max-height:320px; overflow:auto; margin-top:10px; }
-    .map-result { display:flex; justify-content:space-between; gap:8px; width:100%; border:0; border-bottom:1px solid var(--line); background:#fff; padding:9px 4px; text-align:left; color:var(--navy); font-size:.78rem; }
-    .map-result small { color:var(--muted); white-space:nowrap; }
     .browse-region { margin:9px 0; --group-color:#596579; scroll-margin-top:12px; }
     .browse-region > summary, .browse-section > summary, .browse-sign > summary { display:flex; align-items:center; gap:8px; cursor:pointer; list-style:none; background:var(--group-color); color:#fff; border-radius:6px; padding:8px 11px; }
     .browse-region > summary { text-transform:uppercase; letter-spacing:.045em; font-size:.8rem; font-weight:800; }
@@ -299,6 +336,10 @@
     }
 
     [hidden] { display: none !important; }
+    @media (max-width: 1100px) {
+      .map-layout { grid-template-columns: 1fr; }
+      #mapEvidence .results-panel { max-height:none; overflow:visible; }
+    }
     @media (max-width: 780px) {
       .guide-content { grid-template-columns:1fr; }
       .page { width: min(100% - 20px, 1320px); }
@@ -309,8 +350,21 @@
       .facet-menu { top: auto; left: 0; right: 0; width: 100%; }
       .search-row { grid-template-columns: 1fr auto; }
       .search-wrap { grid-column: 1 / -1; }
-      .map-layout { grid-template-columns: 1fr; }
       .section-head { align-items: flex-start; flex-direction: column; }
+      .map-controls { width:100%; }
+      .map-controls .segmented { flex:1; }
+      .map-controls .segmented button { flex:1; min-height:44px; }
+      .surface-toolbar { display:grid; grid-template-columns:1fr 1fr; }
+      .surface-toolbar > label,.surface-roi { grid-column:1 / -1; }
+      .surface-toolbar select,.surface-regions summary,.surface-toolbar button { min-height:44px; }
+      .surface-toolbar select,.surface-region-menu input[type=search] { font-size:16px; }
+      .surface-region-menu { width:100%; box-sizing:border-box; }
+      .surface-region-list { max-height:240px; max-height:32dvh; overscroll-behavior:contain; }
+      .surface-region-list label { min-height:44px; padding:4px; }
+      .surface-region-list input,.surface-label-controls input { width:20px; height:20px; }
+      .surface-label-controls { min-height:44px; flex-wrap:wrap; }
+      .surface-label-controls button { min-height:44px; }
+      .surface-label-controls span { max-width:none; margin-left:0; }
     }
   </style>
 </head>
@@ -327,12 +381,12 @@
     <details id="pageGuide" class="panel page-guide">
       <summary>How to use this page</summary>
       <div class="guide-content">
-        <section><h2>Search and filter</h2><p>Search for a sign, anatomical term or citation. <strong>Anatomy</strong> and <strong>Semiology</strong> select what to look for; <strong>ILAE</strong> and <strong>Lüders</strong> select classification groups. <strong>Phase</strong> and <strong>Laterality</strong> select timing and side. The remaining filters narrow the evidence by class, type, paper or measurement. Filters apply across all three tabs; <strong>Clear filters</strong> starts over.</p></section>
-        <section><h2>Choose a tab</h2><p><strong>Signs</strong> groups signs by region or classification. <strong>Weighted evidence</strong> summarizes study support for brain regions (<strong>Localization</strong>) or side (<strong>Lateralization</strong>). <strong>Sources</strong> brings each paper’s results together.</p></section>
-        <section><h2>Arrange the results</h2><p>In Weighted evidence, <strong>Order</strong> chooses a ranked list or <strong>Current organization</strong>. For that organization, <strong>Organize signs by</strong> sets the main groups, <strong>Region order</strong> sorts the regions, and <strong>Within each group</strong> chooses the next level.</p></section>
-        <section><h2>Use the brain map</h2><p>Select a Brodmann number to filter by that area; its name appears below the brain. Surface and Left/Right controls change the illustration. <strong>Show counts</strong> adds the number of matching results at each marker.</p></section>
-        <section><h2>Read a paper</h2><p>Open <strong>Results</strong> beneath a paper’s title to read its findings, tables and source text. Longer papers scroll within that pane. DOI links open the article.</p></section>
-        <section><h2>Read the scores</h2><p>Dots indicate one, two, or three or more papers. A score combines study weights; it is not a probability. <strong>About the scores</strong> explains the calculation.</p></section>
+        <section><h2>Find a sign or paper</h2><p>Search for a symptom, brain area or paper. Open <strong>Filters</strong> to narrow the results by timing, side, classification or study details. The filters apply to all three tabs. <strong>Clear filters</strong> starts over.</p></section>
+        <section><h2>Explore the brain</h2><p>Choose <strong>DKT40 Atlas</strong> to select colored brain regions, or <strong>Brodmann Labels</strong> to select numbered areas. Drag to turn the brain and pinch or scroll to zoom. The view buttons and <strong>Left / Right</strong> change what you see; use <strong>Laterality</strong> to filter the side reported in a study.</p></section>
+        <section><h2>Select and clear areas</h2><p>Tap an area on the map, or search and check names in the adjacent menu. Click outside the menu to close it. You can combine areas to find reported findings linked to each selection. Selections stay active when you switch atlases. <strong>Clear selection</strong> removes all map selections; <strong>Reset view</strong> only resets the view.</p></section>
+        <section><h2>Read the results</h2><p><strong>Signs</strong> groups the linked signs. <strong>Weighted evidence</strong> summarizes study support for a brain area or side. <strong>Sources</strong> brings results from each paper together. <strong>Associated study findings</strong> contains other linked records, such as case descriptions or comparisons. Use <strong>Organize signs by</strong> to change the grouping.</p></section>
+        <section><h2>Open a paper’s findings</h2><p>Open <strong>Results</strong> beneath a paper’s title for findings, reported measurements and source details. <strong>View all results from this paper</strong> shows the rest of that paper’s results. DOI links open the article.</p></section>
+        <section><h2>Understand counts and scores</h2><p><strong>Show counts</strong> adds the number of matching results to Brodmann labels. It is available in Brodmann mode. Dots indicate one, two, or three or more papers. A score combines study weights; it is not a probability. <strong>About the scores</strong> explains the calculation.</p></section>
       </div>
     </details>
     <section class="panel search-panel" aria-label="Search and filters">
@@ -353,7 +407,7 @@
     </section>
 
     <details id="mapPanel" class="panel map-panel browse-section" open>
-      <summary><span class="browse-name">Brodmann overview</span><label class="map-count-toggle"><input id="mapCounts" type="checkbox"> Show counts</label></summary>
+      <summary><span class="browse-name">Interactive 3D cortical map</span><label class="map-count-toggle"><input id="mapCounts" type="checkbox"> Show counts</label></summary>
       <div class="map-panel-body">
         <div class="section-head">
           <div>
@@ -365,17 +419,14 @@
           </div>
         </div>
         <div class="map-layout">
-          <div class="brain-figure"><div id="brainMap" class="brain-map" aria-label="Brodmann map"></div><div id="mapSelection" class="brain-caption" aria-live="polite"></div></div>
-          <div class="map-note">
-            <strong id="mapHeading">Select a result to inspect its anatomy</strong>
-            <span id="mapMessage">Choose a finding below to highlight its reported anatomy on the map.</span>
-            <div id="mapResults" class="map-results"></div>
-          </div>
+          <div class="brain-figure"><div id="brainMap" class="brain-map" aria-label="Cortical map"></div><div id="mapSelection" class="brain-caption" aria-live="polite"></div></div>
+          <div id="mapEvidence"></div>
         </div>
       </div>
     </details>
 
     <section class="panel results-panel" id="lowerPanel">
+      <h2 id="mapHeading" class="selection-heading" hidden></h2>
       <div id="viewTabs" class="view-tabs" role="tablist" aria-label="Evidence views">
         <button type="button" role="tab" id="tab-browse" data-view="browse" aria-selected="true" aria-controls="results">Signs</button>
         <button type="button" role="tab" id="tab-weighted" data-view="weighted" aria-selected="false" aria-controls="results">Weighted evidence</button>
@@ -431,11 +482,13 @@
   </dialog>
 
   <script type="module">
-    import { atlasData, atlasGroups, atlasClassificationGroups, atlasCounts, atlasWeights } from './atlas_projection.mjs?v=029b27b139695165e39cd92b40094a4fe69775992b01ebbf769f387fc5b574a1';
+    import { atlasData, atlasGroups, atlasClassificationGroups, atlasCounts, atlasWeights } from './atlas_projection.mjs?v=5445a1dac41f1cd377efc0abb09aa991583b4fae7ddd8a945db61713f9d07425';
     (() => {
       "use strict";
 
       const detailGroups = new Map();
+      let surfacePanel = null;
+      let surfacePanelLoading = false;
       const REQUEST_TIMEOUT_MS = 30000;
       const requestClient = (() => {
         const key = "atlas-request-client";
@@ -461,12 +514,12 @@
         catalogue: { facets: [], items: [], maps: null },
         response: null,
         loading: true,
-        pendingMapResult: null,
         requestClient,
         requestGeneration: initialRequestGeneration,
         requestController: null,
         requestTimer: null,
         filters: {},
+        surfaceAnatomy: [],
         query: "",
         groupBy: "region",
         regionSort: "atlas",
@@ -778,7 +831,6 @@
         itemIds.forEach(id => enabled ? values.add(id) : values.delete(id));
         if (values.size) state.filters[facetId] = [...values];
         else delete state.filters[facetId];
-        state.pendingMapResult = null;
         if (facetId === "anatomy" && !enabled) itemIds.forEach(id=>{state.mapAnatomy.delete(id);state.mapLabels.delete(id);});
         renderActiveFilters();
         runQuery();
@@ -841,6 +893,7 @@
       function renderMap() {
         const controlsDisabled = !state.response;
         const config = mapConfig();
+        const localSurfaces = state.catalogue.maps?.local_surfaces;
         const views = state.catalogue.maps?.views || {};
         $("#surfaceTabs").innerHTML = Object.keys(views).map(id => `<button type="button" role="tab" data-surface="${h(id)}" aria-selected="${id === state.mapView}">${h(id[0].toUpperCase()+id.slice(1))}</button>`).join("");
         $("#hemisphereTabs").querySelectorAll("button").forEach(button => button.setAttribute("aria-pressed", String(button.dataset.hemisphere === state.mapHemisphere)));
@@ -852,12 +905,51 @@
         const imageUrl = config.image_url || (config.image?.file ? `generator/assets/${config.image.file}` : "generator/assets/brain_lateral.jpg");
         const image = config.image || { x: 92.6, y: 36.9, width: 793.4, height: 530.3 };
         const flipPlate = !config.bilateral_plate && state.mapHemisphere === "right";
-        const markers = markerRows(config).filter(marker =>
+        const markers = [...markerRows(config),...(localSurfaces?config.unmapped_markers||[]:[])].filter(marker =>
           Number.isFinite(Number(marker.x)) && Number.isFinite(Number(marker.y)) &&
-          (!config.bilateral_plate || marker.hemisphere === state.mapHemisphere)
-        ).map(marker => ({ ...marker, x: flipPlate ? viewBox[2] - Number(marker.x) : Number(marker.x) }));
+          (!config.bilateral_plate || localSurfaces || marker.hemisphere === state.mapHemisphere)
+        ).map(marker => ({ ...marker,
+          hemisphere:localSurfaces&&!config.bilateral_plate?state.mapHemisphere:marker.hemisphere,
+          x: flipPlate ? viewBox[2] - Number(marker.x) : Number(marker.x) }));
         $("#mapHemisphere").value = state.mapHemisphere;
-        $("#brainMap").innerHTML = `<svg viewBox="${viewBox.map(Number).join(" ")}" role="group" aria-label="${h(state.mapHemisphere)} hemisphere, ${h(state.mapView)} surface, Brodmann areas">
+        $('#mapPanel .browse-name').textContent = localSurfaces ? 'Interactive 3D cortical map' : 'Brodmann overview';
+          $('#mapPanel .section-head p').textContent = localSurfaces ? 'Select regions or Brodmann labels to filter the evidence.' : 'Select a numbered area to filter the evidence.';
+        const countsAvailable=!localSurfaces||surfacePanel?.atlas.value==='brodmann';
+        $('#mapCounts').disabled=!countsAvailable;
+        const showCounts=state.mapCounts&&countsAvailable;
+        $('#hemisphereTabs').hidden = Boolean(localSurfaces && (surfacePanel?.layer==='mesial' || ['dorsal','ventral'].includes(state.mapView)));
+        if (localSurfaces) {
+          const host = $("#brainMap");
+          host.classList.add('surface-host');
+          host.setAttribute('aria-label','DKT40 anatomical surfaces');
+          if (!surfacePanel && !surfacePanelLoading) {
+            surfacePanelLoading = true;
+            host.textContent = 'Loading surfaces…';
+            import('./atlas_surface.mjs?v=e25049d16398be7d8e586c49901d14b97a5c18737ba35eda7e658cb7cdf35687').then(({SurfacePanel}) => {
+              surfacePanel = new SurfacePanel(host, {...localSurfaces,groups:state.catalogue.maps.region_groups,brodmann:facetItems('anatomy').filter(row=>row.reference==='ATLAS:BRODMANN').sort((a,b)=>a.label.localeCompare(b.label,undefined,{numeric:true}))}, (view, hemisphere) => {
+                state.mapView=view;state.mapHemisphere=hemisphere;renderMap();
+              }, (rows,groups) => {
+                state.surfaceAnatomy=[...new Set(rows.map(row=>row.anatomy_id).filter(Boolean))];
+                if(groups.length)state.filters.region=groups;else delete state.filters.region;
+                runQuery();
+              }, () => { clearMapSelection(); renderFilters(); runQuery(); });
+              host.querySelector('.surface-label-controls > span').before($('.map-count-toggle'));
+              surfacePanel.setView(state.mapView,state.mapHemisphere);
+              renderMap();
+            }).catch(error => { host.textContent = error.message; });
+          }
+          surfacePanel?.setView(state.mapView,state.mapHemisphere);
+          surfacePanel?.setGroups(selected('region'));
+          surfacePanel?.syncRegionMenu(selected('anatomy'));
+          surfacePanel?.setBrodmann(markers.map(marker=>({...marker,count:showCounts&&marker.anatomy_id?countFor('anatomy',marker.anatomy_id)??0:null})),new Set([...state.mapAnatomy,...selected('anatomy'),...(state.catalogue.maps.region_groups||[]).filter(group=>selected('region').includes(group.id)).flatMap(group=>group.anatomy_ids)]),{
+            x:flipPlate?viewBox[2]-image.x-(image.width??image.w):image.x,y:image.y,
+            width:image.width??image.w,height:image.height??image.h,
+          }, Object.entries(views).map(([view,plate])=>({
+            view,bilateral:plate.bilateral_plate,image:plate.image,
+            markers:[...markerRows(plate),...(plate.unmapped_markers||[])].map(marker=>({...marker,
+              count:showCounts&&marker.anatomy_id?countFor('anatomy',marker.anatomy_id)??0:null})),
+          })));
+        } else $("#brainMap").innerHTML = `<svg viewBox="${viewBox.map(Number).join(" ")}" role="group" aria-label="${h(state.mapHemisphere)} hemisphere, ${h(state.mapView)} surface, Brodmann areas">
           <g ${flipPlate ? `transform="translate(${viewBox[2]},0) scale(-1,1)"` : ""}><image href="${h(imageUrl)}" x="${Number(image.x ?? 0)}" y="${Number(image.y ?? 0)}" width="${Number(image.width ?? image.w ?? viewBox[2])}" height="${Number(image.height ?? image.h ?? viewBox[3])}" preserveAspectRatio="none"></image></g>
           ${markers.map(marker => {
             const count = state.response ? countFor("anatomy", marker.anatomy_id) ?? 0 : null;
@@ -875,14 +967,15 @@
           const label = state.mapLabels.get(id) || itemLabel(anatomy.id,id);
           return item?.area_name ? label+' — '+item.area_name : label;
         }) : [];
-        $("#mapHeading").textContent = labels.length ? "Selected source-supported anatomy" : "Select a result to inspect its anatomy";
-        const selectedMarkerCount = markers.filter(marker => selectedAnatomy.includes(marker.anatomy_id)).length;
-        $("#mapMessage").textContent = labels.length && !selectedMarkerCount
-          ? "The reported anatomy remains listed below; it has no marker on this Brodmann illustration."
-          : "Choose a finding below to highlight its reported anatomy on the map.";
+        const selectedRegions = [...new Set([...selected('anatomy'),...state.surfaceAnatomy])];
+        const titles = [...selected('region').map(id=>itemLabel('region',id)),...selectedRegions.map(id => {
+          const item = facetItems('anatomy').find(value=>value.id===id);
+          const label = itemLabel('anatomy',id);
+          return item?.area_name ? label+' — '+item.area_name : roleLabel(label);
+        })];
+        $("#mapHeading").hidden = !titles.length;
+        $("#mapHeading").textContent = titles.join(' + ');
         $("#mapSelection").innerHTML = labels.map(label => `<span class="map-chip">${h(label)}</span>`).join("");
-        const mappedRows = (state.response?.rows || []).filter(row => rowFacetValues(row, "anatomy").some(value => state.mapAnatomy.has(value.id)));
-        $("#mapResults").innerHTML = atlasGroups(mappedRows,"sign").map(group => `<button type="button" class="map-result" data-result="${h(group.rows[0].id)}"><span>${h(group.label)}</span><small>${group.rows.length} results ›</small></button>`).join("");
       }
 
       function rowFacetValues(row, facetId) {
@@ -1235,7 +1328,7 @@
           const clinical=node.rows.filter(row=>row.record_kind!=='CONTEXT_ONLY');
           const context=node.rows.filter(row=>row.record_kind==='CONTEXT_ONLY');
           return (clinical.length ? disclosure('classification','Classification not linked',clinical,color,false,{node:{...node,rows:clinical,directRows:clinical},facet}) : '')+
-            (context.length ? disclosure('context','Study context and comparisons',context,color,false,{countLabel:quantity(atlasCounts(context).sources,'paper')}) : '');
+            (context.length ? disclosure('context','Associated study findings',context,color,false,{countLabel:quantity(atlasCounts(context).sources,'paper')}) : '');
         }
         return disclosure('classification',node.label,node.rows,color,false,{node,facet});
       }
@@ -1256,6 +1349,10 @@
         return (meta?'<div class="paper-meta">'+meta+'</div>':'')+
           (detail&&comparableText(detail)!==comparableText(displayedTitle)?'<div class="citation">'+h(detail)+'</div>':'');
       }
+      function evidenceSummary(rows) {
+        const clinical=rows.filter(row=>row.record_kind!=='CONTEXT_ONLY');
+        return [quantity(rows.length,'linked result'),quantity(atlasCounts(clinical).signs,'sign'),quantity(atlasCounts(rows).sources,'paper')].join(' · ');
+      }
       function paperSection(paper, signLabel) {
         const key=String(detailGroups.size);
         detailGroups.set(key,{kind:'paper',...paper,signLabel});
@@ -1264,7 +1361,8 @@
         const showAll=(state.query||Object.keys(state.filters).length)&&!alreadyComplete
           ? '<button class="quiet" type="button" data-view-paper="'+h(paper.id)+'">View all results from this paper</button>' : '';
         return '<section class="paper-section"><h3>'+h(paper.label)+'</h3>'+sourceHeader(paper.id,paper.rows,false,paper.label)+
-          showAll+
+          '<p class="paper-result-summary">'+h(evidenceSummary(paper.rows))+'</p>'+showAll+
+          (!signLabel?'<details class="paper-matches"><summary>Matched signs and findings</summary><ul>'+atlasGroups(paper.rows,'sign').map(group=>'<li>'+h(group.label)+'</li>').join('')+'</ul></details>':'')+
           '<details class="paper-disclosure" data-browse="'+key+'"><summary>Results</summary><div class="paper-reading" data-content tabindex="0" role="region" aria-label="Results from '+h(paper.label)+'"></div></details></section>';
       }
       function fillDisclosure(element) {
@@ -1308,9 +1406,8 @@
         const mainOrder=weightedMainOrder(rows);
         const metrics=new Map(summaries.map(weight=>[weight.id,weightCounts(weight,weightRelationshipRows(weight,byId))]));
         summaries.sort((a,b)=>compareWeights(a,b,mainOrder,metrics));
-        $('#resultStatus').textContent=quantity(summaries.length,'sign');
         const cards=state.weightSort[state.weightAxis]==='page' && state.groupBy
-          ? weightPageGroups(summaries,rows,byId).map(group=>disclosure('region',group.label,group.rows||rows,group.color,false,{kind:'weight-group',weights:group.weights,countLabel:quantity(group.weights.length,'sign')})).join('')
+          ? weightPageGroups(summaries,rows,byId).map(group=>disclosure('region',group.label,group.rows||rows,group.color,false,{kind:'weight-group',weights:group.weights,countLabel:quantity(group.weights.length,'card')})).join('')
           : summaries.map(weight=>weightCard(weight,byId)).join('');
         return cards||'<p class="empty">No evidence matches this selection.</p>';
       }
@@ -1424,9 +1521,7 @@
         const titles={browse:'Signs',weighted:'Weighted evidence',sources:'Sources'};
         $('#viewHeading').textContent=titles[view];
         $('#resultStatus').textContent=state.response
-          ? (rows.length?(view==='sources'?quantity(atlasCounts(rows).sources,'paper'):view==='browse'&&!clinicalRows.length
-            ? '0 signs · '+quantity(atlasCounts(contextRows).sources,'paper')+' matched study text'
-            : quantity(atlasCounts(clinicalRows).signs,'sign')):'No results match the current search and filters.')
+          ? (rows.length?evidenceSummary(rows):'No results match the current search and filters.')
           : (state.loading?'Loading evidence…':'Evidence results are unavailable.');
         const weightedPage=view==='weighted'&&state.weightSort[state.weightAxis]==='page';
         $('#browseControls').hidden=view!=='browse'&&!weightedPage;
@@ -1455,10 +1550,10 @@
         let content='';
         if(view==='sources') content=atlasGroups(rows,'source').map(paper=>paperSection(paper)).join('');
         else if(view==='weighted') content=renderWeighted(rows);
-        else if(!clinicalRows.length&&contextRows.length)content='<p class="empty">This search matched study text rather than a clinical sign. <button class="quiet" type="button" data-view-context-sources>View the matched study text in Sources</button></p>';
         else if(!state.groupBy)content=signRows(clinicalRows,'#344a67');
         else if(state.groupBy==='region')content=regionRows(clinicalRows);
         else content=classificationRows(clinicalRows,state.groupBy);
+        if(view==='browse'&&contextRows.length)content+=disclosure('context','Associated study findings',contextRows,'#65758b',false,{countLabel:quantity(contextRows.length,'result')+' · '+quantity(atlasCounts(contextRows).sources,'paper')});
         $('#results').innerHTML=content||'<p class="empty">No evidence results match these selections.</p>';
       }
 
@@ -1488,6 +1583,7 @@
         const parameters = new URLSearchParams({
           q: state.query,
           filters: JSON.stringify(state.filters),
+          regions: JSON.stringify(state.surfaceAnatomy),
           limit: "all",
         });
         try {
@@ -1506,7 +1602,6 @@
           renderFilters();
           renderMap();
           renderResults();
-          if (state.pendingMapResult) openMapResult(state.pendingMapResult);
         } catch (_error) {
           if (!isCurrent(request)) return;
           finishRequest(request);
@@ -1565,16 +1660,23 @@
         state.query = "";
         runQuery();
       });
-      $("#clearAll").addEventListener("click", () => {
-        state.filters = {};
-        state.query = "";
-        state.pendingMapResult = null;
-        state.optionSearch = {};
-        $("#filters").querySelectorAll("details[open]").forEach(menu => { menu.open = false; });
+      function clearMapSelection() {
+        delete state.filters.anatomy;
+        delete state.filters.region;
+        state.surfaceAnatomy = [];
         state.mapAnatomy.clear();
         state.mapLabels.clear();
         state.mapRegions.clear();
         state.mapResultIds.clear();
+        surfacePanel?.setGroups([]);
+        surfacePanel?.select([],false);
+      }
+      $("#clearAll").addEventListener("click", () => {
+        state.filters = {};
+        clearMapSelection();
+        state.query = "";
+        state.optionSearch = {};
+        $("#filters").querySelectorAll("details[open]").forEach(menu => { menu.open = false; });
         $("#search").value = "";
         $("#clearSearch").hidden = true;
         renderFilters();
@@ -1627,7 +1729,7 @@
       $("#mapCounts").addEventListener("change", event => { state.mapCounts = event.target.checked; renderMap(); });
       function selectMapMarker(target) {
         if (!state.response) return;
-        const marker = target.closest("[data-anatomy]");
+        const marker = target.closest(".surface-ba[data-anatomy], .map-marker[data-anatomy]");
         if (!marker) return;
         const anatomyId = marker.dataset.anatomy;
         state.mapAnatomy = selected("anatomy").includes(anatomyId) ? new Set() : new Set([anatomyId]);
@@ -1636,21 +1738,25 @@
         state.mapResultIds.clear();
         toggleFilter("anatomy", anatomyId);
       }
+      $("#brainMap").addEventListener("change", event => {
+        const input=event.target.closest('input[data-anatomy]');
+        if(input)toggleFilter('anatomy',input.dataset.anatomy,input.checked);
+      });
       $("#brainMap").addEventListener("click", event => selectMapMarker(event.target));
       $("#brainMap").addEventListener("keydown", event => {
-        if (event.key === "Enter" || event.key === " ") {
+        if (event.target.closest('.map-marker[data-anatomy]') && (event.key === "Enter" || event.key === " ")) {
           event.preventDefault();
           selectMapMarker(event.target);
         }
       });
-      $("#groupBy").addEventListener("change", event => { state.pendingMapResult = null; state.groupBy = event.target.value; renderGroupChoices(); renderResults(); });
+      $("#groupBy").addEventListener("change", event => { state.groupBy = event.target.value; renderGroupChoices(); renderResults(); });
       $("#results").addEventListener("click", event => {
         const contextButton=event.target.closest('[data-view-context-sources]');
         if(contextButton){state.view='sources';renderResults();return;}
         const paperButton=event.target.closest('[data-view-paper]');
         if(paperButton){
           state.filters={source:[paperButton.dataset.viewPaper]};
-          state.query='';state.pendingMapResult=null;state.optionSearch={};state.view='sources';
+          state.query='';state.optionSearch={};state.view='sources';
           $("#search").value='';$("#clearSearch").hidden=true;
           renderFilters();runQuery();return;
         }
@@ -1671,7 +1777,7 @@
       $('#results').addEventListener('toggle', event => {
         if(event.target.matches('details[data-browse]')) fillDisclosure(event.target);
       },true);
-      $('#within').addEventListener('change', event => {state.pendingMapResult=null;state.within=event.target.value; renderResults();});
+      $('#within').addEventListener('change', event => {state.within=event.target.value; renderResults();});
       $('#expandGroups').addEventListener('click',()=>{
         $('#results').querySelectorAll(':scope > details, :scope > .weight-group > details, :scope > .paper-section > details').forEach(element=>{element.open=true;fillDisclosure(element);});
         $('#results').querySelectorAll('.browse-section').forEach(element=>{element.open=true;fillDisclosure(element);});
@@ -1679,28 +1785,17 @@
       $('#collapseGroups').addEventListener('click',()=>$('#results').querySelectorAll('details[open]').forEach(element=>{element.open=false;}));
       $('#surfaceTabs').addEventListener('click',event=>{const button=event.target.closest('[data-surface]');if(button){state.mapView=button.dataset.surface;renderMap();}});
       $('#hemisphereTabs').addEventListener('click',event=>{const button=event.target.closest('[data-hemisphere]');if(button){state.mapHemisphere=button.dataset.hemisphere;renderMap();}});
-      function openMapResult(id) {
-        if(!id)return;
-        if(state.loading){state.pendingMapResult=id;return;}
-        state.pendingMapResult=null;
-        if(!state.response?.rows.some(row=>row.id===id))return;
-        state.view='browse';state.groupBy='';renderGroupChoices();renderResults();
-        let container=$('#results');
-        while(container) {
-          const element=[...container.querySelectorAll(':scope > details[data-browse], :scope > .paper-section > details[data-browse]')].find(item=>detailGroups.get(item.dataset.browse)?.rows.some(row=>row.id===id));
-          if(!element)break;
-          element.open=true;fillDisclosure(element);
-          container=element.querySelector(':scope > [data-content]');
-        }
-        const result=[...container.querySelectorAll('.source-result')].find(item=>item.dataset.result===id);
-        if(result){for(let parent=result;parent&&parent!==$('#results');parent=parent.parentElement)if(parent.tagName==='DETAILS')parent.open=true;result.scrollIntoView({behavior:'smooth',block:'center'});}
+      function placeEvidencePanel() {
+        if ($('#mapPanel').open) $('#mapEvidence').append($('#lowerPanel'));
+        else $('#mapPanel').after($('#lowerPanel'));
       }
-      $('#mapResults').addEventListener('click',event=>openMapResult(event.target.closest('[data-result]')?.dataset.result));
+      $('#mapPanel').addEventListener('toggle',placeEvidencePanel);
+      placeEvidencePanel();
 
 
       $('#viewTabs').addEventListener('click',event=>{
         const button=event.target.closest('[data-view]');
-        if(button){state.pendingMapResult=null;state.view=button.dataset.view;renderResults();}
+        if(button){state.view=button.dataset.view;renderResults();}
       });
       $('#viewTabs').addEventListener('keydown',event=>{
         if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;

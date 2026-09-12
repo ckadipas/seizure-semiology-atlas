@@ -32,3 +32,7 @@ versions under CC BY-SA 4.0.
 This repository does NOT redistribute the source journal articles themselves;
 only short, attributed factual extractions are included, consistent with fair
 use for scholarship and education.
+
+Surface models and reference images in docs/local-surfaces/ are proprietary
+and are excluded from the content and code licenses above. Their display on
+the website does not grant permission to redistribute or reuse those assets.
