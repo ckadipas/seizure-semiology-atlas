@@ -5,6 +5,9 @@ docs/*.png
 docs/manifest.webmanifest
 docs/fragments/
 
+# Viewer assets are supplied separately during deployment.
+/docs/local-surfaces/
+
 # --- working corpus: copyrighted source material stays LOCAL, never committed ---
 corpus/pdfs/*
 !corpus/pdfs/.gitkeep
