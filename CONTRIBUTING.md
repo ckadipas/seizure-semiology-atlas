@@ -1,85 +1,36 @@
 # Contributing
 
-This is a **living, source-grounded** reference. The governing principle: the
-**data is the source of truth; the HTML is a build artifact.** Never hand-edit
-the generated HTML — it is produced by CI and overwritten on every build.
+The atlas is an educational reference built from an owner-reviewed private evidence ledger. The public repository receives generated scientific data and website files.
 
-## The mental model
+## Submit a paper or report a correction
 
-```
-data/semiology_data.json ─┐
-                          ├─► generator/gen_study.py ─► docs/…​.html ─► GitHub Pages
-enrichment/enrichment.json┘        (build artifact — do not edit)
-        ▲
-        └── enrichment/build_enrichment.py   (authors evidence, new signs, papers, chart data)
-```
+Use the [paper submission form](https://github.com/ckadipas/seizure-semiology-atlas/issues/new?template=new-paper.yml) with a DOI or stable publisher or repository link. A short note is optional; contributors do not need to extract findings or classify a study.
 
-## How changes reach production (the trust model)
+For a correction, identify the displayed sign or result, describe the problem, and provide the supporting citation and page, table, or section when available. See [paper intake](intake/INTAKE.md) for the review process.
 
-Nothing is published except through a pull request the **owner merges**. That
-merge is the single manual gate; everything after it is automatic.
+Public issues and pull requests are public records. Keep source PDFs, page photographs, full article text, private review materials, personal identifiers, and private correspondence or working notes out of them. Source files belong in the private evidence archive.
 
-```
-propose ──► PR ──► CI validates ──► OWNER approves & merges ──► auto-deploy ──► live
-(anyone,   (open)  (schema +        (only a maintainer can      (build → Pages
- via fork)          enrichment       merge to protected `main`)   → smoke-check)
-                    sync gate)
-```
+## Scientific and website changes
 
-- **`main` is a protected branch.** No one can push content straight to it; all
-  changes arrive as PRs, and only a maintainer can merge. Outside contributors
-  fork and open a PR — they cannot publish on their own.
-- **CI gates every PR.** `validate.yml` runs the schema/integrity check and
-  verifies `enrichment.json` is in sync with its generator. A PR cannot go green
-  (and therefore cannot be merged) until both pass.
-- **The owner's merge is the approval.** An automated assistant may *prepare* a
-  change and open the PR, but it does not merge — no submission auto-integrates
-  or auto-publishes. A human with merge rights always decides.
-- **After merge, it is hands-off.** A push to `main` triggers
-  `build-deploy.yml`: rebuild the HTML, deploy to Pages, then a post-deploy
-  smoke check that fails loudly if the live site is not serving. No local build,
-  no manual step.
+Scientific relationships are corrected in the private ledger under owner approval. The maintained private renderer supplies website changes. Approved records and their consumers are then exported together into this repository.
 
-This is deliberate: it means the approval button is the throttle. Spam,
-low-quality submissions, or a well-meaning-but-wrong edit all stop at the same
-place — the merge — and never reach readers without a maintainer's sign-off.
+Do not edit generated HTML, compressed projections, or normalized data independently. Legacy files such as `data/semiology_data.json` and `enrichment/build_enrichment.py` are not the authoring path for the current normalized atlas. See [METHODS.md](METHODS.md).
 
-## Prerequisites
-Python 3 (standard library only for the build). `poppler-utils` is optional and
-only used by the paper-intake tool. No `pip install` is needed to build.
+Documentation and repository tooling changes can be proposed directly through a pull request. Keep the change focused and describe the resulting behavior or corrected guidance.
 
-## Common tasks
+## Review and validation
 
-**Correct a sign.** Edit its record in `data/semiology_data.json`. Keep enum
-fields valid (see `schema/sign.schema.json`). Then:
-```bash
-make validate && make build
-```
+Public changes enter protected `main` through a pull request. Before merging:
 
-**Add a sign.** Append a record with a unique `id` and valid
-`region`/`sub`/`latcode`/`phase`/`evid`. To fold into an existing subregion
-block, match the `sub` string **exactly**.
+- Inspect the exact diff and release-facing metadata for unintended content.
+- Keep citations and source locators with any approved scientific changes.
+- Use the narrow checks relevant to the change. Documentation edits need content and link review; a scientific release needs its approved export and release-identity validation.
+- Keep source originals and private review artifacts in their private archive.
 
-**Add or fix evidence / a citation.** Edit `enrichment/build_enrichment.py`
-(an `add("<sign-stem>", "<Paper YEAR>", "<finding>")` line), then `make build`
-and commit the regenerated `enrichment/enrichment.json`.
+Do not run a full scientific rebuild merely to validate an editorial change.
 
-**Integrate a new paper.** Follow `intake/INTAKE.md`.
+## Production deployment
 
-## Before you open a PR
-- `make validate` passes (CI runs the same check and will block otherwise).
-- `make build` succeeds and you committed the updated `enrichment/enrichment.json`
-  (CI verifies it is in sync with `build_enrichment.py`).
-- Every changed figure cites a source.
-- You updated `CHANGELOG.md` under **[Unreleased]**.
-- You committed **no** copyrighted PDFs or full article text — only short,
-  attributed extractions. (`corpus/pdfs/` and `corpus/txt/` are git-ignored.)
+Automatic Git deployments are disabled. A merge alone does not publish a production update. Production uploads require a merged pull request, successful validation of its exact commit, and the authorized deployment scope. Verify the resulting live site separately.
 
-## Scientific standard
-Favor disciplined primary series and SEEG-anchored studies with explicit ground
-truth. Treat literature-mined meta-analyses skeptically (see README §Design
-decisions). When sources disagree, represent the disagreement rather than
-flattening it.
-
-## Not for clinical use
-See `DISCLAIMER.md`. This resource is for education and training only.
+See [README.md](README.md) for current artifact paths and [DISCLAIMER.md](DISCLAIMER.md) for the educational-use boundary.

@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   ack:
-    # The issue form applies this label to DOI-, link-, and attachment-based submissions.
+    # The issue form applies this label to DOI- and link-based submissions.
     if: contains(github.event.issue.labels.*.name, 'intake')
     runs-on: ubuntu-latest
     steps:
@@ -23,4 +23,4 @@ jobs:
         run: |
           gh issue comment "${{ github.event.issue.number }}" \
             --repo "${{ github.repository }}" \
-            --body "Thanks — your submission has been received. A maintainer's approval registers it for private Gate A preparation. The source and scientific data are not added to this public repository until private review, owner adjudication, exact integration approval, and separately authorized deployment are complete."
+            --body "Thanks — your submission has been received. A maintainer's approval registers it for private Gate A preparation. Source files remain in the private evidence archive. Scientific results reach the public atlas only after private review, owner adjudication, exact integration approval, and separately authorized deployment."
