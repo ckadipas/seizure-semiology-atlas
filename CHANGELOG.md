@@ -4,6 +4,8 @@
 
 - Open Signs by region and label term counts according to the selected organization.
 - Resize the map and evidence panels with a persistent divider on larger screens.
+- Apply the Lüders 2019 classification hierarchy and include its source citation.
+- Add four final teaching-case conclusions with their reported seizure sequences and localization qualifiers, retaining their educational and nonindependent evidence status.
 - Group signs under Lüders, ILAE or region banners, with optional regional subgroups inside each classification.
 - Order signs within groups by name or number of publications, and order reported statistics within papers.
 - Search Sources by title, author or citation.

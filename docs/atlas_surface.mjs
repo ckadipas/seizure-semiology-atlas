@@ -404,7 +404,7 @@ export class SurfacePanel {
   constructor(host, catalogue, onViewChange, onSelection, onClear, allowEditing=true) {
     this.allowEditing=allowEditing;
     this.host=host;this.catalogue=catalogue;this.palette=new Map(catalogue.palette.map(row=>[row.index,row]));
-    this.onViewChange=onViewChange;this.onSelection=onSelection;this.selection=[];this.groups=catalogue.groups||[];this.groupSelection=[];
+    this.onViewChange=onViewChange;this.onSelection=onSelection;this.selection=[];this.groups=catalogue.groups||[];this.groupSelection=[];this.evidenceHighlight=new Set();
     this.markerPositions={};this.markerNodes={};
     if(allowEditing){
       try{this.markerPositions=JSON.parse(localStorage.getItem('atlas-brodmann-positions')||'{}');}catch{this.markerPositions={};}
@@ -575,12 +575,22 @@ export class SurfacePanel {
     this.selection=rows;
     this.host.querySelector('.surface-boundary').replaceChildren();
     this.syncRegionMenu();
-    const groups=this.groups.filter(group=>this.groupSelection.includes(group.id));
-    const count=rows.length+groups.length;
-    this.status.textContent=count?[...groups.map(group=>group.label+' lobe'),...rows.map(row=>this.label(row))].join(' + '):'DKT40 · All Regions';
-    const members=new Set(groups.flatMap(group=>group.anatomy_ids));
-    this.renderer?.setSelection([...rows,...this.options.filter(row=>members.has(this.palette.get(row.index).anatomy_id))]);
+    this.updateSelection();
     if(notify)this.onSelection(rows.map(row=>({...row,...this.palette.get(row.index)})),this.groupSelection);
+  }
+  setEvidenceHighlight(anatomyIds) {
+    const next=new Set(anatomyIds);
+    if(next.size===this.evidenceHighlight.size&&[...next].every(id=>this.evidenceHighlight.has(id)))return;
+    this.evidenceHighlight=next;this.updateSelection();
+  }
+  updateSelection() {
+    const groups=this.groups.filter(group=>this.groupSelection.includes(group.id));
+    const highlighted=this.options.filter(row=>this.evidenceHighlight.has(this.palette.get(row.index).anatomy_id));
+    const count=this.selection.length+groups.length;
+    this.status.textContent=count?[...groups.map(group=>group.label+' lobe'),...this.selection.map(row=>this.label(row))].join(' + '):highlighted.length?'DKT40 · '+highlighted.length+' highlighted '+(highlighted.length===1?'parcel':'parcels'):'DKT40 · All Regions';
+    const members=new Set(groups.flatMap(group=>group.anatomy_ids));
+    const rows=[...this.selection,...highlighted,...this.options.filter(row=>members.has(this.palette.get(row.index).anatomy_id))];
+    this.renderer?.setSelection([...new Map(rows.map(row=>[row.index,row])).values()]);
   }
   setView(view,hemisphere) {this.view=view;this.hemisphere=hemisphere;this.update();}
   setBrodmann(markers,selected,image,views) {

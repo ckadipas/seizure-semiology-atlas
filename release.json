@@ -1,12 +1,10 @@
 {
   "version": "2",
-  "released_at": "2026-09-13T16:56:09Z",
+  "released_at": "2026-09-13T21:33:13Z",
   "changes": [
-    "Group signs under Lüders, ILAE or region banners, with optional regional subgroups inside each classification.",
-    "Order signs within groups by name or number of publications, and order reported statistics within papers.",
-    "Search Sources by title, author or citation.",
-    "Find linked evidence through source-supported Brodmann, named-region and DKT40 anatomical correspondences.",
-    "Identify anatomical overlap while preserving each study’s reported localization, statistics and paper weights.",
-    "Show a notice when the atlas is opened as a local file and display the brain only when map data is available."
+    "Apply the Lüders 2019 classification hierarchy and include its source citation.",
+    "Add the final conclusions from four teaching cases, with their reported seizure sequences and localization qualifiers.",
+    "Preserve source and sign relationships across classification, regional and manuscript views.",
+    "Highlight linked DKT40 regions and Brodmann labels together, with concise anatomical labels."
   ]
 }

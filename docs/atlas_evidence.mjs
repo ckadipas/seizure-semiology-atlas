@@ -1,4 +1,4 @@
-import { atlasGroups, atlasCounts, atlasEvidenceSection, atlasDictionaryGroups, atlasMetricLabels, atlasMetricTypes, atlasWeightPresentation, atlasAppraisalLabel, atlasSourceFindingsMarkup, atlasStatisticGroups } from './atlas_projection.mjs?v=2997065b3e977309d968ad0585dae4c4d2423a04d084b669ead100dcf89b94aa';
+import { atlasGroups, atlasCounts, atlasEvidenceSection, atlasDictionaryGroups, atlasNavigationGroups, atlasMetricLabels, atlasMetricTypes, atlasWeightPresentation, atlasAppraisalLabel, atlasSourceFindingsMarkup, atlasSourceFindingGroups, atlasSourceLocator, atlasStatisticGroups } from './atlas_projection.mjs?v=e6956bc6cbcd09e9956732fc088002e2e2c63bb025c09298ee95071b3021f381';
 
 const styles = `
 :host{color-scheme:light;--ink:#193a3b;--muted:#60736c;--teal:#176862;--pale:#eaf2ed;--line:#dce5df;--canvas:#f6f8f4;--serif:Georgia,'Times New Roman',serif;font:15px/1.5 Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:var(--ink);background:var(--canvas)}
@@ -15,7 +15,7 @@ footer{max-width:1220px;margin:auto;padding:4px 28px 28px;display:flex;justify-c
 .inside-controls{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto}.inside-controls .field{min-width:0}.inside-controls .field:nth-of-type(3){grid-column:1/-1}.inside-controls .filter-button{grid-column:3;grid-row:1;padding:0 2px}.filter-row .field select{font-size:14px}
 .sign-card:not([open])>summary .sign-title strong{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 
-.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}.active-filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}.filter-chip{font-size:12px;padding:6px 9px;background:#eaf2ed;border-radius:5px}.dictionary-controls{grid-template-columns:minmax(0,1fr) minmax(0,1fr);margin-bottom:18px}.shared-context{font-size:12px;color:var(--muted);margin:10px 0 18px;overflow-wrap:anywhere}.source-result{margin:16px 0 20px}.source-result>h4{font-size:13px;font-weight:600;margin-bottom:9px;overflow-wrap:anywhere}.result-table,.weight-table{border-collapse:collapse;table-layout:fixed;width:100%;font-size:12px}.result-table th,.result-table td,.weight-table th,.weight-table td{border-bottom:1px solid var(--line);padding:10px 9px;text-align:left;vertical-align:top;overflow-wrap:anywhere}.result-table th,.weight-table th{color:var(--muted);font-size:11px;font-weight:600;background:#f4f7f2}.result-table th:nth-child(1){width:31%}.result-table th:nth-child(2){width:33%}.result-table th:nth-child(3){width:22%}.result-table th:nth-child(4){width:14%}.result-table small{display:block;color:var(--muted);font-size:11px;margin-top:4px;font-weight:400}.result-number{font-weight:650;color:var(--teal);font-variant-numeric:tabular-nums}.result-role{margin-top:7px}.paper-weights{margin:17px 0}.paper-weights>h4{font-size:12px;margin-bottom:7px}.weight-table th:first-child{width:62%}.weight-table th:nth-child(n+2),.weight-table td:nth-child(n+2){text-align:right;font-variant-numeric:tabular-nums}.weight-table th button{font-size:11px;padding:0;text-align:right}.calculation-line{font-size:11px;margin:12px 0;color:var(--muted);overflow-wrap:anywhere}.additional-results{margin:24px 0;font-size:12px;color:var(--muted)}.additional-results summary{cursor:pointer;color:var(--teal);padding:12px 0}.additional-papers{display:grid;gap:8px}.additional-papers button{border-top:1px solid var(--line);padding:10px 0}.paper{margin-top:26px;padding-top:22px}.paper:first-of-type{margin-top:0}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}.active-filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}.filter-chip{font-size:12px;padding:6px 9px;background:#eaf2ed;border-radius:5px}.dictionary-controls{grid-template-columns:minmax(0,1fr) minmax(0,1fr);margin-bottom:18px}.shared-context{font-size:12px;color:var(--muted);margin:10px 0 18px;overflow-wrap:anywhere}.source-result{margin:16px 0 20px}.source-result>h4{font-size:13px;font-weight:600;margin-bottom:9px;overflow-wrap:anywhere}.result-table,.weight-table{border-collapse:collapse;table-layout:fixed;width:100%;font-size:12px}.result-table th,.result-table td,.weight-table th,.weight-table td{border-bottom:1px solid var(--line);padding:10px 9px;text-align:left;vertical-align:top;overflow-wrap:anywhere}.result-table th,.weight-table th{color:var(--muted);font-size:11px;font-weight:600;background:#f4f7f2}.result-table th:nth-child(1){width:31%}.result-table th:nth-child(2){width:33%}.result-table th:nth-child(3){width:22%}.result-table th:nth-child(4){width:14%}.result-table small{display:block;color:var(--muted);font-size:11px;margin-top:4px;font-weight:400}.result-number{font-weight:650;color:var(--teal);font-variant-numeric:tabular-nums}.result-role{margin-top:7px}.paper-weights{margin:17px 0}.paper-weights>h4{font-size:12px;margin-bottom:7px}.weight-table th:first-child{width:62%}.weight-table th:nth-child(n+2),.weight-table td:nth-child(n+2){text-align:right;font-variant-numeric:tabular-nums}.weight-table th button{font-size:11px;padding:0;text-align:right}.calculation-line{font-size:11px;margin:12px 0;color:var(--muted);overflow-wrap:anywhere}.paper{margin-top:26px;padding-top:22px}.paper:first-of-type{margin-top:0}
 @media(max-width:540px){.result-table,.result-table tbody{display:block}.result-table thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}.result-table tr{display:grid;grid-template-columns:minmax(0,1fr);padding:11px 0;border-top:1px solid var(--line)}.result-table td{display:block;width:auto!important;border:0;padding:4px 0;font-size:12px}.result-table td::before{content:attr(data-label);display:block;color:var(--muted);font-size:10px;font-weight:400;margin-bottom:3px}.result-table td:nth-child(3){grid-row:1;font-size:20px}.result-table td:nth-child(4){padding-top:0}.result-table td:nth-child(4) button{min-height:34px}.weight-table{font-size:11px}.weight-table th,.weight-table td{padding:8px 4px}.weight-table th:first-child{width:52%}.weight-table th button{font-size:9px}.shared-context{font-size:11px}.source-result>h4{font-size:12px}.dictionary-controls select{font-size:14px}.paper{margin-top:23px}.paper-title h3{font-size:16px}}
 .toolbar{grid-template-columns:minmax(210px,1.4fr) minmax(150px,1fr) minmax(180px,1fr) minmax(140px,.8fr)}.dictionary-controls{grid-template-columns:repeat(3,minmax(0,1fr))}.dictionary-controls .field:nth-of-type(3){grid-column:auto}.evidence-class-label{display:inline-block;color:var(--teal);font-size:11px;font-weight:600}.weight-table td small{display:block;color:var(--muted);font-size:10px;font-weight:400;margin-top:3px}
 @media(max-width:850px){.toolbar{grid-template-columns:1fr 1fr}#evidence-class-field{grid-column:1/-1}}
@@ -34,11 +34,11 @@ const markup = `
 <header class="masthead owner-only"><div class="mast-inner"><div class="brand"><svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><rect width="32" height="32" rx="9" fill="#176862"/><path d="M8 16h4l3-7 3 14 3-7h3" stroke="white" stroke-width="1.8" stroke-linejoin="round"/></svg>Semiology Atlas</div><button class="help-button" id="help">Weights & statistics explained</button></div></header>
 <main id="main"><div class="intro"><h1>Signs & evidence</h1><div class="intro-actions"><div class="corpus" id="corpus">Loading evidence…</div><button class="help-button embedded-help" data-evidence-help>Weights & statistics explained</button></div></div>
 <div class="toolbar" aria-label="Organize signs and evidence"><div class="field"><label id="search-label" for="search">Search</label><input id="search" type="search" placeholder="Sign or source wording" autocomplete="off"></div><div class="field"><label for="organize">Organize by</label><select id="organize"><option value="az">A–Z</option><option value="region">Region</option><option value="ilae">ILAE</option><option value="luders">Lüders</option><option value="source">Source paper</option></select></div><div class="field"><label id="order-label" for="order">Order signs by</label><select id="order"></select></div><div class="field" id="evidence-class-field"><label for="evidence-class">Evidence class</label><select id="evidence-class"></select></div><div class="dependent" id="dependent" hidden><div class="field" id="group-field" hidden><label id="group-label" for="group">Group</label><select id="group"></select></div><div class="field" id="metric-field" hidden><label for="metric">Metric</label><select id="metric"></select></div></div></div>
-<div class="list-meta"><span id="match-count" aria-live="polite">Loading signs…</span><button id="reset">Reset</button></div><div class="active-filters" id="active-filters"></div><section class="sign-list" id="sign-list" aria-label="Signs and evidence"><div class="empty">Loading evidence…</div></section><section id="additional-results" class="additional-results" hidden></section>
+<div class="list-meta"><span id="match-count" aria-live="polite">Loading signs…</span><button id="reset">Reset</button></div><div class="active-filters" id="active-filters"></div><section class="sign-list" id="sign-list" aria-label="Signs and evidence"><div class="empty">Loading evidence…</div></section>
 </main>
 <footer class="owner-only"><span>Owner preview</span><a href="https://www.semiologyatlas.org/" target="_blank" rel="noopener">Public atlas ↗</a></footer>
 <dialog id="record-dialog" aria-labelledby="dialog-title"><div class="dialog-head"><h2 id="dialog-title"></h2><button id="close-dialog" aria-label="Close details">Close</button></div><div class="dialog-body" id="dialog-body"></div></dialog>
-<template id="scientific-explanation"><h3>Dictionary terms and source wording</h3><p>Clinical terms follow the selected ILAE or Lüders dictionary and its approved relationships. Category filters restrict the displayed terms to that dictionary branch. Changing dictionaries clears the previous category; region and evidence-class filters remain. Author-specific wording remains attached to each paper result. Grouping terms does not merge sign identities or imply that their statistical results are comparable.</p><p>Search includes the terms used in the papers. Opening a dictionary term collects its linked paper results. Additional paper results retain source records without a usable clinical dictionary relationship in the selected scheme.</p><h3>Reported statistics</h3><p>Statistic selectors list statistical and quantitative measures. Clinical features, sequence descriptions, and other paper-specific fields remain in the paper results under All statistics.</p><p>Each reported value retains its source, measured phenomenon, population, subgroup, analysis unit, denominator, comparator, and uncertainty. Shared context is displayed once per paper; differences remain in the result rows. Numerical ordering uses the recorded metric and unit and does not convert percentages and proportions. Missing numeric fields follow numeric values.</p><h3>Evidence class</h3><p>Evidence-class filters select existing assignments for the displayed sign and source results. A result matches when the selected class is recorded for localization or lateralization. Unclassified includes records marked unclassified and records without a class assignment. The sign list shows terms with matching evidence; it does not assign a class to the sign itself.</p><p>Paper ordering lists Class I, II, and III in that sequence, followed by unclassified evidence. Where a paper has several recorded classes, its lowest numbered class determines its position and all classes remain displayed. This ordering does not calculate a new evidence score.</p><h3>Paper weights</h3><p>Each appraisal retains its original sign, paper, findings, and statistics. The table shows that stored appraisal once. A changed or narrower sign grouping can reference the appraisal without receiving a separate numerical contribution. Appraisals are not summed into a dictionary-level score.</p><p><strong>Appraised weight = class base × method factor × size factor.</strong> The applied contribution also depends on the recorded eligibility and scope. The class bases are 3, 2, or 1; an unclassified source can have a base of 0. Method factors are 1.5 for SEEG or postoperative evidence, 1.35 for other intracranial evidence, 1.2 for video, 1.15 for imaging, 1.1 for scalp EEG, 1 for review evidence, and 0.9 when the method is absent.</p><p>The size factor is min(2, 1 + log₁₀(N)/2). Missing N gives a factor of 1, and the class-I calculation does not use sample size. The selected N is unavailable here. A dash indicates that an appraisal is unavailable for that axis. A zero produced by an unresolved evidence class is unavailable, not a numerical assessment of the evidence. Calculation details retain the recorded factors and explain contribution eligibility and scope. An applied contribution of 0 indicates exclusion from the primary-evidence total; an unassigned contribution has not been established for the displayed scope. Approximate equality reflects rounded recorded factors.</p><h3>Combined estimates</h3><p>A pooled estimate requires a defined clinical question, compatible measures, appropriate uncertainty, and assessment of overlapping cohorts. Several results from one paper do not represent independent studies. The existing paper weights do not pool reported statistics or provide a validated clinical prediction score.</p></template>
+<template id="scientific-explanation"><h3>Sign groups and publication counts</h3><p>Region and A–Z use approved ledger sign memberships. Source-native terms remain visible where no grouping is assigned. Lüders and ILAE use their recorded classification hierarchies; Region can subdivide those categories. Grouping preserves source wording, sign identities and statistic ownership.</p><p>No linked region contains sign groups with at least one result lacking a regional link. Other results for the same sign may have regional links. This does not establish that the publication reports no localization.</p><p>Sources retains every paper result, including contextual records and results without a sign group. Evidence publication totals count each matching paper once across Signs and Sources. Classification references without extracted results are counted separately and appear when no evidence filter is applied.</p><h3>Anatomy on the map</h3><p>Reported anatomy retains the regions linked to the selected findings. Study population and Comparison group describe the groups studied; they do not by themselves establish where a sign originates. Broader regions contain the linked anatomy. Overlapping atlas regions share some anatomical extent with the linked region according to the recorded relationships; overlap is not anatomical identity or a parent region. DKT40 parcels and Brodmann areas are separate atlas representations. The map displays the recorded links without adding localizing evidence.</p><h3>Reported statistics</h3><p>Statistic selectors list statistical and quantitative measures. Clinical features, sequence descriptions, and other paper-specific fields remain in the paper results under All statistics.</p><p>Each reported value retains its source, measured phenomenon, population, subgroup, analysis unit, denominator, comparator, and uncertainty. Shared context is displayed once per paper; differences remain in the result rows. Numerical ordering uses the recorded metric and unit and does not convert percentages and proportions. Missing numeric fields follow numeric values.</p><h3>Evidence class</h3><p>Evidence-class filters select existing assignments for the displayed sign and source results. A result matches when the selected class is recorded for localization or lateralization. Unclassified includes records marked unclassified and records without a class assignment. The sign list shows terms with matching evidence; it does not assign a class to the sign itself.</p><p>Paper ordering lists Class I, II, and III in that sequence, followed by unclassified evidence. Where a paper has several recorded classes, its lowest numbered class determines its position and all classes remain displayed. This ordering does not calculate a new evidence score.</p><h3>Paper weights</h3><p>Each appraisal retains its original sign, paper, findings, and statistics. The table shows that stored appraisal once. A changed or narrower sign grouping can reference the appraisal without receiving a separate numerical contribution. Appraisals are not summed into a dictionary-level score.</p><p><strong>Appraised weight = class base × method factor × size factor.</strong> The applied contribution also depends on the recorded eligibility and scope. The class bases are 3, 2, or 1; an unclassified source can have a base of 0. Method factors are 1.5 for SEEG or postoperative evidence, 1.35 for other intracranial evidence, 1.2 for video, 1.15 for imaging, 1.1 for scalp EEG, 1 for review evidence, and 0.9 when the method is absent.</p><p>The size factor is min(2, 1 + log₁₀(N)/2). Missing N gives a factor of 1, and the class-I calculation does not use sample size. The selected N is unavailable here. A dash indicates that an appraisal is unavailable for that axis. A zero produced by an unresolved evidence class is unavailable, not a numerical assessment of the evidence. Calculation details retain the recorded factors and explain contribution eligibility and scope. An applied contribution of 0 indicates exclusion from the primary-evidence total; an unassigned contribution has not been established for the displayed scope. Approximate equality reflects rounded recorded factors.</p><h3>Combined estimates</h3><p>A pooled estimate requires a defined clinical question, compatible measures, appropriate uncertainty, and assessment of overlapping cohorts. Several results from one paper do not represent independent studies. The existing paper weights do not pool reported statistics or provide a validated clinical prediction score.</p></template>
 `;
 
 /** Render the shared evidence inside a site-owned host without fetching or remapping data. */
@@ -65,6 +65,7 @@ const sectionNames = {study:'Original study',review:'Review or guidance',backgro
 const roleNames = {PRIMARY_RESULT:'Original study result',CASE_OBSERVATION:'Case observation',REVIEW_SYNTHESIS:'Review synthesis',GUIDELINE_RECOMMENDATION:'Guideline recommendation',CITED_STUDY_RESTATEMENT:'Cited study result',PRIMARY_RESULT_SAME_SOURCE_RESTATEMENT:'Repeated result from the same source',EDUCATIONAL_STATEMENT:'Educational statement',METHOD_OR_DEFINITION:'Method or definition',SOURCE_CONTEXT:'Source context',COHORT_CONTEXT:'Study population',SOURCE_REPORTED_TARGET:'Reported relationship',SOURCE_REPORTED:'Reported relationship',STIMULATION:'Stimulation context'};
 const roleName = value => roleNames[value] || words(value);
 function bibliography(id) { return sources.get(id)?.bibliography || {}; }
+function classificationReference(id) { return sources.get(id)?.source_roles?.includes('CLASSIFICATION_REFERENCE') || false; }
 function citation(id) {
   const source = sources.get(id), bib = bibliography(id), authors = parse(bib.authors_json) || [];
   const first = typeof authors[0] === 'string' ? authors[0] : authors[0]?.family_name || authors[0]?.display_name;
@@ -98,10 +99,10 @@ function locator(value) {
 
 
   const params = new URLSearchParams(options.embedded ? '' : location.search);
-  const state = {query:params.get('q') || '',sourceQuery:'',organize:'region',scheme:'luders',filters:{},order:'name',metric:'',limit:30,focus:'',openRegions:new Set(),regionLimits:new Map()};
+  const state = {query:params.get('q') || '',sourceQuery:'',organize:'region',filters:{},order:'name',metric:'',limit:30,focus:'',openRegions:new Set(),regionLimits:new Map()};
   const opened = new Set(), detailState = new Map(), weightIndex = new Map();
-  let evidenceMap = publicSite ? {showEvidence: options.onShowMap, clear: () => options.onClearFilters?.()} : null, mapResultIds = null, dialogRows = [], additionalPaperRows = new Map();
-  let currentView = '', signOrganization = 'region', signOrder = 'name', pendingFocus = '', selectedAnatomy = new Set();
+  let evidenceMap = publicSite ? {showEvidence: options.onShowMap, clear: () => options.onClearFilters?.()} : null, mapResultIds = null, dialogRows = [];
+  let currentView = '', signOrganization = 'region', signOrder = 'name', pendingFocus = '', selectedAnatomy = new Set(), sourceSelection = null;
   let groups = [], unplaced = [], entries = [], nodeIndex, nativeSigns, statOwners, metricTypes = [];
   let sections = new Map(), sectionRoots = [];
   const categoryKinds = new Set(['CATEGORY','DESCRIPTOR_CATEGORY','BASIC_DESCRIPTOR','PUBLIC_FAMILY','WORKSHEET_CATEGORY','EVENT_CATEGORY']);
@@ -119,19 +120,20 @@ function locator(value) {
   const classOptions = ids => option('','All classes') + evidenceClassOrder.filter(id => ids.includes(id)).map(id => option(id,classLabel(id))).join('');
   const classRank = rows => Math.min(...classesFor(rows).map(id => { const rank=evidenceClassOrder.indexOf(id); return rank<0 ? Infinity : rank; }));
   const ownersFor = (stat,rows) => { const selected = new Set(rows.map(row => row.id)); return (statOwners.get(stat.statistic_id) || []).filter(row => selected.has(row.id)); };
-  const selectedRows = rows => rows.filter(row => (!mapResultIds || mapResultIds.has(row.id)) && Object.entries(state.filters).every(([facet,id]) => state.organize === 'source' && ['ilae','luders'].includes(facet) || (facet === 'evidence_class' ? classMatches(row,id) : !id || (row.facets[facet] || []).some(item => item.id === id))) && (state.organize === 'source' || !state.order.startsWith('values-') || !state.metric || row.statistic_ids.some(id => data.statistics[id]?.metric_type === state.metric)));
+  const selectedRows = rows => rows.filter(row => (!mapResultIds || mapResultIds.has(row.id)) && Object.entries(state.filters).every(([facet,id]) => ['ilae','luders'].includes(facet) && facet !== state.organize || (facet === 'evidence_class' ? classMatches(row,id) : !id || (row.facets[facet] || []).some(item => item.id === id))) && (state.organize === 'source' || !state.order.startsWith('values-') || !state.metric || row.statistic_ids.some(id => data.statistics[id]?.metric_type === state.metric)));
   const queryMatch = value => String(value || '').toLocaleLowerCase().includes(state.query.trim().toLocaleLowerCase());
   const valueText = stat => clean(stat.value_text) || String(stat.numeric_value ?? 'Not reported');
   function grouping() {
-    ({groups,unplaced} = atlasDictionaryGroups(data.rows.filter(row => row.record_kind === 'SIGN_EVIDENCE'),state.scheme,catalogue.items));
-    unplaced = [...unplaced,...data.rows.filter(row => row.record_kind !== 'SIGN_EVIDENCE')];
+    ({groups,unplaced} = ['ilae','luders'].includes(state.organize)
+      ? atlasDictionaryGroups(data.rows,state.organize,catalogue.items)
+      : atlasNavigationGroups(data.rows));
   }
   function updateQuery() { if(options.embedded)return; const url = new URL(location.href); state.query ? url.searchParams.set('q',state.query) : url.searchParams.delete('q'); history.replaceState(null,'',url); }
   function syncControls() {
     const sourceMode = state.organize === 'source', classified = ['ilae','luders'].includes(state.organize);
     $('organize').value = state.organize;
     const sourceCount=atlasCounts(data.rows).sources;
-    $('corpus').innerHTML = sourceMode ? `${number(sourceCount)} ${sourceCount===1?'publication':'publications'}` : `${number(groups.length)} ${termLabel()} terms · <button id="all-sources">${number(sourceCount)} ${sourceCount===1?'publication':'publications'}</button>`;
+    $('corpus').innerHTML = sourceMode ? '' : `${number(groups.length)} ${termLabel()} terms · <button id="all-sources">${number(sourceCount)} ${sourceCount===1?'publication':'publications'}</button>`;
     $('order-label').textContent = sourceMode ? 'Order papers by' : classified ? 'Within classifications' : state.organize==='region' ? 'Within regions' : 'Order signs by';
     const sorts = sourceMode ? [['name','Author A–Z'],['title','Title A–Z'],['year','Publication year: newest first']] : [...(classified ? [['region','Region']] : []),['name','A–Z'],['papers','Number of publications'],['values-high','Reported statistics: high to low'],['values-low','Reported statistics: low to high']];
     if (!sorts.some(([id]) => id === state.order)) state.order = 'name';
@@ -147,7 +149,7 @@ function locator(value) {
     const values = state.order.startsWith('values-') && state.organize !== 'source';
     $('metric-field').hidden = !values; $('dependent').hidden = !facet && !values;
     if (values) { $('metric').innerHTML = option('','All statistics') + metricTypes.map(type => option(type,metricName(type))).join(''); $('metric').value = state.metric; }
-    $('active-filters').innerHTML = Object.entries(state.filters).filter(([facet,id]) => id && facet !== 'evidence_class' && !(sourceMode && ['ilae','luders'].includes(facet))).map(([facet,id]) => `<button class="filter-chip" data-clear-filter="${esc(facet)}">${esc(nodeIndex.get(id)?.label || facet)} ×</button>`).join('');
+    $('active-filters').innerHTML = Object.entries(state.filters).filter(([facet,id]) => id && facet !== 'evidence_class' && !(['ilae','luders'].includes(facet) && facet !== state.organize)).map(([facet,id]) => `<button class="filter-chip" data-clear-filter="${esc(facet)}">${esc(nodeIndex.get(id)?.label || facet)} ×</button>`).join('');
     $('search').closest('.field').hidden = options.embedded && !sourceMode;
     $('search-label').textContent = sourceMode ? 'Search papers' : 'Search';
     $('search').placeholder = sourceMode ? 'Title, author or citation' : 'Sign or source wording';
@@ -173,6 +175,15 @@ function locator(value) {
     const bib=bibliography(id),authors=parse(bib.authors_json)||[];
     const names=authors.map(author=>typeof author==='string'?author:Object.values(author||{}).filter(value=>typeof value==='string').join(' ')).join(' ');
     return [sourceTitle(id),bib.title,bib.citation_text,names].some(value=>String(value||'').toLocaleLowerCase().includes(query));
+  }
+  function sourceGroups() {
+    const rows=selectedRows(data.rows),groups=atlasGroups(rows,'source');
+    const filtered=sourceSelection?.evidenceFiltered || selectedAnatomy.size || Object.entries(state.filters).some(([facet,id])=>id&&!['ilae','luders'].includes(facet));
+    if(!filtered && (sourceSelection || rows.length===data.rows.length)) {
+      const ids=new Set(groups.map(group=>group.id));
+      for(const source of sources.values())if(classificationReference(source.id)&&!ids.has(source.id)&&(!sourceSelection?.sourceIds.length||sourceSelection.sourceIds.includes(source.id)))groups.push({id:source.id,label:source.label,rows:[]});
+    }
+    return groups;
   }
   function organizeEntries(selected) {
     const classified=['ilae','luders'].includes(state.organize),regional=state.organize==='region'||classified&&state.order==='region';
@@ -209,16 +220,20 @@ function locator(value) {
   function renderList() {
     entries = [];
     if (state.organize === 'source') {
-      entries = atlasGroups(selectedRows(data.rows),'source').filter(group => sourceMatches(group.id)).sort((a,b) => (state.order === 'year' ? (Number(bibliography(b.id).publication_year)||0)-(Number(bibliography(a.id).publication_year)||0) : state.order==='title'?sourceTitle(a.id).localeCompare(sourceTitle(b.id)):0) || citation(a.id).localeCompare(citation(b.id))).map(group => ({type:'source',group,key:'source:'+group.id}));
+      entries = sourceGroups().filter(group => sourceMatches(group.id)).sort((a,b) => (state.order === 'year' ? (Number(bibliography(b.id).publication_year)||0)-(Number(bibliography(a.id).publication_year)||0) : state.order==='title'?sourceTitle(a.id).localeCompare(sourceTitle(b.id)):0) || citation(a.id).localeCompare(citation(b.id))).map(group => ({type:'source',referenceOnly:!group.rows.length,group,key:'source:'+group.id}));
     } else {
-      const categoryId=state.filters[state.scheme],categoryGroups=categoryId ? atlasDictionaryGroups(data.rows.filter(row=>row.record_kind==='SIGN_EVIDENCE'),state.scheme,catalogue.items,categoryId).groups : groups;
+      const categoryId=['ilae','luders'].includes(state.organize) && state.filters[state.organize],categoryGroups=categoryId ? atlasDictionaryGroups(data.rows,state.organize,catalogue.items,categoryId).groups : groups;
       let selected = categoryGroups.map(group => ({...group,rows:selectedRows(group.rows).filter(row => !state.query.trim() || queryMatch(group.label) || queryMatch(row.term) || queryMatch(row.sign_label))})).filter(group => group.rows.length && (!state.focus || group.id === state.focus) && (!state.order.startsWith('values-') || !state.metric || statisticsFor(group.rows).some(stat => stat.metric_type === state.metric)));
       entries=organizeEntries(selected);
     }
     const rowSet = [...new Map(entries.flatMap(entry => entry.group.rows).map(row => [row.id,row])).values()];
+    const extra = state.organize === 'source' ? [] : selectedRows(unplaced).filter(row => !state.query.trim() || queryMatch(row.term));
+    const visibleRows = [...new Map([...rowSet,...extra].map(row=>[row.id,row])).values()];
+    const publicationCount = paperIds(visibleRows).length;
     const termCount = new Set(entries.map(entry => entry.group.id)).size;
-    $('corpus').hidden = state.organize === 'source' ? entries.length === atlasCounts(data.rows).sources : !state.query.trim() && !state.focus && !Object.values(state.filters).some(Boolean) && (!mapResultIds || mapResultIds.size === data.rows.length) && !(state.order.startsWith('values-') && state.metric);
-    $('match-count').textContent = state.organize === 'source' ? `${number(entries.length)} ${entries.length === 1 ? 'publication' : 'publications'}` : `${number(termCount)} ${termLabel()} ${termCount === 1 ? 'term' : 'terms'} · ${number(paperIds(rowSet).length)} ${paperIds(rowSet).length === 1 ? 'publication' : 'publications'}`;
+    $('corpus').hidden = state.organize === 'source' ? true : !state.query.trim() && !state.focus && !Object.values(state.filters).some(Boolean) && (!mapResultIds || mapResultIds.size === data.rows.length) && !(state.order.startsWith('values-') && state.metric);
+    const referenceCount=entries.filter(entry=>entry.referenceOnly).length;
+    $('match-count').textContent = state.organize === 'source' ? [publicationCount?`${number(publicationCount)} evidence ${publicationCount===1?'publication':'publications'}`:'',referenceCount?`${number(referenceCount)} classification ${referenceCount===1?'reference':'references'}`:''].filter(Boolean).join(' · ') || '0 sources' : (termCount ? `${number(termCount)} ${termLabel()} ${termCount===1?'term':'terms'} · ` : '') + `${number(publicationCount)} ${publicationCount===1?'publication':'publications'} across Signs and Sources`;
     sections=new Map();sectionRoots=[];
     entries.forEach((entry,index)=>{
       const path=[];let parent=null;
@@ -230,24 +245,16 @@ function locator(value) {
       if(parent)parent.direct.push(index);
     });
     const ungrouped=entries.map((entry,index)=>({entry,index})).filter(({entry})=>!entry.banners?.length);
-    $('sign-list').innerHTML = (sectionRoots.map(sectionMarkup).join('')+ungrouped.slice(0,state.limit).map(({entry,index})=>entryMarkup(entry,index)).join('')) || `<div class="empty">${state.organize==='source'?'No papers match this selection.':'No dictionary terms match this selection.'}</div>`;
+    $('sign-list').innerHTML = (sectionRoots.map(sectionMarkup).join('')+ungrouped.slice(0,state.limit).map(({entry,index})=>entryMarkup(entry,index)).join('')) || `<div class="empty">${state.organize==='source'?'No papers match this selection.':extra.length ? 'No sign terms match this selection. Paper records are available in Sources.' : 'No sign terms match this selection.'}</div>`;
     root.querySelectorAll('.region-card[open]').forEach(renderRegion);
     if (ungrouped.length > state.limit) $('sign-list').insertAdjacentHTML('beforeend',`<button class="more" id="more-signs">Show remaining ${state.organize==='source'?'papers':'terms'} (${number(ungrouped.length-state.limit)})</button>`);
     root.querySelectorAll('.sign-card[open]').forEach(renderEntry);
-    const extra = state.organize === 'source' ? [] : selectedRows(unplaced).filter(row => !state.query.trim() || queryMatch(row.term));
-    evidenceMap?.update?.([...new Map([...rowSet,...extra].map(row=>[row.id,row])).values()]);
-    const paperGroups = atlasGroups(extra,'source');
-    additionalPaperRows = new Map(paperGroups.map(group=>[group.id,group.rows]));
-    $('additional-results').hidden = !paperGroups.length;
-    if (!entries.length && paperGroups.length) {
-      $('sign-list').innerHTML = '';
-      $('match-count').textContent = `${number(paperGroups.length)} ${paperGroups.length === 1 ? 'source' : 'sources'} · ${number(evidenceStats(extra,{metric:''}).length)} reported values`;
-      $('additional-results').innerHTML = paperGroups.map(group => paperMarkup(group.id,group.rows,evidenceStats(group.rows,settings(group.id)),settings(group.id),group.id)).join('');
-    } else $('additional-results').innerHTML = paperGroups.length ? `<details><summary>Additional paper results · ${paperGroups.length} ${paperGroups.length === 1 ? 'source' : 'sources'}</summary><div class="additional-papers">${paperGroups.map(group => `<button class="text-button" data-source="${esc(group.id)}">${esc(citation(group.id))} · ${esc(group.label)}</button>`).join('')}</div></details>` : '';
+    evidenceMap?.update?.(visibleRows);
+
   }
   function entryMarkup(entry,index) {
     const papers=paperIds(entry.group.rows).length;
-    return `<details class="sign-card" data-entry="${index}" ${opened.has(entry.key)?'open':''}><summary><div class="sign-title"><strong>${esc(entry.type==='source'?sourceTitle(entry.group.id):entry.group.label)}</strong><span class="sign-meta">${entry.type==='source'?esc(citation(entry.group.id)):`${papers} ${papers===1?'paper':'papers'}`}</span></div></summary><div class="sign-body"></div></details>`;
+    return `<details class="sign-card" data-entry="${index}" ${opened.has(entry.key)?'open':''}><summary><div class="sign-title"><strong>${esc(entry.type==='source'?sourceTitle(entry.group.id):entry.group.label)}</strong><span class="sign-meta">${entry.type==='source'?esc(citation(entry.group.id)):`${papers} ${papers===1?'paper':'papers'}`}</span>${entry.type==='source'&&classificationReference(entry.group.id)?'<span class="pill context">Classification reference</span>':''}</div></summary><div class="sign-body"></div></details>`;
   }
   function renderRegion(card) {
     if(!card.open)return;
@@ -327,7 +334,16 @@ function locator(value) {
     const other=context.length?`<details class="calculation"><summary>Appraisals for other signs in this paper</summary>${context.map(item=>axes.filter(axis=>item.values[axis]).map(axis=>{const value=item.values[axis],view=atlasWeightPresentation(value,axis);return `<section data-context-appraisal="${esc(value.id)}"><strong>${esc(item.label)} · ${axisName(axis)}</strong><p>Stored weight: ${esc(view.label)}${['I','II','III'].includes(value.evidence_class)?` · ${esc(classLabel(value.evidence_class))}`:''}</p>${!publicSite&&value.original_sign_label?`<details><summary>Original database label</summary><p>${esc(value.original_sign_label)}</p></details>`:''}</section>`;}).join('')).join('')}</details>`:'';
     return `<div class="paper-weights"><h4>Paper weights by assessed sign</h4><table class="weight-table"><thead><tr><th>Assessed sign</th>${axes.map(axis=>`<th><button data-weight-order="${axis}" data-group="${esc(groupId)}">${axisName(axis)} weight ↓</button></th>`).join('')}</tr></thead><tbody>${table}</tbody></table><details class="calculation"><summary>Calculation and contribution scope</summary>${details}</details>${other}</div>`;
   }
-  function findingsMarkup(rows) { return [...new Map(rows.map(row=>[row.id,row])).values()].map(row => `<article class="finding"><h4>${esc(row.term)}</h4>${clean(row.source.excerpt) ? `<p>${esc(row.source.excerpt)}</p>` : ''}<p>${esc(locator(row.source.locator))}</p></article>`).join(''); }
+  function findingsMarkup(rows) {
+    return atlasSourceFindingGroups(rows).map(row=>{
+      const statement=clean(row.source.finding?.statement) || clean(row.source.excerpt);
+      const passages=uniq([row.source.excerpt,...(row.source_passages || []).map(value=>value.excerpt),...(row.source_anatomy || []).map(value=>value.source_excerpt),...(row.source_laterality || []).map(value=>value.source_excerpt)].map(clean).filter(Boolean));
+      const excerpts=passages.filter(text=>text!==statement && !passages.some(other=>other!==text && other.includes(text)));
+      const sourceWording=uniq([...(row.source_anatomy || []),...(row.source_laterality || [])].map(value=>clean(value.source_term)).filter(Boolean)).filter(text=>!statement.includes(text) && !passages.some(passage=>passage.includes(text)));
+      const locators=uniq([row.source.locator,...(row.source_passages || []).map(value=>value.locator),...(row.source_anatomy || []).map(value=>value.locator),...(row.source_laterality || []).map(value=>value.locator)].map(atlasSourceLocator).filter(Boolean));
+      return `<article class="finding"><h4>${esc(row.term)}</h4>${statement?`<p>${esc(statement)}</p>`:''}${excerpts.map(text=>`<blockquote>${esc(text)}</blockquote>`).join('')}${sourceWording.length?`<p>Source wording: ${esc(sourceWording.join('; '))}</p>`:''}<p>${esc(locators.join('; '))}</p></article>`;
+    }).join('');
+  }
   function sourceLink(id) { const doi=clean(bibliography(id).doi); return doi ? `<a href="https://doi.org/${esc(encodeURI(doi))}" target="_blank" rel="noopener">Publication ↗</a>` : ''; }
   function localizationAnnotation(row,value) {
     const matches=(row.facets.anatomy || []).filter(item=>selectedAnatomy.has(item.id) && item.source_item_id===value.target_id && item.source_term===value.source_term && item.role===value.role);
@@ -338,7 +354,7 @@ function locator(value) {
   function paperMarkup(id,rows,stats,setting,groupId,embedded=false) {
     const roles=uniq(rows.flatMap(row=>(row.facets.evidence || []).map(item=>item.id.replace(/^EVIDENCE:/,''))));
     const evidenceClasses=classesFor(rows).map(classLabel).join(' · ');
-    const body=`<div class="paper-content" tabindex="0" role="region" aria-label="${esc(citation(id))}: evidence">${embedded?`<div class="paper-tools"><span class="evidence-class-label">${esc(evidenceClasses)}</span>${roles.map(rolePill).join(' ')}</div>`:''}<div class="paper-links">${sourceLink(id)}${publicSite?`<button class="text-button map-link" data-show-map="${esc(groupId)}" data-map-source="${esc(id)}">Show on map</button>`:''}</div>${atlasSourceFindingsMarkup(rows,{compact:true,localizationAnnotation})}${paperWeights(rows,id,setting,groupId)}${resultsMarkup(stats,rows)}<details class="context-details"><summary>Findings and source passages</summary>${atlasSourceFindingsMarkup(rows)}${findingsMarkup(rows.filter(row=>!(row.source_anatomy||[]).some(value=>clean(value.source_excerpt)===clean(row.source.excerpt))))}</details></div>`;
+    const body=`<div class="paper-content" tabindex="0" role="region" aria-label="${esc(citation(id))}: evidence">${embedded?`<div class="paper-tools"><span class="evidence-class-label">${esc(evidenceClasses)}</span>${roles.map(rolePill).join(' ')}</div>`:''}<div class="paper-links">${sourceLink(id)}${publicSite?`<button class="text-button map-link" data-show-map="${esc(groupId)}" data-map-source="${esc(id)}">Show on map</button>`:''}</div>${atlasSourceFindingsMarkup(rows,{compact:true,localizationAnnotation})}${paperWeights(rows,id,setting,groupId)}${resultsMarkup(stats,rows)}<details class="context-details"><summary>Findings and source passages</summary>${findingsMarkup(rows)}</details></div>`;
     return embedded ? body : `<details class="paper" data-paper="${esc(id)}" data-group="${esc(groupId)}" ${setting.openPapers?.has(id)?'open':''}><summary><div class="paper-title"><h3>${esc(sourceTitle(id))}</h3><p>${esc(citation(id))}</p><div class="paper-tools"><span class="evidence-class-label">${esc(evidenceClasses)}</span>${roles.map(rolePill).join(' ')}</div></div></summary>${body}</details>`;
   }
   function signBody(group,embedded=false) {
@@ -351,7 +367,8 @@ function locator(value) {
     const expand=state.query.trim() && fullRows.length>rowsForClass.length ? `<button class="text-button" data-all-term="${esc(group.id)}">View all ${paperIds(fullRows).length} papers for this term</button>` : '';
     return expand + controls + (publicSite && !embedded?`<button class="text-button map-link" data-show-map="${esc(group.id)}">Show on map</button>`:'') + ids.slice(0,setting.papers).map(id=>{const rows=rowsForClass.filter(row=>row.source.id===id),owned=new Set(statisticsFor(rows).map(stat=>stat.statistic_id));return paperMarkup(id,rows,stats.filter(stat=>owned.has(stat.statistic_id)),setting,group.id,embedded);}).join('') + (ids.length>setting.papers ? `<button class="more" data-more-papers="${esc(group.id)}">Show ${ids.length-setting.papers} remaining papers</button>` : '') + (!ids.length ? '<p class="empty">No papers match the selected filters.</p>' : '');
   }
-  function renderEntry(card) { const entry=entries[Number(card.dataset.entry)]; if (!entry || !card.open) return; card.querySelector('.sign-body').innerHTML=signBody(entry.group,entry.type==='source'); if(entry.type==='sign'){const count=Number(card.querySelector('[data-paper-count]').dataset.paperCount),total=paperIds(entry.group.rows).length;card.querySelector('.sign-meta').textContent=count<total ? `${count} of ${total} papers` : `${count} ${count===1?'paper':'papers'}`;} card.dataset.loaded='true'; }
+  function entryBody(entry) { return entry.referenceOnly?`<div class="paper-links">${sourceLink(entry.group.id)}</div>`:signBody(entry.group,entry.type==='source'); }
+  function renderEntry(card) { const entry=entries[Number(card.dataset.entry)]; if (!entry || !card.open) return; card.querySelector('.sign-body').innerHTML=entryBody(entry); if(entry.type==='sign'){const count=Number(card.querySelector('[data-paper-count]').dataset.paperCount),total=paperIds(entry.group.rows).length;card.querySelector('.sign-meta').textContent=count<total ? `${count} of ${total} papers` : `${count} ${count===1?'paper':'papers'}`;} card.dataset.loaded='true'; }
   function refreshGroup(id) { root.querySelectorAll('.sign-card[open]').forEach(card=>{if(entries[Number(card.dataset.entry)]?.group.id===id)renderEntry(card);}); }
   function openDialog(title,body,rows=[]) { dialogRows=rows; $('dialog-title').textContent=title; $('dialog-body').innerHTML=body; $('record-dialog').showModal(); $('record-dialog').scrollTop=0; }
   function openStatistic(id) {
@@ -362,11 +379,11 @@ function locator(value) {
     if(stat.restatement_explanation)fields.push(['Restatement context',stat.restatement_explanation]);
     openDialog(clean(stat.measure)||metricName(stat.metric_type),`<div class="dialog-value">${esc(valueText(stat))}</div><p>${paperIds(rows).map(id=>esc(citation(id))).join(' · ')}</p><dl>${fields.map(([label,value])=>`<dt>${esc(label)}</dt><dd>${esc(clean(value)||'Not recorded')}</dd>`).join('')}</dl><h3>Source passages</h3>${statements.map(item=>`<p><strong>${esc(locator(item.source_locator))}</strong><br>${esc(item.source_excerpt)}</p>`).join('')}`);
   }
-  function explain() { openDialog('Weights & statistics explained','<h3>Organization and ordering</h3><p>Lüders and ILAE use their recorded classification categories. Region adds regional groups within those categories. A–Z and Number of publications order signs within each group. Reported-statistic ordering applies within each paper, separately for each metric and unit.</p>'+root.getElementById('scientific-explanation').innerHTML); }
-  function refresh() { state.limit=30; opened.clear(); syncControls(); renderList(); }
+  function explain() { openDialog('Weights & statistics explained',root.getElementById('scientific-explanation').innerHTML); }
+  function refresh() { state.limit=30; opened.clear(); grouping(); syncControls(); renderList(); }
   function resetFilters({preserveFocus=false}={}) {
     detailState.clear();
-    selectedAnatomy.clear();
+    selectedAnatomy.clear();sourceSelection=null;
     Object.assign(state,{query:'',sourceQuery:'',filters:{},metric:'',focus:preserveFocus?state.focus:''});
     if(!preserveFocus)pendingFocus='';
     $('search').value='';updateQuery();refresh();
@@ -378,8 +395,7 @@ function locator(value) {
     if(button.hasAttribute('data-clear-map')){evidenceMap?.clear();return;}
     if(button.dataset.showMap){
       const card=button.closest('.sign-card'),group=card?entries[Number(card.dataset.entry)]?.group:null;
-      const additional=button.closest('#additional-results .paper');
-      const context=group?selectedRows(group.rows).filter(row=>classMatches(row,settings(group.id).evidenceClass)):button.closest('#record-dialog')?dialogRows:additional?additionalPaperRows.get(additional.dataset.paper)||[]:[];
+      const context=group?selectedRows(group.rows).filter(row=>classMatches(row,settings(group.id).evidenceClass)):button.closest('#record-dialog')?dialogRows:[];
       const rows=context.filter(row=>!button.dataset.mapSource || row.source.id===button.dataset.mapSource);
       if(rows.length){if(button.closest('#record-dialog'))$('record-dialog').close();evidenceMap?.showEvidence(rows,button.dataset.mapSource?sourceTitle(button.dataset.mapSource):group.label);}
       return;
@@ -394,13 +410,12 @@ function locator(value) {
     if(button.dataset.allTerm){if(options.embedded){pendingFocus=button.dataset.allTerm;options.onClearFilters?.({preserveFocus:true});return;}state.query='';state.focus=button.dataset.allTerm;$('search').value='';updateQuery();opened.clear();opened.add(state.focus);syncControls();renderList();}
     if(button.dataset.morePapers){settings(button.dataset.morePapers).papers=Infinity;refreshGroup(button.dataset.morePapers);}
     if(button.dataset.weightOrder){settings(button.dataset.group).weights=button.dataset.weightOrder;refreshGroup(button.dataset.group);}
-    if(button.dataset.source){const id=button.dataset.source,rows=selectedRows(unplaced).filter(row=>row.source.id===id && (!state.query.trim() || queryMatch(row.term)));openDialog(citation(id),paperMarkup(id,rows,evidenceStats(rows,settings(id)),settings(id),id),rows);}
   });
   root.addEventListener('change',event=>{
     const {id,value,dataset}=event.target;
     if(dataset.detail){settings(dataset.group)[dataset.detail]=value;refreshGroup(dataset.group);return;}
     if(dataset.facet){if(value)state.filters[dataset.facet]=value;else delete state.filters[dataset.facet];refresh();return;}
-    if(id==='organize'){state.organize=value;state.order='name';state.focus='';if(['ilae','luders'].includes(value)){if(state.scheme!==value){delete state.filters.ilae;delete state.filters.luders;}state.scheme=value;grouping();}}
+    if(id==='organize'){state.organize=value;state.order='name';state.focus='';delete state.filters.ilae;delete state.filters.luders;}
     else if(id==='group'){if(value)state.filters[state.organize]=value;else delete state.filters[state.organize];}
     else if(id==='evidence-class'){if(value)state.filters.evidence_class=value;else delete state.filters.evidence_class;for(const setting of detailState.values())setting.evidenceClass='';}
     else if(id==='order')state.order=value;
@@ -412,7 +427,7 @@ function locator(value) {
   sources=new Map(catalogue.items.filter(item=>item.facet==='source').map(item=>[item.id,item]));nodeIndex=new Map(catalogue.items.map(item=>[item.id,item]));nativeSigns=new Map(atlasGroups(data.rows,'sign').map(group=>[group.id,group]));statOwners=new Map();
     for(const row of data.rows)for(const id of row.statistic_ids){if(!statOwners.has(id))statOwners.set(id,[]);statOwners.get(id).push(row);}
     for(const axis of axes)for(const summary of data.weights[axis]||[]){if(!weightIndex.has(summary.sign_id))weightIndex.set(summary.sign_id,new Map());weightIndex.get(summary.sign_id).set(axis,summary);}
-    metricTypes=metricTypesFor(statisticsFor(data.rows.filter(row=>row.record_kind==='SIGN_EVIDENCE')));
+    metricTypes=metricTypesFor(statisticsFor(data.rows));
 
   grouping();
   if(options.embedded)$('organize').querySelector('option[value="source"]').remove();
@@ -421,6 +436,7 @@ function locator(value) {
     resetFilters,
     update({rows,view='browse',query='',queryContext={}}) {
       selectedAnatomy=new Set(queryContext.anatomy || []);
+      sourceSelection=typeof queryContext.evidenceFiltered==='boolean'?{evidenceFiltered:queryContext.evidenceFiltered,sourceIds:queryContext.sourceIds || []}:null;
       mapResultIds=new Set(rows.map(row=>row.id));state.query=options.embedded?'':query;state.focus=pendingFocus;pendingFocus='';
       if(view!==currentView){if(currentView!=='sources'){signOrganization=state.organize;signOrder=state.order;}state.organize=view==='sources'?'source':signOrganization;state.order=view==='sources'?'name':signOrder;currentView=view;}
       $('organize').closest('.field').hidden=view==='sources';refresh();
