@@ -4,7 +4,7 @@ A source-grounded educational reference for localizing and lateralizing seizure 
 
 ## Website
 
-Use the **Signs**, **Weighted evidence**, and **Sources** tabs beside the interactive map. The Signs tab organizes evidence by dictionary term, brain region, or ILAE or Lüders classification. Reported statistics, evidence classes, and recorded paper appraisals are available within the same sign and paper cards. Each paper shows its title first, with authors and year below; repeated localization and lateralization targets are grouped under their sign.
+Use the **Signs** and **Sources** tabs beside the interactive map. Signs includes reported statistics and paper weights, with region grouping available within ILAE and Lüders classification views. Reported statistics, evidence classes, and recorded paper appraisals are available within the same sign and paper cards. Each paper shows its title first, with authors and year below; repeated localization and lateralization targets are grouped under their sign.
 
 The interactive 3D cortical map offers DKT40 regions and Brodmann labels. Select areas on the brain or use the searchable checklists to browse their linked evidence. Drag to rotate and pinch or scroll to zoom.
 

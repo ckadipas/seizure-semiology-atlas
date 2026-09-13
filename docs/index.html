@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-projection="static" data-snapshot="01c5c226c085511c40a0e26941b5be4c5eeacc3ebbf1f402b516ce1fe1446417" data-label-editing="disabled">
+<html lang="en" data-projection="static" data-snapshot="f47b5a2e8d1c9aed4ba0dcb4fda74454b37c037d6b17f93f59059ab3dce93c0f" data-label-editing="disabled">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -216,8 +216,6 @@
     .toolbar-chooser-option[aria-selected="true"] { color:var(--teal-d); background:#e7f6f8; font-weight:750; }
     .weight-choice { display:flex; flex-direction:column; gap:3px; text-transform:uppercase; font-size:.65rem; font-weight:700; color:var(--muted); }
     .weight-choice .segmented { text-transform:none; }
-    #weightControls { align-items:flex-end; }
-    #weightHelp { min-height:35px; padding:5px 11px; font-size:.75rem; }
     .segmented { display:flex; gap:2px; border-radius:7px; background:#eef1f7; padding:3px; }
     .segmented button { background:transparent; border:0; color:#647089; border-radius:5px; min-height:34px; padding:5px 11px; font-size:.75rem; font-weight:750; }
     .segmented button[aria-selected="true"], .segmented button[aria-pressed="true"] { background:#fff; color:var(--navy); box-shadow:0 1px 4px #24334c22; }
@@ -319,14 +317,11 @@
     .weight-card > summary .browse-name { grid-column:2; grid-row:1; }
     .weight-card > summary .browse-count { grid-column:3; grid-row:1; white-space:normal; text-align:right; }
     .weight-card > summary .weight-summary-meta { grid-column:2 / -1; grid-row:2; min-width:0; }
-    #weightMethod { width:min(520px,calc(100% - 32px)); border:1px solid var(--line); border-radius:12px; padding:24px; color:var(--ink); line-height:1.6; }
-    #weightMethod::backdrop { background:#12234a66; }
-    #weightMethod h2 { margin-top:0; font-size:1.1rem; color:var(--navy); }
     @media(max-width:780px) {
       .weight-card > summary { grid-template-columns:12px minmax(0,1fr); }
       .weight-card > summary .browse-count { grid-column:2; grid-row:3; text-align:left; justify-self:start; }
       .weight-support { white-space:normal; }
-      .view-tabs { display:grid; grid-template-columns:1fr 1.6fr 1fr; }
+      .view-tabs { display:grid; grid-template-columns:1fr 1fr; }
       .view-tabs button { padding:8px 6px; }
       .browse-controls label { flex:1; min-width:140px; }
       .browse-controls select { max-width:100%; }
@@ -381,12 +376,12 @@
     <details id="pageGuide" class="panel page-guide">
       <summary>How to use this page</summary>
       <div class="guide-content">
-        <section><h2>Find a sign or paper</h2><p>Search for a symptom, brain area or paper. Open <strong>Filters</strong> to narrow the results by timing, side, classification or study details. The filters apply to all three tabs. <strong>Clear filters</strong> starts over.</p></section>
+        <section><h2>Find a sign or paper</h2><p>Search for a symptom, brain area or paper. Open <strong>Filters</strong> to narrow the results by timing, side, classification or study details. The filters apply to both tabs. <strong>Clear filters</strong> starts over.</p></section>
         <section><h2>Explore the brain</h2><p>Choose <strong>DKT40 Atlas</strong> to select colored brain regions, or <strong>Brodmann Labels</strong> to select numbered areas. Drag to turn the brain and pinch or scroll to zoom. The view buttons and <strong>Left / Right</strong> change what you see; use <strong>Laterality</strong> to filter the side reported in a study.</p></section>
         <section><h2>Select and clear areas</h2><p>Tap an area on the map, or search and check names in the adjacent menu. Click outside the menu to close it. You can combine areas to find reported findings linked to each selection. Selections stay active when you switch atlases. <strong>Clear selection</strong> removes all map selections; <strong>Reset view</strong> only resets the view.</p></section>
-        <section><h2>Read the results</h2><p><strong>Signs</strong> groups the linked signs. <strong>Weighted evidence</strong> summarizes study support for a brain area or side. <strong>Sources</strong> brings results from each paper together. <strong>Associated study findings</strong> contains other linked records, such as case descriptions or comparisons. Use <strong>Organize signs by</strong> to change the grouping.</p></section>
-        <section><h2>Open a paper’s findings</h2><p>Open <strong>Results</strong> beneath a paper’s title for findings, reported measurements and source details. <strong>View all results from this paper</strong> shows the rest of that paper’s results. DOI links open the article.</p></section>
-        <section><h2>Understand counts and scores</h2><p><strong>Show counts</strong> adds the number of matching results to Brodmann labels. It is available in Brodmann mode. Dots indicate one, two, or three or more papers. A score combines study weights; it is not a probability. <strong>About the scores</strong> explains the calculation.</p></section>
+        <section><h2>Read the results</h2><p><strong>Signs</strong> groups findings by clinical dictionary term and includes the reported statistics and paper weights. <strong>Sources</strong> collects the results from each paper. Use <strong>Organize by</strong> to change the grouping.</p></section>
+        <section><h2>Open a paper’s findings</h2><p>Open a sign, then a paper, to inspect its findings, measurements, weights and source passages. Publication links open the article.</p></section>
+        <section><h2>Understand counts and weights</h2><p><strong>Show counts</strong> adds the number of matching results to Brodmann labels. Paper weights retain the recorded appraisal and its calculation. <strong>Weights &amp; statistics explained</strong> describes these measures and their limitations.</p></section>
       </div>
     </details>
     <section class="panel search-panel" aria-label="Search and filters">
@@ -429,17 +424,9 @@
       <h2 id="mapHeading" class="selection-heading" hidden></h2>
       <div id="viewTabs" class="view-tabs" role="tablist" aria-label="Evidence views">
         <button type="button" role="tab" id="tab-browse" data-view="browse" aria-selected="true" aria-controls="results">Signs</button>
-        <button type="button" role="tab" id="tab-weighted" data-view="weighted" aria-selected="false" aria-controls="results">Weighted evidence</button>
         <button type="button" role="tab" id="tab-sources" data-view="sources" aria-selected="false" aria-controls="results">Sources</button>
       </div>
       <div id="resultsToolbar" class="results-toolbar">
-        <div id="weightAxisControl" class="browse-controls weight-axis-row" hidden>
-          <div class="weight-choice"><span>Evidence axis</span><div id="weightAxisTabs" class="segmented" role="group" aria-label="Evidence axis"><button type="button" data-weight-axis="LOCALIZATION" aria-pressed="true">Localization</button><button type="button" data-weight-axis="LATERALIZATION" aria-pressed="false">Lateralization</button></div></div>
-          <button id="weightHelp" type="button" class="quiet">About the scores</button>
-        </div>
-        <div id="weightControls" class="browse-controls" hidden>
-          <label for="weightSort">Order <select id="weightSort"><option value="page">Current organization</option><option value="weight">Highest score</option><option value="name">Sign A–Z</option><option value="manuscripts">Most papers</option><option value="statistics">Most reported values</option></select></label>
-        </div>
         <div class="browse-controls" id="browseControls">
           <label for="groupBy">Organize signs by <select id="groupBy"></select></label>
           <label for="within" id="withinWrap">Within each group <select id="within"></select></label>
@@ -473,16 +460,9 @@
     <p><strong>Copyright and attribution</strong><br>Copyright is claimed only in the atlas’s original software, explanatory text, original graphics, and original selection, coordination, and arrangement of the compiled material—not in underlying scientific facts, clinical concepts, source publications, or third-party material. Cited works remain attributable to their respective authors and publishers; inclusion does not imply ownership or endorsement.</p>
     <p>© 2026 <span data-nosnippet>CM Kadipasaoglu, MD, PhD</span> · Creator and maintainer.</p>
   </footer>
-  <dialog id="weightMethod">
-    <h2>About the scores</h2>
-    <p>Each study contributes once for a sign and for localization or lateralization. Its weight combines the recorded evidence class, study method, and sample size. The score adds these study weights.</p>
-    <p>Dots show the number of papers: one, two, or three or more. They do not indicate certainty. Scores are not probabilities or pooled study results.</p>
-    <p>When a filter selects only part of a study’s results, that study’s score is withheld. Reviews and cited reports remain available without counting the same study again.</p>
-    <form method="dialog"><button class="quiet">Close</button></form>
-  </dialog>
 
   <script type="module">
-    import { createEvidenceReview } from './atlas_evidence.mjs?v=d0f3d8a9aa443ffc5b3bdd967769abcdf72a7e90fef51635985a0e06059a85fc';
+    import { createEvidenceReview } from './atlas_evidence.mjs?v=ac9e6610afdb7a6e55bc6feecb5fb90cd04d4ecf2bec11f1626a106d9dc9dec9';
     import { atlasData, atlasGroups, atlasClassificationGroups, atlasCounts, atlasWeights, atlasWeightPresentation, atlasAppraisalLabel, atlasStatisticGroups, atlasSourceAnatomyMarkup } from './atlas_projection.mjs?v=423c29367a31e6ea17e4c4bd7e70c54760a5a05e3f896a1e3f1d32933540367b';
     (() => {
       "use strict";
@@ -1547,21 +1527,13 @@
         const rows=state.response?.rows||[];
         const clinicalRows=rows.filter(row=>row.record_kind!=='CONTEXT_ONLY');
         const contextRows=rows.filter(row=>row.record_kind==='CONTEXT_ONLY');
-        const view=state.view;
-        const titles={browse:'Signs',weighted:'Weighted evidence',sources:'Sources'};
+        const view=state.view=state.view==='sources'?'sources':'browse';
+        const titles={browse:'Signs',sources:'Sources'};
         $('#viewHeading').textContent=titles[view];
         $('#resultStatus').textContent=state.response
           ? (rows.length?evidenceSummary(rows):'No results match the current search and filters.')
           : (state.loading?'Loading evidence…':'Evidence results are unavailable.');
-        const weightedPage=view==='weighted'&&state.weightSort[state.weightAxis]==='page';
-        $('#browseControls').hidden=view!=='browse'&&!weightedPage;
-        $('#weightAxisControl').hidden=view!=='weighted';
-        $('#weightControls').hidden=view!=='weighted';
-        if(view==='weighted') {
-          $('#weightSort').value=state.weightSort[state.weightAxis];
-          syncToolbarChooser($('#weightSort'));
-          $('#weightAxisTabs').querySelectorAll('[data-weight-axis]').forEach(item=>item.setAttribute('aria-pressed',String(item.dataset.weightAxis===state.weightAxis)));
-        }
+        $('#browseControls').hidden=view!=='browse';
         $('#viewTabs').querySelectorAll('button').forEach(button=>{
           const active=button.dataset.view===view;
           button.setAttribute('aria-selected',String(active));button.tabIndex=active?0:-1;
@@ -1585,7 +1557,6 @@
         }
         let content='';
         if(view==='sources') content=atlasGroups(rows,'source').map(paper=>paperSection(paper)).join('');
-        else if(view==='weighted') content=renderWeighted(rows);
         else if(!state.groupBy)content=signRows(clinicalRows,'#344a67');
         else if(state.groupBy==='region')content=regionRows(clinicalRows);
         else content=classificationRows(clinicalRows,state.groupBy);
@@ -1855,15 +1826,7 @@
         const next=event.key==='Home'?0:event.key==='End'?buttons.length-1:(index+(event.key==='ArrowRight'?1:-1)+buttons.length)%buttons.length;
         buttons[next].click();buttons[next].focus();
       });
-      $('#weightAxisTabs').addEventListener('click',event=>{
-        const button=event.target.closest('[data-weight-axis]');
-        if(!button)return;
-        state.weightAxis=button.dataset.weightAxis;
-        renderResults();
-      });
-      $('#weightSort').addEventListener('change',event=>{state.weightSort[state.weightAxis]=event.target.value;renderResults();});
-      $('#weightHelp').addEventListener('click',()=>$('#weightMethod').showModal());
-      ['groupBy','within','regionSort','weightSort'].forEach(id=>installToolbarChooser($('#'+id)));
+      ['groupBy','within','regionSort'].forEach(id=>installToolbarChooser($('#'+id)));
       start();
     })();
   </script>

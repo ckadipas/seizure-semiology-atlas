@@ -33,7 +33,7 @@ const markup = `
 <a class="skip" href="#main">Skip to signs</a>
 <header class="masthead owner-only"><div class="mast-inner"><div class="brand"><svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><rect width="32" height="32" rx="9" fill="#176862"/><path d="M8 16h4l3-7 3 14 3-7h3" stroke="white" stroke-width="1.8" stroke-linejoin="round"/></svg>Semiology Atlas</div><button class="help-button" id="help">Weights & statistics explained</button></div></header>
 <main id="main"><div class="intro"><h1>Signs & evidence</h1><div class="intro-actions"><div class="corpus" id="corpus">Loading evidence…</div><button class="help-button embedded-help" data-evidence-help>Weights & statistics explained</button></div></div>
-<div class="toolbar" aria-label="Organize signs and evidence"><div class="field"><label for="search">Search</label><input id="search" type="search" placeholder="Sign or source wording" autocomplete="off"></div><div class="field"><label for="organize">Organize by</label><select id="organize"><option value="az">A–Z</option><option value="region">Region</option><option value="ilae">ILAE</option><option value="luders">Lüders</option><option value="source">Source paper</option></select></div><div class="field"><label for="order">Sort</label><select id="order"></select></div><div class="field" id="evidence-class-field"><label for="evidence-class">Evidence class</label><select id="evidence-class"></select></div><div class="dependent" id="dependent" hidden><div class="field" id="group-field" hidden><label id="group-label" for="group">Group</label><select id="group"></select></div><div class="field" id="metric-field" hidden><label for="metric">Metric</label><select id="metric"></select></div></div></div>
+<div class="toolbar" aria-label="Organize signs and evidence"><div class="field"><label for="search">Search</label><input id="search" type="search" placeholder="Sign or source wording" autocomplete="off"></div><div class="field"><label for="organize">Organize by</label><select id="organize"><option value="az">A–Z</option><option value="region">Region</option><option value="ilae">ILAE</option><option value="luders">Lüders</option><option value="source">Source paper</option></select></div><div class="field"><label for="order">Sort</label><select id="order"></select></div><div class="field" id="evidence-class-field"><label for="evidence-class">Evidence class</label><select id="evidence-class"></select></div><div class="dependent" id="dependent" hidden><div class="field" id="group-field" hidden><label id="group-label" for="group">Group</label><select id="group"></select></div><div class="field" id="within-field" hidden><label for="within-classification">Within classification</label><select id="within-classification"><option value="sign">Signs</option><option value="region">Regions</option></select></div><div class="field" id="metric-field" hidden><label for="metric">Metric</label><select id="metric"></select></div></div></div>
 <div class="list-meta"><span id="match-count" aria-live="polite">Loading signs…</span><button id="reset">Reset</button></div><div class="active-filters" id="active-filters"></div><section class="sign-list" id="sign-list" aria-label="Signs and evidence"><div class="empty">Loading evidence…</div></section><section id="additional-results" class="additional-results" hidden></section>
 </main>
 <footer class="owner-only"><span>Owner preview</span><a href="https://www.semiologyatlas.org/" target="_blank" rel="noopener">Public atlas ↗</a></footer>
@@ -98,7 +98,7 @@ function locator(value) {
 
 
   const params = new URLSearchParams(options.embedded ? '' : location.search);
-  const state = {query:params.get('q') || '',organize:'az',scheme:'luders',filters:{},order:'name',metric:'',limit:30,focus:'',openRegions:new Set(),regionLimits:new Map()};
+  const state = {query:params.get('q') || '',organize:'az',within:'sign',scheme:'luders',filters:{},order:'name',metric:'',limit:30,focus:'',openRegions:new Set(),regionLimits:new Map()};
   const opened = new Set(), detailState = new Map(), weightIndex = new Map();
   let evidenceMap = publicSite ? {showEvidence: options.onShowMap, clear: () => options.onClearFilters?.()} : null, mapResultIds = null, dialogRows = [], additionalPaperRows = new Map();
   let currentView = '', signOrganization = 'az', pendingFocus = '';
@@ -126,6 +126,8 @@ function locator(value) {
   function updateQuery() { if(options.embedded)return; const url = new URL(location.href); state.query ? url.searchParams.set('q',state.query) : url.searchParams.delete('q'); history.replaceState(null,'',url); }
   function syncControls() {
     $('organize').value = state.organize;
+    $('within-field').hidden = !['ilae','luders'].includes(state.organize);
+    $('within-classification').value = state.within;
     $('evidence-class').innerHTML = classOptions(classesFor(data.rows)); $('evidence-class').value = state.filters.evidence_class || '';
     const facet = ['region','ilae','luders'].includes(state.organize) ? state.organize : '';
     $('group-field').hidden = !facet;
@@ -166,7 +168,7 @@ function locator(value) {
       const categoryId=state.filters[state.scheme],categoryGroups=categoryId ? atlasDictionaryGroups(data.rows.filter(row=>row.record_kind==='SIGN_EVIDENCE'),state.scheme,catalogue.items,categoryId).groups : groups;
       let selected = categoryGroups.map(group => ({...group,rows:selectedRows(group.rows).filter(row => !state.query.trim() || queryMatch(group.label) || queryMatch(row.term) || queryMatch(row.sign_label))})).filter(group => group.rows.length && (!state.focus || group.id === state.focus) && (!state.order.startsWith('values-') || !state.metric || statisticsFor(group.rows).some(stat => stat.metric_type === state.metric)));
       selected.sort((a,b) => (state.order === 'papers' ? paperIds(b.rows).length-paperIds(a.rows).length : 0) || (state.query.trim() ? Number(queryMatch(b.label))-Number(queryMatch(a.label)) : 0) || a.label.localeCompare(b.label));
-      if (state.organize === 'region' && !state.filters.region) {
+      if ((state.organize === 'region' || ['ilae','luders'].includes(state.organize) && state.within === 'region') && !state.filters.region) {
         const regions = atlasGroups(selected.flatMap(group => group.rows),'region');
         const ordered = catalogue.maps.region_groups || []; const ordinal = id => { const index=ordered.findIndex(item => item.id === id || item.anatomy_node_id === id); return index < 0 ? Infinity : index; };
         regions.sort((a,b) => ordinal(a.id)-ordinal(b.id) || a.label.localeCompare(b.label));
@@ -341,6 +343,7 @@ function locator(value) {
     if(id==='organize'){state.organize=value;state.focus='';if(['ilae','luders'].includes(value)){if(state.scheme!==value){delete state.filters.ilae;delete state.filters.luders;}state.scheme=value;grouping();}}
     else if(id==='group'){if(value)state.filters[state.organize]=value;else delete state.filters[state.organize];}
     else if(id==='evidence-class'){if(value)state.filters.evidence_class=value;else delete state.filters.evidence_class;for(const setting of detailState.values())setting.evidenceClass='';}
+    else if(id==='within-classification')state.within=value;
     else if(id==='order')state.order=value;
     else if(id==='metric')state.metric=value;
     else return;
