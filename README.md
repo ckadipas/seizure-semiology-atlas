@@ -4,7 +4,7 @@ A source-grounded educational reference for localizing and lateralizing seizure 
 
 ## Website
 
-Search once, then browse **Signs**, **Weighted evidence**, or **Sources**. Signs can be organized by brain region or classification. Weighted evidence uses the same organization, with separate localization and lateralization views. Sources collect each paper's results beneath its title, authors, and DOI.
+Use the **Signs** and **Sources** tabs beside the interactive map. Signs includes reported statistics and paper weights, with region grouping available within ILAE and Lüders classification views. Reported statistics, evidence classes, and recorded paper appraisals are available within the same sign and paper cards. Each paper shows its title first, with authors and year below; repeated localization and lateralization targets are grouped under their sign.
 
 The interactive 3D cortical map offers DKT40 regions and Brodmann labels. Select areas on the brain or use the searchable checklists to browse their linked evidence. Drag to rotate and pinch or scroll to zoom.
 
@@ -48,7 +48,7 @@ GitHub intake registers a submission for private source review. It cannot change
 
 Source terms, citations, populations, and individual measurements remain traceable. Localization, lateralization, phase, and classification are separate relationships. An unspecified value on one axis does not erase an explicit value on another.
 
-Weighted evidence retains the approved scoring method. A new study does not receive an evidence class or contribute to a score merely because it has been added to the database.
+Recorded paper appraisals retain their original source scope, class, factors, and weights. The displayed appraisal and its applied contribution are distinct. Adding a study does not assign an evidence class, create an independent contribution, or pool its reported statistics.
 
 ## Licensing
 

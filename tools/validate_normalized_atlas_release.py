@@ -113,6 +113,26 @@ def validate_explorer_files(docs, projection, *, surface_mode="public"):
     views = maps.get("views")
     require(isinstance(views, dict) and views, "public explorer map views are absent")
     expected = {"index.html", "atlas_projection.mjs", "atlas-projection.json.gz"}
+    html = (docs / "index.html").read_text(encoding="utf-8")
+    if "from './atlas_evidence.mjs" in html:
+        expected.add("atlas_evidence.mjs")
+        component = docs / "atlas_evidence.mjs"
+        require(component.is_file(), "shared evidence renderer is absent")
+        require(f"from './atlas_evidence.mjs?v={file_sha256(component)}'" in html,
+                "shared evidence renderer binding differs")
+        require(f"from './atlas_projection.mjs?v={file_sha256(docs / 'atlas_projection.mjs')}'"
+                in component.read_text(encoding="utf-8"), "evidence renderer projection binding differs")
+    if surface_mode != "private":
+        require(all("restatement_explanation" not in value
+                    for value in projection.get("statistics", {}).values()),
+                "private statistic review explanations must not be published")
+        appraisal_fields = {'id', 'source_id', 'axis', 'original_sign_id', 'original_sign_label',
+                            'finding_refs', 'source_terms', 'context_result_ids', 'statistic_ids',
+                            'evidence_class', 'authority_category', 'weight_components',
+                            'potential_weight', 'final_weight', 'weight_status'}
+        require(all(set(value) == appraisal_fields
+                    for value in projection.get("appraisal_receipts", {}).values()),
+                "unexpected public appraisal fields")
     for view in views.values():
         relative = PurePosixPath(str((view or {}).get("image_url") or ""))
         require(relative.parts[:2] == ("generator", "assets")
@@ -122,8 +142,8 @@ def validate_explorer_files(docs, projection, *, surface_mode="public"):
     surfaces = maps.get("local_surfaces")
     if surfaces:
         expected.add("atlas_surface.mjs")
-        html = (docs / "index.html").read_text(encoding="utf-8")
-        require(f"import('./atlas_surface.mjs?v={file_sha256(docs / 'atlas_surface.mjs')}')" in html,
+        surface_revision = file_sha256(docs / 'atlas_surface.mjs')
+        require(f"import('./atlas_surface.mjs?v={surface_revision}')" in html,
                 "public surface module binding differs")
         if surface_mode != "private":
             require(surfaces["images"] == [], "reference images must remain private")
@@ -274,6 +294,10 @@ def main():
     validate_brodmann_panel(bundle.get("brodmann"))
     digests = assert_bundle_integrity(bundle)
     graph = PublicRelationshipGraph(bundle["scientific_relationship_graph"])
+    require(
+        all(row.get("restatement_explanation") is None for row in graph.node_groups["statistics"]),
+        "public statistic dictionaries contain private review explanations",
+    )
     database_rows = (
         graph.assert_matches_database(args.canonical_db) if args.canonical_db else None
     )

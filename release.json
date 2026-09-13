@@ -1,12 +1,11 @@
 {
   "version": "2",
-  "released_at": "2026-09-12T06:37:31Z",
+  "released_at": "2026-09-13T12:27:48Z",
   "changes": [
-    "Explore the interactive 3D cortical map on desktop or mobile.",
-    "Choose DKT40 regions or Brodmann labels, with searchable lists and multiple area selection.",
-    "Read linked signs, study evidence and paper details beside the map.",
-    "Use the updated Brodmann label placements for both sides of the brain.",
-    "Clear all map selections together and show result counts for Brodmann labels.",
-    "Updated the plain-language guide to searching, selecting areas and reading results."
+    "Review signs, reported statistics, evidence classes and paper appraisals in Signs; use Sources to browse by paper.",
+    "Organize signs by region, ILAE, Lüders or alphabetical order, with region grouping within either classification.",
+    "Read grouped localization and lateralization targets beneath each sign, retaining propagation and study-context distinctions.",
+    "Open compact paper tables with complete source details and separate appraisal and applied-contribution values.",
+    "Retain the existing 3D map, brain colors, controls and tabbed results layout."
   ]
 }

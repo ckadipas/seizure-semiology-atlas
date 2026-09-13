@@ -125,7 +125,9 @@ WEIGHTED_CONTRIBUTION_FIELDS = (
     "target_relationship_ids", "statistic_ids", "evidence_roles",
     "evidence_partitions", "evidence_class", "authority_category",
     "weight_components", "potential_weight", "final_weight", "weight_status",
+    "appraisal_receipt_ids", "appraisal_match_status",
 )
+LEGACY_WEIGHTED_CONTRIBUTION_FIELDS = WEIGHTED_CONTRIBUTION_FIELDS[:-2]
 CLASSIFICATION_SOURCE_MAPPING_FIELDS = (
     "source_node_id", "source_scheme_id", "public_node_id", "relation",
     "mapping_status", "registry_sha256", "provenance", "activation_state",
@@ -220,6 +222,7 @@ PUBLIC_NODE_FIELDS = {
         "anatomy_laterality_context", "evidence_role", "evidence_partition",
         "independent_evidence", "citation", "source_locator",
         "source_excerpt", "restates_statistic_id", "citation_storage_role",
+        "independence_status", "restatement_explanation",
     ),
     "anatomy": (
         "node_kind", "node_id", "label", "anatomy_node_id",
@@ -1194,7 +1197,7 @@ class PublicRelationshipGraph:
             or tuple(weighted.get("summary_field_order") or ())
             != WEIGHTED_AXIS_SUMMARY_FIELDS
             or tuple(weighted.get("contribution_field_order") or ())
-            != WEIGHTED_CONTRIBUTION_FIELDS
+            not in (WEIGHTED_CONTRIBUTION_FIELDS, LEGACY_WEIGHTED_CONTRIBUTION_FIELDS)
             or str(weighted_projection.get("section_name") or "")
             != "WEIGHTED_AXIS_SUMMARY"
             or str(weighted_projection.get("group_name") or "")
@@ -1354,10 +1357,22 @@ class PublicRelationshipGraph:
             if not isinstance(contributions, list):
                 raise ValueError("A weighted summary has no contribution array.")
             for contribution in contributions:
-                if not isinstance(contribution, dict) or set(contribution) != set(
-                    WEIGHTED_CONTRIBUTION_FIELDS
+                if not isinstance(contribution, dict) or set(contribution) not in (
+                    set(WEIGHTED_CONTRIBUTION_FIELDS), set(LEGACY_WEIGHTED_CONTRIBUTION_FIELDS)
                 ):
                     raise ValueError("Weighted contribution fields differ.")
+                appraisal_ids = contribution.get("appraisal_receipt_ids", [])
+                if (not isinstance(appraisal_ids, list)
+                        or any(not isinstance(value, str) or not value.startswith(
+                            "WEIGHT_APPRAISAL_RECEIPT:") for value in appraisal_ids)
+                        or appraisal_ids != sorted(set(appraisal_ids))
+                        or ("appraisal_match_status" in contribution
+                            and contribution["appraisal_match_status"] not in {
+                                "EXACT_IDENTITY_SCOPE", "EXACT_SOURCE_SCOPE",
+                                "OVERLAPPING_SOURCE_SCOPE", "SOURCE_WORK_CONTEXT",
+                                "NO_RETAINED_APPRAISAL",
+                            })):
+                    raise ValueError("Weighted appraisal references are invalid.")
                 contribution_id = str(contribution.get("contribution_id") or "")
                 work_id = str(contribution.get("work_id") or "")
                 if (
@@ -1386,6 +1401,11 @@ class PublicRelationshipGraph:
                     )
                 ):
                     raise ValueError("A weighted contribution changes its typed evidence.")
+                if any(contribution.get(field) is None for field in ("potential_weight", "final_weight")) and contribution.get("weight_status") not in {
+                    "NOT_APPLIED_WEIGHT_METADATA_UNRESOLVED",
+                    "NOT_APPLIED_CONTRIBUTION_SCOPE_UNRESOLVED",
+                }:
+                    raise ValueError("A missing contribution weight has no unresolved status.")
                 try:
                     final_weight = float(contribution.get("final_weight") or 0)
                 except (TypeError, ValueError) as exc:

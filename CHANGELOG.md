@@ -1,5 +1,13 @@
 # Changelog
 
+## 2 — 2026-09-13
+
+- Review signs, reported statistics, evidence classes and paper appraisals in Signs; use Sources to browse by paper.
+- Organize signs by region, ILAE, Lüders or alphabetical order, with region grouping within either classification.
+- Read grouped localization and lateralization targets beneath each sign, retaining propagation and study-context distinctions.
+- Open compact paper tables with complete source details and separate appraisal and applied-contribution values.
+- Retain the existing 3D map, brain colors, controls and tabbed results layout.
+
 ## 2 — 2026-09-12
 
 - Explore the interactive 3D cortical map on desktop or mobile.
