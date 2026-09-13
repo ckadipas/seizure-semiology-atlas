@@ -1,24 +1,25 @@
 name: "📄 Submit a paper for intake"
-description: Share a DOI or stable link for private source review.
+description: Upload a PDF or page images, or share a DOI or link for source review.
 title: "[intake] "
 labels: ["intake"]
 body:
   - type: markdown
     attributes:
       value: |
-        Share one paper by pasting its DOI or a stable publisher or repository
-        link below. You do not need to extract findings, classify the study,
-        or complete bibliographic fields.
+        Share one paper by uploading its PDF or page images in the field below,
+        or by pasting its DOI or a stable link. You do not need to extract
+        findings, classify the study, or complete bibliographic fields. The
+        intake agent checks the paper's DOI and other bibliographic details
+        during private review.
 
-        This issue is public. Keep source PDFs, page photographs, full article
-        text, and private information out of it. Source files are handled
-        through the private review process.
+        This issue and its attachments are public. Upload files you have
+        permission to share publicly.
   - type: textarea
     id: doi
     attributes:
-      label: Paper DOI or stable link
-      description: Paste one DOI or stable publisher or repository link.
-      placeholder: "https://doi.org/10.…"
+      label: Paper PDF, page images, DOI, or link
+      description: Drag files into this field or use its attachment button. A DOI or stable link is also sufficient.
+      placeholder: "Drop a PDF or page images here, or paste a DOI or link."
     validations: { required: true }
   - type: textarea
     id: relevance

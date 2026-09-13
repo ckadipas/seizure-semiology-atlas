@@ -42,7 +42,7 @@ jobs:
               '',
               'Automated source review and repository publishing are disabled here. Before any source review begins, the owner must approve a private Gate A record that binds the exact source SHA-256, the frozen review release, representations, and review budget in ckadipas/semiology_refs.',
               '',
-              'All source files, extracted text, review materials, review rows, and audit artifacts remain in the private evidence repository. This public workflow does not download or inspect attachments and made no scientific or repository-content change.',
+              'Working source copies, extracted text, review materials, review rows, and audit artifacts remain in the private evidence repository. This public workflow does not download or inspect attachments and made no scientific or repository-content change.',
               '',
               'After private review, an exact owner packet and separate Gate B approval are required before any deterministic integration. Deployment is separately authorized.'
             ].join('\n');
