@@ -8,7 +8,9 @@ body:
       value: |
         Share one paper by uploading its PDF or page images in the field below,
         or by pasting its DOI or a stable link. You do not need to extract
-        findings, classify the study, or complete bibliographic fields.
+        findings, classify the study, or complete bibliographic fields. The
+        intake agent checks the paper's DOI and other bibliographic details
+        during private review.
 
         This issue and its attachments are public. Upload files you have
         permission to share publicly.

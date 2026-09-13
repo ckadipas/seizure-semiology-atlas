@@ -12,4 +12,6 @@ The issue and its attachments are public. Upload files you have permission to sh
 
 The issue registers a nomination only. After a maintainer applies the approved label, the public workflow records it for private Gate A preparation. It does not download the source, review scientific content, edit the atlas, or publish scientific results.
 
+During private review, the intake agent identifies and verifies the paper's DOI if the submitter has not provided it, and records a confirmed DOI with the paper's bibliography. Unresolved matches or papers without an established DOI are recorded explicitly; submitters do not need to supply a DOI for an upload to enter intake.
+
 The owner approves the exact source and review scope at Gate A. After private source review, the owner reviews the proposed records and integration diff at Gate B. Deterministic integration and deployment require their own authorized steps. A submission cannot change the public atlas by itself.
