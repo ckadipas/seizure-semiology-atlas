@@ -98,10 +98,10 @@ function locator(value) {
 
 
   const params = new URLSearchParams(options.embedded ? '' : location.search);
-  const state = {query:params.get('q') || '',sourceQuery:'',organize:'az',scheme:'luders',filters:{},order:'name',metric:'',limit:30,focus:'',openRegions:new Set(),regionLimits:new Map()};
+  const state = {query:params.get('q') || '',sourceQuery:'',organize:'region',scheme:'luders',filters:{},order:'name',metric:'',limit:30,focus:'',openRegions:new Set(),regionLimits:new Map()};
   const opened = new Set(), detailState = new Map(), weightIndex = new Map();
   let evidenceMap = publicSite ? {showEvidence: options.onShowMap, clear: () => options.onClearFilters?.()} : null, mapResultIds = null, dialogRows = [], additionalPaperRows = new Map();
-  let currentView = '', signOrganization = 'az', signOrder = 'name', pendingFocus = '', selectedAnatomy = new Set();
+  let currentView = '', signOrganization = 'region', signOrder = 'name', pendingFocus = '', selectedAnatomy = new Set();
   let groups = [], unplaced = [], entries = [], nodeIndex, nativeSigns, statOwners, metricTypes = [];
   let sections = new Map(), sectionRoots = [];
   const categoryKinds = new Set(['CATEGORY','DESCRIPTOR_CATEGORY','BASIC_DESCRIPTOR','PUBLIC_FAMILY','WORKSHEET_CATEGORY','EVENT_CATEGORY']);
@@ -109,6 +109,7 @@ function locator(value) {
   const axisName = axis => axis === 'LOCALIZATION' ? 'Localization' : 'Lateralization';
   const option = (id,label) => `<option value="${esc(id)}">${esc(label)}</option>`;
   const paperIds = rows => uniq(rows.map(row => row.source.id));
+  const termLabel = () => state.organize === 'ilae' ? 'ILAE' : state.organize === 'luders' ? 'Lüders' : 'sign';
   const statisticsFor = rows => uniq(rows.flatMap(row => row.statistic_ids)).map(id => data.statistics[id]).filter(Boolean);
   const nativeIds = rows => uniq(rows.flatMap(row => row.facets.sign || []).map(item => item.id));
   const evidenceClassOrder = ['I','II','III','UNCLASSIFIED'];
@@ -130,7 +131,7 @@ function locator(value) {
     const sourceMode = state.organize === 'source', classified = ['ilae','luders'].includes(state.organize);
     $('organize').value = state.organize;
     const sourceCount=atlasCounts(data.rows).sources;
-    $('corpus').innerHTML = sourceMode ? `${number(sourceCount)} ${sourceCount===1?'publication':'publications'}` : `${number(groups.length)} ${state.scheme === 'ilae' ? 'ILAE' : 'Lüders'} terms · <button id="all-sources">${number(sourceCount)} sources</button>`;
+    $('corpus').innerHTML = sourceMode ? `${number(sourceCount)} ${sourceCount===1?'publication':'publications'}` : `${number(groups.length)} ${termLabel()} terms · <button id="all-sources">${number(sourceCount)} ${sourceCount===1?'publication':'publications'}</button>`;
     $('order-label').textContent = sourceMode ? 'Order papers by' : classified ? 'Within classifications' : state.organize==='region' ? 'Within regions' : 'Order signs by';
     const sorts = sourceMode ? [['name','Author A–Z'],['title','Title A–Z'],['year','Publication year: newest first']] : [...(classified ? [['region','Region']] : []),['name','A–Z'],['papers','Number of publications'],['values-high','Reported statistics: high to low'],['values-low','Reported statistics: low to high']];
     if (!sorts.some(([id]) => id === state.order)) state.order = 'name';
@@ -216,8 +217,8 @@ function locator(value) {
     }
     const rowSet = [...new Map(entries.flatMap(entry => entry.group.rows).map(row => [row.id,row])).values()];
     const termCount = new Set(entries.map(entry => entry.group.id)).size;
-    $('corpus').hidden = state.organize === 'source' && entries.length === atlasCounts(data.rows).sources;
-    $('match-count').textContent = state.organize === 'source' ? `${number(entries.length)} ${entries.length === 1 ? 'publication' : 'publications'}` : `${number(termCount)} dictionary ${termCount === 1 ? 'term' : 'terms'} · ${number(paperIds(rowSet).length)} ${paperIds(rowSet).length === 1 ? 'paper' : 'papers'}`;
+    $('corpus').hidden = state.organize === 'source' ? entries.length === atlasCounts(data.rows).sources : !state.query.trim() && !state.focus && !Object.values(state.filters).some(Boolean) && (!mapResultIds || mapResultIds.size === data.rows.length) && !(state.order.startsWith('values-') && state.metric);
+    $('match-count').textContent = state.organize === 'source' ? `${number(entries.length)} ${entries.length === 1 ? 'publication' : 'publications'}` : `${number(termCount)} ${termLabel()} ${termCount === 1 ? 'term' : 'terms'} · ${number(paperIds(rowSet).length)} ${paperIds(rowSet).length === 1 ? 'publication' : 'publications'}`;
     sections=new Map();sectionRoots=[];
     entries.forEach((entry,index)=>{
       const path=[];let parent=null;
