@@ -1,99 +1,37 @@
-# Methods — weighted meta-analysis & source review
+# Methods and source review
 
-Educational resource, not clinical. The figures here are teaching estimates drawn
-from the source library; they are not validated for individual patient decisions.
-See `DISCLAIMER.md`.
+The atlas is an educational reference. Its evidence summaries are not validated for individual patient decisions. See [DISCLAIMER.md](DISCLAIMER.md).
 
-## Source data
+## Scientific source of truth
 
-Every quantitative figure is extracted from the papers in `corpus/manifest.csv`
-into `enrichment/corpus_findings.json`, where each finding carries a short
-verbatim quote and a locator (page / table / section). That file is the auditable
-record behind everything else. Structured, weighted observation records for the
-pooled analysis live in `enrichment/observations.json`.
+The private SQLite evidence ledger holds the reviewed scientific records. The public atlas receives a deterministic export of that ledger. Source publications, private review records, and the website have distinct roles: the publications supply evidence, the private review establishes the approved records, and the website presents their generated projection.
 
-## Weighted pooling — `tools/meta_analysis.py`
+Each source finding and reported statistic retains its citation, source locator, population, unit, and available numerator and denominator. Localization, lateralization, phase, and classification remain separate relationships. Missing information on one axis does not erase an explicit relationship on another.
 
-Deterministic and reproducible: re-running on the same input always yields the
-same output, and every pooled figure carries the per-study values and weights
-that produced it.
+## Reported results and evidence scores
 
-Each observation's weight is
+Source-reported measurements retain their study context. A frequency, predictive value, or other statistic is not interchangeable with the atlas's evidence score.
 
-```
-weight = class_base × ground_truth_mult × size_factor
-```
+The current website's **About the scores** explanation defines the displayed score:
 
-| Factor | Values |
-|---|---|
-| `class_base` | Class I = 3.0, II = 2.0, III = 1.0 (study design) |
-| `ground_truth_mult` | SEEG / post-op = 1.5; intracranial EEG = 1.35; imaging concordance = 1.15; video-EEG = 1.2; scalp EEG = 1.1; review = 1.0 |
-| `size_factor` | `1 + log10(N)/2`, capped at 2.0, when N is reported; 1.0 otherwise (N is never assumed) |
+- Each study contributes once for a sign and for localization or lateralization.
+- Its weight combines the recorded evidence class, study method, and sample size. The score adds the contributing study weights.
+- Dots indicate the number of papers: one, two, or three or more. They do not indicate certainty.
+- Scores are not probabilities or pooled study results.
+- When a filter selects only part of a study's results, that study's score is withheld. Reviews and cited reports remain available without counting the same study again.
 
-The scheme lives in `observations.json` and is tunable — change the numbers and
-re-run. For each sign the lateralization percentage is a weighted mean,
-`Σ(wᵢ·vᵢ)/Σwᵢ`, reported with its across-study range, a weighted SD, the summed
-weight, and a certainty tier. **Frequencies are not pooled** — they are
-population-specific (% of FLE vs % of TLE vs % of EMU patients), so pooling them
-would be invalid; they are listed in the source-figures table instead.
+The approved scoring method is maintained with the private ledger. Adding a paper does not automatically assign an evidence class or make it eligible to contribute to a score. Changes to weights or scientific interpretation require owner approval.
 
-The plot offers two views of the same output: region → gyrus / Brodmann area →
-sign, and semiology A–Z → region. Each sign's per-study values and weights are one
-click below it.
+## Current public artifacts
 
-## Figures on the sign cards — one ledger, no re-typing
+The current website uses `docs/index.html`, `docs/atlas_projection.mjs`, and `docs/atlas-projection.json.gz`. The normalized relationship graph is distributed as `data/atlas_bundle.normalized.json.gz`; `review/normalized-relationship-manifest.json` binds the release artifacts.
 
-A card shows only figures that trace to a ledger, so the card and the rest of the
-page can never disagree:
+Legacy data and generator files remain for compatibility. Their historical pooling calculations and curator estimates do not describe the current normalized website and must not be edited as a route to updating its evidence.
 
-- **Lateralization** comes from the sign's `observations.json` entry (linked by
-  explicit `sign_ids`); the card prints the same pooled value and per-study sources
-  as the top plot.
-- **Predictive value (PPV)** comes from `corpus_findings.json` — the same records
-  the source-figures table renders — surfaced on the card through each finding's
-  explicit `card_ids`, assigned by an exact phenomenon match (never a fuzzy one).
-  PPV is population-specific, so it is listed per source with its context, not
-  pooled. Ambiguous or aggregate PPV figures are left in the table only.
-- **Sensitivity** is **computed** as `P(sign | localization)` — how often the sign
-  appears within a localization group, which is exactly a frequency-within-that-group
-  figure. Qualifying verified frequency findings carry a `sens` list in the ledger,
-  each entry `{card_id, group, value}`; one finding can feed several groups at once
-  (e.g. a temporal SEEG paper that reports a sign's rate in mesial vs mesiolateral vs
-  lateral subtypes contributes three entries, its `M/ML/L %` parsed straight from the
-  tabulated value). The meta engine groups every entry per (sign, localization) and the
-  card (tagged `corpus`), the *Descriptive statistics — sensitivity by localization*
-  section, and the explorer all read the same numbers. Tag another finding and every
-  one of them updates on the next build. Coverage is sparse and uneven — the corpus
-  reports these frequencies inconsistently — so each figure shows its source count `k`;
-  a card with no localization-conditioned frequency keeps a curator estimate tagged
-  `est.`.
-- **Specificity** is **not computed**: it needs the sign's rate in the *other*
-  localization groups (the false-positive side), which this corpus reports for
-  essentially no sign. Card specificity therefore stays a curator teaching estimate,
-  tagged `est.` — never fabricated as a source figure.
+## Review, integration, and publication
 
-## Review checks — `tools/adversarial_review.py`
+A [paper submission](intake/INTAKE.md) registers a nomination for private review. The owner approves the exact source and review scope, then the proposed records and integration diff. Approved scientific changes are integrated in the private ledger before the public artifacts are regenerated together.
 
-Runs on every pull request and writes `enrichment/review_flags.json`. It flags
-studies that disagree on a sign's figure, a pooled direction that contradicts the
-curated card, the same figure entered under two studies or two signs, a figure
-that attaches to no sign, figures resting on a single study, a PPV figure whose
-`card_ids` point at a card that does not exist, a PPV direction that contradicts
-the card it is surfaced on, and a sensitivity-tagged finding that links to a
-missing card, names no localization group, or sits on a non-frequency figure. It
-also records which signs have a computed sensitivity vs a curator estimate. These
-are advisory — a genuine, disclosed disagreement (e.g. ictal spitting) is surfaced
-on the relevant sign, not silently reconciled.
+Release validation checks that the exported website and normalized data belong to the same release. A successful build establishes technical consistency; it does not independently establish scientific correctness or verify what is serving on the live site.
 
-## Source-figures table — `generator/gen_study.py`
-
-Every extracted figure — lateralization, frequency, localization, PPV — renders
-in a searchable, type-filterable table, each row checkable against its verbatim
-quote and source locator.
-
-## Adding evidence
-
-New figures enter through `enrichment/observations.json` (structured, attributed,
-with a locator). `make build` regenerates the analysis, the review, and the HTML;
-the generated JSON is committed so diffs stay legible and CI checks it in sync.
-The HTML in `docs/` is a build artifact — never hand-edit it.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for contributions and [README.md](README.md) for the current release and deployment workflow.

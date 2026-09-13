@@ -1,24 +1,18 @@
-<!-- Thanks for contributing to the atlas. Keep the resource defensible: every
-change to a figure should trace to a source. -->
+## Change
 
-## What does this PR change?
+<!-- Describe the problem and resulting behavior or corrected guidance. -->
 
-<!-- e.g. "Correct figure-of-4 lateralization %, add Kotagal 2000 evidence." -->
+## Source or approval
 
-## Type of change
-- [ ] Correction to an existing sign (`data/semiology_data.json`)
-- [ ] New sign
-- [ ] Evidence / citation added or updated (`enrichment/build_enrichment.py`)
-- [ ] New paper integrated (also updates `corpus/manifest.csv` + `PAPERS`)
-- [ ] Tooling / generator / docs
+<!-- For scientific changes, cite the supporting source and approved private integration. Do not include private review packets or source files. -->
 
-## Source
-<!-- Citation(s) supporting the change: author, year, journal, specific figure. DOI ideal. -->
+## Validation
+
+<!-- State the narrow checks performed and their results. For a generated release, identify the public release and validated commit. -->
 
 ## Checklist
-- [ ] I edited the **source** (`data/…json`, `enrichment/…py`) — **not** the generated HTML.
-- [ ] `make validate` passes locally.
-- [ ] `make build` succeeds and I committed the updated `enrichment/enrichment.json`.
-- [ ] Every changed figure has a citation.
-- [ ] I updated `CHANGELOG.md` under **[Unreleased]**.
-- [ ] No copyrighted full text or PDFs were committed (only short attributed extractions).
+
+- [ ] The change follows the current private-ledger export or documentation/tooling workflow.
+- [ ] Generated scientific files were not edited independently.
+- [ ] The exact diff and metadata contain no source PDFs, page photographs, full article text, private identifiers, or private correspondence or working notes.
+- [ ] Any production deployment is separately covered by the authorized release scope.

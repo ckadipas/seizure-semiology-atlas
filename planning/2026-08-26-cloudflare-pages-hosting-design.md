@@ -1,6 +1,8 @@
-# Cloudflare Pages Hosting Design
+# Historical Cloudflare Pages Hosting Design
 
-## Status
+> Historical record of the initial migration on 2026-08-26. Automatic Git deployments were subsequently disabled. Production now requires a merged pull request, validation of its exact commit, and an authorized upload. See the [current workflow](../README.md#local-use).
+
+## Initial status
 
 Cloudflare Pages is the production delivery layer for `www.semiologyatlas.org`. GitHub remains the version-controlled public source and automatically triggers each Cloudflare deployment.
 

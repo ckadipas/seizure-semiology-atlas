@@ -1,6 +1,8 @@
-# Cloudflare Pages Hosting Implementation Record
+# Historical Cloudflare Pages Hosting Implementation Record
 
-## Completed configuration
+> Historical record of the initial migration on 2026-08-26. Automatic Git deployments were subsequently disabled. Production now requires a merged pull request, validation of its exact commit, and an authorized upload. See the [current workflow](../README.md#local-use).
+
+## Initial configuration
 
 - [x] Created the Cloudflare Pages project `semiology-atlas`.
 - [x] Connected the public GitHub repository `ckadipas/seizure-semiology-atlas`.
