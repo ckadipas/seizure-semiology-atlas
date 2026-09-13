@@ -25,7 +25,7 @@ This repository receives generated data from the private SQLite evidence ledger.
 | `release.json`, `CHANGELOG.md` | Version, date, and release notes. |
 | `tools/validate_normalized_atlas_release.py` | Checks that the current website and normalized graph belong to the same release. |
 
-The older `data/atlas_bundle.json`, `data/brodmann_map.json`, and legacy generator remain compatibility fixtures. They do not replace the current website. Source PDFs and private scientific review records are not distributed here.
+The older `data/atlas_bundle.json`, `data/brodmann_map.json`, and legacy generator remain compatibility fixtures. They do not replace the current website. Source PDFs and private scientific review records are not included in the tracked release files or website.
 
 ## Local use
 
@@ -42,6 +42,8 @@ The proprietary viewer meshes and Brodmann node assignments are added from priva
 
 ## Scientific updates
 
+Use the [paper submission form](https://github.com/ckadipas/seizure-semiology-atlas/issues/new?template=new-paper.yml) to upload a PDF or page images, or paste a DOI or stable link. Drag files into the paper field or use its attachment button. Uploads to these public issues are public; share files you have permission to make public. See [paper intake](intake/INTAKE.md).
+
 GitHub intake registers a submission for private source review. It cannot change scientific data or publish results. The owner approves source review and the exact proposed integration before a deterministic update; explicit approval for direct repository work applies to its stated scope. Deployment follows the authorized release scope.
 
 Source terms, citations, populations, and individual measurements remain traceable. Localization, lateralization, phase, and classification are separate relationships. An unspecified value on one axis does not erase an explicit value on another.
@@ -50,4 +52,4 @@ Weighted evidence retains the approved scoring method. A new study does not rece
 
 ## Licensing
 
-Code: **MIT** ([LICENSE](LICENSE)). Dataset and documentation: **CC BY-NC-SA 4.0** ([LICENSE-CONTENT](LICENSE-CONTENT)). Source articles are not redistributed.
+Code: **MIT** ([LICENSE](LICENSE)). Dataset and documentation: **CC BY-NC-SA 4.0** ([LICENSE-CONTENT](LICENSE-CONTENT)). Source articles are not bundled with atlas releases.
