@@ -105,7 +105,12 @@
     .region-buttons { display: flex; flex-wrap: wrap; gap: 7px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
     .region-button { border: 1px solid var(--region-color,#c7d3e2); border-radius: 999px; background: var(--region-color,var(--navy)); color: #fff; padding: 5px 11px; font-size: .75rem; font-weight: 750; }
     .region-button.selected { outline: 3px solid #58c6d4; outline-offset: 2px; }
-    .map-layout { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0,1fr); gap: 14px; align-items: start; margin-top: 12px; }
+    .map-layout { display: grid; grid-template-columns: minmax(0,var(--brain-share,1.35fr)) 14px minmax(0,var(--evidence-share,1fr)); row-gap:14px; align-items: start; margin-top: 12px; }
+    .map-splitter { display:flex; align-items:center; justify-content:center; align-self:stretch; min-height:100px; cursor:col-resize; touch-action:none; border-radius:5px; }
+    .map-splitter::after { content:''; width:4px; height:48px; border-radius:3px; background:var(--line); }
+    .map-splitter:is(:hover,:focus-visible)::after,.map-layout.resizing .map-splitter::after { background:var(--teal); }
+    .map-splitter:focus-visible { outline:2px solid var(--teal); outline-offset:-2px; }
+    .map-layout.resizing { user-select:none; cursor:col-resize; }
     #mapEvidence { min-width:0; }
     #mapEvidence .results-panel { margin:0; max-height:780px; max-height:85dvh; overflow:auto; overscroll-behavior:contain; }
     .selection-heading { margin:0 0 14px; padding-bottom:12px; border-bottom:1px solid var(--line); font-size:1.15rem; line-height:1.4; color:var(--navy); }
@@ -334,6 +339,7 @@
     [hidden] { display: none !important; }
     @media (max-width: 1100px) {
       .map-layout { grid-template-columns: 1fr; }
+      .map-splitter { display:none; }
       #mapEvidence .results-panel { max-height:none; overflow:visible; }
     }
     @media (max-width: 780px) {
@@ -415,7 +421,8 @@
           </div>
         </div>
         <div class="map-layout">
-          <div class="brain-figure"><div id="brainMap" class="brain-map" aria-label="Cortical map"></div><div id="mapSelection" class="brain-caption" aria-live="polite"></div></div>
+          <div class="brain-figure" id="brainPane"><div id="brainMap" class="brain-map" aria-label="Cortical map"></div><div id="mapSelection" class="brain-caption" aria-live="polite"></div></div>
+          <div id="mapSplitter" class="map-splitter" role="separator" tabindex="0" aria-label="Resize brain and evidence panels" aria-orientation="vertical" aria-controls="brainPane mapEvidence" aria-valuemin="25" aria-valuemax="70" aria-valuenow="57" title="Drag to resize. Use left and right arrows; double-click to reset."></div>
           <div id="mapEvidence"></div>
         </div>
       </div>
@@ -468,7 +475,7 @@
     }
   </script>
   <script type="module">
-    import { createEvidenceReview } from './atlas_evidence.mjs?v=8e1d6931d407f0de1fa90caa7c97a3fc625517f65db388f229b290d2f9d27529';
+    import { createEvidenceReview } from './atlas_evidence.mjs?v=d73e9ca81cdc023ed1d11d569e30c38569d0672d8b3fd5cf8e0c00193124560c';
     import { atlasData, atlasGroups, atlasClassificationGroups, atlasCounts, atlasWeights, atlasWeightPresentation, atlasAppraisalLabel, atlasStatisticGroups, atlasSourceAnatomyMarkup } from './atlas_projection.mjs?v=2997065b3e977309d968ad0585dae4c4d2423a04d084b669ead100dcf89b94aa';
     (() => {
       "use strict";
@@ -1831,6 +1838,45 @@
       }
       $('#mapPanel').addEventListener('toggle',placeEvidencePanel);
       placeEvidencePanel();
+
+      const splitter=$('#mapSplitter'), splitLayout=splitter.parentElement;
+      const splitStorageKey='atlas-brain-panel-width', defaultSplit=100*1.35/2.35;
+      let brainShare=defaultSplit, splitPointer=null;
+      function setPanelWidth(value, persist=false) {
+        brainShare=Math.max(25,Math.min(70,value));
+        splitLayout.style.setProperty('--brain-share',`${brainShare}fr`);
+        splitLayout.style.setProperty('--evidence-share',`${100-brainShare}fr`);
+        splitter.setAttribute('aria-valuenow',String(Math.round(brainShare)));
+        splitter.setAttribute('aria-valuetext',`Brain ${Math.round(brainShare)}%, evidence ${Math.round(100-brainShare)}%`);
+        if(persist)try{localStorage.setItem(splitStorageKey,String(brainShare));}catch(_error){}
+      }
+      try {
+        const saved=localStorage.getItem(splitStorageKey);
+        if(saved!==null && Number.isFinite(Number(saved)))brainShare=Number(saved);
+      } catch(_error) {}
+      setPanelWidth(brainShare);
+      splitter.addEventListener('pointerdown',event=>{
+        if(!event.isPrimary || event.button!==0)return;
+        event.preventDefault();splitter.focus();splitPointer=event.pointerId;
+        splitter.setPointerCapture(event.pointerId);splitLayout.classList.add('resizing');
+      });
+      splitter.addEventListener('pointermove',event=>{
+        if(event.pointerId!==splitPointer)return;
+        const box=splitLayout.getBoundingClientRect(),handle=splitter.getBoundingClientRect().width;
+        if(box.width>handle)setPanelWidth(100*(event.clientX-box.left-handle/2)/(box.width-handle));
+      });
+      function finishPanelResize(event) {
+        if(event.pointerId!==splitPointer)return;
+        splitPointer=null;splitLayout.classList.remove('resizing');setPanelWidth(brainShare,true);
+        if(splitter.hasPointerCapture(event.pointerId))splitter.releasePointerCapture(event.pointerId);
+      }
+      for(const type of ['pointerup','pointercancel','lostpointercapture'])splitter.addEventListener(type,finishPanelResize);
+      splitter.addEventListener('keydown',event=>{
+        const values={ArrowLeft:brainShare-2,ArrowRight:brainShare+2,Home:25,End:70,Enter:defaultSplit};
+        if(!(event.key in values))return;
+        event.preventDefault();setPanelWidth(values[event.key],true);
+      });
+      splitter.addEventListener('dblclick',()=>setPanelWidth(defaultSplit,true));
 
 
       $('#viewTabs').addEventListener('click',event=>{
