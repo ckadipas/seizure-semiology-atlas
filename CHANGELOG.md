@@ -2,11 +2,12 @@
 
 ## 2 — 2026-09-13
 
-- Review signs, reported statistics, evidence classes and paper appraisals in Signs; use Sources to browse by paper.
-- Organize signs by region, ILAE, Lüders or alphabetical order, with region grouping within either classification.
-- Read grouped localization and lateralization targets beneath each sign, retaining propagation and study-context distinctions.
-- Open compact paper tables with complete source details and separate appraisal and applied-contribution values.
-- Retain the existing 3D map, brain colors, controls and tabbed results layout.
+- Group signs under Lüders, ILAE or region banners, with optional regional subgroups inside each classification.
+- Order signs within groups by name or number of publications, and order reported statistics within papers.
+- Search Sources by title, author or citation.
+- Find linked evidence through source-supported Brodmann, named-region and DKT40 anatomical correspondences.
+- Identify anatomical overlap while preserving each study’s reported localization, statistics and paper weights.
+- Show a notice when the atlas is opened as a local file and display the brain only when map data is available.
 
 ## 2 — 2026-09-12
 

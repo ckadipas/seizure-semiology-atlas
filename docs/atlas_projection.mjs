@@ -336,7 +336,7 @@ export function atlasSourceAnatomyMarkup(row, seenExcerpts=new Set(), {h=atlasEs
   }).join('');
 }
 
-export function atlasSourceFindingsMarkup(rows, {compact=false}={}) {
+export function atlasSourceFindingsMarkup(rows, {compact=false,localizationAnnotation=null}={}) {
   if (compact) {
     const labels={COHORT_CONTEXT:'Study cohort anatomy',COMPARATOR_CONTEXT:'Comparison anatomy',ONSET:'Seizure onset',STIMULATION:'Stimulation site',NETWORK:'Network',SYMPTOMATOGENIC:'Symptom-producing region',LESION:'Lesion location',SOURCE_REPORTED:'Reported localization'};
     const subjects=new Map();
@@ -362,14 +362,17 @@ export function atlasSourceFindingsMarkup(rows, {compact=false}={}) {
             value.context_qualifier ? atlasRoleLabel(value.context_qualifier) : '',value.context_modality,propagation?'Propagation':''].filter(Boolean);
           const contextKey=JSON.stringify([value.source_scope || '',value.decision_role || '',value.context_polarity || '',value.context_qualifier || '',value.context_modality || '',propagation]);
           if(!section.contexts.has(contextKey))section.contexts.set(contextKey,{qualifiers:[...new Set(qualifiers)],targets:new Map()});
-          section.contexts.get(contextKey).targets.set(JSON.stringify([value.target_id || value.id || target,target]),target);
+          const targets=section.contexts.get(contextKey).targets,key=JSON.stringify([value.target_id || value.id || target,target]);
+          if(!targets.has(key))targets.set(key,{label:target,annotations:new Set()});
+          const annotation=axis==='LOCALIZATION' ? localizationAnnotation?.(row,value) : '';
+          if(annotation)targets.get(key).annotations.add(String(annotation));
         }
       }
     }
     const markup=[...subjects.values()].map(subject=>{
       const heading=[...subject.names].join('; ') || (subject.findingContext?'Finding context':'');
       const axes=[...subject.axes.values()].sort((a,b)=>Number(a.axis==='LATERALIZATION')-Number(b.axis==='LATERALIZATION')).map(section=>'<div class="anatomy-axis"><dt>'+atlasEscape(section.label)+':</dt><dd>'+[...section.contexts.values()].map(context=>
-        '<span>'+[...context.targets.values()].map(atlasEscape).join('; ')+(context.qualifiers.length?' <span class="anatomy-qualifier">('+context.qualifiers.map(atlasEscape).join(' · ')+')</span>':'')+'</span>'
+        '<span>'+[...context.targets.values()].map(target=>atlasEscape(target.label)+(target.annotations.size?' <span class="anatomy-qualifier">('+[...target.annotations].map(atlasEscape).join(' · ')+')</span>':'')).join('; ')+(context.qualifiers.length?' <span class="anatomy-qualifier">('+context.qualifiers.map(atlasEscape).join(' · ')+')</span>':'')+'</span>'
       ).join('')+'</dd></div>').join('');
       return '<div class="anatomy-subject">'+(heading?'<h4>'+atlasEscape(heading)+'</h4>':'')+'<dl>'+axes+'</dl></div>';
     }).join('');

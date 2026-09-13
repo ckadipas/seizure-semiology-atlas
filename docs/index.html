@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-projection="static" data-snapshot="f47b5a2e8d1c9aed4ba0dcb4fda74454b37c037d6b17f93f59059ab3dce93c0f" data-label-editing="disabled">
+<html lang="en" data-projection="static" data-snapshot="41c08ef07daf3ef3c66c49392a0878f779914104216ad582257e30a9c1c682de" data-label-editing="disabled">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -50,6 +50,7 @@
     .guide-content strong { color:var(--navy); font-weight:650; }
     .search-panel { padding: 12px; position: relative; z-index: 10; }
     .search-row { display: grid; grid-template-columns: minmax(220px,1fr) auto auto; gap: 9px; }
+    .search-row.source-mode { display: flex; justify-content: flex-end; }
     .search-wrap { position: relative; }
     .search-wrap input { width: 100%; min-height: 43px; border: 1px solid #cbd5e1; border-radius: 9px; padding: 9px 78px 9px 13px; color: var(--ink); background: #fff; }
     .search-wrap input:focus, select:focus, summary:focus-visible, button:focus-visible { outline: 3px solid rgba(14,157,176,.2); outline-offset: 1px; border-color: var(--teal); }
@@ -379,7 +380,7 @@
         <section><h2>Find a sign or paper</h2><p>Search for a symptom, brain area or paper. Open <strong>Filters</strong> to narrow the results by timing, side, classification or study details. The filters apply to both tabs. <strong>Clear filters</strong> starts over.</p></section>
         <section><h2>Explore the brain</h2><p>Choose <strong>DKT40 Atlas</strong> to select colored brain regions, or <strong>Brodmann Labels</strong> to select numbered areas. Drag to turn the brain and pinch or scroll to zoom. The view buttons and <strong>Left / Right</strong> change what you see; use <strong>Laterality</strong> to filter the side reported in a study.</p></section>
         <section><h2>Select and clear areas</h2><p>Tap an area on the map, or search and check names in the adjacent menu. Click outside the menu to close it. You can combine areas to find reported findings linked to each selection. Selections stay active when you switch atlases. <strong>Clear selection</strong> removes all map selections; <strong>Reset view</strong> only resets the view.</p></section>
-        <section><h2>Read the results</h2><p><strong>Signs</strong> groups findings by clinical dictionary term and includes the reported statistics and paper weights. <strong>Sources</strong> collects the results from each paper. Use <strong>Organize by</strong> to change the grouping.</p></section>
+        <section><h2>Read the results</h2><p><strong>Signs</strong> groups findings by clinical dictionary term and includes the reported statistics and paper weights. <strong>Sources</strong> collects the results from each paper. Use <strong>Organize by</strong> to change the grouping. <strong>Anatomical overlap</strong> identifies correspondence with a selected map area; the study’s reported localization and statistics retain their original anatomical scope.</p></section>
         <section><h2>Open a paper’s findings</h2><p>Open a sign, then a paper, to inspect its findings, measurements, weights and source passages. Publication links open the article.</p></section>
         <section><h2>Understand counts and weights</h2><p><strong>Show counts</strong> adds the number of matching results to Brodmann labels. Paper weights retain the recorded appraisal and its calculation. <strong>Weights &amp; statistics explained</strong> describes these measures and their limitations.</p></section>
       </div>
@@ -402,13 +403,13 @@
     </section>
 
     <details id="mapPanel" class="panel map-panel browse-section" open>
-      <summary><span class="browse-name">Interactive 3D cortical map</span><label class="map-count-toggle"><input id="mapCounts" type="checkbox"> Show counts</label></summary>
+      <summary><span class="browse-name">Interactive 3D cortical map</span><label class="map-count-toggle" hidden><input id="mapCounts" type="checkbox"> Show counts</label></summary>
       <div class="map-panel-body">
         <div class="section-head">
           <div>
             <p>Select a numbered area to filter the evidence.</p>
           </div>
-          <div class="map-controls">
+          <div class="map-controls" hidden>
             <div id="mapViewWrap" hidden><div id="surfaceTabs" class="segmented" role="tablist" aria-label="Surface view"></div><select id="mapView" hidden aria-label="Surface"></select></div>
             <div id="hemisphereTabs" class="segmented" role="group" aria-label="Hemisphere" title="Illustration orientation; laterality is an independent filter."><button type="button" data-hemisphere="left" aria-pressed="true">Left</button><button type="button" data-hemisphere="right" aria-pressed="false">Right</button></div><select id="mapHemisphere" hidden aria-label="Hemisphere"><option value="left">Left</option><option value="right">Right</option></select>
           </div>
@@ -426,7 +427,7 @@
         <button type="button" role="tab" id="tab-browse" data-view="browse" aria-selected="true" aria-controls="results">Signs</button>
         <button type="button" role="tab" id="tab-sources" data-view="sources" aria-selected="false" aria-controls="results">Sources</button>
       </div>
-      <div id="resultsToolbar" class="results-toolbar">
+      <div id="resultsToolbar" class="results-toolbar" hidden>
         <div class="browse-controls" id="browseControls">
           <label for="groupBy">Organize signs by <select id="groupBy"></select></label>
           <label for="within" id="withinWrap">Within each group <select id="within"></select></label>
@@ -461,11 +462,17 @@
     <p>© 2026 <span data-nosnippet>CM Kadipasaoglu, MD, PhD</span> · Creator and maintainer.</p>
   </footer>
 
+  <script data-atlas-file-entry>
+    if (location.protocol === 'file:') {
+      document.querySelector('main').innerHTML = '<section class="panel error" role="alert">This page cannot load atlas data when opened as a file. Open the running local preview.</section>';
+    }
+  </script>
   <script type="module">
-    import { createEvidenceReview } from './atlas_evidence.mjs?v=ac9e6610afdb7a6e55bc6feecb5fb90cd04d4ecf2bec11f1626a106d9dc9dec9';
-    import { atlasData, atlasGroups, atlasClassificationGroups, atlasCounts, atlasWeights, atlasWeightPresentation, atlasAppraisalLabel, atlasStatisticGroups, atlasSourceAnatomyMarkup } from './atlas_projection.mjs?v=423c29367a31e6ea17e4c4bd7e70c54760a5a05e3f896a1e3f1d32933540367b';
+    import { createEvidenceReview } from './atlas_evidence.mjs?v=8e1d6931d407f0de1fa90caa7c97a3fc625517f65db388f229b290d2f9d27529';
+    import { atlasData, atlasGroups, atlasClassificationGroups, atlasCounts, atlasWeights, atlasWeightPresentation, atlasAppraisalLabel, atlasStatisticGroups, atlasSourceAnatomyMarkup } from './atlas_projection.mjs?v=2997065b3e977309d968ad0585dae4c4d2423a04d084b669ead100dcf89b94aa';
     (() => {
       "use strict";
+      if (location.protocol === 'file:') return;
 
       const detailGroups = new Map();
       let surfacePanel = null;
@@ -873,9 +880,16 @@
       }
 
       function renderMap() {
-        const controlsDisabled = !state.response;
         const config = mapConfig();
         const localSurfaces = state.catalogue.maps?.local_surfaces;
+        const mapAvailable = Boolean(localSurfaces || config.image_url || config.image?.file);
+        $("#mapPanel .map-controls").hidden = !mapAvailable;
+        $(".map-count-toggle").hidden = !mapAvailable;
+        if (!mapAvailable) {
+          $("#brainMap").textContent = state.loading ? "Loading map…" : "Map unavailable.";
+          return;
+        }
+        const controlsDisabled = !state.response;
         const views = state.catalogue.maps?.views || {};
         $("#surfaceTabs").innerHTML = Object.keys(views).map(id => `<button type="button" role="tab" data-surface="${h(id)}" aria-selected="${id === state.mapView}">${h(id[0].toUpperCase()+id.slice(1))}</button>`).join("");
         $("#hemisphereTabs").querySelectorAll("button").forEach(button => button.setAttribute("aria-pressed", String(button.dataset.hemisphere === state.mapHemisphere)));
@@ -884,7 +898,7 @@
           `<option value="${h(id)}" ${id === state.mapView ? "selected" : ""}>${h(view.label || roleLabel(id))}</option>`
         ).join("");
         const viewBox = Array.isArray(config.view_box || config.viewBox) ? (config.view_box || config.viewBox) : [0, 0, 1000, 620];
-        const imageUrl = config.image_url || (config.image?.file ? `generator/assets/${config.image.file}` : "generator/assets/brain_lateral.jpg");
+        const imageUrl = config.image_url || (config.image?.file ? `generator/assets/${config.image.file}` : null);
         const image = config.image || { x: 92.6, y: 36.9, width: 793.4, height: 530.3 };
         const flipPlate = !config.bilateral_plate && state.mapHemisphere === "right";
         const markers = [...markerRows(config),...(localSurfaces?config.unmapped_markers||[]:[])].filter(marker =>
@@ -1528,6 +1542,9 @@
         const clinicalRows=rows.filter(row=>row.record_kind!=='CONTEXT_ONLY');
         const contextRows=rows.filter(row=>row.record_kind==='CONTEXT_ONLY');
         const view=state.view=state.view==='sources'?'sources':'browse';
+        $('#searchForm').classList.toggle('source-mode',view==='sources');
+        $('#searchForm .search-wrap').hidden=view==='sources';
+        $('#searchForm .primary').hidden=view==='sources';
         const titles={browse:'Signs',sources:'Sources'};
         $('#viewHeading').textContent=titles[view];
         $('#resultStatus').textContent=state.response
@@ -1541,7 +1558,7 @@
         $('#results').setAttribute('aria-labelledby','tab-'+view);
         $('#viewNote').textContent='';
         $('#viewNote').hidden=true;
-        $('#resultsToolbar').hidden=Boolean(evidenceReview);
+        $('#resultsToolbar').hidden=!state.response||Boolean(evidenceReview);
         $('#resultStatus').hidden=Boolean(evidenceReview);
         if(!state.response) {
           if(state.loading) {
@@ -1552,7 +1569,7 @@
         }
         $('#results').className=rows.length?'':'empty';
         if(evidenceReview) {
-          evidenceReview.update({rows,view,query:state.query});
+          evidenceReview.update({rows,view,query:view==='sources'?'':state.query,queryContext:{anatomy:[...selected('anatomy'),...state.surfaceAnatomy]}});
           return;
         }
         let content='';
@@ -1589,7 +1606,7 @@
         }
         renderMap();
         const parameters = new URLSearchParams({
-          q: state.query,
+          q: state.view==='sources'?'':state.query,
           filters: JSON.stringify(state.filters),
           regions: JSON.stringify(state.surfaceAnatomy),
           limit: "all",
@@ -1639,7 +1656,7 @@
             catalogue: payload,
             data: completeResponse,
             onShowMap: showEvidenceOnMap,
-            onClearFilters: () => $('#clearAll').click(),
+            onClearFilters: clearAllFilters,
             onViewSources: () => { state.view='sources'; $('#clearAll').click(); },
           });
           if (payload.release?.version && payload.release?.released_at) {
@@ -1691,7 +1708,8 @@
         surfacePanel?.setGroups([]);
         surfacePanel?.select([],false);
       }
-      $("#clearAll").addEventListener("click", () => {
+      function clearAllFilters({preserveFocus=false}={}) {
+        evidenceReview?.resetFilters({preserveFocus});
         state.filters = {};
         clearMapSelection();
         state.query = "";
@@ -1701,7 +1719,8 @@
         $("#clearSearch").hidden = true;
         renderFilters();
         runQuery();
-      });
+      }
+      $("#clearAll").addEventListener("click", () => clearAllFilters());
       $("#filters").addEventListener("change", event => {
         if (event.target.id === "anatomyReference") {
           state.anatomyReference = event.target.value;
@@ -1816,7 +1835,7 @@
 
       $('#viewTabs').addEventListener('click',event=>{
         const button=event.target.closest('[data-view]');
-        if(button){state.view=button.dataset.view;renderResults();}
+        if(button){state.view=button.dataset.view;runQuery();}
       });
       $('#viewTabs').addEventListener('keydown',event=>{
         if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;
