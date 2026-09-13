@@ -154,6 +154,25 @@ export function atlasCounts(rows) {
   };
 }
 
+// Navigation memberships retain source result ownership and may be nonexclusive.
+export function atlasNavigationGroups(rows) {
+  const groups = new Map(), unplaced = [];
+  for (const row of rows) {
+    const memberships = row.navigation_signs?.length ? row.navigation_signs : row.facets.sign || [];
+    const targets = new Map(memberships.map(item => [item.id, item]));
+    if (!targets.size) unplaced.push(row);
+    for (const target of targets.values()) {
+      if (!groups.has(target.id)) groups.set(target.id, { id: target.id, label: target.label, rows: new Map() });
+      groups.get(target.id).rows.set(row.id, row);
+    }
+  }
+  return {
+    groups: [...groups.values()].map(group => ({ ...group, rows: [...group.rows.values()] }))
+      .sort((a, b) => a.label.localeCompare(b.label) || a.id.localeCompare(b.id)),
+    unplaced,
+  };
+}
+
 // Organize existing occurrence links under their approved dictionary terms.
 export function atlasDictionaryGroups(rows, facet, items, categoryId = '') {
   const dictionary = new Map(items.filter(item => item.facet === facet).map(item => [item.id, item]));
@@ -286,6 +305,32 @@ const atlasEscape = value => String(value ?? '').replace(/[&<>"']/g, char => ({'
 const atlasRoleLabel = value => String(value ?? '').replace(/_/g,' ').toLowerCase().replace(/\b\w/g, letter => letter.toUpperCase());
 const atlasComparableText = value => String(value ?? '').trim().toLowerCase().replace(/\s+/g,' ');
 
+export function atlasSourceLocator(value) {
+  let parsed=value;
+  try { if(typeof value==='string')parsed=JSON.parse(value); } catch {}
+  if(!Array.isArray(parsed))return String(value ?? '').trim();
+  return [...new Set(parsed.map(item=>[item.page!=null?'p. '+item.page:'',item.object,item.position].filter(Boolean).join(', ')))].filter(Boolean).join('; ');
+}
+
+export function atlasSourceFindingGroups(rows) {
+  const groups=new Map();
+  for(const row of rows) {
+    const finding=row.source?.finding;
+    const key=JSON.stringify([row.source?.id,finding?.finding_ref || row.finding_ref || row.id]);
+    if(!groups.has(key))groups.set(key,{...row,term:finding?.label || row.term,
+      finding_ref:finding?.finding_ref || row.finding_ref,
+      source:{...row.source,locator:finding?.locator || row.source?.locator,excerpt:finding?.excerpt || row.source?.excerpt},
+      source_anatomy:[],source_laterality:[],modifiers:[],source_passages:[]});
+    const group=groups.get(key);
+    group.source_passages.push({excerpt:row.source?.excerpt,locator:row.source?.locator});
+    for(const field of ['source_anatomy','source_laterality','modifiers','source_passages'])group[field].push(...(row[field] || []));
+  }
+  return [...groups.values()].map(group=>{
+    for(const field of ['source_anatomy','source_laterality','modifiers','source_passages'])group[field]=[...new Map(group[field].map(value=>[JSON.stringify(value),value])).values()];
+    return group;
+  });
+}
+
 function groupedSourceAnatomy(row) {
   const groups = new Map();
   for (const value of (row.source_anatomy || [])) {
@@ -302,7 +347,7 @@ function groupedSourceAnatomy(row) {
   return [...groups.values()];
 }
 
-export function atlasSourceAnatomyMarkup(row, seenExcerpts=new Set(), {h=atlasEscape, roleLabel=atlasRoleLabel, sourceLocator=String, comparableText=atlasComparableText}={}) {
+export function atlasSourceAnatomyMarkup(row, seenExcerpts=new Set(), {h=atlasEscape, roleLabel=atlasRoleLabel, sourceLocator=atlasSourceLocator, comparableText=atlasComparableText}={}) {
   const contextLabels = {
     MEASURED_TRACT_ASSOCIATION: 'Measured tract association',
     HYPOTHESIZED_MECHANISM: 'Hypothesized mechanism',
@@ -326,7 +371,7 @@ export function atlasSourceAnatomyMarkup(row, seenExcerpts=new Set(), {h=atlasEs
       seenExcerpts.add(key);
       return ['<blockquote>'+h(excerpt)+'</blockquote>'];
     }).join('');
-    const label = {COHORT_CONTEXT:'Study cohort anatomy',COMPARATOR_CONTEXT:'Comparison anatomy',
+    const label = {COHORT_CONTEXT:'Study population anatomy',COMPARATOR_CONTEXT:'Comparison group anatomy',
       ONSET:'Seizure onset',STIMULATION:'Stimulation site',NETWORK:'Network',
       SYMPTOMATOGENIC:'Symptom-producing region',LESION:'Lesion location',SOURCE_REPORTED:'Reported localization'}[value.role] || 'Reported anatomy';
     return '<div class="source-detail">'+(value.source_sign_label?'<strong>'+h(value.source_sign_label)+':</strong> ':'')+(value.source_scope==='CLAIM'&&!value.source_sign_id?'<span>Finding context · </span>':'')+'<strong>'+h(value.decision_role==='CONTEXT' && value.role==='SOURCE_REPORTED' ? 'Anatomical context' : label)+':</strong> '+h([...group.targets].join('; ') || [...group.terms].join('; '))+
@@ -337,8 +382,9 @@ export function atlasSourceAnatomyMarkup(row, seenExcerpts=new Set(), {h=atlasEs
 }
 
 export function atlasSourceFindingsMarkup(rows, {compact=false,localizationAnnotation=null}={}) {
+  if(!compact)rows=atlasSourceFindingGroups(rows);
   if (compact) {
-    const labels={COHORT_CONTEXT:'Study cohort anatomy',COMPARATOR_CONTEXT:'Comparison anatomy',ONSET:'Seizure onset',STIMULATION:'Stimulation site',NETWORK:'Network',SYMPTOMATOGENIC:'Symptom-producing region',LESION:'Lesion location',SOURCE_REPORTED:'Reported localization'};
+    const labels={COHORT_CONTEXT:'Study population anatomy',COMPARATOR_CONTEXT:'Comparison group anatomy',ONSET:'Seizure onset',STIMULATION:'Stimulation site',NETWORK:'Network',SYMPTOMATOGENIC:'Symptom-producing region',LESION:'Lesion location',SOURCE_REPORTED:'Reported localization'};
     const subjects=new Map();
     for(const row of rows) {
       for(const [axis,values] of [['LOCALIZATION',row.source_anatomy || []],['LATERALIZATION',row.source_laterality || row.facets?.laterality || []]]) {
@@ -351,9 +397,10 @@ export function atlasSourceFindingsMarkup(rows, {compact=false,localizationAnnot
           if(!subjects.has(subjectKey))subjects.set(subjectKey,{names:new Set(),findingContext,axes:new Map()});
           const subject=subjects.get(subjectKey);
           if(value.source_sign_label)subject.names.add(value.source_sign_label);
+          else if(findingContext)subject.names.add(row.term);
           const label=axis==='LOCALIZATION'
             ? value.decision_role==='CONTEXT' && value.role==='SOURCE_REPORTED' ? 'Anatomical context' : labels[value.role] || 'Reported anatomy'
-            : value.role==='COHORT_CONTEXT' ? 'Cohort lateralization' : value.role==='STIMULATION' ? 'Stimulation lateralization' : 'Reported lateralization';
+            : value.role==='COHORT_CONTEXT' ? 'Study population lateralization' : value.role==='STIMULATION' ? 'Stimulation lateralization' : 'Reported lateralization';
           const axisKey=JSON.stringify([axis,value.role || '',label]);
           if(!subject.axes.has(axisKey))subject.axes.set(axisKey,{axis,label,contexts:new Map()});
           const section=subject.axes.get(axisKey);
@@ -374,16 +421,16 @@ export function atlasSourceFindingsMarkup(rows, {compact=false,localizationAnnot
       const axes=[...subject.axes.values()].sort((a,b)=>Number(a.axis==='LATERALIZATION')-Number(b.axis==='LATERALIZATION')).map(section=>'<div class="anatomy-axis"><dt>'+atlasEscape(section.label)+':</dt><dd>'+[...section.contexts.values()].map(context=>
         '<span>'+[...context.targets.values()].map(target=>atlasEscape(target.label)+(target.annotations.size?' <span class="anatomy-qualifier">('+[...target.annotations].map(atlasEscape).join(' · ')+')</span>':'')).join('; ')+(context.qualifiers.length?' <span class="anatomy-qualifier">('+context.qualifiers.map(atlasEscape).join(' · ')+')</span>':'')+'</span>'
       ).join('')+'</dd></div>').join('');
-      return '<div class="anatomy-subject">'+(heading?'<h4>'+atlasEscape(heading)+'</h4>':'')+'<dl>'+axes+'</dl></div>';
+      return '<div class="anatomy-subject"'+(subject.findingContext?' data-source-scope="CLAIM"':'')+'>'+(heading?'<h4>'+atlasEscape(heading)+'</h4>':'')+'<dl>'+axes+'</dl></div>';
     }).join('');
     return markup?'<section class="paper-anatomy compact-anatomy" aria-label="Reported localization and lateralization">'+markup+'</section>':'';
   }
   const findings = [...new Map(rows.map(row => [row.id, row])).values()].flatMap(row => {
     const anatomy = atlasSourceAnatomyMarkup(row);
     const laterality = [...new Map((row.source_laterality || row.facets?.laterality || []).map(value => [JSON.stringify([value.target_label || value.label,value.source_term,value.role,value.source_sign_id,value.locator]),value])).values()]
-      .map(value => '<p class="source-detail">'+(value.source_sign_label?'<strong>'+atlasEscape(value.source_sign_label)+':</strong> ':'')+'<strong>' + (value.role==='COHORT_CONTEXT' ? 'Cohort lateralization' : value.role==='STIMULATION' ? 'Stimulation lateralization' : 'Reported lateralization') + ':</strong> ' + atlasEscape(value.target_label || value.label) +
-        (value.source_term && value.source_term!==(value.target_label || value.label) ? '<br>'+atlasEscape(value.source_term) : '')+(value.locator?'<small>'+atlasEscape(value.locator)+'</small>':'')+'</p>').join('');
-    const locator = laterality && row.source?.locator ? '<small>'+atlasEscape(row.source.locator)+'</small>' : '';
+      .map(value => '<p class="source-detail">'+(value.source_sign_label?'<strong>'+atlasEscape(value.source_sign_label)+':</strong> ':'')+'<strong>' + (value.role==='COHORT_CONTEXT' ? 'Study population lateralization' : value.role==='STIMULATION' ? 'Stimulation lateralization' : 'Reported lateralization') + ':</strong> ' + atlasEscape(value.target_label || value.label) +
+        (value.source_term && value.source_term!==(value.target_label || value.label) ? '<br>'+atlasEscape(value.source_term) : '')+(value.locator?'<small>'+atlasEscape(atlasSourceLocator(value.locator))+'</small>':'')+'</p>').join('');
+    const locator = laterality && row.source?.locator ? '<small>'+atlasEscape(atlasSourceLocator(row.source.locator))+'</small>' : '';
     return anatomy || laterality ? ['<article class="anatomy-result"><h4>'+atlasEscape(row.term)+'</h4>'+anatomy+laterality+locator+'</article>'] : [];
   });
   return findings.length ? '<section class="paper-anatomy" aria-label="Reported localization and lateralization">'+findings.join('')+'</section>' : '';

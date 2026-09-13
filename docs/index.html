@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-projection="static" data-snapshot="41c08ef07daf3ef3c66c49392a0878f779914104216ad582257e30a9c1c682de" data-label-editing="disabled">
+<html lang="en" data-projection="static" data-snapshot="385b7544ccd5c55beb8f7c6dee3c46d4f4c620343e5332b9241b17d1cdc89146" data-label-editing="disabled">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -157,6 +157,9 @@
     .map-note { padding: 14px; border: 1px solid var(--line); border-radius: 9px; color: var(--muted); font-size: .79rem; line-height: 1.5; }
     .map-note strong { display: block; color: var(--navy); margin-bottom: 6px; }
     .map-selection { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .map-region-group { margin-top: 8px; }
+    .map-region-group > strong { display: block; margin-bottom: 4px; font-size: .72rem; color: #526075; }
+    .map-region-values { display: flex; flex-wrap: wrap; gap: 5px; }
     .map-chip { border-radius: 999px; background: #eef9fa; color: #0a6875; padding: 4px 9px; font-size: .72rem; }
     .map-view { display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: .75rem; }
     .map-view select { border: 1px solid var(--line); border-radius: 7px; background: #fff; color: var(--navy); padding: 6px 28px 6px 8px; }
@@ -475,8 +478,8 @@
     }
   </script>
   <script type="module">
-    import { createEvidenceReview } from './atlas_evidence.mjs?v=d73e9ca81cdc023ed1d11d569e30c38569d0672d8b3fd5cf8e0c00193124560c';
-    import { atlasData, atlasGroups, atlasClassificationGroups, atlasCounts, atlasWeights, atlasWeightPresentation, atlasAppraisalLabel, atlasStatisticGroups, atlasSourceAnatomyMarkup } from './atlas_projection.mjs?v=2997065b3e977309d968ad0585dae4c4d2423a04d084b669ead100dcf89b94aa';
+    import { createEvidenceReview } from './atlas_evidence.mjs?v=e589005a42a809669f73b9d9155705aded9e4b9239d935b6a34f44c9bdac22bf';
+    import { atlasData, atlasGroups, atlasClassificationGroups, atlasCounts, atlasWeights, atlasWeightPresentation, atlasAppraisalLabel, atlasStatisticGroups, atlasSourceAnatomyMarkup } from './atlas_projection.mjs?v=e6956bc6cbcd09e9956732fc088002e2e2c63bb025c09298ee95071b3021f381';
     (() => {
       "use strict";
       if (location.protocol === 'file:') return;
@@ -529,7 +532,7 @@
         anatomyReference: "named",
         optionSearch: {},
         mapAnatomy: new Set(),
-        mapLabels: new Map(),
+        mapValues: [],
         mapRegions: new Set(),
         mapResultIds: new Set(),
       };
@@ -706,16 +709,33 @@
         return [...merged.values()];
       }
 
-      function facetValueLabel(facetId, value) {
-        const scopes = value.scopes || (value.scope ? [value.scope] : []);
-        const roles = value.roles || (value.role ? [value.role] : []);
-        const qualifiers = [];
-        if (facetId === "anatomy" && scopes.length && scopes.every(scope => scope === "OVERLAP")) qualifiers.push("overlap mapping");
-        if (["anatomy", "laterality"].includes(facetId) && roles.length && roles.every(role => ["COHORT_CONTEXT", "COMPARATOR_CONTEXT"].includes(role))) {
-          if (roles.includes("COHORT_CONTEXT")) qualifiers.push("cohort");
-          if (roles.includes("COMPARATOR_CONTEXT")) qualifiers.push("comparison");
+      function facetValueGroups(facetId, values) {
+        const groups = new Map();
+        for (const value of values) {
+          const context = value.role === 'COHORT_CONTEXT' ? 'Study population'
+            : value.role === 'COMPARATOR_CONTEXT' ? 'Comparison group' : '';
+          const scope = facetId === 'anatomy' ? value.scope : '';
+          const label = scope === 'OVERLAP' ? (context ? context + ' — overlapping regions' : 'Overlapping atlas regions')
+            : scope === 'CONTAINMENT' ? (context ? context + ' — broader regions' : 'Broader regions')
+            : context || (facetId === 'anatomy' ? (scope === 'EXACT' ? 'Reported anatomy' : 'Selected regions') : 'Lateralization');
+          if (!groups.has(label)) groups.set(label, []);
+          groups.get(label).push(value);
         }
-        return [value.label, ...qualifiers].join(" · ");
+        return [...groups].map(([label, items]) => ({label, values: mergedFacetValues(items)}));
+      }
+
+      function anatomyValueLabel(value) {
+        const item = facetItems('anatomy').find(item => item.id === value.id);
+        const description = item?.area_name;
+        return description && description !== 'Source-native Brodmann area ' + value.label.replace(/^BA\s+/, '')
+          ? value.label + ' — ' + description : value.label;
+      }
+
+      function mapSelectionMarkup(values) {
+        return facetValueGroups('anatomy', values).map(group =>
+          '<div class="map-region-group"><strong>' + h(group.label) + '</strong><div class="map-region-values">' +
+          group.values.map(value => '<span class="map-chip">' + h(anatomyValueLabel(value)) + '</span>').join('') +
+          '</div></div>').join('');
       }
 
       function countFor(facetId, itemId) {
@@ -827,7 +847,7 @@
         itemIds.forEach(id => enabled ? values.add(id) : values.delete(id));
         if (values.size) state.filters[facetId] = [...values];
         else delete state.filters[facetId];
-        if (facetId === "anatomy" && !enabled) itemIds.forEach(id=>{state.mapAnatomy.delete(id);state.mapLabels.delete(id);});
+        if (facetId === "anatomy" && !enabled) itemIds.forEach(id=>{state.mapAnatomy.delete(id);state.mapValues=state.mapValues.filter(value=>value.id!==id);});
         renderActiveFilters();
         runQuery();
       }
@@ -928,7 +948,7 @@
           if (!surfacePanel && !surfacePanelLoading) {
             surfacePanelLoading = true;
             host.textContent = 'Loading surfaces…';
-            import('./atlas_surface.mjs?v=f992912b7859606cce938963c96b555e25aa90aac80a514eaa36107b545dbc8a').then(({SurfacePanel}) => {
+            import('./atlas_surface.mjs?v=3d3ba9fb194bb3385e660e98f28933ba32f134fe1d7fdca8faa8bcf81c26ebc1').then(({SurfacePanel}) => {
               surfacePanel = new SurfacePanel(host, {...localSurfaces,groups:state.catalogue.maps.region_groups,brodmann:facetItems('anatomy').filter(row=>row.reference==='ATLAS:BRODMANN').sort((a,b)=>a.label.localeCompare(b.label,undefined,{numeric:true}))}, (view, hemisphere) => {
                 state.mapView=view;state.mapHemisphere=hemisphere;renderMap();
               }, (rows,groups) => {
@@ -943,6 +963,7 @@
           }
           surfacePanel?.setView(state.mapView,state.mapHemisphere);
           surfacePanel?.setGroups(selected('region'));
+          surfacePanel?.setEvidenceHighlight(state.mapAnatomy);
           surfacePanel?.syncRegionMenu(selected('anatomy'));
           surfacePanel?.setBrodmann(markers.map(marker=>({...marker,count:showCounts&&marker.anatomy_id?countFor('anatomy',marker.anatomy_id)??0:null})),new Set([...state.mapAnatomy,...selected('anatomy'),...(state.catalogue.maps.region_groups||[]).filter(group=>selected('region').includes(group.id)).flatMap(group=>group.anatomy_ids)]),{
             x:flipPlate?viewBox[2]-image.x-(image.width??image.w):image.x,y:image.y,
@@ -963,22 +984,19 @@
           }).join("")}
         </svg>`;
 
-        const anatomy = facet("anatomy");
         const selectedAnatomy = [...new Set([...state.mapAnatomy,...selected('anatomy')])];
-        const labels = anatomy ? selectedAnatomy.map(id => {
-          const item = facetItems('anatomy').find(value=>value.id===id);
-          const label = state.mapLabels.get(id) || itemLabel(anatomy.id,id);
-          return item?.area_name ? label+' — '+item.area_name : label;
-        }) : [];
+        const mapValues = state.mapValues.filter(value => selectedAnatomy.includes(value.id));
+        selectedAnatomy.filter(id => !mapValues.some(value => value.id === id)).forEach(id =>
+          mapValues.push({id, label: itemLabel('anatomy', id)}));
         const selectedRegions = [...new Set([...selected('anatomy'),...state.surfaceAnatomy])];
         const titles = [...selected('region').map(id=>itemLabel('region',id)),...selectedRegions.map(id => {
           const item = facetItems('anatomy').find(value=>value.id===id);
           const label = itemLabel('anatomy',id);
-          return item?.area_name ? label+' — '+item.area_name : roleLabel(label);
+          return anatomyValueLabel({id, label: roleLabel(label)});
         })];
         $("#mapHeading").hidden = !titles.length;
         $("#mapHeading").textContent = titles.join(' + ');
-        $("#mapSelection").innerHTML = labels.map(label => `<span class="map-chip">${h(label)}</span>`).join("");
+        $("#mapSelection").innerHTML = mapSelectionMarkup(mapValues);
       }
 
       function rowFacetValues(row, facetId) {
@@ -1191,16 +1209,16 @@
       const uniqueCount = (rows, axis) => uniqueValues(rows, axis).length;
 
       function mapButton(rows, label = 'Show on map') {
-        const anatomy = uniqueValues(rows, 'anatomy');
+        const anatomy = rows.flatMap(row => rowFacetValues(row, 'anatomy'));
         if (!anatomy.length) return '';
-        return '<button class="show-map" type="button" data-anatomy="'+h(JSON.stringify(anatomy.map(x=>x.id)))+'" data-anatomy-labels="'+h(JSON.stringify(Object.fromEntries(anatomy.map(x=>[x.id,facetValueLabel('anatomy',x)]))))+'" data-regions="'+h(JSON.stringify(uniqueValues(rows,'region').map(x=>x.id)))+'" data-results="'+h(JSON.stringify(rows.map(row=>row.id)))+'">'+h(label)+'</button>';
+        return '<button class="show-map" type="button" data-anatomy="'+h(JSON.stringify([...new Set(anatomy.map(x=>x.id))]))+'" data-anatomy-values="'+h(JSON.stringify(anatomy.map(({id,label,role,scope})=>({id,label,role,scope}))))+'" data-regions="'+h(JSON.stringify(uniqueValues(rows,'region').map(x=>x.id)))+'" data-results="'+h(JSON.stringify(rows.map(row=>row.id)))+'">'+h(label)+'</button>';
       }
 
       function showEvidenceOnMap(rows) {
-        const anatomy = uniqueValues(rows, 'anatomy');
+        const anatomy = rows.flatMap(row => rowFacetValues(row, 'anatomy'));
         if (!anatomy.length) return;
         state.mapAnatomy = new Set(anatomy.map(item => item.id));
-        state.mapLabels = new Map(anatomy.map(item => [item.id, facetValueLabel('anatomy', item)]));
+        state.mapValues = anatomy;
         state.mapRegions = new Set(uniqueValues(rows, 'region').map(item => item.id));
         state.mapResultIds = new Set(rows.map(row => row.id));
         const views = state.catalogue.maps?.views || {};
@@ -1219,10 +1237,12 @@
               return ['<p class="source-term context-field"><strong>Phase:</strong> '+h(label)+'</p>'];
             }
           }
+          if (axis === 'anatomy' || axis === 'laterality') return facetValueGroups(axis, rows.flatMap(row => rowFacetValues(row, axis))).map(group =>
+            '<p class="source-term context-field"><strong>' + h(group.label) + ':</strong> ' + group.values.map(value => '<span class="context-value">' + h(value.label) + '</span>').join(' ') + '</p>');
           const values=uniqueValues((axis==='ilae'||axis==='luders')?rows.map(row=>({...row,facets:{...row.facets,[axis]:(row.facets[axis]||[]).filter(value=>value.assigned)}})):rows,axis);
           if(!values.length)return [];
           const label={anatomy:'Region',laterality:'Lateralization',phase:'Phase',ilae:'ILAE',luders:'Lüders'}[axis];
-          return ['<p class="source-term context-field '+(axis==='ilae'||axis==='luders'?'classification':'')+'"><strong>'+label+':</strong> '+values.map(value=>'<span class="context-value">'+h(facetValueLabel(axis,value))+'</span>').join(' ')+'</p>'];
+          return ['<p class="source-term context-field '+(axis==='ilae'||axis==='luders'?'classification':'')+'"><strong>'+label+':</strong> '+values.map(value=>'<span class="context-value">'+h(value.label)+'</span>').join(' ')+'</p>'];
         });
         return fields.length?'<div class="context-grid">'+fields.join('')+'</div>':'';
       }
@@ -1576,7 +1596,7 @@
         }
         $('#results').className=rows.length?'':'empty';
         if(evidenceReview) {
-          evidenceReview.update({rows,view,query:view==='sources'?'':state.query,queryContext:{anatomy:[...selected('anatomy'),...state.surfaceAnatomy]}});
+          evidenceReview.update({rows,view,query:view==='sources'?'':state.query,queryContext:{anatomy:[...selected('anatomy'),...state.surfaceAnatomy],sourceIds:selected('source'),evidenceFiltered:Boolean((view!=='sources' && state.query) || state.surfaceAnatomy.length || Object.entries(state.filters).some(([axis,ids])=>axis!=='source' && ids.length))}});
           return;
         }
         let content='';
@@ -1627,7 +1647,7 @@
           const responseIds = new Set(payload.rows.map(row=>row.id));
           if(state.mapResultIds.size && [...state.mapResultIds].some(id=>!responseIds.has(id))) {
             state.mapAnatomy.clear();
-            state.mapLabels.clear();
+            state.mapValues = [];
             state.mapRegions.clear();
             state.mapResultIds.clear();
           }
@@ -1709,9 +1729,10 @@
         delete state.filters.region;
         state.surfaceAnatomy = [];
         state.mapAnatomy.clear();
-        state.mapLabels.clear();
+        state.mapValues = [];
         state.mapRegions.clear();
         state.mapResultIds.clear();
+        surfacePanel?.setEvidenceHighlight([]);
         surfacePanel?.setGroups([]);
         surfacePanel?.select([],false);
       }
@@ -1779,7 +1800,7 @@
         if (!marker) return;
         const anatomyId = marker.dataset.anatomy;
         state.mapAnatomy = selected("anatomy").includes(anatomyId) ? new Set() : new Set([anatomyId]);
-        state.mapLabels = new Map();
+        state.mapValues = [];
         state.mapRegions.clear();
         state.mapResultIds.clear();
         toggleFilter("anatomy", anatomyId);
@@ -1809,7 +1830,7 @@
         const button = event.target.closest("button[data-anatomy]");
         if (!button) return;
         state.mapAnatomy = new Set(JSON.parse(button.dataset.anatomy));
-        state.mapLabels = new Map(Object.entries(JSON.parse(button.dataset.anatomyLabels)));
+        state.mapValues = JSON.parse(button.dataset.anatomyValues);
         state.mapRegions = new Set(JSON.parse(button.dataset.regions));
         state.mapResultIds = new Set(JSON.parse(button.dataset.results));
         const views = state.catalogue.maps?.views || {};
