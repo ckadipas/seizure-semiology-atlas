@@ -1,8 +1,5 @@
-# Every change requires review by the repository ckadipas by default.
-# Replace @ckadipas with your GitHub handle after creating the repo.
+# Repository maintenance and generated public releases.
 *                 @ckadipas
-
-# The dataset & enrichment logic are the scientific core — guard them explicitly.
 /data/            @ckadipas
-/enrichment/      @ckadipas
-/generator/       @ckadipas
+/docs/            @ckadipas
+/review/          @ckadipas

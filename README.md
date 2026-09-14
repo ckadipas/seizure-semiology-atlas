@@ -25,7 +25,7 @@ This repository receives generated data from the private SQLite evidence ledger.
 | `release.json`, `CHANGELOG.md` | Version, date, and release notes. |
 | `tools/validate_normalized_atlas_release.py` | Checks that the current website and normalized graph belong to the same release. |
 
-The older `data/atlas_bundle.json`, `data/brodmann_map.json`, and legacy generator remain compatibility fixtures. They do not replace the current website. Source PDFs and private scientific review records are not included in the tracked release files or website.
+Earlier release files remain available in Git history. Source PDFs and private scientific review records are not included in the tracked release files or website.
 
 ## Local use
 
@@ -34,9 +34,9 @@ make build
 make serve
 ```
 
-The build runs compatibility checks, restores the committed current website, and validates its release identity. To change scientific data or the website, update the maintained private ledger or renderer and export a new release. Do not edit generated files independently.
+The build validates the committed website and normalized data against their release manifest without rewriting website files. To change scientific data or the website, update the maintained private ledger or renderer and export a new release. Do not edit generated files independently.
 
-`python3 generator/gen_study.py` validates the committed website without regenerating a normalized release. Production uploads follow a merged pull request and successful validation of its exact commit; automatic Git deployments are disabled.
+`python3 generator/gen_study.py` remains a compatibility command for the same release validator. Production uploads follow a merged pull request and successful validation of its exact commit; automatic Git deployments are disabled.
 
 The proprietary viewer meshes and Brodmann node assignments are added from private storage only when staging a deployment. They are not included in this repository. Reference images are excluded from production. The live WebGL viewer still delivers its required geometry and label positions to visitors' browsers, where they can be extracted. A source checkout without the separate viewer assets can browse the evidence but cannot display the 3D map.
 
