@@ -2,27 +2,21 @@
 
 help:
 	@echo "targets:"
-	@echo "  make validate   - validate the generated/redacted canonical atlas bundle"
-	@echo "  make build      - validate the bundle and render HTML into docs/"
-	@echo "  make check-sync - verify committed HTML matches the committed bundle"
+	@echo "  make validate   - validate the committed normalized release"
+	@echo "  make build      - validate the website and data for local use or deployment"
+	@echo "  make check-sync - validate the release and confirm website files are unchanged"
 	@echo "  make serve      - build, then serve docs/ at http://localhost:8000"
 
 validate:
 	python3 tools/test_public_governance.py
-	python3 tools/validate_atlas_bundle.py
-
-build: validate
-	python3 generator/gen_study.py
-	git restore --source=HEAD --worktree docs
-	$(RM) -r docs/fragments docs/icon-180.png docs/icon-512.png docs/manifest.webmanifest docs/seizure_semiology_localization.html
 	python3 tools/validate_normalized_atlas_release.py
 
-check-sync: build
-	git diff --exit-code docs/seizure_semiology_localization.html docs/index.html
+build: validate
 
-check-deployment:
-	python3 generator/gen_study.py
+check-sync: build
 	git diff --exit-code -- docs
+
+check-deployment: check-sync
 
 serve: build
 	cd docs && python3 -m http.server 8000

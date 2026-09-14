@@ -133,13 +133,14 @@ def validate_explorer_files(docs, projection, *, surface_mode="public"):
         require(all(set(value) == appraisal_fields
                     for value in projection.get("appraisal_receipts", {}).values()),
                 "unexpected public appraisal fields")
+    surfaces = maps.get("local_surfaces")
     for view in views.values():
         relative = PurePosixPath(str((view or {}).get("image_url") or ""))
         require(relative.parts[:2] == ("generator", "assets")
                 and not relative.is_absolute() and ".." not in relative.parts,
                 "public explorer map asset path is unsafe")
-        expected.add(relative.as_posix())
-    surfaces = maps.get("local_surfaces")
+        if not surfaces:
+            expected.add(relative.as_posix())
     if surfaces:
         expected.add("atlas_surface.mjs")
         surface_revision = file_sha256(docs / 'atlas_surface.mjs')

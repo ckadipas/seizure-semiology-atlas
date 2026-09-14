@@ -26,7 +26,7 @@ The approved scoring method is maintained with the private ledger. Adding a pape
 
 The current website uses `docs/index.html`, `docs/atlas_projection.mjs`, and `docs/atlas-projection.json.gz`. The normalized relationship graph is distributed as `data/atlas_bundle.normalized.json.gz`; `review/normalized-relationship-manifest.json` binds the release artifacts.
 
-Legacy data and generator files remain for compatibility. Their historical pooling calculations and curator estimates do not describe the current normalized website and must not be edited as a route to updating its evidence.
+The public build validates these committed artifacts. Scientific calculations and generation of the website are maintained with the private ledger.
 
 ## Review, integration, and publication
 

@@ -14,7 +14,7 @@ Paper-intake issues accept PDF and page-image attachments. These issues and thei
 
 Scientific relationships are corrected in the private ledger under owner approval. The maintained private renderer supplies website changes. Approved records and their consumers are then exported together into this repository.
 
-Do not edit generated HTML, compressed projections, or normalized data independently. Legacy files such as `data/semiology_data.json` and `enrichment/build_enrichment.py` are not the authoring path for the current normalized atlas. See [METHODS.md](METHODS.md).
+Do not edit generated HTML, compressed projections, or normalized data independently. Export the current approved release from the private ledger. See [METHODS.md](METHODS.md).
 
 Documentation and repository tooling changes can be proposed directly through a pull request. Keep the change focused and describe the resulting behavior or corrected guidance.
 

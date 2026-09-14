@@ -1,20 +1,10 @@
-# --- legacy generated build artifacts ---
-docs/*.html
-!docs/index.html
-docs/*.png
-docs/manifest.webmanifest
-docs/fragments/
-
 # Viewer assets are supplied separately during deployment.
 /docs/local-surfaces/
 
-# --- working corpus: copyrighted source material stays LOCAL, never committed ---
-corpus/pdfs/*
-!corpus/pdfs/.gitkeep
-corpus/txt/*
-!corpus/txt/.gitkeep
-intake/inbox/*
-!intake/inbox/.gitkeep
+# Source files and private intake work are not public release artifacts.
+/corpus/
+/intake/inbox/*
+!/intake/inbox/.gitkeep
 
 # --- python / os cruft ---
 __pycache__/
