@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-projection="static" data-snapshot="385b7544ccd5c55beb8f7c6dee3c46d4f4c620343e5332b9241b17d1cdc89146" data-label-editing="disabled">
+<html lang="en" data-projection="static" data-snapshot="9ed05b1c2801d85cccaa248842b90ef99d5b0c70ed84eb6873ba1992e1c830fb" data-label-editing="disabled">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -113,7 +113,6 @@
     .map-layout.resizing { user-select:none; cursor:col-resize; }
     #mapEvidence { min-width:0; }
     #mapEvidence .results-panel { margin:0; max-height:780px; max-height:85dvh; overflow:auto; overscroll-behavior:contain; }
-    .selection-heading { margin:0 0 14px; padding-bottom:12px; border-bottom:1px solid var(--line); font-size:1.15rem; line-height:1.4; color:var(--navy); }
     .brain-map { min-height: 230px; display: grid; place-items: center; border-radius: 10px; background: #fbfcfe; border: 1px solid var(--line2); overflow: hidden; }
     .brain-map svg { display: block; width: 100%; max-height: 490px; }
     .brain-map.surface-host { display:block; padding:10px; background:#fff; }
@@ -432,7 +431,6 @@
     </details>
 
     <section class="panel results-panel" id="lowerPanel">
-      <h2 id="mapHeading" class="selection-heading" hidden></h2>
       <div id="viewTabs" class="view-tabs" role="tablist" aria-label="Evidence views">
         <button type="button" role="tab" id="tab-browse" data-view="browse" aria-selected="true" aria-controls="results">Signs</button>
         <button type="button" role="tab" id="tab-sources" data-view="sources" aria-selected="false" aria-controls="results">Sources</button>
@@ -948,7 +946,7 @@
           if (!surfacePanel && !surfacePanelLoading) {
             surfacePanelLoading = true;
             host.textContent = 'Loading surfaces…';
-            import('./atlas_surface.mjs?v=3d3ba9fb194bb3385e660e98f28933ba32f134fe1d7fdca8faa8bcf81c26ebc1').then(({SurfacePanel}) => {
+            import('./atlas_surface.mjs?v=4aeec523019a94e8fe92054a7775aedf68c14ec543a93ff5422cef067979ed80').then(({SurfacePanel}) => {
               surfacePanel = new SurfacePanel(host, {...localSurfaces,groups:state.catalogue.maps.region_groups,brodmann:facetItems('anatomy').filter(row=>row.reference==='ATLAS:BRODMANN').sort((a,b)=>a.label.localeCompare(b.label,undefined,{numeric:true}))}, (view, hemisphere) => {
                 state.mapView=view;state.mapHemisphere=hemisphere;renderMap();
               }, (rows,groups) => {
@@ -988,14 +986,6 @@
         const mapValues = state.mapValues.filter(value => selectedAnatomy.includes(value.id));
         selectedAnatomy.filter(id => !mapValues.some(value => value.id === id)).forEach(id =>
           mapValues.push({id, label: itemLabel('anatomy', id)}));
-        const selectedRegions = [...new Set([...selected('anatomy'),...state.surfaceAnatomy])];
-        const titles = [...selected('region').map(id=>itemLabel('region',id)),...selectedRegions.map(id => {
-          const item = facetItems('anatomy').find(value=>value.id===id);
-          const label = itemLabel('anatomy',id);
-          return anatomyValueLabel({id, label: roleLabel(label)});
-        })];
-        $("#mapHeading").hidden = !titles.length;
-        $("#mapHeading").textContent = titles.join(' + ');
         $("#mapSelection").innerHTML = mapSelectionMarkup(mapValues);
       }
 

@@ -1,10 +1,10 @@
 {
-  "version": "2",
-  "released_at": "2026-09-13T21:33:13Z",
+  "version": "2.0.1",
+  "released_at": "2026-09-15T02:36:34Z",
   "changes": [
-    "Apply the Lüders 2019 classification hierarchy and include its source citation.",
-    "Add the final conclusions from four teaching cases, with their reported seizure sequences and localization qualifiers.",
-    "Preserve source and sign relationships across classification, regional and manuscript views.",
-    "Highlight linked DKT40 regions and Brodmann labels together, with concise anatomical labels."
+    "Keep the full cortical surface visible during general selections, with subtle contrast for selected parcels.",
+    "Name selected DKT40 parcels beneath the brain and remove the duplicate heading above Signs and Sources.",
+    "Reveal the insula through surrounding cortex only when it is the sole selected parcel.",
+    "Derive map region groups from ledger relationships, including the currently mapped cingulate parcels in Limbic."
   ]
 }

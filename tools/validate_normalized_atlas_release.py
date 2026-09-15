@@ -181,8 +181,8 @@ def validate_explorer_files(docs, projection, *, surface_mode="public"):
     return expected
 
 
-def validate_explorer(receipt):
-    docs = ROOT / "docs"
+def validate_explorer(receipt, *, docs=None, surface_mode="public"):
+    docs = Path(docs) if docs is not None else ROOT / "docs"
     compressed = docs / "atlas-projection.json.gz"
     module = docs / "atlas_projection.mjs"
     html_path = docs / "index.html"
@@ -203,7 +203,7 @@ def validate_explorer(receipt):
         and file_sha256(compressed) == receipt["projection_file_sha256"],
         "public explorer content digest differs from the release receipt",
     )
-    validate_explorer_files(docs, projection)
+    validate_explorer_files(docs, projection, surface_mode=surface_mode)
     html = html_path.read_text(encoding="utf-8")
     if projection.get("catalogue", {}).get("maps", {}).get("local_surfaces"):
         require('data-label-editing="disabled"' in html, "public label editing must be disabled")
@@ -215,7 +215,8 @@ def validate_explorer(receipt):
     )
 
 
-def validate_manifest(path, bundle_path, bundle, graph, bundle_bytes):
+def validate_manifest(path, bundle_path, bundle, graph, bundle_bytes, *,
+                      docs=None, surface_mode="public"):
     receipt = json.loads(path.read_text(encoding="utf-8"))
     require(
         set(receipt) == PUBLIC_RECEIPT_FIELDS,
@@ -266,7 +267,7 @@ def validate_manifest(path, bundle_path, bundle, graph, bundle_bytes):
         receipt["bundle_file_sha256"] == hashlib.sha256(bundle_bytes).hexdigest(),
         "public release receipt bundle-file digest differs",
     )
-    validate_explorer(receipt)
+    validate_explorer(receipt, docs=docs, surface_mode=surface_mode)
     return digest
 
 
