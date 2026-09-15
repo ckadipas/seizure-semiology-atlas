@@ -24,8 +24,10 @@ in vec3 vNormal;
 in vec3 vColor;
 in float vSelected;
 uniform float opacity;
+uniform float selectionPass;
 out vec4 outputColor;
 void main() {
+  if ((selectionPass > .5 && vSelected < .5) || (selectionPass < -.5 && vSelected >= .5)) discard;
   vec3 n = normalize(vNormal) * (gl_FrontFacing ? 1.0 : -1.0);
   vec3 light = normalize(vec3(-.4, .6, 1.5));
   float diffuse = max(0.0, dot(n, light));
@@ -36,7 +38,7 @@ void main() {
                         .000024,.000027,1.097871) * lit, vec3(0.0));
   vec3 display = mix(12.92 * linear, 1.055 * pow(linear,vec3(1.0/2.4)) - .055,
                      step(vec3(.0031308),linear));
-  outputColor = vec4(mix(display,vec3(1.0),.30*(1.0-vSelected)), opacity);
+  outputColor = vec4(mix(display, vec3(1.0), selectionPass == 0.0 ? .38 * (1.0-vSelected) : 0.0), opacity);
 }`;
 
 function multiply(a, b) {
@@ -167,7 +169,7 @@ class SurfaceCanvas {
     gl.linkProgram(program);
     if (!gl.getProgramParameter(program,gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program));
     this.program=program;
-    this.uniforms=Object.fromEntries(['rotation','center','extent','depth','opacity'].map(name=>[name,gl.getUniformLocation(program,name)]));
+    this.uniforms=Object.fromEntries(['rotation','center','extent','depth','opacity','selectionPass'].map(name=>[name,gl.getUniformLocation(program,name)]));
     for (const mesh of meshes) {
       mesh.vao=gl.createVertexArray(); gl.bindVertexArray(mesh.vao);
       for (const [name, values, size] of [['position',mesh.positions,3],['normal',mesh.normals,3],['color',mesh.colors,3],['selected',new Float32Array(mesh.labels.length).fill(1),1]]) {
@@ -220,8 +222,8 @@ class SurfaceCanvas {
     this.draw();
   }
 
-  setSelection(rows) {
-    this.selection=rows;
+  setSelection(rows, revealInsula=false) {
+    this.selection=rows;this.revealInsula=revealInsula;
     const selected=new Set(rows.map(row=>row.index));
     for(const mesh of this.meshes){
       const values=Float32Array.from(mesh.labels,index=>!rows.length||selected.has(index)?1:0);
@@ -249,17 +251,23 @@ class SurfaceCanvas {
     gl.uniformMatrix3fv(this.uniforms.rotation,false,[0,3,6,1,4,7,2,5,8].map(i=>this.rotation[i]));
     gl.uniform3fv(this.uniforms.center,this.center);gl.uniform2fv(this.uniforms.extent,this.extent);
     gl.uniform1f(this.uniforms.depth,this.radius*8);
-    const passes=this.layer==='insula'?[['indices',.10],['insulaIndices',1]]:[['indices',1]];
-    for(const [key,opacity] of passes){
+    // Draw selected anatomy first, then blend only the nearest surrounding surface.
+    // The depth-only pass keeps overlapping translucent folds and labels from accumulating.
+    const focused=this.revealInsula&&this.layer!=='insula';
+    const passes=focused?[['indices',1,1],['indices',1,-1,false],['indices',.55,-1]]:
+      this.layer==='insula'?[['indices',.10],['insulaIndices',1]]:[['indices',1]];
+    for(const [key,opacity,selectionPass=0,color=true] of passes){
+      gl.colorMask(color,color,color,color);gl.depthFunc(opacity<1?gl.LEQUAL:gl.LESS);
       gl.depthMask(opacity===1);
       if(opacity<1){gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);}else gl.disable(gl.BLEND);
-      gl.uniform1f(this.uniforms.opacity,opacity);
+      gl.uniform1f(this.uniforms.opacity,opacity);gl.uniform1f(this.uniforms.selectionPass,selectionPass);
       for(const mesh of this.visible){
         gl.bindVertexArray(mesh.vao);gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,mesh[key+'Buffer']);
         gl.drawElements(gl.TRIANGLES,mesh[key].length,gl.UNSIGNED_INT,0);
       }
     }
-    gl.depthMask(true);gl.disable(gl.BLEND);
+    gl.colorMask(true,true,true,true);gl.depthMask(true);gl.depthFunc(gl.LESS);gl.disable(gl.BLEND);
+    gl.uniform1f(this.uniforms.selectionPass,0);
     this.onRender?.();
   }
 
@@ -460,7 +468,7 @@ export class SurfacePanel {
     for(const group of this.groups){
       const label=document.createElement('label'),input=document.createElement('input');
       label.className='surface-group';input.type='checkbox';input.dataset.group=group.id;
-      label.append(input,document.createTextNode(group.label+' lobe'));list.append(label);
+      label.append(input,document.createTextNode(group.label));list.append(label);
       input.addEventListener('change',()=>{
         this.groupSelection=input.checked?[...this.groupSelection,group.id]:this.groupSelection.filter(id=>id!==group.id);
         this.select(this.selection);
@@ -586,11 +594,11 @@ export class SurfacePanel {
   updateSelection() {
     const groups=this.groups.filter(group=>this.groupSelection.includes(group.id));
     const highlighted=this.options.filter(row=>this.evidenceHighlight.has(this.palette.get(row.index).anatomy_id));
-    const count=this.selection.length+groups.length;
-    this.status.textContent=count?[...groups.map(group=>group.label+' lobe'),...this.selection.map(row=>this.label(row))].join(' + '):highlighted.length?'DKT40 · '+highlighted.length+' highlighted '+(highlighted.length===1?'parcel':'parcels'):'DKT40 · All Regions';
     const members=new Set(groups.flatMap(group=>group.anatomy_ids));
     const rows=[...this.selection,...highlighted,...this.options.filter(row=>members.has(this.palette.get(row.index).anatomy_id))];
-    this.renderer?.setSelection([...new Map(rows.map(row=>[row.index,row])).values()]);
+    const selected=[...new Map(rows.map(row=>[row.index,row])).values()];
+    this.status.textContent=selected.length?'DKT40 · '+selected.map(row=>this.label(row)).join(' · '):'DKT40 · All Regions';
+    this.renderer?.setSelection(selected,selected.length===1&&this.palette.get(selected[0].index).name==='insula');
   }
   setView(view,hemisphere) {this.view=view;this.hemisphere=hemisphere;this.update();}
   setBrodmann(markers,selected,image,views) {

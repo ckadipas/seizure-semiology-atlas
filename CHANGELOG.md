@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.1
+
+- Keep the full cortical surface visible during general selections, with subtle contrast for selected parcels.
+- Name selected DKT40 parcels beneath the brain and remove the duplicate heading above Signs and Sources.
+- Reveal the insula through surrounding cortex only when it is the sole selected parcel.
+- Derive map region groups from ledger relationships, including the currently mapped cingulate parcels in Limbic.
+
 ## 2 — 2026-09-13
 
 - Open Signs by region and label term counts according to the selected organization.

@@ -6,9 +6,9 @@
   "graph_schema_version": "atlas-normalized-relationship-graph-1.17.0",
   "graph_sha256": "4c58760d25180ebbe049e2851fd834e8215884e9e2b277e889615f34ade0861f",
   "module_sha256": "e6956bc6cbcd09e9956732fc088002e2e2c63bb025c09298ee95071b3021f381",
-  "projection_file_sha256": "35c32b28243482076b28f7a051df4487e233b3ddc8e58b682a5594bb7b8cc63c",
+  "projection_file_sha256": "c23a2438b29c284cf0e30d7da12bd0644662c439699dc87c20ded8e9de26bcdd",
   "release_id": "semiology-atlas-v1.5.12",
   "schema_version": "atlas-public-release-receipt-1.1.0",
-  "semantic_digest": "48d7d9189f4665cc0de3356a9b1b2ae24f3f63cbb6e7b1b7964c5297cbd6bb33",
-  "snapshot_sha256": "385b7544ccd5c55beb8f7c6dee3c46d4f4c620343e5332b9241b17d1cdc89146"
+  "semantic_digest": "708dcd6ceb65f10408ebde63a4bc89660895d187f11e95c7201ce630cd1c4f5f",
+  "snapshot_sha256": "9ed05b1c2801d85cccaa248842b90ef99d5b0c70ed84eb6873ba1992e1c830fb"
 }
