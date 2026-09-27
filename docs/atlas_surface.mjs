@@ -586,8 +586,9 @@ export class SurfacePanel {
     this.updateSelection();
     if(notify)this.onSelection(rows.map(row=>({...row,...this.palette.get(row.index)})),this.groupSelection);
   }
-  setEvidenceHighlight(anatomyIds) {
-    const next=new Set(anatomyIds);
+  setEvidenceHighlight(anatomyIds,exactAnatomyIds=[]) {
+    const exact=new Set(exactAnatomyIds);
+    const next=new Set([...anatomyIds,...this.groups.filter(group=>exact.has(group.id)).flatMap(group=>group.anatomy_ids)]);
     if(next.size===this.evidenceHighlight.size&&[...next].every(id=>this.evidenceHighlight.has(id)))return;
     this.evidenceHighlight=next;this.updateSelection();
   }

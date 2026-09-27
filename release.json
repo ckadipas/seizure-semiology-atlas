@@ -1,10 +1,8 @@
 {
-  "version": "2.0.1",
-  "released_at": "2026-09-15T02:36:34Z",
+  "version": "2.0.2",
+  "released_at": "2026-09-27T13:35:28Z",
   "changes": [
-    "Keep the full cortical surface visible during general selections, with subtle contrast for selected parcels.",
-    "Name selected DKT40 parcels beneath the brain and remove the duplicate heading above Signs and Sources.",
-    "Reveal the insula through surrounding cortex only when it is the sole selected parcel.",
-    "Derive map region groups from ledger relationships, including the currently mapped cingulate parcels in Limbic."
+    "Highlight the registered DKT40 parcels when Show on map includes an explicitly reported broad region.",
+    "Preserve focal highlights when broader or overlapping regions are present as anatomical context."
   ]
 }

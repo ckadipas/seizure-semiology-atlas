@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.0.2
+
+- Highlight the registered DKT40 parcels when Show on map includes an explicitly reported broad region.
+- Preserve focal highlights when broader or overlapping regions are present as anatomical context.
+
 ## 2.0.1
 
 - Keep the full cortical surface visible during general selections, with subtle contrast for selected parcels.
