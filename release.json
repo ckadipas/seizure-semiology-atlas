@@ -1,8 +1,8 @@
 {
-  "version": "2.0.2",
-  "released_at": "2026-09-27T13:35:28Z",
+  "version": "2.0.3",
+  "released_at": "2026-09-27T17:22:09Z",
   "changes": [
-    "Highlight the registered DKT40 parcels when Show on map includes an explicitly reported broad region.",
-    "Preserve focal highlights when broader or overlapping regions are present as anatomical context."
+    "Replace the atlas dropdown with a Show Brodmann labels checkbox.",
+    "Preserve region selections and result counts when toggling Brodmann labels."
   ]
 }
