@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.0.3
+
+- Replace the atlas dropdown with a Show Brodmann labels checkbox.
+- Preserve region selections and result counts when toggling Brodmann labels.
+
 ## 2.0.2
 
 - Highlight the registered DKT40 parcels when Show on map includes an explicitly reported broad region.

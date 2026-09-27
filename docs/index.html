@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-projection="static" data-snapshot="3de0518cf26d4628925c31490ea2e664db62811059c263c5d526f2f190eb69e7" data-label-editing="disabled">
+<html lang="en" data-projection="static" data-snapshot="16429bef05072c1459b0ff3d10c5fcd7269613726a49ed66693ccd31553ea68b" data-label-editing="disabled">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -118,7 +118,8 @@
     .brain-map.surface-host { display:block; padding:10px; background:#fff; }
     .surface-toolbar { display:flex; gap:8px; flex-wrap:wrap; align-items:end; font-size:.75rem; }
     .surface-toolbar label { display:grid; gap:4px; flex:1 1 170px; min-width:0; }
-    .surface-toolbar select { width:100%; min-width:0; max-width:100%; padding:7px; }
+    .surface-toolbar .surface-brodmann-toggle { display:flex; align-items:center; gap:8px; min-height:44px; font-size:.85rem; font-weight:600; cursor:pointer; }
+    .surface-brodmann-toggle input { width:20px; height:20px; margin:0; flex:none; accent-color:var(--teal); cursor:pointer; }
     .surface-roi { flex:1 1 210px; min-width:0; display:grid; gap:4px; }
     .surface-regions { position:relative; }
     .surface-regions summary { padding:8px; border:1px solid var(--line); border-radius:5px; cursor:pointer; }
@@ -360,8 +361,8 @@
       .map-controls .segmented button { flex:1; min-height:44px; }
       .surface-toolbar { display:grid; grid-template-columns:1fr 1fr; }
       .surface-toolbar > label,.surface-roi { grid-column:1 / -1; }
-      .surface-toolbar select,.surface-regions summary,.surface-toolbar button { min-height:44px; }
-      .surface-toolbar select,.surface-region-menu input[type=search] { font-size:16px; }
+      .surface-regions summary,.surface-toolbar button { min-height:44px; }
+      .surface-region-menu input[type=search] { font-size:16px; }
       .surface-region-menu { width:100%; box-sizing:border-box; }
       .surface-region-list { max-height:240px; max-height:32dvh; overscroll-behavior:contain; }
       .surface-region-list label { min-height:44px; padding:4px; }
@@ -935,7 +936,7 @@
         $("#mapHemisphere").value = state.mapHemisphere;
         $('#mapPanel .browse-name').textContent = localSurfaces ? 'Interactive 3D cortical map' : 'Brodmann overview';
           $('#mapPanel .section-head p').textContent = localSurfaces ? 'Select regions or Brodmann labels to filter the evidence.' : 'Select a numbered area to filter the evidence.';
-        const countsAvailable=!localSurfaces||surfacePanel?.atlas.value==='brodmann';
+        const countsAvailable=!localSurfaces||surfacePanel?.atlas.checked;
         $('#mapCounts').disabled=!countsAvailable;
         const showCounts=state.mapCounts&&countsAvailable;
         $('#hemisphereTabs').hidden = Boolean(localSurfaces && (surfacePanel?.layer==='mesial' || ['dorsal','ventral'].includes(state.mapView)));
@@ -946,7 +947,7 @@
           if (!surfacePanel && !surfacePanelLoading) {
             surfacePanelLoading = true;
             host.textContent = 'Loading surfaces…';
-            import('./atlas_surface.mjs?v=4c6dc0d66e0d606f8c61e3e2b6adbeb6c69830ef1f1a36c42b40006aa1c5894f').then(({SurfacePanel}) => {
+            import('./atlas_surface.mjs?v=27313fa0419432553c6d633c3a8e26f3a3649f8c23e4ddb3aa374d94b562c74b').then(({SurfacePanel}) => {
               surfacePanel = new SurfacePanel(host, {...localSurfaces,groups:state.catalogue.maps.region_groups,brodmann:facetItems('anatomy').filter(row=>row.reference==='ATLAS:BRODMANN').sort((a,b)=>a.label.localeCompare(b.label,undefined,{numeric:true}))}, (view, hemisphere) => {
                 state.mapView=view;state.mapHemisphere=hemisphere;renderMap();
               }, (rows,groups) => {

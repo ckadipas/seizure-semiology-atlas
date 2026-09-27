@@ -419,7 +419,7 @@ export class SurfacePanel {
       try{this.markerNodes=JSON.parse(localStorage.getItem('atlas-brodmann-nodes')||'{}');}catch{this.markerNodes={};}
     }
     this.markers=[];
-    host.innerHTML=`<div class="surface-toolbar"><label><select class="surface-atlas" aria-label="Atlas"><option value="dkt40">DKT40 Atlas</option><option value="brodmann">Brodmann Labels</option></select></label><div class="surface-roi"><span>Cortical Region of Interest</span><details class="surface-regions"><summary>All Regions</summary><div class="surface-region-menu"><input type="search" aria-label="Search cortical regions" placeholder="Search regions…"><div class="surface-region-list"></div></div></details></div><button type="button" class="surface-clear">Clear selection</button><button type="button" class="surface-reset">Reset view</button></div><div class="surface-stage"><div class="surface-plates" hidden></div><canvas tabindex="0" aria-label="DKT40 cortical surface. Drag or use arrow keys to rotate; pinch, scroll, or use plus and minus to zoom. "></canvas><div class="surface-ba-labels"></div></div><div class="surface-status" role="status">Loading surfaces…</div><div class="surface-boundary"></div><div class="surface-help">Drag to rotate · pinch or scroll to zoom · tap regions to select</div>`;
+    host.innerHTML=`<div class="surface-toolbar"><label class="surface-brodmann-toggle"><input type="checkbox" class="surface-atlas">Show Brodmann labels</label><div class="surface-roi"><span>Cortical Region of Interest</span><details class="surface-regions"><summary>All Regions</summary><div class="surface-region-menu"><input type="search" aria-label="Search cortical regions" placeholder="Search regions…"><div class="surface-region-list"></div></div></details></div><button type="button" class="surface-clear">Clear selection</button><button type="button" class="surface-reset">Reset view</button></div><div class="surface-stage"><div class="surface-plates" hidden></div><canvas tabindex="0" aria-label="DKT40 cortical surface. Drag or use arrow keys to rotate; pinch, scroll, or use plus and minus to zoom. "></canvas><div class="surface-ba-labels"></div></div><div class="surface-status" role="status">Loading surfaces…</div><div class="surface-boundary"></div><div class="surface-help">Drag to rotate · pinch or scroll to zoom · tap regions to select</div>`;
     this.canvas=host.querySelector('canvas');this.status=host.querySelector('.surface-status');
     this.atlas=host.querySelector('.surface-atlas');this.layer='all';this.options=[];this.brodmannSelection=new Set();
     const labelControls=document.createElement('div');labelControls.className='surface-label-controls';
@@ -562,11 +562,11 @@ export class SurfacePanel {
   filterRegionMenu() {
     const query=this.regionSearch.value.toLowerCase().replace(/[^a-z0-9]/g,'');
     for(const label of this.host.querySelector('.surface-region-list').children)
-      label.hidden=(label.dataset.atlas||'dkt40')!==this.atlas.value||!label.textContent.toLowerCase().replace(/[^a-z0-9]/g,'').includes(query);
+      label.hidden=(label.dataset.atlas||'dkt40')!==(this.atlas.checked?'brodmann':'dkt40')||!label.textContent.toLowerCase().replace(/[^a-z0-9]/g,'').includes(query);
   }
   syncRegionMenu(anatomy) {
     if(anatomy)this.brodmannSelection=new Set(anatomy);
-    const brodmann=this.atlas.value==='brodmann',keys=new Set(this.selection.map(row=>row.index));
+    const brodmann=this.atlas.checked,keys=new Set(this.selection.map(row=>row.index));
     for(const checkbox of this.host.querySelectorAll('.surface-region-list input'))
       checkbox.checked=checkbox.dataset.anatomy?this.brodmannSelection.has(checkbox.dataset.anatomy):checkbox.dataset.group?this.groupSelection.includes(checkbox.dataset.group):keys.has(Number(checkbox.value));
     const count=brodmann?this.catalogue.brodmann.filter(row=>this.brodmannSelection.has(row.id)).length:this.selection.length+this.groupSelection.length;
@@ -710,7 +710,7 @@ export class SurfacePanel {
   }
   update(reset=false) {
     if(!this.view)return;
-    const brodmann=this.atlas.value==='brodmann';
+    const brodmann=this.atlas.checked;
     this.host.querySelector('.surface-ba-labels').hidden=!brodmann;
     this.host.querySelector('.surface-label-controls > span').hidden=!brodmann;
     this.host.querySelector('.surface-stage').classList.toggle('surface-edit-labels',brodmann&&this.editToggle?.checked);
