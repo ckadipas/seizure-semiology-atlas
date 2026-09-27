@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-projection="static" data-snapshot="9ed05b1c2801d85cccaa248842b90ef99d5b0c70ed84eb6873ba1992e1c830fb" data-label-editing="disabled">
+<html lang="en" data-projection="static" data-snapshot="3de0518cf26d4628925c31490ea2e664db62811059c263c5d526f2f190eb69e7" data-label-editing="disabled">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -946,7 +946,7 @@
           if (!surfacePanel && !surfacePanelLoading) {
             surfacePanelLoading = true;
             host.textContent = 'Loading surfaces…';
-            import('./atlas_surface.mjs?v=4aeec523019a94e8fe92054a7775aedf68c14ec543a93ff5422cef067979ed80').then(({SurfacePanel}) => {
+            import('./atlas_surface.mjs?v=4c6dc0d66e0d606f8c61e3e2b6adbeb6c69830ef1f1a36c42b40006aa1c5894f').then(({SurfacePanel}) => {
               surfacePanel = new SurfacePanel(host, {...localSurfaces,groups:state.catalogue.maps.region_groups,brodmann:facetItems('anatomy').filter(row=>row.reference==='ATLAS:BRODMANN').sort((a,b)=>a.label.localeCompare(b.label,undefined,{numeric:true}))}, (view, hemisphere) => {
                 state.mapView=view;state.mapHemisphere=hemisphere;renderMap();
               }, (rows,groups) => {
@@ -961,7 +961,7 @@
           }
           surfacePanel?.setView(state.mapView,state.mapHemisphere);
           surfacePanel?.setGroups(selected('region'));
-          surfacePanel?.setEvidenceHighlight(state.mapAnatomy);
+          surfacePanel?.setEvidenceHighlight(state.mapAnatomy,state.mapValues.filter(value=>value.scope==='EXACT').map(value=>value.id));
           surfacePanel?.syncRegionMenu(selected('anatomy'));
           surfacePanel?.setBrodmann(markers.map(marker=>({...marker,count:showCounts&&marker.anatomy_id?countFor('anatomy',marker.anatomy_id)??0:null})),new Set([...state.mapAnatomy,...selected('anatomy'),...(state.catalogue.maps.region_groups||[]).filter(group=>selected('region').includes(group.id)).flatMap(group=>group.anatomy_ids)]),{
             x:flipPlate?viewBox[2]-image.x-(image.width??image.w):image.x,y:image.y,
