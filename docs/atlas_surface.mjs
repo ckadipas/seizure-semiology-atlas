@@ -412,7 +412,7 @@ export class SurfacePanel {
   constructor(host, catalogue, onViewChange, onSelection, onClear, allowEditing=true) {
     this.allowEditing=allowEditing;
     this.host=host;this.catalogue=catalogue;this.palette=new Map(catalogue.palette.map(row=>[row.index,row]));
-    this.onViewChange=onViewChange;this.onSelection=onSelection;this.selection=[];this.groups=catalogue.groups||[];this.groupSelection=[];this.evidenceHighlight=new Set();
+    this.onViewChange=onViewChange;this.onSelection=onSelection;this.selection=[];this.groups=catalogue.groups||[];this.groupSelection=[];this.evidenceHighlight=new Set();this.linkedSelection=new Set();
     this.markerPositions={};this.markerNodes={};
     if(allowEditing){
       try{this.markerPositions=JSON.parse(localStorage.getItem('atlas-brodmann-positions')||'{}');}catch{this.markerPositions={};}
@@ -421,6 +421,11 @@ export class SurfacePanel {
     this.markers=[];
     host.innerHTML=`<div class="surface-toolbar"><label class="surface-brodmann-toggle"><input type="checkbox" class="surface-atlas">Show Brodmann labels</label><div class="surface-roi"><span>Cortical Region of Interest</span><details class="surface-regions"><summary>All Regions</summary><div class="surface-region-menu"><input type="search" aria-label="Search cortical regions" placeholder="Search regions…"><div class="surface-region-list"></div></div></details></div><button type="button" class="surface-clear">Clear selection</button><button type="button" class="surface-reset">Reset view</button></div><div class="surface-stage"><div class="surface-plates" hidden></div><canvas tabindex="0" aria-label="DKT40 cortical surface. Drag or use arrow keys to rotate; pinch, scroll, or use plus and minus to zoom. "></canvas><div class="surface-ba-labels"></div></div><div class="surface-status" role="status">Loading surfaces…</div><div class="surface-boundary"></div><div class="surface-help">Drag to rotate · pinch or scroll to zoom · tap regions to select</div>`;
     this.canvas=host.querySelector('canvas');this.status=host.querySelector('.surface-status');
+    this.atlasSelection=document.createElement('div');this.atlasSelection.className='brain-caption surface-atlas-selection';this.status.after(this.atlasSelection);
+    this.evidenceAnatomy=new Set();this.evidenceActive=false;this.evidenceValues=[];
+    this.evidenceNote=document.createElement('p');this.evidenceNote.className='surface-evidence-note';
+    this.evidenceNote.setAttribute('role','status');this.evidenceNote.hidden=true;
+    host.querySelector('.surface-stage').before(this.evidenceNote);
     this.atlas=host.querySelector('.surface-atlas');this.layer='all';this.options=[];this.brodmannSelection=new Set();
     const labelControls=document.createElement('div');labelControls.className='surface-label-controls';
     labelControls.innerHTML='<span>Approximate positions. Tap to select.'+(allowEditing?' To move or remove one, turn on Edit labels, then drag it or select it and choose Remove label.':'')+'</span>';
@@ -574,6 +579,11 @@ export class SurfacePanel {
     this.host.querySelector('.surface-regions summary').textContent=count?count+' selected':brodmann?'All Labels':'All Regions';
     this.regionSearch.setAttribute('aria-label',brodmann?'Search Brodmann labels':'Search cortical regions');
     this.regionSearch.placeholder=brodmann?'Search labels…':'Search regions…';
+    if(anatomy)this.updateSelection();
+  }
+  setLinkedSelection(ids) {
+    if(ids.size===this.linkedSelection.size&&[...ids].every(id=>this.linkedSelection.has(id)))return;
+    this.linkedSelection=new Set(ids);this.updateSelection();
   }
   setGroups(ids) {
     if(JSON.stringify(ids)===JSON.stringify(this.groupSelection))return;
@@ -586,19 +596,44 @@ export class SurfacePanel {
     this.updateSelection();
     if(notify)this.onSelection(rows.map(row=>({...row,...this.palette.get(row.index)})),this.groupSelection);
   }
-  setEvidenceHighlight(anatomyIds,exactAnatomyIds=[]) {
+  setEvidenceHighlight(anatomyIds,exactAnatomyIds=[],active=false,values=[]) {
     const exact=new Set(exactAnatomyIds);
     const next=new Set([...anatomyIds,...this.groups.filter(group=>exact.has(group.id)).flatMap(group=>group.anatomy_ids)]);
-    if(next.size===this.evidenceHighlight.size&&[...next].every(id=>this.evidenceHighlight.has(id)))return;
+    const requested=new Set(anatomyIds);
+    const unchanged=JSON.stringify(values)===JSON.stringify(this.evidenceValues)&&active===this.evidenceActive&&requested.size===this.evidenceAnatomy.size&&[...requested].every(id=>this.evidenceAnatomy.has(id));
+    this.evidenceAnatomy=requested;this.evidenceActive=active;this.evidenceValues=values;
+    if(unchanged&&next.size===this.evidenceHighlight.size&&[...next].every(id=>this.evidenceHighlight.has(id)))return;
     this.evidenceHighlight=next;this.updateSelection();
+  }
+  showEvidenceLabels() {
+    if(this.atlas.checked||!this.markers.some(marker=>this.evidenceAnatomy.has(marker.button.dataset.anatomy)))return;
+    this.atlas.checked=true;this.atlas.dispatchEvent(new Event('change'));
   }
   updateSelection() {
     const groups=this.groups.filter(group=>this.groupSelection.includes(group.id));
     const highlighted=this.options.filter(row=>this.evidenceHighlight.has(this.palette.get(row.index).anatomy_id));
     const members=new Set(groups.flatMap(group=>group.anatomy_ids));
-    const rows=[...this.selection,...highlighted,...this.options.filter(row=>members.has(this.palette.get(row.index).anatomy_id))];
+    const rows=[...this.selection,...highlighted,...this.options.filter(row=>members.has(this.palette.get(row.index).anatomy_id)||this.linkedSelection.has(this.palette.get(row.index).anatomy_id))];
     const selected=[...new Map(rows.map(row=>[row.index,row])).values()];
-    this.status.textContent=selected.length?'DKT40 · '+selected.map(row=>this.label(row)).join(' · '):'DKT40 · All Regions';
+    const mappedBrodmann=new Set(this.markers.map(marker=>marker.button.dataset.anatomy).filter(id=>this.evidenceAnatomy.has(id)));
+    const brodmann=(this.catalogue.brodmann||[]).filter(row=>this.brodmannSelection.has(row.id)||mappedBrodmann.has(row.id)||this.linkedSelection.has(row.id)).map(row=>[row.label,row.area_name].filter(Boolean).join(' — '));
+    const unavailable=this.evidenceActive&&!highlighted.length&&!mappedBrodmann.size;
+    const drawable=new Set([...this.options.map(row=>this.palette.get(row.index).anatomy_id),...mappedBrodmann]);
+    const mappedValues=this.evidenceValues.filter(value=>drawable.has(value.id)||value.scope==='EXACT'&&this.groups.some(group=>group.id===value.id&&group.anatomy_ids.some(id=>drawable.has(id))));
+    const contextual=value=>['COHORT_CONTEXT','COMPARATOR_CONTEXT'].includes(value.role);
+    const contextOnly=mappedValues.length>0&&mappedValues.every(contextual);
+    const note=unavailable?(this.evidenceAnatomy.size?'The reported anatomy has no corresponding region on this map. See the findings for the recorded anatomy.':'No mapped anatomy is recorded for this result.'):
+      contextOnly?'Highlights show study-population or comparison anatomy. They do not show a reported localization for this sign.':'';
+    this.evidenceNote.hidden=!note;this.evidenceNote.textContent=note;
+    const atlases=[{label:this.catalogue.title||'Cortical atlas',regions:selected.map(row=>this.label(row))},{label:'Brodmann',regions:brodmann}].filter(atlas=>atlas.regions.length);
+    this.atlasSelection.replaceChildren(...atlases.map(atlas=>{
+      const section=document.createElement('details'),heading=document.createElement('summary'),count=document.createElement('span'),names=document.createElement('div');
+      section.className='map-region-group';section.open=true;count.className='map-region-count';names.className='map-region-values';
+      heading.textContent=atlas.label;count.textContent=` · ${atlas.regions.length} ${atlas.regions.length===1?'area':'areas'}`;heading.append(count);
+      for(const label of atlas.regions){const chip=document.createElement('span');chip.className='map-chip';chip.textContent=label;names.append(chip);}
+      section.append(heading,names);return section;
+    }));
+    this.status.textContent=atlases.length?(unavailable?'Filter selection':'Selected atlas regions'):(this.evidenceActive?'':(this.catalogue.title||'Cortical atlas')+' · All Regions');
     this.renderer?.setSelection(selected,selected.length===1&&this.palette.get(selected[0].index).name==='insula');
   }
   setView(view,hemisphere) {this.view=view;this.hemisphere=hemisphere;this.update();}
@@ -609,7 +644,7 @@ export class SurfacePanel {
     this.renderer?.clearLabels(this.markers);
     this.markers=[];
     if(!this.canvas.hidden){
-      const hemispheres=['dorsal','ventral'].includes(this.view)?['left','right']:[this.hemisphere];
+      const hemispheres=this.hemisphere==='both'?['left','right']:[this.hemisphere];
       markers=views.flatMap(plate=>hemispheres.flatMap(hemisphere=>plate.markers
         .filter(marker=>(!plate.bilateral||marker.hemisphere===hemisphere)&&!(plate.view==='medial'&&marker.short_label==='8v'))
         .map(marker=>{
@@ -679,6 +714,7 @@ export class SurfacePanel {
       overlay.append(button);
     }
     this.selectLabelForEditing(this.markers.find(marker=>marker.nodeKey===editingKey));
+    this.updateSelection();
     this.layoutLabels();
     this.renderer?.draw();
   }
@@ -731,7 +767,7 @@ export class SurfacePanel {
       }
       return;
     }
-    const hemisphere=this.layer==='mesial'||['dorsal','ventral'].includes(this.view)?'both':this.hemisphere;
+    const hemisphere=this.layer==='mesial'?'both':this.hemisphere;
     this.renderer?.setView(this.view,hemisphere,this.layer,reset);
   }
 }

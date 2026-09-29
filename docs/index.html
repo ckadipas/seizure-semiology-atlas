@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-projection="static" data-snapshot="16429bef05072c1459b0ff3d10c5fcd7269613726a49ed66693ccd31553ea68b" data-label-editing="disabled">
+<html lang="en" data-projection="static" data-snapshot="3cdd33bce2540e851038fdd3d2cc11f20355bc012b92970a1a4f7ba5036c3db1" data-label-editing="disabled">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -48,9 +48,8 @@
     .guide-content h2 { margin:0 0 4px; color:var(--navy); font-size:.84rem; }
     .guide-content p { margin:0; color:#46566e; font-size:.8rem; line-height:1.55; }
     .guide-content strong { color:var(--navy); font-weight:650; }
-    .search-panel { padding: 12px; position: relative; z-index: 10; }
+    .search-panel { padding:0; margin-bottom:12px; border:0; border-radius:0; position: relative; z-index: 10; }
     .search-row { display: grid; grid-template-columns: minmax(220px,1fr) auto auto; gap: 9px; }
-    .search-row.source-mode { display: flex; justify-content: flex-end; }
     .search-wrap { position: relative; }
     .search-wrap input { width: 100%; min-height: 43px; border: 1px solid #cbd5e1; border-radius: 9px; padding: 9px 78px 9px 13px; color: var(--ink); background: #fff; }
     .search-wrap input:focus, select:focus, summary:focus-visible, button:focus-visible { outline: 3px solid rgba(14,157,176,.2); outline-offset: 1px; border-color: var(--teal); }
@@ -58,20 +57,21 @@
     .primary, .quiet { min-height: 43px; border-radius: 9px; padding: 8px 14px; font-weight: 750; }
     .primary { border: 1px solid var(--teal-d); color: #fff; background: var(--teal); }
     .quiet { border: 1px solid var(--line); color: var(--navy); background: #fff; }
-    .filter-disclosure { margin-top:12px; }
-    .filter-disclosure > summary { display:flex; align-items:center; gap:7px; width:max-content; list-style:none; color:var(--navy); cursor:pointer; font-size:.82rem; font-weight:700; }
-    .filter-disclosure > summary::-webkit-details-marker { display:none; }
-    .filter-disclosure > summary::before { content:'▸'; color:var(--teal-d); }
-    .filter-disclosure[open] > summary::before { content:'▾'; }
-    .filters { display: grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap: 8px; margin-top: 10px; }
+    .filter-disclosure { min-width:0; height:100%; display:flex; flex-direction:column; }
+    .filter-disclosure > h3 { margin:0; color:var(--navy); font-size:14px; font-weight:650; }
+    .filters { display:grid; flex:1; align-content:space-between; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px 8px; margin-top:6px; }
+    .filters > .facet summary { min-height:44px; font-size:14px; }
+    .sign-navigation { display:grid; align-content:start; gap:10px; min-width:0; position:relative; }
+    .sign-navigation > label { display:grid; gap:6px; color:var(--navy); font-size:14px; font-weight:650; }
+    .sign-navigation select { height:44px; width:100%; min-width:0; padding:0 10px; border:1px solid var(--line); border-radius:8px; background:#f8fafc; color:var(--navy); font-size:14px; font-weight:500; }
     .facet { position: relative; }
     .facet summary { list-style: none; min-height:40px; border: 1px solid var(--line); border-radius: 8px; background: #f8fafc; color: var(--navy); padding: 10px 26px 10px 10px; font-size: .82rem; font-weight: 650; cursor: pointer; }
     .facet summary::-webkit-details-marker { display: none; }
     .facet summary::after { content: "▾"; position: absolute; right: 11px; color: var(--muted); }
     .facet[open] summary { border-color: var(--teal); background: #f0fbfd; }
     .facet-menu { position: absolute; top: calc(100% + 5px); left: 0; z-index: 20; width: min(350px, 82vw); padding: 7px; background: #fff; border: 1px solid var(--line); border-radius: 9px; box-shadow: 0 12px 28px rgba(18,35,74,.14); }
-    .facet:nth-child(5n) .facet-menu { left:auto; right:0; }
-    .facet-menu [data-options] { max-height:260px; overflow:auto; overscroll-behavior:contain; }
+    .filters > .facet:nth-child(even) .facet-menu { left:auto; right:0; }
+    .facet-menu [data-options] { max-height:260px; overflow:auto;  }
     .facet-menu label { display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: start; padding: 7px 6px; border-radius: 6px; font-size: .8rem; line-height: 1.4; }
     .facet-menu label:hover { background: #f3f8fa; }
     .facet-menu input { margin-top: 2px; accent-color: var(--teal); }
@@ -86,12 +86,17 @@
     .region-filter[open] { flex-basis: 100%; }
     .region-filter-body { display:flex; flex-wrap:wrap; align-items:flex-end; gap:10px; padding-top:10px; }
     .region-filter .region-buttons { flex:1 1 520px; padding-bottom:0; }
-    .map-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+    .map-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom:12px; }
+    .hemisphere-control { display:flex; align-items:center; gap:7px; }
+    .hemisphere-control:has(#hemisphereTabs[hidden]) { display:none; }
     .map-title-row { display:flex; flex-wrap:wrap; align-items:center; gap:6px 18px; }
     .map-count-toggle { display:inline-flex; align-items:center; gap:6px; min-height:30px; font-size:.8rem; color:var(--muted); white-space:nowrap; cursor:pointer; }
     .map-count-toggle:has(input:disabled) { opacity:.45; cursor:default; }
     .map-count-toggle input { margin:0; accent-color:var(--teal); }
     .active-filters { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+    .active-filters:empty, .brain-caption:empty { display:none; }
+    .selection-context { margin:0 0 14px; }
+    .selection-context:has(.active-filters:empty) { display:none; }
     .active-filter { border: 1px solid #b9dfe4; border-radius: 999px; background: #eef9fa; color: #0a6875; padding: 3px 9px; font-size: .72rem; }
     .map-panel.browse-section { margin:16px 0; padding:0; border-left:1px solid var(--line); overflow:hidden; --group-color:var(--navy); }
     .map-panel > summary { border-radius:11px; padding:11px 15px; }
@@ -112,11 +117,21 @@
     .map-splitter:focus-visible { outline:2px solid var(--teal); outline-offset:-2px; }
     .map-layout.resizing { user-select:none; cursor:col-resize; }
     #mapEvidence { min-width:0; }
-    #mapEvidence .results-panel { margin:0; max-height:780px; max-height:85dvh; overflow:auto; overscroll-behavior:contain; }
+    #mapEvidence .results-panel { margin:0; max-height:780px; max-height:85dvh; overflow:auto;  }
     .brain-map { min-height: 230px; display: grid; place-items: center; border-radius: 10px; background: #fbfcfe; border: 1px solid var(--line2); overflow: hidden; }
     .brain-map svg { display: block; width: 100%; max-height: 490px; }
-    .brain-map.surface-host { display:block; padding:10px; background:#fff; }
-    .surface-toolbar { display:flex; gap:8px; flex-wrap:wrap; align-items:end; font-size:.75rem; }
+    .brain-map.surface-host { display:block; place-items:stretch; padding:10px; background:#fff; container-type:inline-size; }
+    .surface-toolbar { display:flex; width:100%; gap:8px; flex-wrap:wrap; align-items:end; font-size:.75rem; }
+    .surface-actions { display:flex; gap:8px; flex-wrap:nowrap; }
+    .surface-actions button { white-space:nowrap; }
+    .anatomy-controls { display:flex; flex-wrap:wrap; align-items:end; gap:8px; flex:1 1 350px; min-width:0; text-align:left; }
+    .anatomy-controls .facet { position:relative; flex:1 1 170px; min-width:0; }
+    .anatomy-controls .facet-menu { left:auto; right:0; width:min(390px,calc(100cqw - 10px)); }
+    .anatomy-controls .anatomy-modes { display:grid; grid-template-columns:1fr; }
+    .anatomy-controls .facet-menu .anatomy-modes label { display:grid; grid-template-columns:1fr; padding:3px 0 7px; }
+    .anatomy-controls select { width:100%; min-height:38px; min-width:0; border:1px solid var(--line); border-radius:6px; background:white; color:var(--ink); }
+    #anatomyMatch { flex:1 1 175px; font-size:.75rem; padding:7px; }
+    .anatomy-controls .facet-menu label { display:grid; grid-template-columns:auto 1fr; }
     .surface-toolbar label { display:grid; gap:4px; flex:1 1 170px; min-width:0; }
     .surface-toolbar .surface-brodmann-toggle { display:flex; align-items:center; gap:8px; min-height:44px; font-size:.85rem; font-weight:600; cursor:pointer; }
     .surface-brodmann-toggle input { width:20px; height:20px; margin:0; flex:none; accent-color:var(--teal); cursor:pointer; }
@@ -146,21 +161,37 @@
     .surface-toolbar button,.surface-boundary button { padding:7px 10px; border:1px solid var(--line); border-radius:6px; background:#fff; }
     .surface-host canvas { display:block; width:100%; height:clamp(290px,46vh,510px); touch-action:none; user-select:none; cursor:grab; }
     .surface-host canvas:active { cursor:grabbing; }
-    .surface-host canvas:focus-visible { outline:2px solid var(--navy); outline-offset:-2px; }
+    .surface-host canvas:focus-visible { outline:2px solid var(--teal); outline-offset:-2px; }
+    .surface-host[data-pointer-focus] canvas:focus { outline:none; }
     .surface-host [hidden] { display:none; }
     .surface-plates img { display:block; width:100%; height:clamp(290px,46vh,510px); object-fit:contain; }
     .surface-status { color:var(--navy); font-weight:650; font-size:.85rem; padding-top:7px; }
+    .surface-evidence-note { color:var(--navy); background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:10px; font-size:.85rem; text-align:left; }
     .surface-help { font-size:.72rem; color:var(--muted); margin-top:5px; }
     .surface-boundary { display:flex; flex-wrap:wrap; gap:6px; }
     .brain-figure { min-width:0; }
-    .brain-caption { display:flex; flex-wrap:wrap; gap:6px; padding-top:10px; color:var(--navy); font-size:.85rem; }
+    .map-outputs { display:grid; gap:8px; max-height:min(360px,40dvh); overflow:auto;  scrollbar-gutter:stable; margin-top:10px; }
+    #mapOutputs:not(:has(.map-region-group)), #atlasOutputs:not(:has(.map-region-group)) .map-output-actions { display:none; }
+    .map-output-tools { position:sticky; top:0; z-index:1; display:flex; align-items:center; justify-content:flex-end; flex-wrap:wrap; gap:6px; padding-bottom:6px; background:var(--panel); }
+    .map-output-actions { display:flex; gap:6px; margin-left:auto; }
+    .map-output-title { flex:1 1 160px; margin:0; padding:0; color:var(--navy); font-size:.8rem; font-weight:650; text-align:left; }
+    #mapSelection .map-context:only-child > h3 { display:none; }
+    .map-output-tools .quiet { min-height:40px; padding:6px 10px; font-size:.76rem; }
+    .map-context { display:grid; gap:8px; min-width:0; }
+    .map-context > h3 { margin:5px 0 0; color:var(--navy); font-size:.8rem; }
+    .map-outputs:focus-visible { outline:2px solid var(--teal); outline-offset:2px; }
+    .brain-caption { display:grid; grid-template-columns:minmax(0,1fr); align-content:start; gap:8px; min-width:0; color:var(--navy); font-size:.85rem; }
     .map-note { padding: 14px; border: 1px solid var(--line); border-radius: 9px; color: var(--muted); font-size: .79rem; line-height: 1.5; }
     .map-note strong { display: block; color: var(--navy); margin-bottom: 6px; }
     .map-selection { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-    .map-region-group { margin-top: 8px; }
-    .map-region-group > strong { display: block; margin-bottom: 4px; font-size: .72rem; color: #526075; }
-    .map-region-values { display: flex; flex-wrap: wrap; gap: 5px; }
-    .map-chip { border-radius: 999px; background: #eef9fa; color: #0a6875; padding: 4px 9px; font-size: .72rem; }
+    .map-region-group { min-width:0; border:1px solid var(--line); border-radius:8px; background:#fbfdfe; }
+    .map-region-group > summary { min-height:44px; list-style:none; padding:9px 10px; color:var(--navy); font-size:.78rem; font-weight:650; cursor:pointer; overflow-wrap:anywhere; }
+    .map-region-group > summary::before { content:"▸"; display:inline-block; width:1em; color:var(--teal-d); }
+    .map-region-group[open] > summary::before { content:"▾"; }
+    .map-region-count { color:var(--muted); font-weight:400; white-space:nowrap; }
+    .map-region-context > h4 { margin:0 10px 6px; color:var(--muted); font-size:.72rem; font-weight:600; }
+    .map-region-values { display:flex; flex-wrap:wrap; gap:5px; padding:0 10px 10px; }
+    .map-chip { max-width:100%; overflow-wrap:anywhere; border-radius:999px; background:#eef9fa; color:#0a6875; padding:4px 9px; font-size:.72rem; }
     .map-view { display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: .75rem; }
     .map-view select { border: 1px solid var(--line); border-radius: 7px; background: #fff; color: var(--navy); padding: 6px 28px 6px 8px; }
     .map-marker { cursor: pointer; }
@@ -172,7 +203,8 @@
     .map-marker .count-badge { fill: #e5f5f7; stroke: #a8d6dc; stroke-width: 1; }
     .map-marker .count-label { fill: #075f6a; font-size: 9px; }
     .results-panel { padding: 15px; }
-    .result-tools { display: flex; align-items: center; gap: 8px; }
+    .result-tools { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-left:auto; }
+    .result-tools .quiet { min-height:36px; padding:6px 10px; font-size:.8rem; }
     .result-tools label { color: var(--muted); font-size: .75rem; }
     .result-tools select { border: 1px solid var(--line); border-radius: 7px; background: #fff; color: var(--navy); padding: 6px 28px 6px 8px; font-size: .76rem; }
     .result { border: 1px solid var(--line); border-radius: 10px; background: #fff; overflow: hidden; }
@@ -263,7 +295,7 @@
     .paper-disclosure { margin-top:7px; border-top:1px solid var(--line); }
     .paper-disclosure > summary { margin:0 -5px; padding:7px 5px; color:var(--teal-d); cursor:pointer; font-size:.82rem; font-weight:700; }
     .paper-disclosure[open] > summary { background:#eef7f9; }
-    .paper-reading { width:100%; max-height:72vh; overflow:auto; overscroll-behavior:contain; scrollbar-gutter:stable; padding:8px 12px 8px 0; }
+    .paper-reading { width:100%; max-height:72vh; overflow:auto;  scrollbar-gutter:stable; padding:8px 12px 8px 0; }
     .paper-reading:focus-visible { outline:2px solid var(--teal); outline-offset:2px; }
     @media print { .paper-reading { max-height:none; overflow:visible; } }
     .paper-section > summary { color:var(--navy); font-size:.8rem; cursor:pointer; line-height:1.4; }
@@ -361,10 +393,12 @@
       .map-controls .segmented button { flex:1; min-height:44px; }
       .surface-toolbar { display:grid; grid-template-columns:1fr 1fr; }
       .surface-toolbar > label,.surface-roi { grid-column:1 / -1; }
+      .anatomy-controls,.surface-actions { grid-column:1 / -1; }
+      .surface-actions button { flex:1; }
       .surface-regions summary,.surface-toolbar button { min-height:44px; }
       .surface-region-menu input[type=search] { font-size:16px; }
       .surface-region-menu { width:100%; box-sizing:border-box; }
-      .surface-region-list { max-height:240px; max-height:32dvh; overscroll-behavior:contain; }
+      .surface-region-list { max-height:240px; max-height:32dvh;  }
       .surface-region-list label { min-height:44px; padding:4px; }
       .surface-region-list input,.surface-label-controls input { width:20px; height:20px; }
       .surface-label-controls { min-height:44px; flex-wrap:wrap; }
@@ -386,45 +420,32 @@
     <details id="pageGuide" class="panel page-guide">
       <summary>How to use this page</summary>
       <div class="guide-content">
-        <section><h2>Find a sign or paper</h2><p>Search for a symptom, brain area or paper. Open <strong>Filters</strong> to narrow the results by timing, side, classification or study details. The filters apply to both tabs. <strong>Clear filters</strong> starts over.</p></section>
-        <section><h2>Explore the brain</h2><p>Choose <strong>DKT40 Atlas</strong> to select colored brain regions, or <strong>Brodmann Labels</strong> to select numbered areas. Drag to turn the brain and pinch or scroll to zoom. The view buttons and <strong>Left / Right</strong> change what you see; use <strong>Laterality</strong> to filter the side reported in a study.</p></section>
-        <section><h2>Select and clear areas</h2><p>Tap an area on the map, or search and check names in the adjacent menu. Click outside the menu to close it. You can combine areas to find reported findings linked to each selection. Selections stay active when you switch atlases. <strong>Clear selection</strong> removes all map selections; <strong>Reset view</strong> only resets the view.</p></section>
-        <section><h2>Read the results</h2><p><strong>Signs</strong> groups findings by clinical dictionary term and includes the reported statistics and paper weights. <strong>Sources</strong> collects the results from each paper. Use <strong>Organize by</strong> to change the grouping. <strong>Anatomical overlap</strong> identifies correspondence with a selected map area; the study’s reported localization and statistics retain their original anatomical scope.</p></section>
-        <section><h2>Open a paper’s findings</h2><p>Open a sign, then a paper, to inspect its findings, measurements, weights and source passages. Publication links open the article.</p></section>
+        <section><h2>Find a sign or paper</h2><p>Choose <strong>Signs</strong> or <strong>Sources</strong>, then use the search above the results. <strong>Filter evidence</strong> narrows both views by semiology, phase, laterality or evidence class. <strong>Organize signs by</strong> shows Region, ILAE or Lüders banners, with signs and their papers underneath. Within Region browsing, choose A–Z signs or ILAE/Lüders subcategories. Select anatomy above the brain to narrow the results. <strong>Clear filters</strong> starts over.</p></section>
+        <section><h2>Explore the brain</h2><p>Select colored brain regions, or turn on <strong>Show Brodmann labels</strong> to select numbered areas. Drag to turn the brain and pinch or scroll to zoom. The view buttons and <strong>LH / RH / Both</strong> change what you see; use the <strong>Laterality</strong> filter to select the side reported in a study.</p></section>
+        <section><h2>Select and clear areas</h2><p>Tap an area on the map, or use <strong>Select anatomy</strong> above it to find lobes, named anatomy and atlas areas. <strong>Any selected area</strong> includes evidence linked to at least one choice; <strong>All selected areas</strong> requires every choice. Both use the same recorded anatomy links. Selections stay active when you show or hide Brodmann labels. <strong>Clear selection</strong> removes anatomy selections; <strong>Reset view</strong> resets the view.</p></section>
+        <section><h2>Read the results</h2><p><strong>Signs</strong> groups findings by clinical dictionary term and includes the reported statistics and paper weights. <strong>Sources</strong> collects the results from each paper. Use <strong>Group signs</strong> to change the grouping, and <strong>Sort signs</strong> for A–Z, publication count or evidence-class order. <strong>Anatomical overlap</strong> identifies correspondence with a selected map area; the study’s reported localization and statistics retain their original anatomical scope.</p></section>
+        <section><h2>Open a paper’s findings</h2><p>Open a sign, then a paper, to read its reported findings and anatomy, measurements, weights and supporting passages. The filters above the results also apply to opened signs and papers. Publication links open the article.</p></section>
         <section><h2>Understand counts and weights</h2><p><strong>Show counts</strong> adds the number of matching results to Brodmann labels. Paper weights retain the recorded appraisal and its calculation. <strong>Weights &amp; statistics explained</strong> describes these measures and their limitations.</p></section>
       </div>
     </details>
-    <section class="panel search-panel" aria-label="Search and filters">
-      <form id="searchForm" class="search-row">
-        <div class="search-wrap">
-          <label for="search" hidden>Search findings</label>
-          <input id="search" type="search" autocomplete="off" placeholder="Search a sign, source term, anatomy or citation" disabled>
-          <button id="clearSearch" class="clear-search" type="button" hidden disabled>Clear</button>
-        </div>
-        <button class="primary" type="submit" disabled>Search</button>
-        <button id="clearAll" class="quiet" type="button" disabled>Clear filters</button>
-      </form>
-      <details class="filter-disclosure">
-        <summary>Filters</summary>
-        <div id="filters" class="filters"></div>
-      </details>
-      <div id="activeFilters" class="active-filters" aria-live="polite"></div>
-    </section>
-
     <details id="mapPanel" class="panel map-panel browse-section" open>
       <summary><span class="browse-name">Interactive 3D cortical map</span><label class="map-count-toggle" hidden><input id="mapCounts" type="checkbox"> Show counts</label></summary>
       <div class="map-panel-body">
         <div class="section-head">
           <div>
-            <p>Select a numbered area to filter the evidence.</p>
-          </div>
-          <div class="map-controls" hidden>
-            <div id="mapViewWrap" hidden><div id="surfaceTabs" class="segmented" role="tablist" aria-label="Surface view"></div><select id="mapView" hidden aria-label="Surface"></select></div>
-            <div id="hemisphereTabs" class="segmented" role="group" aria-label="Hemisphere" title="Illustration orientation; laterality is an independent filter."><button type="button" data-hemisphere="left" aria-pressed="true">Left</button><button type="button" data-hemisphere="right" aria-pressed="false">Right</button></div><select id="mapHemisphere" hidden aria-label="Hemisphere"><option value="left">Left</option><option value="right">Right</option></select>
+            <p>Select a colored region, or show Brodmann labels to select a numbered area.</p>
           </div>
         </div>
         <div class="map-layout">
-          <div class="brain-figure" id="brainPane"><div id="brainMap" class="brain-map" aria-label="Cortical map"></div><div id="mapSelection" class="brain-caption" aria-live="polite"></div></div>
+          <div class="brain-figure" id="brainPane">
+            <div class="map-controls" hidden>
+              <div id="mapViewWrap" hidden><div id="surfaceTabs" class="segmented" role="tablist" aria-label="Surface view"></div><select id="mapView" hidden aria-label="Surface"></select></div>
+              <div class="hemisphere-control"><div id="hemisphereTabs" class="segmented" role="group" aria-label="Viewing hemisphere" title="Changes the view; use Laterality to filter reported evidence."><button type="button" data-hemisphere="left" aria-pressed="true" aria-label="Left hemisphere" title="Left hemisphere">LH</button><button type="button" data-hemisphere="right" aria-pressed="false" aria-label="Right hemisphere" title="Right hemisphere">RH</button><button type="button" data-hemisphere="both" aria-pressed="false" aria-label="Both hemispheres" title="Both hemispheres">Both</button></div></div><select id="mapHemisphere" hidden aria-label="Viewing hemisphere"><option value="left">Left</option><option value="right">Right</option><option value="both">Both</option></select>
+            </div>
+            <div id="anatomyControls" class="anatomy-controls"></div>
+            <div id="brainMap" class="brain-map" aria-label="Cortical map"></div>
+            <div id="mapOutputs" class="map-outputs" role="region" aria-label="Anatomy relationships" tabindex="0" aria-live="polite"><div class="map-output-tools" role="group" aria-label="Anatomy section controls"><h3 class="map-output-title">Anatomy relationships</h3><div class="map-output-actions"><button type="button" class="quiet" data-map-expand="true" aria-label="Expand all anatomy sections">Expand all</button><button type="button" class="quiet" data-map-expand="false" aria-label="Collapse all anatomy sections">Collapse all</button></div></div><div id="mapSelection" class="brain-caption"></div></div>
+          </div>
           <div id="mapSplitter" class="map-splitter" role="separator" tabindex="0" aria-label="Resize brain and evidence panels" aria-orientation="vertical" aria-controls="brainPane mapEvidence" aria-valuemin="25" aria-valuemax="70" aria-valuenow="57" title="Drag to resize. Use left and right arrows; double-click to reset."></div>
           <div id="mapEvidence"></div>
         </div>
@@ -436,6 +457,23 @@
         <button type="button" role="tab" id="tab-browse" data-view="browse" aria-selected="true" aria-controls="results">Signs</button>
         <button type="button" role="tab" id="tab-sources" data-view="sources" aria-selected="false" aria-controls="results">Sources</button>
       </div>
+      <section id="evidenceControls" class="search-panel" aria-label="Search and filters">
+        <form id="searchForm" class="search-row">
+          <div class="search-wrap">
+            <label for="search" hidden>Search findings</label>
+            <input id="search" type="search" data-view="browse" autocomplete="off" placeholder="Search a sign, source term or anatomy" disabled>
+            <button id="clearSearch" class="clear-search" type="button" hidden disabled>Clear</button>
+          </div>
+          <button class="primary" type="submit" disabled>Search</button>
+          <button id="clearAll" class="quiet" type="button" disabled>Clear filters</button>
+        </form>
+        <div id="evidenceFilters" class="filter-disclosure">
+          <h3>Filter evidence</h3>
+          <div id="filters" class="filters"></div>
+        </div>
+      </section>
+      <div id="signNavigation" class="sign-navigation" aria-label="Sign organization" hidden></div>
+      <div class="selection-context"><div id="activeFilters" class="active-filters" aria-live="polite"></div></div>
       <div id="resultsToolbar" class="results-toolbar" hidden>
         <div class="browse-controls" id="browseControls">
           <label for="groupBy">Organize signs by <select id="groupBy"></select></label>
@@ -446,10 +484,8 @@
           <details id="regionFilter" class="region-filter" hidden><summary>Filter by brain region</summary><div id="regionFilterBody" class="region-filter-body"><div id="regionButtons" class="region-buttons"></div></div></details>
         </div>
       </div>
-      <div class="section-head">
-        <div><h2 id="viewHeading">Signs</h2><p id="resultStatus" aria-live="polite">Loading…</p></div>
-        <div class="result-tools"><button id="expandGroups" type="button" class="quiet">Expand groups</button><button id="collapseGroups" type="button" class="quiet">Collapse all</button></div>
-      </div>
+      <p id="resultStatus" aria-live="polite">Loading…</p>
+      <div id="resultActions" class="result-tools"><button id="expandGroups" type="button" class="quiet">Expand signs</button><button id="collapseGroups" type="button" class="quiet">Collapse all</button></div>
       <div id="viewNote" class="context-note"></div>
       <div id="results" class="loading" role="tabpanel" aria-labelledby="tab-browse">Loading evidence…</div>
     </section>
@@ -477,8 +513,8 @@
     }
   </script>
   <script type="module">
-    import { createEvidenceReview } from './atlas_evidence.mjs?v=e589005a42a809669f73b9d9155705aded9e4b9239d935b6a34f44c9bdac22bf';
-    import { atlasData, atlasGroups, atlasClassificationGroups, atlasCounts, atlasWeights, atlasWeightPresentation, atlasAppraisalLabel, atlasStatisticGroups, atlasSourceAnatomyMarkup } from './atlas_projection.mjs?v=e6956bc6cbcd09e9956732fc088002e2e2c63bb025c09298ee95071b3021f381';
+    import { createEvidenceReview } from './atlas_evidence.mjs?v=78397ce54963f7ccb18d4d49046078b6af65381d7ac1cf17bc62e3a304eb6159';
+    import { atlasData, atlasPivot, atlasGroups, atlasRegionRank, atlasClassificationGroups, atlasCounts, atlasWeights, atlasWeightPresentation, atlasAppraisalLabel, atlasStatisticGroups, atlasSourceAnatomyMarkup } from './atlas_projection.mjs?v=9da78b3c54dd5a104938f8163da1cca40f1c1a8fdfc6cfe4b636a5120eecddac';
     (() => {
       "use strict";
       if (location.protocol === 'file:') return;
@@ -517,8 +553,8 @@
         requestController: null,
         requestTimer: null,
         filters: {},
-        surfaceAnatomy: [],
         query: "",
+        browseBy: "region",
         groupBy: "region",
         regionSort: "atlas",
         within: "",
@@ -528,12 +564,14 @@
         mapView: "",
         mapHemisphere: "left",
         mapCounts: false,
-        anatomyReference: "named",
+        anatomyReference: "all",
+        anatomyMatch: "any",
         optionSearch: {},
         mapAnatomy: new Set(),
         mapValues: [],
         mapRegions: new Set(),
         mapResultIds: new Set(),
+        mapRevealEvidence: false,
       };
 
       const $ = (selector) => document.querySelector(selector);
@@ -617,7 +655,8 @@
       const facet = id => state.catalogue.facets.find(item => item.id === id);
       const facetItems = id => catalogueItems.get(id) || [];
       const selected = id => state.filters[id] || [];
-      const itemLabel = (facetId, itemId) => catalogueLabels.get(facetId)?.get(itemId) || "Selected value";
+      const evidenceClassLabel = id => id === 'UNCLASSIFIED' ? 'Unclassified' : 'Class ' + id;
+      const itemLabel = (facetId, itemId) => facetId === 'evidence_class' ? evidenceClassLabel(itemId) : catalogueLabels.get(facetId)?.get(itemId) || "Selected value";
 
       function requestContext() {
         state.requestGeneration += 1;
@@ -716,6 +755,7 @@
           const scope = facetId === 'anatomy' ? value.scope : '';
           const label = scope === 'OVERLAP' ? (context ? context + ' — overlapping regions' : 'Overlapping atlas regions')
             : scope === 'CONTAINMENT' ? (context ? context + ' — broader regions' : 'Broader regions')
+            : scope === 'WITHIN' ? 'Within selected region'
             : context || (facetId === 'anatomy' ? (scope === 'EXACT' ? 'Reported anatomy' : 'Selected regions') : 'Lateralization');
           if (!groups.has(label)) groups.set(label, []);
           groups.get(label).push(value);
@@ -730,11 +770,31 @@
           ? value.label + ' — ' + description : value.label;
       }
 
-      function mapSelectionMarkup(values) {
-        return facetValueGroups('anatomy', values).map(group =>
-          '<div class="map-region-group"><strong>' + h(group.label) + '</strong><div class="map-region-values">' +
-          group.values.map(value => '<span class="map-chip">' + h(anatomyValueLabel(value)) + '</span>').join('') +
-          '</div></div>').join('');
+      function mapSelectionMarkup(values, selection=false) {
+        const groups = facetValueGroups('anatomy', values);
+        if (!groups.length) return '';
+        const scopeOrder = {EXACT:0, WITHIN:0, OVERLAP:1, CONTAINMENT:2};
+        const titles = selection
+          ? ['Selected anatomy and contained areas','Overlapping regions','Broader regions']
+          : ['Reported anatomy','Overlapping regions','Broader regions'];
+        const sections = titles.map((title, index) => {
+          const members = groups.filter(group => (scopeOrder[group.values[0]?.scope] ?? 0) === index);
+          if (!members.length) return '';
+          const contents = members.map(group => {
+            const value = group.values[0];
+            const context = value.role === 'COHORT_CONTEXT' ? 'Study population'
+              : value.role === 'COMPARATOR_CONTEXT' ? 'Comparison group' : '';
+            const label = context || (selection
+              ? (value.scope === 'EXACT' ? 'Matches selected anatomy' : group.label)
+              : ['EXACT','OVERLAP','CONTAINMENT'].includes(value.scope) ? 'Findings' : group.label);
+            const showLabel = Boolean(context) || members.length > 1 || !['EXACT','OVERLAP','CONTAINMENT'].includes(value.scope);
+            return '<div class="map-region-context">' + (showLabel ? '<h4>' + h(label) + '</h4>' : '')
+              + '<div class="map-region-values">' + group.values.map(value => '<span class="map-chip">' + h(anatomyValueLabel(value)) + '</span>').join('') + '</div></div>';
+          }).join('');
+          const count = mergedFacetValues(members.flatMap(group => group.values)).length;
+          return '<details class="map-region-group" open><summary>' + h(title) + '<span class="map-region-count"> · ' + quantity(count, 'area') + '</span></summary>' + contents + '</details>';
+        }).join('');
+        return '<section class="map-context"><h3>' + (selection ? 'Your anatomy selection' : 'From the opened sign or paper') + '</h3>' + sections + '</section>';
       }
 
       function countFor(facetId, itemId) {
@@ -782,45 +842,80 @@
       function renderChoiceList(facetId) {
         const query = (state.optionSearch[facetId] || "").toLocaleLowerCase();
         let options = facetItems(facetId).filter(item => (item.linked_count > 0 || selected(facetId).includes(item.id)) &&
-          (!classificationKinds[facetId] || classificationKinds[facetId].has(item.kind)) &&
-          (facetId !== "anatomy" || item.reference === state.anatomyReference));
-        if (facetId === "anatomy" && selected("region").length && !selected("anatomy").length && !query)
-          options = options.filter(item => countFor(facetId, item.id) > 0);
+          (!classificationKinds[facetId] || classificationKinds[facetId].has(item.kind)));
+        if (facetId === 'evidence_class' && evidenceReview) options = evidenceReview.getEvidenceClasses().map(id=>({id,label:evidenceClassLabel(id)}));
         options = options.filter(item => item.label.toLocaleLowerCase().includes(query));
         if (classificationKinds[facetId]) options = classificationChoices(facetId, options);
         else if (facetId === 'phase') options.sort((a,b) => a.ordinal-b.ordinal || alphabetical(a,b));
         else if (facetId === 'evidence_class') {
           const order = ['I','II','III','UNCLASSIFIED'];
-          options.sort((a,b) => order.indexOf(a.label)-order.indexOf(b.label));
+          options.sort((a,b) => order.indexOf(a.id)-order.indexOf(b.id));
         } else options.sort(alphabetical);
         options = choicesByLabel(options);
-        const reference = state.catalogue.references?.find(item => item.id === state.anatomyReference);
-        const hasReferenceLinks = facetItems("anatomy").some(item => item.reference === state.anatomyReference && item.linked_count > 0);
-        const empty = facetId === "anatomy" && !hasReferenceLinks
-          ? `Finding links for ${reference?.label || "this atlas"} are not yet available.`
-          : "No matching choices. Change the search or clear the current filters.";
         $(`[data-options="${facetId}"]`).innerHTML = options.length ? options.map((item,index) =>
           `${item.section && item.section !== options[index-1]?.section ? `<div class="choice-section">${h(item.section)}</div>` : ''}<label><input type="checkbox" value="${h(item.id)}" data-items="${h(JSON.stringify(item.ids))}" ${item.ids.some(id=>selected(facetId).includes(id)) ? "checked" : ""}>
             <span>${h(facetId==='evidence_class'&&item.label==='UNCLASSIFIED'?'Not classified':facetId==='phase'?(phaseChoiceLabels[item.id]||item.label):item.label)}</span></label>`).join("")
-          : `<p class="choice-hint">${h(empty)}</p>`;
+          : '<p class="choice-hint">No matching choices. Change the search or clear the current filters.</p>';
+        if (facetId === 'evidence_class') $(`[data-options="${facetId}"]`).insertAdjacentHTML('afterbegin', `<label><input type="checkbox" data-clear-facet="evidence_class" ${selected(facetId).length?'':'checked'}><span>All classes</span></label>`);
       }
 
       function renderFilters() {
-        const open = new Set([...$("#filters").querySelectorAll("details[open]")].map(element => element.dataset.facet));
+        const open = new Set([...$("#lowerPanel").querySelectorAll("details[data-facet][open]")].map(element => element.dataset.facet));
         const renderFacet = definition => `<details class="facet" data-facet="${h(definition.id)}" ${open.has(definition.id) ? "open" : ""}>
-          <summary>${h(definition.id === "anatomy" ? "Anatomy" : definition.label)}${selected(definition.id).length ? ` (${new Set(selected(definition.id).map(id=>itemLabel(definition.id,id))).size})` : ""}</summary>
-          <div class="facet-menu">${definition.id === 'anatomy' ? `<label class="atlas-choice">Atlas<select id="anatomyReference">${(state.catalogue.references || []).map(item => `<option value="${h(item.id)}" ${item.id === state.anatomyReference ? "selected" : ""}>${h(item.label)}</option>`).join('')}</select></label>` : ''}
+          <summary>${h(definition.label)}${selected(definition.id).length ? ` (${new Set(selected(definition.id).map(id=>itemLabel(definition.id,id))).size})` : ""}</summary>
+          <div class="facet-menu">
             ${facetItems(definition.id).length > 12 ? `<input class="choice-search" type="search" data-choice-search="${definition.id}" aria-label="Find ${h(definition.label)}" placeholder="Type to find…" value="${h(state.optionSearch[definition.id] || "")}">` : ''}
             <div data-options="${definition.id}"></div></div></details>`;
-        const order = ['anatomy','sign','ilae','luders','phase','laterality','evidence_class','evidence','source','metric'];
+        const order = ['sign','phase','laterality','evidence_class'];
         $("#filters").innerHTML = order.map(id => facet(id)).filter(Boolean).map(renderFacet).join('');
-        open.forEach(id => { if (facet(id)) renderChoiceList(id); });
+        $('#signNavigation').innerHTML = `<label for="browseBy">Organize signs by<select id="browseBy">${[['region','Region'],['','All signs'],['ilae','ILAE'],['luders','Lüders']].map(([id,label])=>`<option value="${id}" ${state.browseBy===id?'selected':''}>${label}</option>`).join('')}</select></label>`;
+        $('#signNavigation').hidden=state.view==='sources';
+        open.forEach(id => { if ($(`[data-options="${id}"]`)) renderChoiceList(id); });
+        renderAnatomyControls();
         renderActiveFilters();
+      }
+
+      function anatomySelections() {
+        return ['region','anatomy'].flatMap(facetId =>
+          choicesByLabel(selected(facetId).map(id=>({id,label:itemLabel(facetId,id),section:facetId==='anatomy'?facetItems(facetId).find(item=>item.id===id)?.reference:''})))
+            .map(choice=>({...choice,facetId})));
+      }
+
+      function renderAnatomyControls() {
+        const open = $('#anatomyMenu')?.open;
+        const count = anatomySelections().length;
+        $('#anatomyControls').innerHTML = `<details id="anatomyMenu" class="facet" ${open?'open':''}>
+          <summary>Select anatomy${count?` (${count})`:''}</summary>
+          <div class="facet-menu"><div class="anatomy-modes">
+            <label for="anatomyReference">Browse<select id="anatomyReference">${[{id:'all',label:'All anatomy'},{id:'region',label:'Regions / lobes'},...(state.catalogue.references||[])].map(item=>`<option value="${h(item.id)}" ${state.anatomyReference===item.id?'selected':''}>${h(item.label)}</option>`).join('')}</select></label>
+          </div><input id="anatomySearch" class="choice-search" type="search" aria-label="Find anatomy" placeholder="Find a region or anatomy…" value="${h(state.optionSearch.anatomy||'')}">
+          <div data-options="anatomy-selection"></div></div></details>
+          <select id="anatomyMatch" aria-label="Match selected anatomy"><option value="any" ${state.anatomyMatch==='any'?'selected':''}>Match any selected area</option><option value="all" ${state.anatomyMatch==='all'?'selected':''}>Match all selected areas</option></select>`;
+        if(open)renderAnatomyChoices();
+      }
+
+      function renderAnatomyChoices() {
+        const query=(state.optionSearch.anatomy||'').toLocaleLowerCase();
+        const drawable=new Set((state.catalogue.maps?.local_surfaces?.palette||[]).map(item=>item.anatomy_id));
+        const mapped=new Set([...drawable,...Object.entries(state.catalogue.maps?.selection_targets||{})
+          .filter(([,targets])=>targets.some(target=>drawable.has(target.id))).map(([id])=>id)]);
+        const regions=new Set(facetItems('region').map(item=>item.id));
+        const groups=[{id:'region',label:'Regions / lobes',facetId:'region'},...(state.catalogue.references||[]).map(item=>({...item,facetId:'anatomy'}))];
+        const content=groups.filter(group=>state.anatomyReference==='all'||state.anatomyReference===group.id).map(group=>{
+          const items=facetItems(group.facetId).filter(item=>(group.facetId==='region'||item.reference===group.id)&&
+            (group.facetId==='region'||!regions.has(item.id))&&
+            (item.linked_count>0||selected(group.facetId).includes(item.id)||mapped.has(item.id))&&
+            `${item.label} ${item.area_name||''}`.toLocaleLowerCase().includes(query)).sort(alphabetical);
+          const choices=choicesByLabel(items);
+          if(!choices.length)return '';
+          return `<section data-facet="${h(group.facetId)}"><div class="choice-section">${h(group.label)}</div>${choices.map(item=>`<label><input type="checkbox" data-items="${h(JSON.stringify(item.ids))}" ${item.ids.some(id=>selected(group.facetId).includes(id))?'checked':''}><span>${h(group.facetId==='anatomy'?anatomyValueLabel(item):item.label)}</span></label>`).join('')}</section>`;
+        }).join('');
+        $('[data-options="anatomy-selection"]').innerHTML=content||'<p class="choice-hint">No linked anatomy matches this search. Try another name or atlas.</p>';
       }
 
       function renderActiveFilters() {
         $("#activeFilters").innerHTML = state.catalogue.facets.flatMap(definition =>
-          choicesByLabel(selected(definition.id).map(id=>({id,label:itemLabel(definition.id,id)}))).map(item => `<button class="active-filter" type="button" data-facet="${h(definition.id)}" data-items="${h(JSON.stringify(item.ids))}">${h(definition.label)}: ${h(item.label)} ×</button>`)
+          choicesByLabel(selected(definition.id).map(id=>({id,label:definition.id==='anatomy'?anatomyValueLabel({id,label:itemLabel(definition.id,id)}):itemLabel(definition.id,id)}))).map(item => `<button class="active-filter" type="button" data-facet="${h(definition.id)}" data-items="${h(JSON.stringify(item.ids))}">${h(definition.label)}: ${h(item.label)} ×</button>`)
         ).join("");
       }
 
@@ -875,10 +970,9 @@
       }
 
       function compareRegions(a,b) {
-        const rank = label => { const index=regionOrder.indexOf(label); return index<0?99:index; };
         return Number(!a.id)-Number(!b.id) ||
           (state.regionSort === 'signs' ? (b.signCount||0)-(a.signCount||0)
-            : state.regionSort === 'atlas' ? rank(a.label)-rank(b.label) : 0) || alphabetical(a,b);
+            : state.regionSort === 'atlas' ? atlasRegionRank(a)-atlasRegionRank(b) : 0) || alphabetical(a,b);
       }
       function orderedRegionGroups(rows) {
         return atlasGroups(rows,'region').map(group => ({...group, signCount:atlasCounts(group.rows).signs})).sort(compareRegions);
@@ -907,6 +1001,9 @@
 
       function renderMap() {
         const config = mapConfig();
+        const linkedValues = [...new Set([...selected('anatomy'),...selected('region')])].flatMap(id=>
+          (state.catalogue.maps?.selection_targets?.[id] || []).map(target=>({...target,label:itemLabel('anatomy',target.id)})));
+        const linkedIds = new Set(linkedValues.map(value=>value.id));
         const localSurfaces = state.catalogue.maps?.local_surfaces;
         const mapAvailable = Boolean(localSurfaces || config.image_url || config.image?.file);
         $("#mapPanel .map-controls").hidden = !mapAvailable;
@@ -935,11 +1032,12 @@
           x: flipPlate ? viewBox[2] - Number(marker.x) : Number(marker.x) }));
         $("#mapHemisphere").value = state.mapHemisphere;
         $('#mapPanel .browse-name').textContent = localSurfaces ? 'Interactive 3D cortical map' : 'Brodmann overview';
-          $('#mapPanel .section-head p').textContent = localSurfaces ? 'Select regions or Brodmann labels to filter the evidence.' : 'Select a numbered area to filter the evidence.';
+          $('#mapPanel .section-head p').textContent = localSurfaces ? 'Select a colored region, or show Brodmann labels to select a numbered area.' : 'Select a numbered area to filter the evidence.';
         const countsAvailable=!localSurfaces||surfacePanel?.atlas.checked;
         $('#mapCounts').disabled=!countsAvailable;
         const showCounts=state.mapCounts&&countsAvailable;
-        $('#hemisphereTabs').hidden = Boolean(localSurfaces && (surfacePanel?.layer==='mesial' || ['dorsal','ventral'].includes(state.mapView)));
+        $('#hemisphereTabs').hidden = Boolean(localSurfaces && surfacePanel?.layer==='mesial');
+        $('#hemisphereTabs [data-hemisphere="both"]').hidden = !localSurfaces;
         if (localSurfaces) {
           const host = $("#brainMap");
           host.classList.add('surface-host');
@@ -947,14 +1045,27 @@
           if (!surfacePanel && !surfacePanelLoading) {
             surfacePanelLoading = true;
             host.textContent = 'Loading surfaces…';
-            import('./atlas_surface.mjs?v=27313fa0419432553c6d633c3a8e26f3a3649f8c23e4ddb3aa374d94b562c74b').then(({SurfacePanel}) => {
+            import('./atlas_surface.mjs?v=eac603552211e469966813559aeb355c86b409d5192441f695664aeed0e85ce1').then(({SurfacePanel}) => {
               surfacePanel = new SurfacePanel(host, {...localSurfaces,groups:state.catalogue.maps.region_groups,brodmann:facetItems('anatomy').filter(row=>row.reference==='ATLAS:BRODMANN').sort((a,b)=>a.label.localeCompare(b.label,undefined,{numeric:true}))}, (view, hemisphere) => {
-                state.mapView=view;state.mapHemisphere=hemisphere;renderMap();
-              }, (rows,groups) => {
-                state.surfaceAnatomy=[...new Set(rows.map(row=>row.anatomy_id).filter(Boolean))];
-                if(groups.length)state.filters.region=groups;else delete state.filters.region;
+                setMapView(view,hemisphere);
+              }, rows => {
+                const mapped=new Set(surfacePanel.options.map(row=>surfacePanel.palette.get(row.index).anatomy_id));
+                const anatomy=[...new Set([...selected('anatomy').filter(id=>!mapped.has(id)),...rows.map(row=>row.anatomy_id).filter(Boolean)])];
+                if(anatomy.length)state.filters.anatomy=anatomy;else delete state.filters.anatomy;
                 runQuery();
               }, () => { clearMapSelection(); renderFilters(); runQuery(); }, document.documentElement.dataset.labelEditing!=='disabled');
+              const atlasOutputs=document.createElement('div');
+              atlasOutputs.id='atlasOutputs';atlasOutputs.className='map-outputs';atlasOutputs.tabIndex=0;
+              atlasOutputs.setAttribute('role','region');atlasOutputs.setAttribute('aria-label','Selected atlas regions');atlasOutputs.setAttribute('aria-live','polite');
+              const atlasTools=$('#mapOutputs .map-output-tools').cloneNode(true);
+              atlasTools.setAttribute('aria-label','Atlas section controls');
+              atlasTools.querySelectorAll('button').forEach(button=>button.setAttribute('aria-label',button.textContent+' atlas sections'));
+              surfacePanel.atlasSelection.before(atlasOutputs);atlasOutputs.append(atlasTools,surfacePanel.atlasSelection);
+              surfacePanel.status.classList.add('map-output-title');atlasTools.querySelector('.map-output-title').replaceWith(surfacePanel.status);
+              const roi=host.querySelector('.surface-roi');roi.hidden=true;roi.before($('#anatomyControls'));
+              const actions=document.createElement('div');actions.className='surface-actions';
+              host.querySelector('.surface-toolbar').append(actions);
+              actions.append(host.querySelector('.surface-clear'),host.querySelector('.surface-reset'));
               host.querySelector('.surface-label-controls > span').before($('.map-count-toggle'));
               surfacePanel.setView(state.mapView,state.mapHemisphere);
               renderMap();
@@ -962,9 +1073,11 @@
           }
           surfacePanel?.setView(state.mapView,state.mapHemisphere);
           surfacePanel?.setGroups(selected('region'));
-          surfacePanel?.setEvidenceHighlight(state.mapAnatomy,state.mapValues.filter(value=>value.scope==='EXACT').map(value=>value.id));
+          surfacePanel?.setLinkedSelection(linkedIds);
+          if(surfacePanel)surfacePanel.select(surfacePanel.options.filter(row=>selected('anatomy').includes(surfacePanel.palette.get(row.index).anatomy_id)),false);
+          surfacePanel?.setEvidenceHighlight(state.mapAnatomy,state.mapValues.filter(value=>value.scope==='EXACT').map(value=>value.id),state.mapResultIds.size>0,state.mapValues);
           surfacePanel?.syncRegionMenu(selected('anatomy'));
-          surfacePanel?.setBrodmann(markers.map(marker=>({...marker,count:showCounts&&marker.anatomy_id?countFor('anatomy',marker.anatomy_id)??0:null})),new Set([...state.mapAnatomy,...selected('anatomy'),...(state.catalogue.maps.region_groups||[]).filter(group=>selected('region').includes(group.id)).flatMap(group=>group.anatomy_ids)]),{
+          surfacePanel?.setBrodmann(markers.map(marker=>({...marker,count:showCounts&&marker.anatomy_id?countFor('anatomy',marker.anatomy_id)??0:null})),new Set([...state.mapAnatomy,...selected('anatomy'),...linkedIds,...(state.catalogue.maps.region_groups||[]).filter(group=>selected('region').includes(group.id)).flatMap(group=>group.anatomy_ids)]),{
             x:flipPlate?viewBox[2]-image.x-(image.width??image.w):image.x,y:image.y,
             width:image.width??image.w,height:image.height??image.h,
           }, Object.entries(views).map(([view,plate])=>({
@@ -972,22 +1085,24 @@
             markers:[...markerRows(plate),...(plate.unmapped_markers||[])].map(marker=>({...marker,
               count:showCounts&&marker.anatomy_id?countFor('anatomy',marker.anatomy_id)??0:null})),
           })));
+          if(surfacePanel && state.mapRevealEvidence) {
+            state.mapRevealEvidence=false;
+            if(state.mapResultIds.size)surfacePanel.showEvidenceLabels();
+          }
         } else $("#brainMap").innerHTML = `<svg viewBox="${viewBox.map(Number).join(" ")}" role="group" aria-label="${h(state.mapHemisphere)} hemisphere, ${h(state.mapView)} surface, Brodmann areas">
           <g ${flipPlate ? `transform="translate(${viewBox[2]},0) scale(-1,1)"` : ""}><image href="${h(imageUrl)}" x="${Number(image.x ?? 0)}" y="${Number(image.y ?? 0)}" width="${Number(image.width ?? image.w ?? viewBox[2])}" height="${Number(image.height ?? image.h ?? viewBox[3])}" preserveAspectRatio="none"></image></g>
           ${markers.map(marker => {
             const count = state.response ? countFor("anatomy", marker.anatomy_id) ?? 0 : null;
             const countText = count == null ? "…" : Number(count).toLocaleString();
-            const active = state.mapAnatomy.has(marker.anatomy_id) || selected("anatomy").includes(marker.anatomy_id);
+            const active = state.mapAnatomy.has(marker.anatomy_id) || selected("anatomy").includes(marker.anatomy_id) || linkedIds.has(marker.anatomy_id);
             const label = marker.display_label || marker.short_label || marker.label_text || itemLabel("anatomy", marker.anatomy_id);
             return `<g class="map-marker ${active ? "selected" : ""} ${count === 0 ? "zero" : ""}" data-anatomy="${h(marker.anatomy_id)}" tabindex="${controlsDisabled ? "-1" : "0"}" role="button" aria-disabled="${controlsDisabled}" aria-label="${h(`Brodmann area ${label}, ${countText} linked results`)}"><title>${h(`BA ${label}: ${countText} linked results`)}</title><circle cx="${Number(marker.x)}" cy="${Number(marker.y)}" r="15"></circle><text x="${Number(marker.x)}" y="${Number(marker.y) + 4}" text-anchor="middle">${h(label)}</text>${state.mapCounts ? `<rect class="count-badge" x="${Number(marker.x) + 11}" y="${Number(marker.y) - 25}" rx="5" width="${Math.max(18, countText.length * 7 + 8)}" height="14"></rect><text class="count-label" x="${Number(marker.x) + 16}" y="${Number(marker.y) - 15}">${h(countText)}</text>` : ""}</g>`;
           }).join("")}
         </svg>`;
 
-        const selectedAnatomy = [...new Set([...state.mapAnatomy,...selected('anatomy')])];
-        const mapValues = state.mapValues.filter(value => selectedAnatomy.includes(value.id));
-        selectedAnatomy.filter(id => !mapValues.some(value => value.id === id)).forEach(id =>
-          mapValues.push({id, label: itemLabel('anatomy', id)}));
-        $("#mapSelection").innerHTML = mapSelectionMarkup(mapValues);
+        $("#mapSelection").innerHTML = mapSelectionMarkup(linkedValues,true) + mapSelectionMarkup(state.mapValues.filter(value=>state.mapAnatomy.has(value.id)));
+        const contextHeadings=$("#mapSelection").querySelectorAll(".map-context > h3");
+        $("#mapOutputs .map-output-title").textContent=contextHeadings.length===1?contextHeadings[0].textContent:"Anatomy relationships";
       }
 
       function rowFacetValues(row, facetId) {
@@ -1194,7 +1309,6 @@
 
 
       const regionColors = {Temporal:'#1a3a6b',Frontal:'#2d4a1e','Central / perirolandic':'#456579',Parietal:'#4a1e3d',Occipital:'#1e3d4a',Insular:'#4a3a1e',Limbic:'#51375c','Deep/Subcortical':'#3d2a0a'};
-      const regionOrder = Object.keys(regionColors);
       const lateralityColors = {contra:'#c0392b',ipsi:'#2471a3',dominant:'#8e44ad',nondominant:'#1a7a4a',right:'#d35400',left:'#2471a3',bilateral:'#5b6472',nonlat:'#6b7280',variable:'#95691a'};
       const uniqueValues = (rows, axis) => mergedFacetValues(rows.flatMap(row => rowFacetValues(row, axis)));
       const uniqueCount = (rows, axis) => uniqueValues(rows, axis).length;
@@ -1205,18 +1319,19 @@
         return '<button class="show-map" type="button" data-anatomy="'+h(JSON.stringify([...new Set(anatomy.map(x=>x.id))]))+'" data-anatomy-values="'+h(JSON.stringify(anatomy.map(({id,label,role,scope})=>({id,label,role,scope}))))+'" data-regions="'+h(JSON.stringify(uniqueValues(rows,'region').map(x=>x.id)))+'" data-results="'+h(JSON.stringify(rows.map(row=>row.id)))+'">'+h(label)+'</button>';
       }
 
-      function showEvidenceOnMap(rows) {
+      function showEvidenceOnMap(rows, label, {scroll=true}={}) {
         const anatomy = rows.flatMap(row => rowFacetValues(row, 'anatomy'));
-        if (!anatomy.length) return;
         state.mapAnatomy = new Set(anatomy.map(item => item.id));
         state.mapValues = anatomy;
         state.mapRegions = new Set(uniqueValues(rows, 'region').map(item => item.id));
         state.mapResultIds = new Set(rows.map(row => row.id));
+        state.mapRevealEvidence = true;
         const views = state.catalogue.maps?.views || {};
-        if (!markerRows(mapConfig()).some(marker => state.mapAnatomy.has(marker.anatomy_id))) state.mapView = Object.keys(views).find(id => markerRows(views[id]).some(marker => state.mapAnatomy.has(marker.anatomy_id))) || state.mapView;
-        renderMap();
+        const view = markerRows(mapConfig()).some(marker => state.mapAnatomy.has(marker.anatomy_id)) ? state.mapView
+          : Object.keys(views).find(id => markerRows(views[id]).some(marker => state.mapAnatomy.has(marker.anatomy_id))) || state.mapView;
+        setMapView(view);
         $('#mapPanel').open = true;
-        $('#mapPanel').scrollIntoView({behavior: 'smooth', block: 'start'});
+        if(scroll)$('#mapPanel').scrollIntoView({behavior: 'smooth', block: 'start'});
       }
 
       function contextFields(rows) {
@@ -1560,15 +1675,19 @@
         const clinicalRows=rows.filter(row=>row.record_kind!=='CONTEXT_ONLY');
         const contextRows=rows.filter(row=>row.record_kind==='CONTEXT_ONLY');
         const view=state.view=state.view==='sources'?'sources':'browse';
-        $('#searchForm').classList.toggle('source-mode',view==='sources');
-        $('#searchForm .search-wrap').hidden=view==='sources';
-        $('#searchForm .primary').hidden=view==='sources';
-        const titles={browse:'Signs',sources:'Sources'};
-        $('#viewHeading').textContent=titles[view];
+        const search = $('#search');
+        if (search.dataset.view !== view) {
+          search.value = view === 'sources' ? evidenceReview?.getSourceQuery() || '' : state.query;
+          search.dataset.view = view;
+          $('#clearSearch').hidden = !search.value;
+        }
+        $('#searchForm label[for="search"]').textContent = view === 'sources' ? 'Search papers' : 'Search findings';
+        search.placeholder = view === 'sources' ? 'Search a paper title, author or citation' : 'Search a sign, source term or anatomy';
         $('#resultStatus').textContent=state.response
           ? (rows.length?evidenceSummary(rows):'No results match the current search and filters.')
           : (state.loading?'Loading evidence…':'Evidence results are unavailable.');
         $('#browseControls').hidden=view!=='browse';
+        $('#signNavigation').hidden=view!=='browse';
         $('#viewTabs').querySelectorAll('button').forEach(button=>{
           const active=button.dataset.view===view;
           button.setAttribute('aria-selected',String(active));button.tabIndex=active?0:-1;
@@ -1587,7 +1706,8 @@
         }
         $('#results').className=rows.length?'':'empty';
         if(evidenceReview) {
-          evidenceReview.update({rows,view,query:view==='sources'?'':state.query,queryContext:{anatomy:[...selected('anatomy'),...state.surfaceAnatomy],sourceIds:selected('source'),evidenceFiltered:Boolean((view!=='sources' && state.query) || state.surfaceAnatomy.length || Object.entries(state.filters).some(([axis,ids])=>axis!=='source' && ids.length))}});
+          $('#expandGroups').textContent=view==='sources'?'Expand sources':state.browseBy==='region'?'Expand regions':['ilae','luders'].includes(state.browseBy)?'Expand categories':'Expand signs';
+          evidenceReview.update({rows,view,organization:state.browseBy,query:view==='sources'?'':state.query,queryContext:{anatomy:selected('anatomy'),ilae:selected('ilae'),luders:selected('luders'),regionIds:!selected('anatomy').length||state.anatomyMatch==='all'?selected('region'):[],metricIds:selected('metric'),sourceIds:selected('source'),evidenceFiltered:Boolean((view!=='sources' && state.query) || Object.entries(state.filters).some(([axis,ids])=>axis!=='source' && ids.length))}});
           return;
         }
         let content='';
@@ -1613,7 +1733,34 @@
         renderMap();
       }
 
+      function preserveFilterPosition() {
+        const active = document.activeElement;
+        const container=active.closest('#evidenceControls,#evidenceFilters,#signNavigation,#anatomyControls');
+        if (!container) return () => {};
+        const facetId = active.closest('[data-facet]')?.dataset.facet;
+        const panel = $('#lowerPanel'), menu = active.closest('.facet-menu')?.querySelector('[data-options]');
+        const position = {x:window.scrollX,y:window.scrollY,panel:panel.scrollTop,menu:menu?.scrollTop};
+        return () => requestAnimationFrame(() => {
+          const control = [...container.querySelectorAll('input,select,summary')].find(node =>
+            active.id ? node.id === active.id : node.tagName === active.tagName &&
+              node.closest('[data-facet]')?.dataset.facet === facetId &&
+              node.dataset.items === active.dataset.items && node.dataset.choiceSearch === active.dataset.choiceSearch);
+          control?.focus({preventScroll:true});
+          const options = control?.closest('.facet-menu')?.querySelector('[data-options]');
+          if (options && position.menu != null) options.scrollTop = position.menu;
+          panel.scrollTop = position.panel;
+          window.scrollTo(position.x,position.y);
+        });
+      }
+
       async function runQuery() {
+        const regionIds=new Set(facetItems('region').map(item=>item.id));
+        const shared=selected('anatomy').filter(id=>regionIds.has(id));
+        if(shared.length) {
+          state.filters.region=[...new Set([...selected('region'),...shared])];
+          state.filters.anatomy=selected('anatomy').filter(id=>!regionIds.has(id));
+          if(!state.filters.anatomy.length)delete state.filters.anatomy;
+        }
         const request = requestContext();
         state.loading = true;
         removeFailure();
@@ -1625,13 +1772,23 @@
         renderMap();
         const parameters = new URLSearchParams({
           q: state.view==='sources'?'':state.query,
-          filters: JSON.stringify(state.filters),
-          regions: JSON.stringify(state.surfaceAnatomy),
+          filters: JSON.stringify({...state.filters,region:[],anatomy:[],...(evidenceReview?{evidence_class:[]}: {})}),
           limit: "all",
         });
         try {
-          const payload = validateQuery(await atlasData(requestUrl(`/api/query?${parameters}`, request), request.controller.signal));
+          let payload = validateQuery(await atlasData(requestUrl(`/api/query?${parameters}`, request), request.controller.signal));
           if (!isCurrent(request)) return;
+          const anatomy=anatomySelections();
+          if(anatomy.length || (evidenceReview && selected('evidence_class').length)) {
+            let rows=payload.rows;
+            if(anatomy.length)rows=rows.filter(row=>{
+              const matches=choice=>(row.facets[choice.facetId]||[]).some(value=>choice.ids.includes(value.id));
+              return state.anatomyMatch==='all'?anatomy.every(matches):anatomy.some(matches);
+            });
+            if(evidenceReview && selected('evidence_class').length)rows=evidenceReview.filterEvidenceClasses(rows,selected('evidence_class'));
+            payload=atlasPivot({...payload,catalogue:state.catalogue,rows},new URLSearchParams({limit:'all'}));
+          }
+          const restorePosition = preserveFilterPosition();
           state.response = payload;
           resultCounts = new Map(Object.entries(payload.facets).map(([id, values]) => [id, new Map(values.map(value => [value.id, value.count]))]));
           finishRequest(request);
@@ -1645,6 +1802,7 @@
           renderFilters();
           renderMap();
           renderResults();
+          restorePosition();
         } catch (_error) {
           if (!isCurrent(request)) return;
           finishRequest(request);
@@ -1670,9 +1828,13 @@
           validateQuery(completeResponse);
           if (!isCurrent(request)) return;
           state.catalogue = payload;
+          if(payload.maps?.local_surfaces){state.mapView='lateral';state.mapHemisphere='left';}
           if (!evidenceReview) evidenceReview = createEvidenceReview($('#results'), {
             catalogue: payload,
             data: completeResponse,
+            navigation: $('#signNavigation'),
+            filters: $('#evidenceFilters'),
+            actions: $('#resultActions'),
             onShowMap: showEvidenceOnMap,
             onClearFilters: clearAllFilters,
             onViewSources: () => { state.view='sources'; $('#clearAll').click(); },
@@ -1705,20 +1867,24 @@
 
       $("#searchForm").addEventListener("submit", event => {
         event.preventDefault();
+        if (state.view === 'sources') { evidenceReview?.setSourceQuery($("#search").value); return; }
         state.query = $("#search").value.trim();
         runQuery();
       });
-      $("#search").addEventListener("input", event => { $("#clearSearch").hidden = !event.target.value; });
+      $("#search").addEventListener("input", event => {
+        $("#clearSearch").hidden = !event.target.value;
+        if (state.view === 'sources') evidenceReview?.setSourceQuery(event.target.value);
+      });
       $("#clearSearch").addEventListener("click", () => {
         $("#search").value = "";
         $("#clearSearch").hidden = true;
+        if (state.view === 'sources') { evidenceReview?.setSourceQuery(''); return; }
         state.query = "";
         runQuery();
       });
       function clearMapSelection() {
         delete state.filters.anatomy;
         delete state.filters.region;
-        state.surfaceAnatomy = [];
         state.mapAnatomy.clear();
         state.mapValues = [];
         state.mapRegions.clear();
@@ -1733,42 +1899,68 @@
         clearMapSelection();
         state.query = "";
         state.optionSearch = {};
-        $("#filters").querySelectorAll("details[open]").forEach(menu => { menu.open = false; });
+        state.anatomyMatch = 'any';
+        state.browseBy = 'region';
+        $("#lowerPanel").querySelectorAll("details[data-facet][open]").forEach(menu => { menu.open = false; });
         $("#search").value = "";
         $("#clearSearch").hidden = true;
         renderFilters();
         runQuery();
       }
       $("#clearAll").addEventListener("click", () => clearAllFilters());
-      $("#filters").addEventListener("change", event => {
-        if (event.target.id === "anatomyReference") {
-          state.anatomyReference = event.target.value;
-          state.optionSearch.anatomy = "";
-          renderFilters();
-        } else if (event.target.type === "checkbox") toggleFilter(event.target.closest("[data-facet]").dataset.facet, JSON.parse(event.target.dataset.items), event.target.checked);
+      $('#anatomyControls').addEventListener('change',event=>{
+        if(event.target.id==='anatomyReference') {
+          state.anatomyReference=event.target.value;renderAnatomyChoices();
+        } else if(event.target.id==='anatomyMatch') {
+          state.anatomyMatch=event.target.value;runQuery();
+        } else if(event.target.type==='checkbox' && event.target.dataset.items) {
+          toggleFilter(event.target.closest('[data-facet]').dataset.facet,JSON.parse(event.target.dataset.items),event.target.checked);
+        }
       });
-      $("#filters").addEventListener("input", event => {
+      $('#anatomyControls').addEventListener('input',event=>{
+        if(event.target.id==='anatomySearch'){state.optionSearch.anatomy=event.target.value;renderAnatomyChoices();}
+      });
+      $('#anatomyControls').addEventListener('toggle',event=>{
+        if(event.target.id==='anatomyMenu' && event.target.open && !event.target.querySelector('[data-options]')?.hasChildNodes())renderAnatomyChoices();
+      },true);
+      $("#lowerPanel").addEventListener("change", event => {
+        if (event.target.id === 'browseBy') {
+          state.browseBy = event.target.value;
+          for (const id of ['ilae','luders']) { delete state.filters[id]; delete state.optionSearch[id]; }
+          renderFilters();
+          $('#browseBy').focus({preventScroll:true});
+          runQuery();
+        } else if (event.target.dataset.clearFacet) {
+          delete state.filters[event.target.dataset.clearFacet];
+          runQuery();
+        } else if (event.target.type === "checkbox" && event.target.dataset.items) toggleFilter(event.target.closest("[data-facet]").dataset.facet, JSON.parse(event.target.dataset.items), event.target.checked);
+      });
+      $("#lowerPanel").addEventListener("input", event => {
         const facetId = event.target.dataset.choiceSearch;
         if (facetId) { state.optionSearch[facetId] = event.target.value; renderChoiceList(facetId); }
       });
-      $("#filters").addEventListener("toggle", event => {
+      $("#lowerPanel").addEventListener("toggle", event => {
         if (!event.target.matches('details[data-facet]') || !event.target.open) return;
-        $("#filters").querySelectorAll('details[open]').forEach(menu => { if (menu !== event.target) menu.open=false; });
-        renderChoiceList(event.target.dataset.facet);
+        $("#lowerPanel").querySelectorAll('details[data-facet][open]').forEach(menu => { if (menu !== event.target) menu.open=false; });
+        if (!event.target.querySelector('[data-options]')?.hasChildNodes()) renderChoiceList(event.target.dataset.facet);
       }, true);
       document.addEventListener("click", event => {
         const clickedPath = event.composedPath();
-        $("#filters").querySelectorAll("details[open]").forEach(menu => { if (!clickedPath.includes(menu)) menu.open = false; });
+        $("#lowerPanel").querySelectorAll("details[data-facet][open]").forEach(menu => { if (!clickedPath.includes(menu)) menu.open = false; });
+        const anatomyMenu=$('#anatomyMenu');
+        if(anatomyMenu?.open && !clickedPath.includes(anatomyMenu))anatomyMenu.open=false;
         if (openToolbarChooser && !clickedPath.includes(openToolbarChooser.root)) closeToolbarChooser(openToolbarChooser);
       });
       document.addEventListener("keydown", event => {
+        delete $('#brainMap').dataset.pointerFocus;
         if (event.key !== "Escape") return;
-        const menus = [...$("#filters").querySelectorAll("details[open]")];
+        const menus = [...document.querySelectorAll('#lowerPanel details[data-facet][open],#anatomyMenu[open]')];
         if (!menus.length) return;
         event.preventDefault();
         menus.forEach(menu => { menu.open = false; });
         menus[0].querySelector("summary").focus();
       });
+      $('#brainMap').addEventListener('pointerdown', () => { $('#brainMap').dataset.pointerFocus='true'; });
       $("#activeFilters").addEventListener("click", event => {
         const button = event.target.closest("button");
         if (button) toggleFilter(button.dataset.facet, JSON.parse(button.dataset.items), false);
@@ -1779,10 +1971,9 @@
       });
       $('#regionSort').addEventListener('change', event => {state.regionSort=event.target.value;renderResults();});
       $("#mapView").addEventListener("change", event => {
-        state.mapView = event.target.value;
-        renderMap();
+        setMapView(event.target.value);
       });
-      $("#mapHemisphere").addEventListener("change", event => { state.mapHemisphere = event.target.value; renderMap(); });
+      $("#mapHemisphere").addEventListener("change", event => setMapView(state.mapView,event.target.value));
       $(".map-count-toggle").addEventListener("click", event => event.stopPropagation());
       $("#mapCounts").addEventListener("change", event => { state.mapCounts = event.target.checked; renderMap(); });
       function selectMapMarker(target) {
@@ -1807,6 +1998,10 @@
           selectMapMarker(event.target);
         }
       });
+      $('#mapPanel').addEventListener('click',event=>{
+        const button=event.target.closest('[data-map-expand]');
+        if(button)button.closest('.map-outputs').querySelectorAll('details.map-region-group').forEach(section=>{section.open=button.dataset.mapExpand==='true';});
+      });
       $("#groupBy").addEventListener("change", event => { state.groupBy = event.target.value; renderGroupChoices(); renderResults(); });
       $("#results").addEventListener("click", event => {
         const contextButton=event.target.closest('[data-view-context-sources]');
@@ -1825,8 +2020,9 @@
         state.mapRegions = new Set(JSON.parse(button.dataset.regions));
         state.mapResultIds = new Set(JSON.parse(button.dataset.results));
         const views = state.catalogue.maps?.views || {};
-        if (!markerRows(mapConfig()).some(marker => state.mapAnatomy.has(marker.anatomy_id))) state.mapView = Object.keys(views).find(id => markerRows(views[id]).some(marker => state.mapAnatomy.has(marker.anatomy_id))) || state.mapView;
-        renderMap();
+        const view = markerRows(mapConfig()).some(marker => state.mapAnatomy.has(marker.anatomy_id)) ? state.mapView
+          : Object.keys(views).find(id => markerRows(views[id]).some(marker => state.mapAnatomy.has(marker.anatomy_id))) || state.mapView;
+        setMapView(view);
         $("#mapPanel").open = true;
         $("#mapPanel").scrollIntoView({ behavior: "smooth", block: "start" });
       });
@@ -1842,8 +2038,14 @@
         $('#results').querySelectorAll('.browse-section').forEach(element=>{element.open=true;fillDisclosure(element);});
       });
       $('#collapseGroups').addEventListener('click',()=>{if(evidenceReview){evidenceReview.collapseAll();return;}$('#results').querySelectorAll('details[open]').forEach(element=>{element.open=false;});});
-      $('#surfaceTabs').addEventListener('click',event=>{const button=event.target.closest('[data-surface]');if(button){state.mapView=button.dataset.surface;renderMap();}});
-      $('#hemisphereTabs').addEventListener('click',event=>{const button=event.target.closest('[data-hemisphere]');if(button){state.mapHemisphere=button.dataset.hemisphere;renderMap();}});
+      function setMapView(view,hemisphere=state.mapHemisphere) {
+        if(view==='medial' && hemisphere==='both') {
+          if(state.mapView==='medial')view='lateral';else hemisphere='left';
+        }
+        state.mapView=view;state.mapHemisphere=hemisphere;renderMap();
+      }
+      $('#surfaceTabs').addEventListener('click',event=>{const button=event.target.closest('[data-surface]');if(button)setMapView(button.dataset.surface);});
+      $('#hemisphereTabs').addEventListener('click',event=>{const button=event.target.closest('[data-hemisphere]');if(button)setMapView(state.mapView,button.dataset.hemisphere);});
       function placeEvidencePanel() {
         if ($('#mapPanel').open) $('#mapEvidence').append($('#lowerPanel'));
         else $('#mapPanel').after($('#lowerPanel'));

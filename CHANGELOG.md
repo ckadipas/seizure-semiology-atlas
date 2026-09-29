@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.1.0
+
+- Consolidate search, evidence filters and sign organization beside the cortical map.
+- Preserve Region, ILAE and Lüders dictionary hierarchies while restricting search matches to their linked signs and findings.
+- Unify anatomical selection and map highlighting through the recorded anatomy relationships, including linked atlas representations.
+- Highlight anatomy when signs or papers open, and organize selected atlas regions separately from reported study anatomy.
+- Open Summary of findings with each paper, keep Evidence weights folded away, and improve narrow-screen controls and scrolling.
+
 ## 2.0.3
 
 - Replace the atlas dropdown with a Show Brodmann labels checkbox.

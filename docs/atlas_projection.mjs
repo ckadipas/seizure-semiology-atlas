@@ -49,21 +49,68 @@ export async function atlasData(path, signal) {
   return atlasPivot(snapshot, url.searchParams);
 }
 
+function atlasSearchSelection(row, needle) {
+  const matches=values=>(values || []).some(text=>atlasAsciiLower(text).includes(needle));
+  if(!Array.isArray(row.search_memberships))return matches(row.search_text)?{}:null;
+  const selected=row.search_memberships.filter(item=>matches(item.search_text));
+  const scope=selected.length?'SIGN':matches(row.search_common)?'COMMON':matches(row.search_context)?'SOURCE_CONTEXT':'';
+  return scope?{
+    matched_search_scope:scope,
+    matched_navigation_ids:(scope==='SIGN'?selected:scope==='COMMON'?row.search_memberships:[]).map(item=>item.id),
+  }:null;
+}
+
+export function atlasSearchMatches(row, query) {
+  const needle=atlasAsciiLower(String(query || '').trim());
+  return !needle || atlasSearchSelection(row,needle)!==null;
+}
+
+export function atlasSearchRows(rows, query) {
+  const needle=atlasAsciiLower(String(query || '').trim());
+  if(!needle)return rows;
+  return rows.flatMap(row=>{
+    const selection=atlasSearchSelection(row,needle);
+    return selection?[{...row,...selection}]:[];
+  });
+}
+
+function atlasClassificationLookup(items) {
+  const dictionary=new Map(items.map(item=>[item.id,item])), paths=new Map();
+  const ancestors=id=>{
+    if(!paths.has(id)) {
+      const path=new Set();
+      for(let current=id;current;current=dictionary.get(current)?.parent_id) {
+        if(path.has(current))throw new Error('Cyclic classification dictionary');
+        path.add(current);
+      }
+      paths.set(id,path);
+    }
+    return paths.get(id);
+  };
+  return {ancestors,matches:(assigned,selected)=>(assigned || []).some(id=>selected.some(target=>ancestors(id).has(target)))};
+}
+
 export function atlasPivot(snapshot, parameters) {
-  const query = atlasAsciiLower((parameters.get('q') || '').trim());
+  const query = parameters.get('q');
   const filters = Object.entries(JSON.parse(parameters.get('filters') || '{}'));
+  const items=new Map((snapshot.catalogue?.items || []).map(item=>[item.id,item]));
+  const {ancestors,matches:matchesClassification}=atlasClassificationLookup([...items.values()]);
   const regions = JSON.parse(parameters.get('regions') || '[]');
   if (!Array.isArray(regions) || regions.some(id => typeof id !== 'string')) throw new Error('Invalid region selection');
-  const rows = snapshot.rows.filter(row =>
+  const rows = atlasSearchRows(snapshot.rows.filter(row =>
     regions.every(id => (row.facets.anatomy || []).some(value => value.id === id)) &&
-    filters.every(([facet, ids]) => !ids.length || (row.facets[facet] || []).some(value => ids.includes(value.id))) &&
-    (!query || [...row.search_text, ...Object.values(row.facets).flat().map(value => value.label)]
-      .some(text => atlasAsciiLower(text).includes(query))));
+    filters.every(([facet, ids]) => !ids.length || (row.facets[facet] || []).some(value => ids.includes(value.id)) ||
+      ['ilae','luders'].includes(facet) && (row.search_memberships || []).some(item=>matchesClassification(item.classification_ids?.[facet],ids)))),query);
   const findings = new Set(), sources = new Set(), statisticIds = new Set(), facets = {};
   for (const row of rows) {
     findings.add(row.finding_ref);
     for (const id of row.statistic_ids) statisticIds.add(id);
-    for (const [facet, values] of Object.entries(row.facets)) {
+    const discoveryFacets={...row.facets};
+    for(const facet of ['ilae','luders']) {
+      const assigned=(row.search_memberships || []).flatMap(member=>member.classification_ids?.[facet] || []);
+      discoveryFacets[facet]=[...(row.facets[facet] || []),...assigned.flatMap(id=>[...ancestors(id)].map(parent=>items.get(parent)).filter(item=>item?.facet===facet))];
+    }
+    for (const [facet, values] of Object.entries(discoveryFacets)) {
       const seen = new Set();
       for (const value of values) {
         if (facet === 'source') sources.add(value.id);
@@ -155,11 +202,14 @@ export function atlasCounts(rows) {
 }
 
 // Navigation memberships retain source result ownership and may be nonexclusive.
-export function atlasNavigationGroups(rows) {
+export function atlasNavigationGroups(rows, classificationFilters={}, items=[]) {
   const groups = new Map(), unplaced = [];
+  const filters=Object.entries(classificationFilters).filter(([facet,ids])=>['ilae','luders'].includes(facet) && ids.length);
+  const {matches:matchesClassification}=atlasClassificationLookup(items);
   for (const row of rows) {
-    const memberships = row.navigation_signs?.length ? row.navigation_signs : row.facets.sign || [];
-    const targets = new Map(memberships.map(item => [item.id, item]));
+    const memberships = row.navigation_suppressed ? [] : (row.navigation_signs?.length ? row.navigation_signs : row.facets.sign || []);
+    const targets = new Map(memberships.filter(item=>(row.matched_navigation_ids==null || row.matched_navigation_ids.includes(item.id)) &&
+      filters.every(([facet,ids])=>matchesClassification(row.search_memberships?.find(member=>member.id===item.id)?.classification_ids?.[facet],ids))).map(item => [item.id, item]));
     if (!targets.size) unplaced.push(row);
     for (const target of targets.values()) {
       if (!groups.has(target.id)) groups.set(target.id, { id: target.id, label: target.label, rows: new Map() });
@@ -173,40 +223,91 @@ export function atlasNavigationGroups(rows) {
   };
 }
 
-// Organize existing occurrence links under their approved dictionary terms.
-export function atlasDictionaryGroups(rows, facet, items, categoryId = '') {
+// Select established dictionary terms while preserving their approved ancestry.
+function atlasDictionaryTargets(facet, items) {
   const dictionary = new Map(items.filter(item => item.facet === facet).map(item => [item.id, item]));
-  const paths = new Map(), groups = new Map(), unplaced = [];
+  const paths = new Map();
   const pathFor = id => {
     if (paths.has(id)) return paths.get(id);
     const path = [], seen = new Set();
-    for (let item = dictionary.get(id); item; item = dictionary.get(item.parent_id)) {
-      if (seen.has(item.id)) throw new Error('Cyclic classification dictionary');
-      seen.add(item.id); path.push(item);
+    for (let current = id; current; current = dictionary.get(current).parent_id) {
+      if (seen.has(current)) throw new Error('Cyclic classification dictionary');
+      const item = dictionary.get(current);
+      if (!item) throw new Error('Incomplete classification dictionary: ' + current);
+      seen.add(current); path.push(item);
     }
     paths.set(id, path); return path;
   };
-  for (const row of rows) {
+  const targetsFor = (ids, categoryId = '') => {
     const choices = new Map();
-    for (const link of row.facets[facet] || []) {
-      if (!link.assigned) continue;
-      const path = pathFor(link.id);
+    for (const id of ids) {
+      const path = pathFor(id);
+      if (path.some(item => ['DIMENSION', 'ATTRIBUTE_CATEGORY', 'MODIFIER_CATEGORY'].includes(item.kind))) continue;
       if (categoryId && !path.some(item => item.id === categoryId)) continue;
-      if (!path.length || path.some(item => ['DIMENSION', 'ATTRIBUTE_CATEGORY', 'MODIFIER_CATEGORY'].includes(item.kind))) continue;
-      if (facet === 'ilae' && !path.some(item => item.kind === 'DESCRIPTOR_ROOT')) continue;
       const terms = path.filter(item => ['TYPE', 'TERM'].includes(item.kind));
-      const target = terms.at(-1) || path.find(item => ['CATEGORY', 'DESCRIPTOR_CATEGORY', 'WORKSHEET_CATEGORY', 'EVENT_CATEGORY'].includes(item.kind));
+      const target = terms.at(-1) || path.find(item => !['ROOT', 'DESCRIPTOR_ROOT'].includes(item.kind)) || path[0];
       if (target) choices.set(target.id, target);
     }
-    const selected = [...choices.values()].filter(item => ![...choices.values()].some(other =>
+    return [...choices.values()].filter(item => ![...choices.values()].some(other =>
       other.id !== item.id && pathFor(other.id).some(parent => parent.id === item.id)));
+  };
+  const singleRoot = [...dictionary.values()].filter(item => !item.parent_id).length === 1;
+  return { targetsFor, pathFor: id => {
+    const path = [...pathFor(id)].reverse().filter(item => !(singleRoot && !item.parent_id && item.kind === 'ROOT'));
+    return path.length ? path : [dictionary.get(id)];
+  }};
+}
+
+// Dictionary cards aggregate owned occurrence references, never source phrases.
+export function atlasDictionaryGroups(rows, facet, items, categoryId = '') {
+  const { targetsFor, pathFor } = atlasDictionaryTargets(facet, items), groups = new Map(), unplaced = [];
+  for (const row of rows) {
+    if (row.navigation_suppressed || row.matched_search_scope === 'SOURCE_CONTEXT') { unplaced.push(row); continue; }
+    const matched = row.matched_search_scope === 'SIGN' ? new Set(row.matched_navigation_ids || []) : null;
+    const ids = (row.search_memberships || []).filter(member => !matched || matched.has(member.id))
+      .flatMap(member => member.classification_ids?.[facet] || []);
+    for (const link of row.facets[facet] || []) {
+      if (!link.assigned) continue;
+      if (link.role === 'SOURCE_CLASSIFICATION' && link.id !== link.source_item_id) continue;
+      if (matched && !(link.role === 'SOURCE_CLASSIFICATION' && link.source_sign_id &&
+        link.navigation_ids?.length === 1 && matched.has(link.navigation_ids[0]))) continue;
+      ids.push(link.id);
+    }
+    const selected = targetsFor(ids, categoryId);
     if (!selected.length) unplaced.push(row);
     for (const item of selected) {
-      if (!groups.has(item.id)) groups.set(item.id, { id: item.id, label: item.label, dictionary: item, rows: [] });
-      groups.get(item.id).rows.push(row);
+      if (!groups.has(item.id)) groups.set(item.id, {
+        id: item.id, label: item.label, dictionary: item, path: pathFor(item.id), rows: new Map(),
+      });
+      groups.get(item.id).rows.set(row.id, row);
     }
   }
-  return { groups: [...groups.values()].sort((a, b) => a.label.localeCompare(b.label)), unplaced };
+  return {
+    groups: [...groups.values()].map(group => ({ ...group, rows: [...group.rows.values()] }))
+      .sort((a, b) => a.label.localeCompare(b.label)),
+    unplaced,
+  };
+}
+
+const atlasRegionOrder = ['Frontal','Temporal','Limbic','Central / perirolandic','Parietal','Occipital','Insular','Extra-temporal','Deep/Subcortical','Brainstem'];
+export function atlasRegionRank(region) {
+  if (!region.id) return atlasRegionOrder.length + 1;
+  const index = atlasRegionOrder.indexOf(region.label);
+  return index < 0 ? atlasRegionOrder.length : index;
+}
+
+// Region banners retain canonical sign cards and only their matching occurrences.
+export function atlasSignSections(signs) {
+  const sections = new Map();
+  for (const group of signs) {
+    for (const region of atlasGroups(group.rows, 'region')) {
+      if (!sections.has(region.id)) sections.set(region.id, {
+        id: region.id, label: region.id ? region.label : 'No linked region', groups: [],
+      });
+      sections.get(region.id).groups.push({ ...group, rows: region.rows });
+    }
+  }
+  return [...sections.values()].sort((a, b) => atlasRegionRank(a) - atlasRegionRank(b) || a.label.localeCompare(b.label));
 }
 
 export const atlasMetricLabels = Object.freeze({
@@ -304,6 +405,7 @@ export function atlasWeightPresentation(contribution, axis) {
 const atlasEscape = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 const atlasRoleLabel = value => String(value ?? '').replace(/_/g,' ').toLowerCase().replace(/\b\w/g, letter => letter.toUpperCase());
 const atlasComparableText = value => String(value ?? '').trim().toLowerCase().replace(/\s+/g,' ');
+const atlasResolvedAxis = value => value.mapping_status == null || ['EXACT_SOURCE','OWNER_APPROVED'].includes(value.mapping_status);
 
 export function atlasSourceLocator(value) {
   let parsed=value;
@@ -337,10 +439,10 @@ function groupedSourceAnatomy(row) {
     const excerpt = String(value.source_excerpt || "").trim();
     const key = JSON.stringify([excerpt || value.source_term || "", value.locator || "", value.role || "",
       value.context_qualifier || "", value.context_polarity || "", value.context_modality || "",
-      value.decision_role || '', value.source_sign_id || '', value.source_scope || '']);
+      value.decision_role || '', value.source_sign_id || '', value.source_scope || '', value.mapping_status || '']);
     if (!groups.has(key)) groups.set(key, { value, terms: new Set(), targets: new Set(), support: [] });
     if (value.source_term) groups.get(key).terms.add(value.source_term);
-    if (value.target_label) groups.get(key).targets.add(value.target_label);
+    if (value.target_label && atlasResolvedAxis(value)) groups.get(key).targets.add(value.target_label);
     const supportKey = JSON.stringify([value.role || "", excerpt]);
     if ((value.role || excerpt) && !groups.get(key).support.some(item => item.key === supportKey)) groups.get(key).support.push({ key: supportKey, role: value.role || "", excerpt });
   }
@@ -371,7 +473,7 @@ export function atlasSourceAnatomyMarkup(row, seenExcerpts=new Set(), {h=atlasEs
       seenExcerpts.add(key);
       return ['<blockquote>'+h(excerpt)+'</blockquote>'];
     }).join('');
-    const label = {COHORT_CONTEXT:'Study population anatomy',COMPARATOR_CONTEXT:'Comparison group anatomy',
+    const label = !atlasResolvedAxis(value) ? 'Source wording — anatomical mapping unconfirmed' : {COHORT_CONTEXT:'Study population anatomy',COMPARATOR_CONTEXT:'Comparison group anatomy',
       ONSET:'Seizure onset',STIMULATION:'Stimulation site',NETWORK:'Network',
       SYMPTOMATOGENIC:'Symptom-producing region',LESION:'Lesion location',SOURCE_REPORTED:'Reported localization'}[value.role] || 'Reported anatomy';
     return '<div class="source-detail">'+(value.source_sign_label?'<strong>'+h(value.source_sign_label)+':</strong> ':'')+(value.source_scope==='CLAIM'&&!value.source_sign_id?'<span>Finding context · </span>':'')+'<strong>'+h(value.decision_role==='CONTEXT' && value.role==='SOURCE_REPORTED' ? 'Anatomical context' : label)+':</strong> '+h([...group.targets].join('; ') || [...group.terms].join('; '))+
@@ -389,6 +491,7 @@ export function atlasSourceFindingsMarkup(rows, {compact=false,localizationAnnot
     for(const row of rows) {
       for(const [axis,values] of [['LOCALIZATION',row.source_anatomy || []],['LATERALIZATION',row.source_laterality || row.facets?.laterality || []]]) {
         for(const value of values) {
+          if(!atlasResolvedAxis(value))continue;
           const target=value.target_label || value.label || value.source_term;
           if(!target)continue;
           const findingContext=value.source_scope==='CLAIM'&&!value.source_sign_id;
@@ -427,9 +530,9 @@ export function atlasSourceFindingsMarkup(rows, {compact=false,localizationAnnot
   }
   const findings = [...new Map(rows.map(row => [row.id, row])).values()].flatMap(row => {
     const anatomy = atlasSourceAnatomyMarkup(row);
-    const laterality = [...new Map((row.source_laterality || row.facets?.laterality || []).map(value => [JSON.stringify([value.target_label || value.label,value.source_term,value.role,value.source_sign_id,value.locator]),value])).values()]
-      .map(value => '<p class="source-detail">'+(value.source_sign_label?'<strong>'+atlasEscape(value.source_sign_label)+':</strong> ':'')+'<strong>' + (value.role==='COHORT_CONTEXT' ? 'Study population lateralization' : value.role==='STIMULATION' ? 'Stimulation lateralization' : 'Reported lateralization') + ':</strong> ' + atlasEscape(value.target_label || value.label) +
-        (value.source_term && value.source_term!==(value.target_label || value.label) ? '<br>'+atlasEscape(value.source_term) : '')+(value.locator?'<small>'+atlasEscape(atlasSourceLocator(value.locator))+'</small>':'')+'</p>').join('');
+    const laterality = [...new Map((row.source_laterality || row.facets?.laterality || []).map(value => [JSON.stringify([value.target_label || value.label,value.source_term,value.role,value.source_sign_id,value.locator,value.mapping_status]),value])).values()]
+      .map(value => '<p class="source-detail">'+(value.source_sign_label?'<strong>'+atlasEscape(value.source_sign_label)+':</strong> ':'')+'<strong>' + (!atlasResolvedAxis(value) ? 'Source wording — lateralization mapping unconfirmed' : value.role==='COHORT_CONTEXT' ? 'Study population lateralization' : value.role==='STIMULATION' ? 'Stimulation lateralization' : 'Reported lateralization') + ':</strong> ' + atlasEscape(atlasResolvedAxis(value) ? value.target_label || value.label : value.source_term) +
+        (atlasResolvedAxis(value) && value.source_term && value.source_term!==(value.target_label || value.label) ? '<br>'+atlasEscape(value.source_term) : '')+(value.locator?'<small>'+atlasEscape(atlasSourceLocator(value.locator))+'</small>':'')+'</p>').join('');
     const locator = laterality && row.source?.locator ? '<small>'+atlasEscape(atlasSourceLocator(row.source.locator))+'</small>' : '';
     return anatomy || laterality ? ['<article class="anatomy-result"><h4>'+atlasEscape(row.term)+'</h4>'+anatomy+laterality+locator+'</article>'] : [];
   });
