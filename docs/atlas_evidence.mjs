@@ -123,7 +123,7 @@ function locator(value) {
 
   const params = new URLSearchParams(options.embedded ? '' : location.search);
   const state = {query:params.get('q') || '',sourceQuery:'',organize:'sign',filters:{},order:'name',limit:30,focus:''};
-  const opened = new Set(), bannerState = new Map(), detailState = new Map(), weightIndex = new Map();
+  const opened = new Set(), bannerState = new Map(), expandedSections = new Set(), detailState = new Map(), weightIndex = new Map();
   let detailsReady = !data.details_url;
   let evidenceMap = publicSite ? {showEvidence: options.onShowMap, clear: () => options.onClearFilters?.()} : null, mapResultIds = null, dialogRows = [];
   let organization = '', currentView = '', signOrder = 'name', pendingFocus = '', selectedAnatomy = new Set(), selectedMetricIds = new Set(), classificationFilters = {}, sourceSelection = null;
@@ -151,7 +151,7 @@ function locator(value) {
     ({groups,unplaced}=atlasNavigationGroups(groupingRows(),classificationFilters,catalogue.items));
   }
   function updateQuery() { if(options.embedded)return; const url = new URL(location.href); state.query ? url.searchParams.set('q',state.query) : url.searchParams.delete('q'); history.replaceState(null,'',url); }
-  function setSourceQuery(value) { state.sourceQuery=value;state.focus='';state.limit=30;opened.clear();updateQuery();renderList(); }
+  function setSourceQuery(value) { state.sourceQuery=value;state.focus='';state.limit=30;expandedSections.clear();opened.clear();updateQuery();renderList(); }
   function setEvidenceClass(value) { if(value)state.filters.evidence_class=value;else delete state.filters.evidence_class;for(const setting of detailState.values())setting.evidenceClass='';refresh(); }
   function syncControls() {
     const sourceMode = state.organize === 'source';
@@ -228,7 +228,7 @@ function locator(value) {
   }
   function listMarkup() {
     const remaining=new Set();
-    const render = (items,depth=0) => {
+    const render = (items,depth=0,banner=null) => {
       const direct=[],sections=new Map();
       for(const item of items){
         const banner=item.entry.banners?.[depth];
@@ -236,16 +236,19 @@ function locator(value) {
         if(!sections.has(banner.key))sections.set(banner.key,{banner,items:[]});
         sections.get(banner.key).items.push(item);
       }
-      for(const {entry} of direct.slice(state.limit))remaining.add(entry.group.id);
-      const cards=direct.slice(0,state.limit).map(({entry,index})=>entryMarkup(entry,index)).join('');
+      const key=banner?.key || '',limit=expandedSections.has(key)?Infinity:state.limit;
+      for(const {entry} of direct.slice(limit))remaining.add(entry.group.id);
+      const cards=direct.slice(0,limit).map(({entry,index})=>entryMarkup(entry,index)).join('');
+      const count=Math.max(0,direct.length-limit),kind=state.organize==='source'?'papers':'terms';
+      const more=count?`<button class="more" data-more-section="${esc(key)}" aria-label="Show ${number(count)} remaining ${kind}${banner?' in '+esc(banner.label):''}">Show ${number(count)} remaining ${kind}</button>`:'';
       const children=[...sections.values()].sort((a,b)=>
         (a.banner.ordinal??Infinity)-(b.banner.ordinal??Infinity) || a.banner.label.localeCompare(b.banner.label));
       return children.map(({banner,items})=>{
         const signs=new Set(items.map(item=>item.entry.group.id)).size;
         const papers=paperIds(items.flatMap(item=>item.entry.group.rows)).length;
         const open=bannerState.get(banner.key) ?? Boolean(state.query.trim() || state.focus);
-        return `<details class="sign-section" data-banner="${esc(banner.key)}" ${open?'open':''}><summary><strong>${esc(banner.label)}</strong><span>${number(signs)} ${signs===1?'term':'terms'} · ${number(papers)} ${papers===1?'paper':'papers'}</span></summary><div class="section-body">${render(items,depth+1)}</div></details>`;
-      }).join('')+cards;
+        return `<details class="sign-section" data-banner="${esc(banner.key)}" ${open?'open':''}><summary><strong>${esc(banner.label)}</strong><span>${number(signs)} ${signs===1?'term':'terms'} · ${number(papers)} ${papers===1?'paper':'papers'}</span></summary><div class="section-body">${render(items,depth+1,banner)}</div></details>`;
+      }).join('')+cards+more;
     };
     return {html:render(entries.map((entry,index)=>({entry,index}))),remaining:remaining.size};
   }
@@ -267,7 +270,6 @@ function locator(value) {
     $('match-count').textContent = state.organize === 'source' ? [publicationCount?`${number(publicationCount)} evidence ${publicationCount===1?'publication':'publications'}`:'',referenceCount?`${number(referenceCount)} classification ${referenceCount===1?'reference':'references'}`:''].filter(Boolean).join(' · ') || '0 sources' : (termCount ? `${number(termCount)} ${termLabel()} ${termCount===1?'term':'terms'} · ` : '') + `${number(publicationCount)} ${publicationCount===1?'publication':'publications'} across Signs and Sources`;
     const list=listMarkup();
     $('sign-list').innerHTML = list.html || `<div class="empty">${state.organize==='source'?'No papers match this selection.':extra.length ? 'No sign terms match this selection. Paper records are available in Sources.' : 'No sign terms match this selection.'}</div>`;
-    if (list.remaining) $('sign-list').insertAdjacentHTML('beforeend',`<button class="more" id="more-signs">Show remaining ${state.organize==='source'?'papers':'terms'} (${number(list.remaining)})</button>`);
     root.querySelectorAll('.sign-card[open]').forEach(renderEntry);
     evidenceMap?.update?.(visibleRows);
 
@@ -486,7 +488,7 @@ function locator(value) {
     openDialog(clean(stat.measure)||metricName(stat.metric_type)||'Reported finding',`<div${metricName(stat.metric_type)?' class="dialog-value"':''}>${esc(valueText(stat))}</div><p>${paperIds(rows).map(id=>esc(citation(id))).join(' · ')}</p><dl>${fields.map(([label,value])=>`<dt>${esc(label)}</dt><dd>${esc(clean(value)||'Not recorded')}</dd>`).join('')}</dl><h3>Source passages</h3>${statements.map(item=>`<p><strong>${esc(locator(item.source_locator))}</strong><br>${esc(item.source_excerpt)}</p>`).join('')}${findingsMarkup(relatedRows,{support:true})}`);
   }
   function explain() { openDialog('Weights & statistics explained',root.getElementById('scientific-explanation').innerHTML); }
-  function refresh() { state.limit=30; opened.clear(); bannerState.clear(); grouping(); syncControls(); renderList(); }
+  function refresh() { state.limit=30;expandedSections.clear(); opened.clear(); bannerState.clear(); grouping(); syncControls(); renderList(); }
   function resetFilters({preserveFocus=false}={}) {
     detailState.clear();
     selectedAnatomy.clear();selectedMetricIds.clear();classificationFilters={};sourceSelection=null;
@@ -518,7 +520,7 @@ function locator(value) {
     if(button.id==='close-dialog')$('record-dialog').close();
     if(button.id==='reset'){if(options.embedded && options.onClearFilters)options.onClearFilters();else resetFilters();return;}
     if(button.id==='all-sources'){if(options.embedded){options.onViewSources?.();return;}evidenceMap?.clear(false);mapResultIds=null;Object.assign(state,{query:'',sourceQuery:'',organize:'source',filters:{},order:'name',focus:''});$('search').value='';updateQuery();refresh();}
-    if(button.id==='more-signs'){state.limit=entries.length;renderList();}
+    if(button.hasAttribute('data-more-section')){expandedSections.add(button.dataset.moreSection);renderList();}
     if(button.dataset.clearFilter){delete state.filters[button.dataset.clearFilter];refresh();}
     if(button.hasAttribute('data-retry-evidence')){renderPaper(button.closest('.paper-content'));return;}
     if(button.dataset.stat)openStatistic(button.dataset.stat);
@@ -537,7 +539,7 @@ function locator(value) {
     else return;
     refresh();
   });
-  $('search').addEventListener('input',event=>{if(state.organize==='source'){setSourceQuery(event.target.value);return;}state.query=event.target.value;state.focus='';state.limit=30;opened.clear();updateQuery();grouping();renderList();});
+  $('search').addEventListener('input',event=>{if(state.organize==='source'){setSourceQuery(event.target.value);return;}state.query=event.target.value;state.focus='';state.limit=30;expandedSections.clear();opened.clear();updateQuery();grouping();renderList();});
   sources=new Map(catalogue.items.filter(item=>item.facet==='source').map(item=>[item.id,item]));nodeIndex=new Map(catalogue.items.map(item=>[item.id,item]));nativeSigns=new Map(atlasGroups(data.rows,'sign').map(group=>[group.id,group]));statOwners=new Map();
     for(const row of data.rows)for(const id of row.statistic_ids){if(!statOwners.has(id))statOwners.set(id,[]);statOwners.get(id).push(row);}
   if(detailsReady)indexWeights();

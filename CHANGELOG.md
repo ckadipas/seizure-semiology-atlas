@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.1.3
+
+- Place the remaining-terms button inside its region or classification banner, including nested banners.
+- Expand that section independently while retaining open signs and papers.
+
 ## 2.1.1
 
 - Load the brain catalogue independently and defer paper details until they are opened.
