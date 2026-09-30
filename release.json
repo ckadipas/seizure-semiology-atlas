@@ -1,9 +1,8 @@
 {
-  "version": "2.1.2",
-  "released_at": "2026-09-30T05:10:06Z",
+  "version": "2.1.3",
+  "released_at": "2026-09-30T22:43:37Z",
   "changes": [
-    "Consolidate source-verified repeated results and qualifying ranges while retaining original passages and citations.",
-    "Correct misplaced numerical values and keep unquantified findings qualitative.",
-    "Keep results from different populations, outcomes and analyses distinct."
+    "Show remaining terms within their own region or classification banner.",
+    "Expand each banner independently while preserving open signs and papers."
   ]
 }
