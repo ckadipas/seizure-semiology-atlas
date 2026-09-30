@@ -5,10 +5,10 @@
   "database_sha256": "3c8790dd949a9dcf05379235f8dff39c63f8f414ff4e6f649b86bd077f0f64e4",
   "graph_schema_version": "atlas-normalized-relationship-graph-1.17.0",
   "graph_sha256": "9042023e7e476f454105be495bc29e77673679eafe3127fbd54e1295b91fc73e",
-  "module_sha256": "9da78b3c54dd5a104938f8163da1cca40f1c1a8fdfc6cfe4b636a5120eecddac",
-  "projection_file_sha256": "ceba2c1cca09a609571b51d633f14861a3463e3161ff58020ce6a09995bacf64",
+  "module_sha256": "b054749f3c933e2cd91621473ca147d98a57903a92bcc663b3f66d284a7e9d32",
+  "projection_file_sha256": "fca3f6582e72f4be891f764646631608168904b1cf658e97589dc60b7eac0d77",
   "release_id": "semiology-atlas-v1.5.12-selection-preview",
   "schema_version": "atlas-public-release-receipt-1.1.0",
-  "semantic_digest": "663b620451f89476340cbf8d11f3795bcce0560be2ea0806beab637c4ba4bd25",
-  "snapshot_sha256": "3cdd33bce2540e851038fdd3d2cc11f20355bc012b92970a1a4f7ba5036c3db1"
+  "semantic_digest": "05da1cbf8e2a5926e6759bd81b3c36ebb9014bcd97075e3d9fb2dcd259fb9f2b",
+  "snapshot_sha256": "779ffb18c66ec76deaf5b06e26681f5612fb22aef7a15c4882260096cee6bcc1"
 }

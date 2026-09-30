@@ -1,4 +1,4 @@
-import { atlasSearchRows, atlasGroups, atlasCounts, atlasEvidenceSection, atlasNavigationGroups, atlasDictionaryGroups, atlasSignSections, atlasRegionRank, atlasMetricLabels, atlasMetricTypes, atlasWeightPresentation, atlasAppraisalLabel, atlasSourceFindingsMarkup, atlasSourceFindingGroups, atlasSourceLocator, atlasStatisticGroups } from './atlas_projection.mjs?v=9da78b3c54dd5a104938f8163da1cca40f1c1a8fdfc6cfe4b636a5120eecddac';
+import { atlasSearchRows, atlasGroups, atlasCounts, atlasEvidenceSection, atlasNavigationGroups, atlasDictionaryGroups, atlasSignSections, atlasRegionRank, atlasMetricLabels, atlasMetricTypes, atlasWeightPresentation, atlasAppraisalLabel, atlasSourceFindingsMarkup, atlasSourceFindingGroups, atlasSourceLocator, atlasStatisticGroups, atlasLoadDetails } from './atlas_projection.mjs?v=b054749f3c933e2cd91621473ca147d98a57903a92bcc663b3f66d284a7e9d32';
 
 const styles = `
 .weight-table td>strong{font-size:12px;font-weight:600}.weight-table td>span{display:block;font-size:12px}.weight-table td>small:last-of-type{margin-top:10px}.weight-table td>small:first-child{margin-top:0}
@@ -30,13 +30,29 @@ footer{max-width:1220px;margin:auto;padding:4px 28px 28px;display:flex;justify-c
 
 .paper-links{display:flex;align-items:center;flex-wrap:wrap;gap:4px 16px;margin-bottom:8px}.paper-links .map-link{margin:0}.result-refinements{margin-bottom:16px;font-size:12px}.result-refinements>summary{padding:7px 0;color:var(--teal)}.refinement-state{color:var(--muted);font-size:11px}.result-refinements .inside-controls{margin:10px 0 0}.result-refinements .paper-controls{grid-template-columns:repeat(2,minmax(0,1fr))}.toolbar-label{grid-column:1/-1;color:var(--muted);font-size:12px;font-weight:600}
 .paper-findings,.paper-measurements{margin:18px 0}.paper-findings>h4,.paper-measurements>h4,.paper-content .paper-weights>h4{font-size:13px;font-weight:650;margin-bottom:10px}.paper-content .paper-weights{margin-top:24px;padding-top:18px;border-top:1px solid var(--line)}.paper-content>.context-details{margin-top:18px;padding-top:10px;border-top:1px solid var(--line)}.paper-content .result-table{margin-top:8px}.paper-content .result-number{font-size:15px}.paper-content .result-number small{font-size:11px}.paper-content .compact-anatomy{margin:0;padding:0}.paper>summary{background:#fff}.paper>summary .paper-title h3{font-size:16px;line-height:1.45;font-weight:650}.paper>summary .paper-tools{gap:5px 12px}.paper-tools .pill{padding:0;background:transparent;font-size:11px}.paper-content .calculation-line h5{font-size:11px;font-weight:600;line-height:1.5;margin:8px 0 2px}
-.organization-controls{display:contents}.toolbar slot[name=filters]{display:none}.embedded-help{display:none}:host([data-embedded]){--ink:#1a1d2e;--muted:#667085;--teal:#0a7a8a;--pale:#edf4f9;--line:#e3e8f0;--canvas:#fff;--serif:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;font:14px/1.5 Inter,ui-sans-serif,system-ui,sans-serif;background:transparent;display:block;min-width:0;container-type:inline-size}:host([data-embedded]) .owner-only,:host([data-embedded]) .intro h1{display:none}:host([data-embedded]) .embedded-help{display:block}:host([data-embedded]) main{max-width:none;margin:0;padding:0}:host([data-embedded]) .intro{display:none}:host([data-embedded]) .list-meta{flex-wrap:wrap;gap:6px 12px;margin:12px 0}:host([data-embedded]) #match-count{margin-right:auto}:host([data-embedded]) .list-meta slot{display:contents}:host([data-embedded]) .toolbar{grid-template-columns:minmax(0,1fr) minmax(0,1.35fr);align-items:start;padding:0;gap:20px;border:0}:host([data-embedded]) .organization-controls{display:grid;gap:12px;min-width:0}:host([data-embedded]) .toolbar slot[name=organization]{display:contents}:host([data-embedded]) .toolbar slot[name=filters]{display:block;min-width:0;align-self:stretch;border-left:1px solid var(--line);padding-left:20px}@container(max-width:520px){:host([data-embedded]) .toolbar{grid-template-columns:minmax(0,1fr);gap:16px}:host([data-embedded]) .toolbar slot[name=filters]{border-left:0;border-top:1px solid var(--line);padding:16px 0 0}}:host([data-embedded]) .toolbar label{font-size:14px;font-weight:650;color:var(--navy,#142653)}:host([data-embedded]) .toolbar select{height:44px;font-size:14px;font-weight:500;border:1px solid var(--line);border-radius:8px;background:#f8fafc;color:var(--navy,#142653)}:host([data-embedded]) .sign-card>summary{padding:12px 14px}:host([data-embedded]) .sign-title strong{font-size:15px}:host([data-embedded]) .sign-body{padding:12px}:host([data-embedded]) #reset{display:none}@media(max-width:850px){.toolbar>.toolbar-label+.field{grid-column:1/-1}}`;
+.organization-controls{display:contents}.toolbar slot[name=filters]{display:none}.embedded-help{display:none}:host([data-embedded]){--ink:#1a1d2e;--muted:#667085;--teal:#0a7a8a;--pale:#edf4f9;--line:#e3e8f0;--canvas:#fff;--serif:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;font:14px/1.5 Inter,ui-sans-serif,system-ui,sans-serif;background:transparent;display:block;min-width:0;container-type:inline-size}:host([data-embedded]) .owner-only,:host([data-embedded]) .intro h1{display:none}:host([data-embedded]) .embedded-help{display:block}:host([data-embedded]) main{max-width:none;margin:0;padding:0}:host([data-embedded]) .intro{display:none}:host([data-embedded]) .list-meta{flex-wrap:wrap;gap:6px 12px;margin:12px 0}:host([data-embedded]) #match-count{margin-right:auto}:host([data-embedded]) .list-meta slot{display:contents}:host([data-embedded]) .toolbar{grid-template-columns:minmax(0,1fr) minmax(0,1.35fr);align-items:start;padding:0;gap:20px;border:0}:host([data-embedded]) .organization-controls{display:grid;gap:12px;min-width:0}:host([data-embedded]) .toolbar slot[name=organization]{display:contents}:host([data-embedded]) .toolbar slot[name=filters]{display:block;min-width:0;align-self:stretch;border-left:1px solid var(--line);padding-left:20px}@container(max-width:520px){:host([data-embedded]) .toolbar{grid-template-columns:minmax(0,1fr);gap:12px}:host([data-embedded]) .organization-controls{grid-template-columns:repeat(auto-fit,minmax(min(140px,100%),1fr));gap:10px}:host([data-embedded]) .toolbar .organization-controls select{font-size:16px}:host([data-embedded]) .toolbar slot[name=filters]{border-left:0;border-top:1px solid var(--line);padding:12px 0 0}:host([data-embedded]) .list-meta{display:grid;grid-template-columns:minmax(0,1fr);gap:4px;margin:10px 0}:host([data-embedded]) .list-meta .help-button{max-width:none;min-height:44px;padding:4px 0;text-align:left;justify-self:start;line-height:1.4}}:host([data-embedded]) .toolbar label{font-size:14px;font-weight:650;color:var(--navy,#142653)}:host([data-embedded]) .toolbar select{height:44px;font-size:14px;font-weight:500;border:1px solid var(--line);border-radius:8px;background:#f8fafc;color:var(--navy,#142653)}:host([data-embedded]) .sign-card>summary{padding:12px 14px}:host([data-embedded]) .sign-title strong{font-size:15px}:host([data-embedded]) .sign-body{padding:12px}:host([data-embedded]) #reset{display:none}@media(max-width:850px){.toolbar>.toolbar-label+.field{grid-column:1/-1}}`;
+
+const mobileStyles = `
+.paper-content{font-size:14px;line-height:1.55}
+.paper-summary{margin:14px 0 22px}.paper-summary h4{font-size:14px;margin-bottom:10px}.paper-summary p{margin:10px 0;color:var(--ink)}
+.paper-content .result-table{font-size:13px}.paper-content .result-table thead th{font-size:13px}.paper-content .result-table th:nth-child(1){width:40%}.paper-content .result-table th:nth-child(2){width:35%}.paper-content .result-table th:nth-child(3){width:25%}
+.paper-content .result-table .result-group th{position:static;text-align:left;background:var(--pale);color:var(--ink);font-size:14px;width:auto}
+.paper-content .result-table .compact-anatomy{margin-top:8px;font-size:13px}.paper-content .result-table .compact-anatomy h4{font-size:13px;font-weight:500}.paper-content .result-table small{font-size:13px}.paper-content .result-number{font-size:14px}.paper-content .result-table .text-button{display:block;font-size:13px}
+@media(max-width:540px){.paper-content .result-table td{font-size:13px}.paper-content .result-table td:nth-child(3){grid-row:auto;font-size:14px}.paper-content .result-table td:before{display:none}.paper-content .result-table .result-group{padding:0;border:0}.paper-content .result-table .result-group th{padding:10px}.paper-content .result-table td:empty{display:none}}
+.controls-toggle{display:none}
+@media(max-width:780px){
+  :host([data-embedded]) .controls-toggle{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:44px;margin:0 0 12px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--pale);color:var(--navy,#142653);font:inherit;font-weight:650;text-align:left}
+  .controls-toggle:after{content:'▾';color:var(--teal)}
+  .controls-toggle[aria-expanded=false]:after{content:'▸'}
+  :host([data-embedded]) .controls-toggle[aria-expanded=false]+.toolbar{display:none}
+}`;
 
 const markup = `
 <a class="skip" href="#main">Skip to signs</a>
 <header class="masthead owner-only"><div class="mast-inner"><div class="brand"><svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><rect width="32" height="32" rx="9" fill="#176862"/><path d="M8 16h4l3-7 3 14 3-7h3" stroke="white" stroke-width="1.8" stroke-linejoin="round"/></svg>Semiology Atlas</div><button class="help-button" id="help">Weights & statistics explained</button></div></header>
 <main id="main"><div class="intro"><h1>Signs & evidence</h1><div class="intro-actions"><div class="corpus" id="corpus">Loading evidence…</div><button class="help-button embedded-help" data-evidence-help>Weights & statistics explained</button></div></div>
-<div class="toolbar" aria-label="Organize signs and evidence"><div class="field"><label id="search-label" for="search">Search</label><input id="search" type="search" placeholder="Sign or source wording" autocomplete="off"></div><div class="field"><label for="organize">View</label><select id="organize"><option value="sign">Signs</option><option value="source">Sources</option></select></div><div class="organization-controls"><slot name="organization"></slot><div class="field"><label id="order-label" for="order">Order signs by</label><select id="order"></select></div></div><div class="field" id="evidence-class-field"><label for="evidence-class">Evidence class</label><select id="evidence-class"></select></div><slot name="filters"></slot></div>
+<button class="controls-toggle" id="controls-toggle" type="button" aria-expanded="true" aria-controls="evidence-toolbar">Filters and organization</button>
+<div id="evidence-toolbar" class="toolbar" aria-label="Organize signs and evidence"><div class="field"><label id="search-label" for="search">Search</label><input id="search" type="search" placeholder="Sign or source wording" autocomplete="off"></div><div class="field"><label for="organize">View</label><select id="organize"><option value="sign">Signs</option><option value="source">Sources</option></select></div><div class="organization-controls"><slot name="organization"></slot><div class="field"><label id="order-label" for="order">Order signs by</label><select id="order"></select></div></div><div class="field" id="evidence-class-field"><label for="evidence-class">Evidence class</label><select id="evidence-class"></select></div><slot name="filters"></slot></div>
 <div class="list-meta"><span id="match-count" aria-live="polite">Loading signs…</span><button id="reset">Reset</button><slot name="actions"></slot></div><div class="active-filters" id="active-filters"></div><section class="sign-list" id="sign-list" aria-label="Signs and evidence"><div class="empty">Loading evidence…</div></section>
 </main>
 <footer class="owner-only"><span>Owner preview</span><a href="https://www.semiologyatlas.org/" target="_blank" rel="noopener">Public atlas ↗</a></footer>
@@ -50,7 +66,7 @@ export function createEvidenceReview(host, options) {
   const root=host.shadowRoot || host.attachShadow({mode:'open'});
   host.toggleAttribute('data-embedded',Boolean(options.embedded ?? options.onShowMap));
   options={...options,embedded:options.embedded ?? Boolean(options.onShowMap)};
-  root.innerHTML='<style>'+styles+'</style>'+markup;
+  root.innerHTML='<style>'+styles+mobileStyles+'</style>'+markup;
   if(options.navigation){options.navigation.slot='organization';host.append(options.navigation);}
   if(options.filters){options.filters.slot='filters';host.append(options.filters);}
   if(options.actions){options.actions.slot='actions';host.append(options.actions);}
@@ -108,6 +124,7 @@ function locator(value) {
   const params = new URLSearchParams(options.embedded ? '' : location.search);
   const state = {query:params.get('q') || '',sourceQuery:'',organize:'sign',filters:{},order:'name',limit:30,focus:''};
   const opened = new Set(), bannerState = new Map(), detailState = new Map(), weightIndex = new Map();
+  let detailsReady = !data.details_url;
   let evidenceMap = publicSite ? {showEvidence: options.onShowMap, clear: () => options.onClearFilters?.()} : null, mapResultIds = null, dialogRows = [];
   let organization = '', currentView = '', signOrder = 'name', pendingFocus = '', selectedAnatomy = new Set(), selectedMetricIds = new Set(), classificationFilters = {}, sourceSelection = null;
   let groups = [], unplaced = [], entries = [], nodeIndex, nativeSigns, statOwners, queryRows = null;
@@ -262,17 +279,46 @@ function locator(value) {
     const denominator = clean(stat.denominator) || (stat.denominator_value != null ? String(stat.denominator_value) : '');
     return [['Population',metadata(stat.population)],['Subgroup',metadata(stat.subgroup)],['Analysis unit',metadata(stat.analysis_unit)],['Denominator',denominator],['Timepoint',metadata(stat.timepoint)],['Endpoint',metadata(stat.endpoint)],['Comparator',metadata(stat.comparator)]];
   }
+  function paperResultGroups(rows,stats=[]) {
+    const groups=new Map(),rowKeys=new Map();
+    const add=(key,label)=>{if(!groups.has(key))groups.set(key,{label,rows:[],results:[]});return groups.get(key);};
+    for(const row of rows){
+      const signs=row.facets.sign || [],ids=uniq(signs.map(sign=>sign.id)).sort();
+      const key=JSON.stringify([row.source.id,ids.length?ids:[row.finding_ref || row.id]]);
+      rowKeys.set(row.id,key);
+      add(key,uniq(signs.map(sign=>sign.label)).join(' · ') || row.term).rows.push(row);
+    }
+    for(const {statistic:stat} of atlasStatisticGroups(stats)){
+      const owners=ownersFor(stat,rows),keys=uniq(owners.map(row=>rowKeys.get(row.id))).sort();
+      if(!owners.length)throw new Error('Reported statistic has no selected source owner');
+      const group=keys.length===1?groups.get(keys[0]):add(JSON.stringify(keys),uniq(owners.flatMap(row=>(row.facets.sign || []).map(sign=>sign.label))).join(' · '));
+      group.results.push({stat,rows:owners});
+    }
+    for(const group of groups.values()){
+      const findings=new Map();
+      for(const row of group.rows.filter(row=>!row.statistic_ids.length)){
+        const key=row.source.finding?.finding_ref || row.finding_ref || row.id;
+        if(!findings.has(key))findings.set(key,[]);
+        findings.get(key).push(row);
+      }
+      group.results.push(...[...findings.values()].map(rows=>({rows})));
+      group.results.sort((a,b)=>Number(!a.stat)-Number(!b.stat) || locator(a.stat?.source_locator || a.rows[0].source.locator).localeCompare(locator(b.stat?.source_locator || b.rows[0].source.locator),undefined,{numeric:true}));
+    }
+    return [...groups.values()].sort((a,b)=>a.label.localeCompare(b.label));
+  }
   function resultsMarkup(stats,rows) {
-    if (!stats.length) return '';
-    stats=atlasStatisticGroups(stats).map(group=>group.statistic);
-    const shared = new Map(contexts(stats[0]).filter(([key,value]) => value && stats.every(stat => new Map(contexts(stat)).get(key) === value)));
-    return `${shared.size ? `<p class="shared-context">${[...shared].map(([key,value]) => `${esc(key)}: ${esc(value)}`).join(' · ')}</p>` : ''}<table class="result-table"><thead><tr><th>Finding / statistic</th><th>Study context</th><th>Value</th><th><span class="sr-only">Source details</span></th></tr></thead><tbody>${stats.map(stat => {
-      const terms=uniq(ownersFor(stat,rows).map(row=>row.term));
-      const measure = clean(stat.measure), label = metricName(stat.metric_type);
-      const description = measure && measure.toLocaleLowerCase() !== label.toLocaleLowerCase() && measure !== clean(stat.value_text) ? `<small>${esc(measure)}</small>` : '';
-      const context = contexts(stat).filter(([key,value]) => value && shared.get(key) !== value && !(key==='Endpoint' && terms.includes(value))).map(([key,value]) => `${esc(key)}: ${esc(value)}`).join('<br>');
-      return `<tr data-statistic="${esc(stat.statistic_id)}"><td data-label="Finding / statistic"><strong>${terms.map(esc).join(' · ')}</strong><small>${esc(label)}</small>${description}${stat.evidence_role==='EDUCATIONAL_STATEMENT'?rolePill(stat.evidence_role):''}</td><td data-label="Study context">${context || '—'}</td><td data-label="Value" class="result-number">${esc(valueText(stat))}${uncertainty(stat) ? `<small>${esc(uncertainty(stat))}</small>` : ''}</td><td><button class="text-button" data-stat="${esc(stat.statistic_id)}">Source details</button></td></tr>`;
-    }).join('')}</tbody></table>`;
+    const groups=paperResultGroups(rows,stats).filter(group=>group.results.length);
+    if(!groups.length)return '';
+    return `<table class="result-table"><thead><tr><th>Finding and anatomy</th><th>Study context</th><th>Reported result</th></tr></thead>${groups.map(group=>`<tbody><tr class="result-group"><th colspan="3" scope="rowgroup">${esc(group.label)}</th></tr>${group.results.map(({stat,rows:owners})=>{
+      const terms=uniq(owners.map(row=>row.term)),label=stat?metricName(stat.metric_type):'';
+      const context=stat?contexts(stat).filter(([key,value])=>value && !(key==='Endpoint' && terms.includes(value))).map(([key,value])=>`${esc(key)}: ${esc(value)}`).join('<br>'):'';
+      const anatomy=atlasSourceFindingsMarkup(owners,{compact:true,localizationAnnotation,omitHeadings:[group.label,...terms]});
+      const role=uniq([stat?.evidence_role,...owners.flatMap(row=>(row.facets.evidence || []).map(value=>value.id.replace(/^EVIDENCE:/,'')))].filter(Boolean)).map(roleName).join(' · ');
+      const contextLabel=owners.every(row=>row.record_kind==='CONTEXT_ONLY')?'Study context':'';
+      const description=stat && clean(stat.measure) && clean(stat.measure).toLocaleLowerCase()!==label.toLocaleLowerCase() && clean(stat.measure)!==clean(stat.value_text)?`<small>${esc(stat.measure)}</small>`:'';
+      const details=stat?`data-stat="${esc(stat.statistic_id)}"`:`data-findings="${esc(JSON.stringify(owners.map(row=>row.id)))}"`;
+      return `<tr${stat?` data-statistic="${esc(stat.statistic_id)}"`:''} data-result-owners="${esc(JSON.stringify(owners.map(row=>row.id)))}"><td>${terms.some(term=>term.toLocaleLowerCase()!==group.label.toLocaleLowerCase())?`<strong>${terms.map(esc).join(' · ')}</strong>`:''}${anatomy}</td><td>${contextLabel?`<strong>${contextLabel}</strong><br>`:''}${context}${role?`<small>${esc(role)}</small>`:''}</td><td>${stat?`<span class="result-number">${esc(valueText(stat))}</span><small>${esc(label)}</small>${description}${uncertainty(stat)?`<small>${esc(uncertainty(stat))}</small>`:''}`:''}<small>${esc(locator(stat?.source_locator || owners[0].source.locator))}</small><button class="text-button" ${details}>Source details</button></td></tr>`;
+    }).join('')}</tbody>`).join('')}</table>`;
   }
   function weightRows(rows,sourceId,setting) {
     const selected=new Set(rows.map(row=>row.id)),records=new Map();
@@ -335,7 +381,20 @@ function locator(value) {
     const other=context.length?`<details class="calculation"><summary>Appraisals for other signs in this paper</summary>${context.map(item=>`<section class="calculation-line"><strong>${esc(signLabel(item))}</strong><details><summary>Source wording</summary><p>${esc(item.label)}</p></details>${axes.filter(axis=>item.values[axis]).map(axis=>{const value=item.values[axis],view=atlasWeightPresentation(value,axis);return `<section data-context-appraisal="${esc(value.id)}"><h5>${axisName(axis)}</h5><p>Appraised weight: ${esc(view.label)}${['I','II','III'].includes(value.evidence_class)?` · ${esc(classLabel(value.evidence_class))}`:''}</p>${!publicSite&&value.original_sign_label?`<details><summary>Original database label</summary><p>${esc(value.original_sign_label)}</p></details>`:''}</section>`;}).join('')}</section>`).join('')}</details>`:'';
     return `<details class="context-details paper-weights"><summary>Evidence weights</summary><table class="weight-table"><thead><tr><th>Assessed sign</th>${axes.map(axis=>`<th>${options.embedded?axisName(axis):`<button data-weight-order="${axis}" data-group="${esc(groupId)}" title="Order by ${axisName(axis).toLowerCase()} appraised weight">${axisName(axis)} ↓</button>`}</th>`).join('')}</tr></thead><tbody>${table}</tbody></table><details class="calculation"><summary>Calculation details</summary>${details}</details>${other}</details>`;
   }
-  function findingsMarkup(rows) {
+  function findingsMarkup(rows,{support=false}={}) {
+    if(!support){
+      const seen=new Set();
+      return paperResultGroups(rows).map(group=>{
+        const statements=atlasSourceFindingGroups(group.rows).flatMap(row=>{
+          const key=row.source.finding?.finding_ref || row.finding_ref || row.id;
+          if(seen.has(key))return [];
+          seen.add(key);
+          const statement=clean(row.source.finding?.statement) || clean(row.source.excerpt);
+          return statement?[`${row.record_kind==='CONTEXT_ONLY'?'Study context: ':''}${statement}`]:[];
+        });
+        return statements.map(statement=>`<p>${esc(statement)}</p>`).join('');
+      }).join('');
+    }
     return atlasSourceFindingGroups(rows).map(row=>{
       const statement=clean(row.source.finding?.statement) || clean(row.source.excerpt);
       const passages=uniq([row.source.excerpt,...(row.source_passages || []).map(value=>value.excerpt),...(row.source_anatomy || []).map(value=>value.source_excerpt),...(row.source_laterality || []).map(value=>value.source_excerpt)].map(clean).filter(Boolean));
@@ -352,12 +411,44 @@ function locator(value) {
     const labels=uniq(matches.filter(item=>item.scope==='OVERLAP' && !exact.has(item.id)).map(item=>item.label).filter(Boolean));
     return labels.length ? `Anatomical overlap · ${labels.join('; ')}` : '';
   }
-  function paperMarkup(id,rows,stats,setting,groupId,embedded=false) {
+  function paperContent(id,rows,setting,groupId,embedded) {
     const roles=uniq(rows.flatMap(row=>(row.facets.evidence || []).map(item=>item.id.replace(/^EVIDENCE:/,''))));
     const evidenceClasses=classesFor(rows).map(classLabel).join(' · ');
-    const anatomy=atlasSourceFindingsMarkup(rows,{compact:true,localizationAnnotation}),measurements=resultsMarkup(stats,rows);
-    const body=`<div class="paper-content" tabindex="0" role="region" aria-label="${esc(citation(id))}: evidence">${embedded?`<div class="paper-tools"><span class="evidence-class-label">${esc(evidenceClasses)}</span>${roles.map(rolePill).join(' ')}</div>`:''}<div class="paper-links">${sourceLink(id)}${publicSite?`<button class="text-button map-link" data-show-map="${esc(groupId)}" data-map-source="${esc(id)}">Show on map</button>`:''}</div>${anatomy?`<section class="paper-findings"><h4>Reported findings and anatomy</h4>${anatomy}</section>`:''}${measurements?`<section class="paper-measurements"><h4>Reported measurements</h4>${measurements}</section>`:''}<details class="context-details" open><summary>Summary of findings</summary>${findingsMarkup(rows)}</details>${paperWeights(rows,id,setting,groupId)}</div>`;
+    const stats=evidenceStats(rows,setting).filter(stat=>!selectedMetricIds.size || selectedMetricIds.has('METRIC:'+stat.metric_type));
+    return `${embedded?`<div class="paper-tools"><span class="evidence-class-label">${esc(evidenceClasses)}</span>${roles.map(rolePill).join(' ')}</div>`:''}<div class="paper-links">${sourceLink(id)}${publicSite?`<button class="text-button map-link" data-show-map="${esc(groupId)}" data-map-source="${esc(id)}">Show on map</button>`:''}</div><section class="paper-summary"><h4>Summary of findings</h4>${findingsMarkup(rows)}</section>${resultsMarkup(stats,rows)}${paperWeights(rows,id,setting,groupId)}`;
+  }
+  function paperMarkup(id,rows,setting,groupId,embedded=false) {
+    const roles=uniq(rows.flatMap(row=>(row.facets.evidence || []).map(item=>item.id.replace(/^EVIDENCE:/,''))));
+    const evidenceClasses=classesFor(rows).map(classLabel).join(' · ');
+    const body=`<div class="paper-content" data-evidence-paper="${esc(id)}" tabindex="0" role="region" aria-label="${esc(citation(id))}: evidence"></div>`;
     return embedded ? body : `<details class="paper" data-paper="${esc(id)}" data-group="${esc(groupId)}" ${setting.openPapers?.has(id)?'open':''}><summary><div class="paper-title"><h3>${esc(sourceTitle(id))}</h3><p>${esc(citation(id))}</p><div class="paper-tools"><span class="evidence-class-label">${esc(evidenceClasses)}</span>${roles.map(rolePill).join(' ')}</div></div></summary>${body}</details>`;
+  }
+  function indexWeights() {
+    weightIndex.clear();
+    for(const axis of axes)for(const summary of data.weights?.[axis]||[]){if(!weightIndex.has(summary.sign_id))weightIndex.set(summary.sign_id,new Map());weightIndex.get(summary.sign_id).set(axis,summary);}
+  }
+  async function renderPaper(body) {
+    if(!body || ['loading','loaded'].includes(body.dataset.load))return;
+    const card=body.closest('.sign-card'),paper=body.closest('.paper'),entry=entries[Number(card?.dataset.entry)];
+    if(!entry || !card.open || paper && !paper.open)return;
+    body.dataset.load='loading';body.setAttribute('aria-busy','true');
+    try {
+      if(!detailsReady){
+        body.innerHTML='<p role="status">Loading evidence…</p>';
+        await atlasLoadDetails(data);
+        if(!detailsReady){indexWeights();detailsReady=true;}
+      }
+      delete body.dataset.load;
+      if(!body.isConnected || !card.open || paper && !paper.open)return;
+      const setting=settings(entry.group.id),id=body.dataset.evidencePaper;
+      const rows=entry.group.rows.filter(row=>row.source.id===id && classMatches(row,setting.evidenceClass));
+      body.innerHTML=paperContent(id,rows,setting,entry.group.id,entry.type==='source');
+      body.dataset.load='loaded';
+    } catch(error) {
+      delete body.dataset.load;
+      if(body.isConnected)body.innerHTML='<p role="alert">Evidence details could not be loaded.</p><button class="text-button" data-retry-evidence>Retry loading evidence</button>';
+      console.error('Evidence details could not be loaded',error);
+    } finally { body.removeAttribute('aria-busy'); }
   }
   function signBody(group,embedded=false) {
     const setting=settings(group.id),rowsForClass=group.rows.filter(row=>classMatches(row,setting.evidenceClass)),allStats=statisticsFor(rowsForClass),types=metricTypesFor([...allStats,...(setting.metric?[{metric_type:setting.metric}]:[])]);
@@ -368,10 +459,10 @@ function locator(value) {
     const controls=options.embedded?'':`<details class="result-refinements" data-group="${esc(group.id)}" ${setting.controlsOpen?'open':''}><summary>Refine this ${embedded?'paper':'sign'}'s results${refinements.length?`<span class="refinement-state"> · ${refinements.map(esc).join(' · ')}</span>`:''}</summary><div class="inside-controls dictionary-controls paper-controls" data-paper-count="${ids.length}"><div class="field"><label>Reported statistic</label><select data-detail="metric" data-group="${esc(group.id)}" aria-label="Reported statistic">${[['','All statistics'],...types.map(type=>[type,metricName(type)])].map(([id,label])=>`<option value="${esc(id)}" ${setting.metric===id?'selected':''}>${esc(label)}</option>`).join('')}</select></div><div class="field"><label>Evidence class</label><select data-detail="evidenceClass" data-group="${esc(group.id)}" aria-label="Study evidence class">${[['','All classes'],...classesFor(group.rows).map(id=>[id,classLabel(id)])].map(([id,label])=>`<option value="${esc(id)}" ${setting.evidenceClass===id?'selected':''}>${esc(label)}</option>`).join('')}</select></div></div></details>`;
     const fullGroup=group.dictionary?null:groups.find(item=>item.id===group.id),fullRows=(fullGroup ? selectedRows(fullGroup.rows) : group.rows).filter(row=>classMatches(row,setting.evidenceClass));
     const expand=state.query.trim() && fullRows.length>rowsForClass.length ? `<button class="text-button" data-all-term="${esc(group.id)}">View all ${paperIds(fullRows).length} papers for this term</button>` : '';
-    return {paperCount:ids.length,html:expand + controls + (publicSite && !embedded?`<button class="text-button map-link" data-show-map="${esc(group.id)}">Show on map</button>`:'') + ids.slice(0,setting.papers).map(id=>{const rows=rowsForClass.filter(row=>row.source.id===id),owned=new Set(statisticsFor(rows).map(stat=>stat.statistic_id));return paperMarkup(id,rows,stats.filter(stat=>owned.has(stat.statistic_id)),setting,group.id,embedded);}).join('') + (ids.length>setting.papers ? `<button class="more" data-more-papers="${esc(group.id)}">Show ${ids.length-setting.papers} remaining papers</button>` : '') + (!ids.length ? '<p class="empty">No papers match the selected filters.</p>' : '')};
+    return {paperCount:ids.length,html:expand + controls + (publicSite && !embedded?`<button class="text-button map-link" data-show-map="${esc(group.id)}">Show on map</button>`:'') + ids.slice(0,setting.papers).map(id=>paperMarkup(id,rowsForClass.filter(row=>row.source.id===id),setting,group.id,embedded)).join('') + (ids.length>setting.papers ? `<button class="more" data-more-papers="${esc(group.id)}">Show ${ids.length-setting.papers} remaining papers</button>` : '') + (!ids.length ? '<p class="empty">No papers match the selected filters.</p>' : '')};
   }
   function entryBody(entry) { return entry.referenceOnly?{html:`<div class="paper-links">${sourceLink(entry.group.id)}</div>`,paperCount:0}:signBody(entry.group,entry.type==='source'); }
-  function renderEntry(card) { const entry=entries[Number(card.dataset.entry)]; if (!entry || !card.open) return; const body=entryBody(entry);card.querySelector('.sign-body').innerHTML=body.html; if(entry.type==='sign'){const count=body.paperCount,total=paperIds(entry.group.rows).length;card.querySelector('.sign-meta').textContent=count<total ? `${count} of ${total} papers` : `${count} ${count===1?'paper':'papers'}`;} card.dataset.loaded='true'; }
+  function renderEntry(card) { const entry=entries[Number(card.dataset.entry)]; if (!entry || !card.open) return; const body=entryBody(entry);card.querySelector('.sign-body').innerHTML=body.html; if(entry.type==='sign'){const count=body.paperCount,total=paperIds(entry.group.rows).length;card.querySelector('.sign-meta').textContent=count<total ? `${count} of ${total} papers` : `${count} ${count===1?'paper':'papers'}`;} card.dataset.loaded='true';card.querySelectorAll('.paper-content').forEach(renderPaper); }
   function refreshGroup(id) { root.querySelectorAll('.sign-card[open]').forEach(card=>{if(entries[Number(card.dataset.entry)]?.group.id===id)renderEntry(card);}); }
   function openDialog(title,body,rows=[]) { dialogRows=rows; $('dialog-title').textContent=title; $('dialog-body').innerHTML=body; $('record-dialog').showModal(); $('record-dialog').scrollTop=0; }
   function openStatistic(id) {
@@ -380,7 +471,8 @@ function locator(value) {
     const fields=[['Statistic',metricName(stat.metric_type)],['Reported measure',stat.measure],['Numerator',clean(stat.numerator)||stat.numerator_value],...contexts(stat),['Reported unit',stat.unit],['Phase',stat.phase],['Anatomy / laterality',stat.anatomy_laterality_context],['Uncertainty',uncertainty(stat)],['Evidence role',roleName(stat.evidence_role)],['Independence classification',stat.independent_evidence===1?'Independent observation; independence of cohorts is not established.':stat.independent_evidence===0?'Not classified as independent evidence.':'Not recorded'],['Source locator',locator(stat.source_locator)]];
     if(stat.independence_status)fields.push(['Reporting status',roleName(stat.independence_status)]);
     if(stat.restatement_explanation)fields.push(['Restatement context',stat.restatement_explanation]);
-    openDialog(clean(stat.measure)||metricName(stat.metric_type),`<div class="dialog-value">${esc(valueText(stat))}</div><p>${paperIds(rows).map(id=>esc(citation(id))).join(' · ')}</p><dl>${fields.map(([label,value])=>`<dt>${esc(label)}</dt><dd>${esc(clean(value)||'Not recorded')}</dd>`).join('')}</dl><h3>Source passages</h3>${statements.map(item=>`<p><strong>${esc(locator(item.source_locator))}</strong><br>${esc(item.source_excerpt)}</p>`).join('')}`);
+    const relatedRows=uniq(statements.flatMap(item=>(statOwners.get(item.statistic_id)||[])));
+    openDialog(clean(stat.measure)||metricName(stat.metric_type),`<div class="dialog-value">${esc(valueText(stat))}</div><p>${paperIds(rows).map(id=>esc(citation(id))).join(' · ')}</p><dl>${fields.map(([label,value])=>`<dt>${esc(label)}</dt><dd>${esc(clean(value)||'Not recorded')}</dd>`).join('')}</dl><h3>Source passages</h3>${statements.map(item=>`<p><strong>${esc(locator(item.source_locator))}</strong><br>${esc(item.source_excerpt)}</p>`).join('')}${findingsMarkup(relatedRows,{support:true})}`);
   }
   function explain() { openDialog('Weights & statistics explained',root.getElementById('scientific-explanation').innerHTML); }
   function refresh() { state.limit=30; opened.clear(); bannerState.clear(); grouping(); syncControls(); renderList(); }
@@ -398,13 +490,17 @@ function locator(value) {
     const rows=context.filter(row=>!sourceId || row.source.id===sourceId);
     if(!rows.length)return;
     if(element.closest('#record-dialog'))$('record-dialog').close();
-    evidenceMap?.showEvidence(rows,sourceId?sourceTitle(sourceId):entry?.type==='source'?sourceTitle(group.id):group?.label,{scroll});
+    const paperId=sourceId || (entry?.type==='source'?group.id:'');
+    const signs=uniq(rows.flatMap(row=>(row.facets.sign||[]).map(sign=>sign.label)));
+    const label=group && entry.type!=='source'?group.label:signs.length===1?signs[0]:rows.length===1?rows[0].term:'Selected findings';
+    evidenceMap?.showEvidence(rows,label,{scroll,sourceLabel:paperId?citation(paperId):''});
   }
-  root.addEventListener('toggle',event=>{const card=event.target;if(!card.isConnected)return;if(card.classList.contains('sign-section')){bannerState.set(card.dataset.banner,card.open);return;}if(card.classList.contains('result-refinements')){settings(card.dataset.group).controlsOpen=card.open;return;}if(card.classList.contains('paper')){const papers=settings(card.dataset.group).openPapers;if(card.open)papers.add(card.dataset.paper);else papers.delete(card.dataset.paper);return;}if(!card.classList.contains('sign-card'))return;const entry=entries[Number(card.dataset.entry)];if(!entry)return;if(card.open){opened.add(entry.key);if(!card.dataset.loaded)renderEntry(card);}else opened.delete(entry.key);},true);
+  root.addEventListener('toggle',event=>{const card=event.target;if(!card.isConnected)return;if(card.classList.contains('sign-section')){bannerState.set(card.dataset.banner,card.open);return;}if(card.classList.contains('result-refinements')){settings(card.dataset.group).controlsOpen=card.open;return;}if(card.classList.contains('paper')){const papers=settings(card.dataset.group).openPapers;if(card.open){papers.add(card.dataset.paper);renderPaper(card.querySelector('.paper-content'));}else papers.delete(card.dataset.paper);return;}if(!card.classList.contains('sign-card'))return;const entry=entries[Number(card.dataset.entry)];if(!entry)return;if(card.open){opened.add(entry.key);if(!card.dataset.loaded)renderEntry(card);else card.querySelectorAll('.paper-content').forEach(renderPaper);}else opened.delete(entry.key);},true);
   root.addEventListener('click',event=>{
     const summary=event.target.closest('.sign-card > summary, .paper > summary');
-    if(event.isTrusted && !event.defaultPrevented && summary && !summary.parentElement.open && !event.target.closest('button,a,input,select,textarea'))showMapFor(summary.parentElement,{scroll:false});
+    if(event.isTrusted && !event.defaultPrevented && summary && !summary.parentElement.open && !matchMedia('(max-width:780px)').matches && !event.target.closest('button,a,input,select,textarea'))showMapFor(summary.parentElement,{scroll:false});
     const button=event.target.closest('button');if(!button)return;
+    if(button.id==='controls-toggle'){button.setAttribute('aria-expanded',String(button.getAttribute('aria-expanded')!=='true'));return;}
     if(button.id==='help' || button.hasAttribute('data-evidence-help'))explain();
     if(button.hasAttribute('data-clear-map')){evidenceMap?.clear();return;}
     if(button.dataset.showMap){showMapFor(button);return;}
@@ -413,7 +509,9 @@ function locator(value) {
     if(button.id==='all-sources'){if(options.embedded){options.onViewSources?.();return;}evidenceMap?.clear(false);mapResultIds=null;Object.assign(state,{query:'',sourceQuery:'',organize:'source',filters:{},order:'name',focus:''});$('search').value='';updateQuery();refresh();}
     if(button.id==='more-signs'){state.limit=entries.length;renderList();}
     if(button.dataset.clearFilter){delete state.filters[button.dataset.clearFilter];refresh();}
+    if(button.hasAttribute('data-retry-evidence')){renderPaper(button.closest('.paper-content'));return;}
     if(button.dataset.stat)openStatistic(button.dataset.stat);
+    if(button.dataset.findings){const ids=new Set(JSON.parse(button.dataset.findings));openDialog('Source details',findingsMarkup(data.rows.filter(row=>ids.has(row.id)),{support:true}));return;}
     if(button.dataset.allTerm){if(options.embedded){pendingFocus=button.dataset.allTerm;options.onClearFilters?.({preserveFocus:true});return;}state.query='';state.focus=button.dataset.allTerm;$('search').value='';updateQuery();opened.clear();opened.add(state.focus);grouping();syncControls();renderList();}
     if(button.dataset.morePapers){settings(button.dataset.morePapers).papers=Infinity;refreshGroup(button.dataset.morePapers);}
     if(button.dataset.weightOrder){settings(button.dataset.group).weights=button.dataset.weightOrder;refreshGroup(button.dataset.group);}
@@ -431,7 +529,7 @@ function locator(value) {
   $('search').addEventListener('input',event=>{if(state.organize==='source'){setSourceQuery(event.target.value);return;}state.query=event.target.value;state.focus='';state.limit=30;opened.clear();updateQuery();grouping();renderList();});
   sources=new Map(catalogue.items.filter(item=>item.facet==='source').map(item=>[item.id,item]));nodeIndex=new Map(catalogue.items.map(item=>[item.id,item]));nativeSigns=new Map(atlasGroups(data.rows,'sign').map(group=>[group.id,group]));statOwners=new Map();
     for(const row of data.rows)for(const id of row.statistic_ids){if(!statOwners.has(id))statOwners.set(id,[]);statOwners.get(id).push(row);}
-    for(const axis of axes)for(const summary of data.weights[axis]||[]){if(!weightIndex.has(summary.sign_id))weightIndex.set(summary.sign_id,new Map());weightIndex.get(summary.sign_id).set(axis,summary);}
+  if(detailsReady)indexWeights();
 
   grouping();
   $('search').value=state.query;syncControls();renderList();

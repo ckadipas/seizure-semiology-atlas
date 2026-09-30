@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.1.1
+
+- Load the brain catalogue independently and defer paper details until they are opened.
+- Put readable finding summaries first and combine anatomy, study context and measurements in one table.
+- Keep related findings together while preserving distinct observations, statistics and source details.
+- Allow mobile filters and organization to collapse; use Show on map to navigate from mobile results.
+- Identify the selected sign above the brain and show the citation when a paper narrows the map.
+
 ## 2.1.0
 
 - Consolidate search, evidence filters and sign organization beside the cortical map.

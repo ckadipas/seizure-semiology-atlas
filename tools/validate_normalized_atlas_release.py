@@ -25,6 +25,7 @@ from public_relationship_graph import (
 )
 
 
+BROWSER_DELIVERY_FILES = {f"atlas-{part}.json.gz" for part in ("catalogue", "browse", "details")}
 BUNDLE_SCHEMA = "atlas-public-bundle-1.17.0"
 GRAPH_SCHEMA = "atlas-normalized-relationship-graph-1.17.0"
 PUBLIC_RECEIPT_SCHEMA = "atlas-public-release-receipt-1.1.0"
@@ -106,6 +107,43 @@ def receipt_digest(receipt):
     return actual
 
 
+def validate_browser_delivery(docs, projection):
+    """Require split delivery to reconstruct the exact frozen scientific projection."""
+    snapshot_sha256 = hashlib.sha256(gzip.decompress(
+        (docs / "atlas-projection.json.gz").read_bytes())).hexdigest()
+    parts = {}
+    for name in ("catalogue", "browse", "details"):
+        path = docs / f"atlas-{name}.json.gz"
+        require(path.is_file() and not path.is_symlink(), f"invalid browser delivery file: {name}")
+        part = json.loads(gzip.decompress(path.read_bytes()))
+        require(isinstance(part, dict) and part.pop("snapshot_sha256", None) == snapshot_sha256,
+                f"browser delivery snapshot binding differs: {name}")
+        parts[name] = part
+    require(parts["catalogue"] == {"catalogue": projection["catalogue"]},
+            "browser catalogue differs from the frozen projection")
+    detail_fields = ("statistics", "weights", "appraisal_receipts")
+    require(parts["details"] == {key: projection[key] for key in detail_fields},
+            "browser details differ from the frozen projection")
+    browse = parts["browse"]
+    records = browse.pop("facet_records", None)
+    require(isinstance(records, list), "browser facet records are absent")
+    used = set()
+    for row in browse.get("rows", []):
+        for facet, indexes in row["facets"].items():
+            require(isinstance(indexes, list) and all(type(index) is int and 0 <= index < len(records)
+                                                    for index in indexes),
+                    "browser facet reference is invalid")
+            used.update(indexes)
+            row["facets"][facet] = [records[index] for index in indexes]
+    require(used == set(range(len(records))), "browser facet records contain unreferenced material")
+    expected = {key: value for key, value in projection.items()
+                if key not in ("catalogue", *detail_fields)}
+    expected["statistics"] = {key: {field: value.get(field) for field in
+                                    ("statistic_id", "metric_type", "unit")}
+                              for key, value in projection["statistics"].items()}
+    require(browse == expected, "browser records differ from the frozen projection")
+
+
 def validate_explorer_files(docs, projection, *, surface_mode="public"):
     """Check the exact runtime assets before publishing or serving a release."""
     require(surface_mode in {"public", "private", "deployment"}, "unknown surface validation mode")
@@ -114,6 +152,9 @@ def validate_explorer_files(docs, projection, *, surface_mode="public"):
     require(isinstance(views, dict) and views, "public explorer map views are absent")
     expected = {"index.html", "atlas_projection.mjs", "atlas-projection.json.gz"}
     html = (docs / "index.html").read_text(encoding="utf-8")
+    if 'data-delivery="split-v1"' in html:
+        expected.update(BROWSER_DELIVERY_FILES)
+        validate_browser_delivery(docs, projection)
     if "from './atlas_evidence.mjs" in html:
         expected.add("atlas_evidence.mjs")
         component = docs / "atlas_evidence.mjs"
