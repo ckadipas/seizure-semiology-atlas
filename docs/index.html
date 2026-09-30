@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-projection="static" data-snapshot="3cdd33bce2540e851038fdd3d2cc11f20355bc012b92970a1a4f7ba5036c3db1" data-label-editing="disabled">
+<html lang="en" data-projection="static" data-snapshot="779ffb18c66ec76deaf5b06e26681f5612fb22aef7a15c4882260096cee6bcc1" data-delivery="split-v1" data-label-editing="disabled">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -170,6 +170,9 @@
     .surface-help { font-size:.72rem; color:var(--muted); margin-top:5px; }
     .surface-boundary { display:flex; flex-wrap:wrap; gap:6px; }
     .brain-figure { min-width:0; }
+    .map-evidence-heading { margin:0 0 12px; overflow-wrap:anywhere; }
+    .map-evidence-heading h3 { margin:0; color:var(--navy); font-size:1rem; }
+    .map-evidence-heading p { margin:4px 0 0; color:var(--muted); font-size:.85rem; }
     .map-outputs { display:grid; gap:8px; max-height:min(360px,40dvh); overflow:auto;  scrollbar-gutter:stable; margin-top:10px; }
     #mapOutputs:not(:has(.map-region-group)), #atlasOutputs:not(:has(.map-region-group)) .map-output-actions { display:none; }
     .map-output-tools { position:sticky; top:0; z-index:1; display:flex; align-items:center; justify-content:flex-end; flex-wrap:wrap; gap:6px; padding-bottom:6px; background:var(--panel); }
@@ -387,6 +390,11 @@
       .facet-menu { top: auto; left: 0; right: 0; width: 100%; }
       .search-row { grid-template-columns: 1fr auto; }
       .search-wrap { grid-column: 1 / -1; }
+      .search-wrap input,.sign-navigation select,.anatomy-controls select { font-size:16px; }
+      .filters { gap:8px; }
+      .facet-menu label { min-height:44px; align-items:center; }
+      .result-tools { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); width:100%; margin:0; }
+      .result-tools .quiet { min-height:44px; font-size:14px; padding:7px 8px; }
       .section-head { align-items: flex-start; flex-direction: column; }
       .map-controls { width:100%; }
       .map-controls .segmented { flex:1; }
@@ -438,6 +446,7 @@
         </div>
         <div class="map-layout">
           <div class="brain-figure" id="brainPane">
+            <div id="mapEvidenceHeading" class="map-evidence-heading" hidden aria-live="polite"><h3></h3><p hidden></p></div>
             <div class="map-controls" hidden>
               <div id="mapViewWrap" hidden><div id="surfaceTabs" class="segmented" role="tablist" aria-label="Surface view"></div><select id="mapView" hidden aria-label="Surface"></select></div>
               <div class="hemisphere-control"><div id="hemisphereTabs" class="segmented" role="group" aria-label="Viewing hemisphere" title="Changes the view; use Laterality to filter reported evidence."><button type="button" data-hemisphere="left" aria-pressed="true" aria-label="Left hemisphere" title="Left hemisphere">LH</button><button type="button" data-hemisphere="right" aria-pressed="false" aria-label="Right hemisphere" title="Right hemisphere">RH</button><button type="button" data-hemisphere="both" aria-pressed="false" aria-label="Both hemispheres" title="Both hemispheres">Both</button></div></div><select id="mapHemisphere" hidden aria-label="Viewing hemisphere"><option value="left">Left</option><option value="right">Right</option><option value="both">Both</option></select>
@@ -513,8 +522,8 @@
     }
   </script>
   <script type="module">
-    import { createEvidenceReview } from './atlas_evidence.mjs?v=78397ce54963f7ccb18d4d49046078b6af65381d7ac1cf17bc62e3a304eb6159';
-    import { atlasData, atlasPivot, atlasGroups, atlasRegionRank, atlasClassificationGroups, atlasCounts, atlasWeights, atlasWeightPresentation, atlasAppraisalLabel, atlasStatisticGroups, atlasSourceAnatomyMarkup } from './atlas_projection.mjs?v=9da78b3c54dd5a104938f8163da1cca40f1c1a8fdfc6cfe4b636a5120eecddac';
+    import { createEvidenceReview } from './atlas_evidence.mjs?v=28ff4e5b110f60ce8d857c1cf66646f665d9f68214e385fbc1505f1a04f20b64';
+    import { atlasData, atlasPivot, atlasGroups, atlasRegionRank, atlasClassificationGroups, atlasCounts, atlasWeights, atlasWeightPresentation, atlasAppraisalLabel, atlasStatisticGroups, atlasSourceAnatomyMarkup } from './atlas_projection.mjs?v=b054749f3c933e2cd91621473ca147d98a57903a92bcc663b3f66d284a7e9d32';
     (() => {
       "use strict";
       if (location.protocol === 'file:') return;
@@ -569,6 +578,8 @@
         optionSearch: {},
         mapAnatomy: new Set(),
         mapValues: [],
+        mapLabel: '',
+        mapSourceLabel: '',
         mapRegions: new Set(),
         mapResultIds: new Set(),
         mapRevealEvidence: false,
@@ -1012,7 +1023,7 @@
           $("#brainMap").textContent = state.loading ? "Loading map…" : "Map unavailable.";
           return;
         }
-        const controlsDisabled = !state.response;
+        const controlsDisabled = !state.catalogue.maps;
         const views = state.catalogue.maps?.views || {};
         $("#surfaceTabs").innerHTML = Object.keys(views).map(id => `<button type="button" role="tab" data-surface="${h(id)}" aria-selected="${id === state.mapView}">${h(id[0].toUpperCase()+id.slice(1))}</button>`).join("");
         $("#hemisphereTabs").querySelectorAll("button").forEach(button => button.setAttribute("aria-pressed", String(button.dataset.hemisphere === state.mapHemisphere)));
@@ -1033,7 +1044,7 @@
         $("#mapHemisphere").value = state.mapHemisphere;
         $('#mapPanel .browse-name').textContent = localSurfaces ? 'Interactive 3D cortical map' : 'Brodmann overview';
           $('#mapPanel .section-head p').textContent = localSurfaces ? 'Select a colored region, or show Brodmann labels to select a numbered area.' : 'Select a numbered area to filter the evidence.';
-        const countsAvailable=!localSurfaces||surfacePanel?.atlas.checked;
+        const countsAvailable=Boolean(state.response)&&(!localSurfaces||surfacePanel?.atlas.checked);
         $('#mapCounts').disabled=!countsAvailable;
         const showCounts=state.mapCounts&&countsAvailable;
         $('#hemisphereTabs').hidden = Boolean(localSurfaces && surfacePanel?.layer==='mesial');
@@ -1101,6 +1112,10 @@
         </svg>`;
 
         $("#mapSelection").innerHTML = mapSelectionMarkup(linkedValues,true) + mapSelectionMarkup(state.mapValues.filter(value=>state.mapAnatomy.has(value.id)));
+        $('#mapEvidenceHeading').hidden = !state.mapResultIds.size;
+        $('#mapEvidenceHeading h3').textContent = state.mapLabel;
+        $('#mapEvidenceHeading p').textContent = state.mapSourceLabel;
+        $('#mapEvidenceHeading p').hidden = !state.mapSourceLabel;
         const contextHeadings=$("#mapSelection").querySelectorAll(".map-context > h3");
         $("#mapOutputs .map-output-title").textContent=contextHeadings.length===1?contextHeadings[0].textContent:"Anatomy relationships";
       }
@@ -1316,15 +1331,17 @@
       function mapButton(rows, label = 'Show on map') {
         const anatomy = rows.flatMap(row => rowFacetValues(row, 'anatomy'));
         if (!anatomy.length) return '';
-        return '<button class="show-map" type="button" data-anatomy="'+h(JSON.stringify([...new Set(anatomy.map(x=>x.id))]))+'" data-anatomy-values="'+h(JSON.stringify(anatomy.map(({id,label,role,scope})=>({id,label,role,scope}))))+'" data-regions="'+h(JSON.stringify(uniqueValues(rows,'region').map(x=>x.id)))+'" data-results="'+h(JSON.stringify(rows.map(row=>row.id)))+'">'+h(label)+'</button>';
+        return '<button class="show-map" type="button" data-map-label="'+h(rows.length===1?rows[0].term:'Selected findings')+'" data-anatomy="'+h(JSON.stringify([...new Set(anatomy.map(x=>x.id))]))+'" data-anatomy-values="'+h(JSON.stringify(anatomy.map(({id,label,role,scope})=>({id,label,role,scope}))))+'" data-regions="'+h(JSON.stringify(uniqueValues(rows,'region').map(x=>x.id)))+'" data-results="'+h(JSON.stringify(rows.map(row=>row.id)))+'">'+h(label)+'</button>';
       }
 
-      function showEvidenceOnMap(rows, label, {scroll=true}={}) {
+      function showEvidenceOnMap(rows, label, {scroll=true,sourceLabel=''}={}) {
         const anatomy = rows.flatMap(row => rowFacetValues(row, 'anatomy'));
         state.mapAnatomy = new Set(anatomy.map(item => item.id));
         state.mapValues = anatomy;
         state.mapRegions = new Set(uniqueValues(rows, 'region').map(item => item.id));
         state.mapResultIds = new Set(rows.map(row => row.id));
+        state.mapLabel = label || 'Selected findings';
+        state.mapSourceLabel = sourceLabel;
         state.mapRevealEvidence = true;
         const views = state.catalogue.maps?.views || {};
         const view = markerRows(mapConfig()).some(marker => state.mapAnatomy.has(marker.anatomy_id)) ? state.mapView
@@ -1754,6 +1771,7 @@
       }
 
       async function runQuery() {
+        if (!evidenceReview) { renderMap(); return; }
         const regionIds=new Set(facetItems('region').map(item=>item.id));
         const shared=selected('anatomy').filter(id=>regionIds.has(id));
         if(shared.length) {
@@ -1820,15 +1838,22 @@
         removeFailure();
         setSearchReady(false);
         try {
-          const [cataloguePayload,completeResponse] = await Promise.all([
-            atlasData(requestUrl("/api/catalogue", request), request.controller.signal),
+          const [payload,completeResponse] = await Promise.all([
+            atlasData(requestUrl("/api/catalogue", request), request.controller.signal).then(cataloguePayload => {
+              const catalogue = validateCatalogue(cataloguePayload);
+              if (isCurrent(request)) {
+                state.catalogue = catalogue;
+                if(catalogue.maps?.local_surfaces && !state.mapView){state.mapView='lateral';state.mapHemisphere='left';}
+                catalogueItems = new Map(catalogue.facets.map(facet => [facet.id, catalogue.items.filter(item => item.facet === facet.id)]));
+                catalogueLabels = new Map([...catalogueItems].map(([id, items]) => [id, new Map(items.map(item => [item.id, item.label]))]));
+                renderMap();
+              }
+              return catalogue;
+            }),
             atlasData(requestUrl("/api/query?limit=all", request), request.controller.signal),
           ]);
-          const payload = validateCatalogue(cataloguePayload);
           validateQuery(completeResponse);
           if (!isCurrent(request)) return;
-          state.catalogue = payload;
-          if(payload.maps?.local_surfaces){state.mapView='lateral';state.mapHemisphere='left';}
           if (!evidenceReview) evidenceReview = createEvidenceReview($('#results'), {
             catalogue: payload,
             data: completeResponse,
@@ -1847,8 +1872,6 @@
             $('#releaseNotes').innerHTML = `<summary>What's new in v${h(release.version)}</summary><ul>${(release.changes || []).map(change=>`<li>${h(change)}</li>`).join('')}</ul>`;
             $('#releaseNotes').hidden = false;
           }
-          catalogueItems = new Map(payload.facets.map(facet => [facet.id, payload.items.filter(item => item.facet === facet.id)]));
-          catalogueLabels = new Map([...catalogueItems].map(([id, items]) => [id, new Map(items.map(item => [item.id, item.label]))]));
           finishRequest(request);
           setSearchReady(true);
           renderFilters();
@@ -1977,7 +2000,7 @@
       $(".map-count-toggle").addEventListener("click", event => event.stopPropagation());
       $("#mapCounts").addEventListener("change", event => { state.mapCounts = event.target.checked; renderMap(); });
       function selectMapMarker(target) {
-        if (!state.response) return;
+        if (!state.catalogue.maps) return;
         const marker = target.closest(".surface-ba[data-anatomy], .map-marker[data-anatomy]");
         if (!marker) return;
         const anatomyId = marker.dataset.anatomy;
@@ -2019,6 +2042,8 @@
         state.mapValues = JSON.parse(button.dataset.anatomyValues);
         state.mapRegions = new Set(JSON.parse(button.dataset.regions));
         state.mapResultIds = new Set(JSON.parse(button.dataset.results));
+        state.mapLabel = button.dataset.mapLabel || 'Selected findings';
+        state.mapSourceLabel = '';
         const views = state.catalogue.maps?.views || {};
         const view = markerRows(mapConfig()).some(marker => state.mapAnatomy.has(marker.anatomy_id)) ? state.mapView
           : Object.keys(views).find(id => markerRows(views[id]).some(marker => state.mapAnatomy.has(marker.anatomy_id))) || state.mapView;

@@ -1,6 +1,50 @@
 /* Static delivery of the same generated result/facet projection used locally. */
 let atlasSnapshot;
+let atlasCatalogue;
+let atlasDetails;
 const atlasAsciiLower = value => String(value ?? '').replace(/[A-Z]/g, c => c.toLowerCase());
+
+async function atlasAsset(name, signal, bound = true) {
+  const version = document.documentElement.dataset.snapshot;
+  const response = await fetch(`${name}${version ? `?v=${encodeURIComponent(version)}` : ''}`, { signal });
+  if (!response.ok) throw new Error('Atlas data unavailable');
+  const value = await new Response(response.body.pipeThrough(new DecompressionStream('gzip'))).json();
+  if (bound && value.snapshot_sha256 !== version) throw new Error('Atlas files belong to different releases');
+  return value;
+}
+
+function atlasLoadCatalogue(signal) {
+  if (!atlasCatalogue) atlasCatalogue = atlasAsset('atlas-catalogue.json.gz', signal)
+    .then(value => value.catalogue).catch(error => { atlasCatalogue = null; throw error; });
+  return atlasCatalogue;
+}
+
+export function atlasExpandBrowse(value, catalogue) {
+  const { facet_records: records, snapshot_sha256, ...snapshot } = value;
+  if (!Array.isArray(records)) throw new Error('Atlas navigation records unavailable');
+  snapshot.rows = snapshot.rows.map(row => ({ ...row, facets: Object.fromEntries(
+    Object.entries(row.facets).map(([facet, indexes]) => [facet, indexes.map(index => {
+      if (!Number.isInteger(index) || index < 0 || index >= records.length) throw new Error('Invalid atlas navigation reference');
+      return records[index];
+    })])) }));
+  return { ...snapshot, catalogue, weights: {}, appraisal_receipts: {}, details_url: 'atlas-details.json.gz' };
+}
+
+export async function atlasLoadDetails(data) {
+  if (!data.details_url) return data;
+  if (!atlasDetails) atlasDetails = atlasAsset(data.details_url, AbortSignal.timeout(30000))
+    .catch(error => { atlasDetails = null; throw error; });
+  const details = await atlasDetails;
+  const ids = new Set(data.rows.flatMap(row => row.statistic_ids));
+  data.statistics = Object.fromEntries([...ids].map(id => {
+    if (!details.statistics[id]) throw new Error('Atlas statistic unavailable');
+    return [id, details.statistics[id]];
+  }));
+  data.weights = atlasProjectWeights(details.weights, data.rows);
+  data.appraisal_receipts = details.appraisal_receipts;
+  delete data.details_url;
+  return data;
+}
 
 function atlasProjectWeights(weights, rows) {
   const selected = new Set(rows.map(row => row.id));
@@ -34,17 +78,18 @@ export async function atlasData(path, signal) {
     if (!response.ok) throw new Error('Atlas request failed');
     return response.json();
   }
+  const url = new URL(path, location.href);
+  const split = document.documentElement.dataset.delivery === 'split-v1';
+  if (split && url.pathname === '/api/catalogue') return atlasLoadCatalogue(signal);
   if (!atlasSnapshot) atlasSnapshot = (async () => {
-    const version = document.documentElement.dataset.snapshot;
-    const asset = `atlas-projection.json.gz${version ? `?v=${encodeURIComponent(version)}` : ''}`;
-    const response = await fetch(asset, { signal });
-    if (!response.ok) throw new Error('Atlas snapshot unavailable');
-    const stream = response.body.pipeThrough(new DecompressionStream('gzip'));
-    return new Response(stream).json();
+    if (!split) return atlasAsset('atlas-projection.json.gz', signal, false);
+    const [browse, catalogue] = await Promise.all([
+      atlasAsset('atlas-browse.json.gz', signal), atlasLoadCatalogue(signal),
+    ]);
+    return atlasExpandBrowse(browse, catalogue);
   })().catch(error => { atlasSnapshot = null; throw error; });
   const snapshot = await atlasSnapshot;
   if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
-  const url = new URL(path, location.href);
   if (url.pathname === '/api/catalogue') return snapshot.catalogue;
   return atlasPivot(snapshot, url.searchParams);
 }
@@ -134,6 +179,7 @@ export function atlasPivot(snapshot, parameters) {
       .map(id => [id, snapshot.statistics[id]])),
     weights: atlasProjectWeights(snapshot.weights, rows),
     appraisal_receipts: snapshot.appraisal_receipts || {},
+    ...(snapshot.details_url ? { details_url: snapshot.details_url } : {}),
   };
 }
 
@@ -483,7 +529,7 @@ export function atlasSourceAnatomyMarkup(row, seenExcerpts=new Set(), {h=atlasEs
   }).join('');
 }
 
-export function atlasSourceFindingsMarkup(rows, {compact=false,localizationAnnotation=null}={}) {
+export function atlasSourceFindingsMarkup(rows, {compact=false,localizationAnnotation=null,omitHeadings=[]}={}) {
   if(!compact)rows=atlasSourceFindingGroups(rows);
   if (compact) {
     const labels={COHORT_CONTEXT:'Study population anatomy',COMPARATOR_CONTEXT:'Comparison group anatomy',ONSET:'Seizure onset',STIMULATION:'Stimulation site',NETWORK:'Network',SYMPTOMATOGENIC:'Symptom-producing region',LESION:'Lesion location',SOURCE_REPORTED:'Reported localization'};
@@ -524,7 +570,7 @@ export function atlasSourceFindingsMarkup(rows, {compact=false,localizationAnnot
       const axes=[...subject.axes.values()].sort((a,b)=>Number(a.axis==='LATERALIZATION')-Number(b.axis==='LATERALIZATION')).map(section=>'<div class="anatomy-axis"><dt>'+atlasEscape(section.label)+':</dt><dd>'+[...section.contexts.values()].map(context=>
         '<span>'+[...context.targets.values()].map(target=>atlasEscape(target.label)+(target.annotations.size?' <span class="anatomy-qualifier">('+[...target.annotations].map(atlasEscape).join(' · ')+')</span>':'')).join('; ')+(context.qualifiers.length?' <span class="anatomy-qualifier">('+context.qualifiers.map(atlasEscape).join(' · ')+')</span>':'')+'</span>'
       ).join('')+'</dd></div>').join('');
-      return '<div class="anatomy-subject"'+(subject.findingContext?' data-source-scope="CLAIM"':'')+'>'+(heading?'<h4>'+atlasEscape(heading)+'</h4>':'')+'<dl>'+axes+'</dl></div>';
+      return '<div class="anatomy-subject"'+(subject.findingContext?' data-source-scope="CLAIM"':'')+'>'+(heading&&!omitHeadings.some(label=>label.toLocaleLowerCase()===heading.toLocaleLowerCase())?'<h4>'+atlasEscape(heading)+'</h4>':'')+'<dl>'+axes+'</dl></div>';
     }).join('');
     return markup?'<section class="paper-anatomy compact-anatomy" aria-label="Reported localization and lateralization">'+markup+'</section>':'';
   }
