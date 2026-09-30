@@ -82,7 +82,7 @@ const number = value => Number(value).toLocaleString('en-US');
 const parse = value => { try { return typeof value === 'string' ? JSON.parse(value) : value; } catch { return null; } };
 const words = value => clean(value).toLowerCase().replace(/_/g,' ').replace(/^./, char => char.toUpperCase());
 const metricNames = atlasMetricLabels;
-const metricName = value => metricNames[value] || words(value) || 'Other reported statistic';
+const metricName = value => metricNames[value] || words(value);
 const metricTypesFor = atlasMetricTypes;
 const sectionNames = {study:'Original study',review:'Review or guidance',background:'Cited or contextual',other:'Other evidence'};
 const roleNames = {PRIMARY_RESULT:'Original study result',CASE_OBSERVATION:'Case observation',REVIEW_SYNTHESIS:'Review synthesis',GUIDELINE_RECOMMENDATION:'Guideline recommendation',CITED_STUDY_RESTATEMENT:'Cited study result',PRIMARY_RESULT_SAME_SOURCE_RESTATEMENT:'Repeated result from the same source',EDUCATIONAL_STATEMENT:'Educational statement',METHOD_OR_DEFINITION:'Method or definition',SOURCE_CONTEXT:'Source context',COHORT_CONTEXT:'Study population',SOURCE_REPORTED_TARGET:'Reported relationship',SOURCE_REPORTED:'Reported relationship',STIMULATION:'Stimulation context'};
@@ -142,6 +142,8 @@ function locator(value) {
   const classOptions = ids => option('','All classes') + evidenceClassOrder.filter(id => ids.includes(id)).map(id => option(id,classLabel(id))).join('');
   const classRank = rows => Math.min(...classesFor(rows).map(id => { const rank=evidenceClassOrder.indexOf(id); return rank<0 ? Infinity : rank; }));
   const ownersFor = (stat,rows) => { const selected = new Set(rows.map(row => row.id)); return (statOwners.get(stat.statistic_id) || []).filter(row => selected.has(row.id)); };
+  const findingRefFor = row => row.source.finding?.finding_ref || row.finding_ref || row.id;
+  const findingSupportFor = stats => [...new Map(stats.flatMap(stat=>stat.finding_support || []).map(item=>[item.finding_ref,item])).values()];
   const selectedRows = rows => rows.filter(row => (!mapResultIds || mapResultIds.has(row.id)) && Object.entries(state.filters).every(([facet,id]) => ['ilae','luders'].includes(facet) || (facet === 'evidence_class' ? classMatches(row,id) : !id || (row.facets[facet] || []).some(item => item.id === id))));
   const valueText = stat => clean(stat.value_text) || String(stat.numeric_value ?? 'Not reported');
   const groupingRows = () => options.embedded ? queryRows || data.rows : atlasSearchRows(data.rows,state.query);
@@ -280,7 +282,7 @@ function locator(value) {
     return [['Population',metadata(stat.population)],['Subgroup',metadata(stat.subgroup)],['Analysis unit',metadata(stat.analysis_unit)],['Denominator',denominator],['Timepoint',metadata(stat.timepoint)],['Endpoint',metadata(stat.endpoint)],['Comparator',metadata(stat.comparator)]];
   }
   function paperResultGroups(rows,stats=[]) {
-    const groups=new Map(),rowKeys=new Map();
+    const groups=new Map(),rowKeys=new Map(),attached=new Set();
     const add=(key,label)=>{if(!groups.has(key))groups.set(key,{label,rows:[],results:[]});return groups.get(key);};
     for(const row of rows){
       const signs=row.facets.sign || [],ids=uniq(signs.map(sign=>sign.id)).sort();
@@ -288,16 +290,18 @@ function locator(value) {
       rowKeys.set(row.id,key);
       add(key,uniq(signs.map(sign=>sign.label)).join(' · ') || row.term).rows.push(row);
     }
-    for(const {statistic:stat} of atlasStatisticGroups(stats)){
+    for(const {statistic:stat,statements} of atlasStatisticGroups(stats)){
       const owners=ownersFor(stat,rows),keys=uniq(owners.map(row=>rowKeys.get(row.id))).sort();
       if(!owners.length)throw new Error('Reported statistic has no selected source owner');
       const group=keys.length===1?groups.get(keys[0]):add(JSON.stringify(keys),uniq(owners.flatMap(row=>(row.facets.sign || []).map(sign=>sign.label))).join(' · '));
-      group.results.push({stat,rows:owners});
+      const support=findingSupportFor(statements);
+      for(const item of support)attached.add(item.finding_ref);
+      group.results.push({stat,rows:owners,support});
     }
     for(const group of groups.values()){
       const findings=new Map();
-      for(const row of group.rows.filter(row=>!row.statistic_ids.length)){
-        const key=row.source.finding?.finding_ref || row.finding_ref || row.id;
+      for(const row of group.rows.filter(row=>!row.statistic_ids.length && !attached.has(findingRefFor(row)))){
+        const key=findingRefFor(row);
         if(!findings.has(key))findings.set(key,[]);
         findings.get(key).push(row);
       }
@@ -317,7 +321,7 @@ function locator(value) {
       const contextLabel=owners.every(row=>row.record_kind==='CONTEXT_ONLY')?'Study context':'';
       const description=stat && clean(stat.measure) && clean(stat.measure).toLocaleLowerCase()!==label.toLocaleLowerCase() && clean(stat.measure)!==clean(stat.value_text)?`<small>${esc(stat.measure)}</small>`:'';
       const details=stat?`data-stat="${esc(stat.statistic_id)}"`:`data-findings="${esc(JSON.stringify(owners.map(row=>row.id)))}"`;
-      return `<tr${stat?` data-statistic="${esc(stat.statistic_id)}"`:''} data-result-owners="${esc(JSON.stringify(owners.map(row=>row.id)))}"><td>${terms.some(term=>term.toLocaleLowerCase()!==group.label.toLocaleLowerCase())?`<strong>${terms.map(esc).join(' · ')}</strong>`:''}${anatomy}</td><td>${contextLabel?`<strong>${contextLabel}</strong><br>`:''}${context}${role?`<small>${esc(role)}</small>`:''}</td><td>${stat?`<span class="result-number">${esc(valueText(stat))}</span><small>${esc(label)}</small>${description}${uncertainty(stat)?`<small>${esc(uncertainty(stat))}</small>`:''}`:''}<small>${esc(locator(stat?.source_locator || owners[0].source.locator))}</small><button class="text-button" ${details}>Source details</button></td></tr>`;
+      return `<tr${stat?` data-statistic="${esc(stat.statistic_id)}"`:''} data-result-owners="${esc(JSON.stringify(owners.map(row=>row.id)))}"><td>${terms.some(term=>term.toLocaleLowerCase()!==group.label.toLocaleLowerCase())?`<strong>${terms.map(esc).join(' · ')}</strong>`:''}${anatomy}</td><td>${contextLabel?`<strong>${contextLabel}</strong><br>`:''}${context}${role?`<small>${esc(role)}</small>`:''}</td><td>${stat?`<span${label?' class="result-number"':''}>${esc(valueText(stat))}</span>${label?`<small>${esc(label)}</small>`:''}${description}${uncertainty(stat)?`<small>${esc(uncertainty(stat))}</small>`:''}`:''}<small>${esc(locator(stat?.source_locator || owners[0].source.locator))}</small><button class="text-button" ${details}>Source details</button></td></tr>`;
     }).join('')}</tbody>`).join('')}</table>`;
   }
   function weightRows(rows,sourceId,setting) {
@@ -384,15 +388,16 @@ function locator(value) {
   function findingsMarkup(rows,{support=false}={}) {
     if(!support){
       const seen=new Set();
-      return paperResultGroups(rows).map(group=>{
-        const statements=atlasSourceFindingGroups(group.rows).flatMap(row=>{
-          const key=row.source.finding?.finding_ref || row.finding_ref || row.id;
-          if(seen.has(key))return [];
-          seen.add(key);
-          const statement=clean(row.source.finding?.statement) || clean(row.source.excerpt);
-          return statement?[`${row.record_kind==='CONTEXT_ONLY'?'Study context: ':''}${statement}`]:[];
+      return paperResultGroups(rows,statisticsFor(rows)).flatMap(group=>group.results).map(result=>{
+        const statements=atlasSourceFindingGroups(result.rows).map(row=>{
+          const claim=clean(row.source.finding?.statement) || clean(row.source.excerpt);
+          return {finding_ref:findingRefFor(row),claim:claim && (row.record_kind==='CONTEXT_ONLY'?'Study context: ':'')+claim};
+        }).concat(result.support || []).flatMap(item=>{
+          if(seen.has(item.finding_ref) || !clean(item.claim))return [];
+          seen.add(item.finding_ref);
+          return [clean(item.claim)];
         });
-        return statements.map(statement=>`<p>${esc(statement)}</p>`).join('');
+        return statements.length?`<p>${statements.map(esc).join(' ')}</p>`:'';
       }).join('');
     }
     return atlasSourceFindingGroups(rows).map(row=>{
@@ -468,11 +473,17 @@ function locator(value) {
   function openStatistic(id) {
     const stat=data.statistics[id]; if(!stat)return; const rows=statOwners.get(id)||[];
     const statements=atlasStatisticGroups(Object.values(data.statistics)).find(group=>group.statistic.statistic_id===id)?.statements || [stat];
-    const fields=[['Statistic',metricName(stat.metric_type)],['Reported measure',stat.measure],['Numerator',clean(stat.numerator)||stat.numerator_value],...contexts(stat),['Reported unit',stat.unit],['Phase',stat.phase],['Anatomy / laterality',stat.anatomy_laterality_context],['Uncertainty',uncertainty(stat)],['Evidence role',roleName(stat.evidence_role)],['Independence classification',stat.independent_evidence===1?'Independent observation; independence of cohorts is not established.':stat.independent_evidence===0?'Not classified as independent evidence.':'Not recorded'],['Source locator',locator(stat.source_locator)]];
+    const fields=[...(metricName(stat.metric_type)?[['Statistic',metricName(stat.metric_type)]]:[]),['Reported measure',stat.measure],['Numerator',clean(stat.numerator)||stat.numerator_value],...contexts(stat),['Reported unit',stat.unit],['Phase',stat.phase],['Anatomy / laterality',stat.anatomy_laterality_context],['Uncertainty',uncertainty(stat)],['Evidence role',roleName(stat.evidence_role)],['Independence classification',stat.independent_evidence===1?'Independent observation; independence of cohorts is not established.':stat.independent_evidence===0?'Not classified as independent evidence.':'Not recorded'],['Source locator',locator(stat.source_locator)]];
     if(stat.independence_status)fields.push(['Reporting status',roleName(stat.independence_status)]);
     if(stat.restatement_explanation)fields.push(['Restatement context',stat.restatement_explanation]);
-    const relatedRows=uniq(statements.flatMap(item=>(statOwners.get(item.statistic_id)||[])));
-    openDialog(clean(stat.measure)||metricName(stat.metric_type),`<div class="dialog-value">${esc(valueText(stat))}</div><p>${paperIds(rows).map(id=>esc(citation(id))).join(' · ')}</p><dl>${fields.map(([label,value])=>`<dt>${esc(label)}</dt><dd>${esc(clean(value)||'Not recorded')}</dd>`).join('')}</dl><h3>Source passages</h3>${statements.map(item=>`<p><strong>${esc(locator(item.source_locator))}</strong><br>${esc(item.source_excerpt)}</p>`).join('')}${findingsMarkup(relatedRows,{support:true})}`);
+    const support=findingSupportFor(statements),supportRefs=new Set(support.map(item=>item.finding_ref));
+    const relatedRows=uniq([...statements.flatMap(item=>(statOwners.get(item.statistic_id)||[])),...data.rows.filter(row=>supportRefs.has(findingRefFor(row)))]);
+    for(const item of support)if(!relatedRows.some(row=>findingRefFor(row)===item.finding_ref))relatedRows.push({
+      id:item.finding_ref,finding_ref:item.finding_ref,term:item.source_native_term,
+      source:{id:rows[0]?.source.id,locator:item.source_locator,excerpt:item.source_excerpt,
+        finding:{finding_ref:item.finding_ref,statement:item.claim}},
+    });
+    openDialog(clean(stat.measure)||metricName(stat.metric_type)||'Reported finding',`<div${metricName(stat.metric_type)?' class="dialog-value"':''}>${esc(valueText(stat))}</div><p>${paperIds(rows).map(id=>esc(citation(id))).join(' · ')}</p><dl>${fields.map(([label,value])=>`<dt>${esc(label)}</dt><dd>${esc(clean(value)||'Not recorded')}</dd>`).join('')}</dl><h3>Source passages</h3>${statements.map(item=>`<p><strong>${esc(locator(item.source_locator))}</strong><br>${esc(item.source_excerpt)}</p>`).join('')}${findingsMarkup(relatedRows,{support:true})}`);
   }
   function explain() { openDialog('Weights & statistics explained',root.getElementById('scientific-explanation').innerHTML); }
   function refresh() { state.limit=30; opened.clear(); bannerState.clear(); grouping(); syncControls(); renderList(); }

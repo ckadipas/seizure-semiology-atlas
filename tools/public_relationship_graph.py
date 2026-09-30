@@ -1209,6 +1209,48 @@ class PublicRelationshipGraph:
             )
         self.projection_contract = contract
 
+    def _validate_statistic_finding_support(self):
+        if not any("finding_support" in row for row in self.statistics.values()):
+            return
+        fields = {
+            "finding_ref", "relation", "source_native_term", "claim",
+            "source_locator", "source_excerpt",
+        }
+        source_fields = ("work_id", "report_id", "source_version")
+        finding_sources = {}
+        for row in self.result_relationships:
+            finding_sources.setdefault(row["finding_ref"], set()).add(
+                tuple(row[field] for field in source_fields)
+            )
+        for statistic_id, statistic in self.statistics.items():
+            support = statistic.get("finding_support", [])
+            if not isinstance(support, list):
+                raise ValueError("Statistic finding support must be a list.")
+            if not support:
+                continue
+            owners = [row for row in self.relationships_by_statistic.get(
+                statistic_id, ()
+            ) if row["relationship_kind"] == "STATISTIC_REFERENCE"]
+            sources = {tuple(row[field] for field in source_fields) for row in owners}
+            owner_findings = {row["finding_ref"] for row in owners}
+            seen = set()
+            for item in support:
+                if (
+                    not isinstance(item, dict) or set(item) != fields
+                    or any(not isinstance(item[field], str) or not item[field].strip()
+                           for field in fields)
+                    or item["relation"] not in {"QUALIFIES", "RESTATES"}
+                ):
+                    raise ValueError("Statistic finding support fields differ.")
+                finding_ref = item["finding_ref"]
+                if (
+                    finding_ref in seen or finding_ref in owner_findings
+                    or len(sources) != 1
+                    or finding_sources.get(finding_ref) != sources
+                ):
+                    raise ValueError("Statistic finding support changes source ownership.")
+                seen.add(finding_ref)
+
     def _initialize_passive_graph(self):
         """Load public dictionaries and index shipped relationships by reference."""
         node_groups = self.payload.get("nodes")
@@ -1221,7 +1263,11 @@ class PublicRelationshipGraph:
             raise ValueError("Scientific graph public dictionary groups differ.")
         for group, rows in self.node_groups.items():
             expected = set(PUBLIC_NODE_FIELDS[group])
-            if any(set(row) != expected for row in rows):
+            optional = {"finding_support"} if group == "statistics" else set()
+            if any(
+                not isinstance(row, dict) or not expected <= set(row)
+                or set(row) - expected - optional for row in rows
+            ):
                 raise ValueError(f"{group} public dictionary fields differ.")
         self.signs = self._nodes_by("signs", "sign_id")
         self.statistics = self._nodes_by("statistics", "statistic_id")
@@ -1284,6 +1330,7 @@ class PublicRelationshipGraph:
             "relationship_id",
         )
         self._build_relationship_index()
+        self._validate_statistic_finding_support()
         self.anatomy_evidence_traversals = self._contract_rows(
             "anatomy_evidence_traversals",
             ANATOMY_EVIDENCE_TRAVERSAL_FIELDS,
