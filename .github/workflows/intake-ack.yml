@@ -1,26 +1,61 @@
 name: Intake acknowledgement
 
-# When a paper-intake issue is opened, post a short receipt so the maintainer
-# and submitter know the next step. An
-# "approved" label registers the request for private Gate A preparation. This
-# workflow only comments and is safe to run on every qualifying opened issue.
-
 on:
   issues:
-    types: [opened]
+    types: [opened, reopened, labeled, edited]
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: Paper-intake issue to acknowledge
+        required: true
 
 permissions:
   issues: write
 
+concurrency:
+  group: intake-ack-${{ github.event.inputs.issue_number || github.event.issue.number }}
+  cancel-in-progress: false
+
 jobs:
   ack:
-    # The issue form applies this label to file uploads, DOIs, and links.
-    if: contains(github.event.issue.labels.*.name, 'intake')
     runs-on: ubuntu-latest
     steps:
-      - env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh issue comment "${{ github.event.issue.number }}" \
-            --repo "${{ github.repository }}" \
-            --body "Thanks — your submission has been received. A maintainer's approval registers it for private Gate A preparation. PDF and page-image attachments are accepted; attachments to this issue are public. Working source copies and review artifacts are retained in the private evidence archive. Scientific results reach the public atlas only after private review, owner adjudication, exact integration approval, and separately authorized deployment."
+      - name: Notify the owner once per paper submission
+        uses: actions/github-script@v7
+        with:
+          script: |
+            if (context.eventName === 'workflow_dispatch'
+                && !/^[1-9]\d*$/.test(context.payload.inputs.issue_number)) {
+              throw new Error('Use a positive decimal issue number without spaces or leading zeros.');
+            }
+            const issueNumber = context.eventName === 'workflow_dispatch'
+              ? Number(context.payload.inputs.issue_number)
+              : context.payload.issue.number;
+            if (!Number.isSafeInteger(issueNumber) || issueNumber < 1) {
+              throw new Error('A positive issue number is required.');
+            }
+            const target = { ...context.repo, issue_number: issueNumber };
+            const { data: issue } = await github.rest.issues.get(target);
+            const isIntake = issue.labels.some(label => label.name.toLowerCase() === 'intake')
+              || /^\s*\[intake\]/i.test(issue.title);
+            if (!isIntake || issue.state !== 'open') return;
+
+            const marker = '<!-- paper-intake-owner-receipt -->';
+            const comments = await github.paginate(github.rest.issues.listComments, target);
+            if (!comments.some(comment => comment.user?.type === 'Bot'
+                && comment.body?.includes(marker))) {
+              await github.rest.issues.createComment({
+                ...target,
+                body: [
+                  marker,
+                  `@${context.repo.owner}, a paper submission is ready for your intake review.`,
+                  '',
+                  'Thanks — your submission has been received. PDF and page-image attachments are accepted; attachments to this issue are public. The owner approves the source and review scope at private Gate A before source review, then the exact proposed integration at Gate B before any atlas update. Submission does not start analysis or publish scientific results.'
+                ].join('\n')
+              });
+            }
+            if (!issue.assignees.some(assignee => assignee.login === context.repo.owner)) {
+              await github.rest.issues.addAssignees({
+                ...target, assignees: [context.repo.owner]
+              });
+            }
