@@ -10,6 +10,8 @@ Drag files into the paper field or use its attachment button, then submit the is
 
 The issue and its attachments are public. Upload files you have permission to share publicly, and keep private information out of the submission. Working source copies and review artifacts are retained in the private evidence archive.
 
+A submission is recognized by the `intake` label or the `[intake]` title prefix. The acknowledgement assigns the issue to the repository owner and mentions them once, producing a GitHub notification. Email delivery follows the owner's GitHub notification settings. Editing, reopening, or adding the label can recover a missed acknowledgement; maintainers can also run the acknowledgement workflow for an existing issue. Repeated events do not post another receipt.
+
 The issue registers a nomination only. After a maintainer applies the approved label, the public workflow records it for private Gate A preparation. It does not download the source, review scientific content, edit the atlas, or publish scientific results.
 
 During private review, the intake agent identifies and verifies the paper's DOI if the submitter has not provided it, and records a confirmed DOI with the paper's bibliography. Unresolved matches or papers without an established DOI are recorded explicitly; submitters do not need to supply a DOI for an upload to enter intake.
