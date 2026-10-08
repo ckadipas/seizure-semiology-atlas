@@ -1,14 +1,14 @@
 {
-  "bundle_content_sha256": "1826778c234d0c86babe9ae5f2e2fe0fc8412c70a978a0993bf741e197a822c0",
-  "bundle_file_sha256": "e681955a782a56ec5447c1252a119d6d73bdc230bd066491798c7660f04cd8c1",
+  "bundle_content_sha256": "09893868bb4fbae2e15479bfabef78aa943845688ecbb79d205ad756eac5bfa0",
+  "bundle_file_sha256": "89a95296e50abedbf43aec19b74893231445f3cc0adf85d3d9df6b43c4672051",
   "bundle_schema_version": "atlas-public-bundle-1.17.0",
-  "database_sha256": "b6b76bf1c17170b5d8974a2d5faf88115db4cd8e526aa0b3ecb9f6dcb4e51ce8",
+  "database_sha256": "2c0c354594b8f48fe23b0730adde61905359f56b52582daaf083eeb4ccda8c74",
   "graph_schema_version": "atlas-normalized-relationship-graph-1.17.0",
-  "graph_sha256": "98c667e11ee59e3b04f53de5fba99f751dfca0e3619ab8d425af55914fdfb5dd",
+  "graph_sha256": "873bacd2b8d9a15c066442bd8f4caa14129f35c7bab0f2911468ed26322bc461",
   "module_sha256": "b054749f3c933e2cd91621473ca147d98a57903a92bcc663b3f66d284a7e9d32",
-  "projection_file_sha256": "6012e5209512d70dc73a164b9871e593c60427eecfa57420a5f6df5e77ed2bb3",
-  "release_id": "semiology-atlas-v2.1.2",
+  "projection_file_sha256": "1d504695d91fd76a5877c3c10e79f479bd865c7e359ad8bfd3d3a55148fb65f1",
+  "release_id": "ledger-v1.5.16",
   "schema_version": "atlas-public-release-receipt-1.1.0",
-  "semantic_digest": "9a858250e64b2df6c1e300e22c86c0f5928849201094e48c7a6fc57fa6911137",
-  "snapshot_sha256": "fd535d8b7cc2d18a5a13ad77334a500b7d5c8f2662a694553526c9f959aded5e"
+  "semantic_digest": "385de32f4e84344013df0077e208c5db6148433d56ee4e4ca9c739502bd2cee6",
+  "snapshot_sha256": "2e44168ed7ba12cad7a90a25a35557e3bcf6ba8458839cb28eff16dbd33ebfef"
 }

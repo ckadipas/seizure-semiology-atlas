@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.1.4
+
+- Add the 2025 systematic review and meta-analysis of ictal head turning with distinct source observations, statistics and citations.
+- Link general and timing-specific head-turning signs while preserving their individual identities and qualifiers.
+- Place the new signs under the approved ILAE and Lüders classifications.
+
 ## 2.1.3
 
 - Place the remaining-terms button inside its region or classification banner, including nested banners.
