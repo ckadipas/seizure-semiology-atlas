@@ -1,14 +1,14 @@
 {
-  "bundle_content_sha256": "09893868bb4fbae2e15479bfabef78aa943845688ecbb79d205ad756eac5bfa0",
-  "bundle_file_sha256": "89a95296e50abedbf43aec19b74893231445f3cc0adf85d3d9df6b43c4672051",
+  "bundle_content_sha256": "8a53f9d00ac6ad5973877fffffce62c90150fa8bdf764db3b399d4f17e7a0957",
+  "bundle_file_sha256": "45856ffd2caa082f77005f11086a80d793d9ec7fec8385073fbc3b2a48395fd2",
   "bundle_schema_version": "atlas-public-bundle-1.17.0",
-  "database_sha256": "2c0c354594b8f48fe23b0730adde61905359f56b52582daaf083eeb4ccda8c74",
+  "database_sha256": "d368671d0691451129f68db758f4a0ea20c78c7d9a4e07188ce031e4f8a7c10e",
   "graph_schema_version": "atlas-normalized-relationship-graph-1.17.0",
-  "graph_sha256": "873bacd2b8d9a15c066442bd8f4caa14129f35c7bab0f2911468ed26322bc461",
+  "graph_sha256": "11872c3dd86484e569f571a34265d0cc48c372e30f3480a6b3f48cd471d82bd6",
   "module_sha256": "b054749f3c933e2cd91621473ca147d98a57903a92bcc663b3f66d284a7e9d32",
-  "projection_file_sha256": "1d504695d91fd76a5877c3c10e79f479bd865c7e359ad8bfd3d3a55148fb65f1",
-  "release_id": "ledger-v1.5.16",
+  "projection_file_sha256": "b460df1d051beb88c48acb90aab58ca5021b21f946f0cb5b399d22e659a7224c",
+  "release_id": "ledger-v1.5.17",
   "schema_version": "atlas-public-release-receipt-1.1.0",
-  "semantic_digest": "385de32f4e84344013df0077e208c5db6148433d56ee4e4ca9c739502bd2cee6",
-  "snapshot_sha256": "2e44168ed7ba12cad7a90a25a35557e3bcf6ba8458839cb28eff16dbd33ebfef"
+  "semantic_digest": "79575d487827853110840a128af2be993cc458bbec11947494fcfd8a28dcf8a9",
+  "snapshot_sha256": "e8c4488ae0ca3f84d55a73362be74bf1c6d13893aae613e515441e18c0926852"
 }
