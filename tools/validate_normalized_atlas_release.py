@@ -121,10 +121,41 @@ def validate_browser_delivery(docs, projection):
         parts[name] = part
     require(parts["catalogue"] == {"catalogue": projection["catalogue"]},
             "browser catalogue differs from the frozen projection")
-    detail_fields = ("statistics", "weights", "appraisal_receipts")
-    require(parts["details"] == {key: projection[key] for key in detail_fields},
+    detail_fields = ("statistics", "weights", "appraisal_receipts") + (
+        ("result_tables",) if "result_tables" in parts["details"] or "result_tables" in projection else ())
+    require(parts["details"] == {key: projection.get(key, {}) for key in detail_fields},
             "browser details differ from the frozen projection")
     browse = parts["browse"]
+    source_details = browse.pop("source_details", None)
+    source_files = set()
+    if source_details is not None:
+        require(isinstance(source_details, dict), "invalid source detail index")
+        source_rows = {}
+        for row in projection["rows"]:
+            source_rows.setdefault(row["source"]["id"], []).append(row)
+        require(set(source_details) == set(source_rows), "source detail index differs from the projection")
+        for source_id, rows in source_rows.items():
+            relative = "atlas-details/" + hashlib.sha256(source_id.encode()).hexdigest() + ".json.gz"
+            require(source_details[source_id] == relative, "source detail path differs")
+            path = docs / relative
+            require(path.is_file() and not path.is_symlink(), "invalid source detail file")
+            source_files.add(relative)
+            shard = json.loads(gzip.decompress(path.read_bytes()))
+            result_ids = {row["id"] for row in rows}
+            statistic_ids = {value for row in rows for value in row["statistic_ids"]}
+            expected_shard = {
+                "snapshot_sha256": snapshot_sha256, "source_id": source_id,
+                "statistics": {key: value for key, value in projection["statistics"].items()
+                               if key in statistic_ids},
+                "weights": {axis: [value for value in summaries
+                                   if result_ids.intersection(value["result_ids"])]
+                            for axis, summaries in projection["weights"].items()},
+                "appraisal_receipts": {key: value for key, value in projection["appraisal_receipts"].items()
+                                      if value["source_id"] == source_id},
+            }
+            if "result_tables" in shard or "result_tables" in projection:
+                expected_shard["result_tables"] = {source_id: projection.get("result_tables", {}).get(source_id, [])}
+            require(shard == expected_shard, "source details differ from the frozen projection: " + source_id)
     records = browse.pop("facet_records", None)
     require(isinstance(records, list), "browser facet records are absent")
     used = set()
@@ -142,6 +173,7 @@ def validate_browser_delivery(docs, projection):
                                     ("statistic_id", "metric_type", "unit")}
                               for key, value in projection["statistics"].items()}
     require(browse == expected, "browser records differ from the frozen projection")
+    return source_files
 
 
 def validate_explorer_files(docs, projection, *, surface_mode="public"):
@@ -154,7 +186,7 @@ def validate_explorer_files(docs, projection, *, surface_mode="public"):
     html = (docs / "index.html").read_text(encoding="utf-8")
     if 'data-delivery="split-v1"' in html:
         expected.update(BROWSER_DELIVERY_FILES)
-        validate_browser_delivery(docs, projection)
+        expected.update(validate_browser_delivery(docs, projection))
     if "from './atlas_evidence.mjs" in html:
         expected.add("atlas_evidence.mjs")
         component = docs / "atlas_evidence.mjs"

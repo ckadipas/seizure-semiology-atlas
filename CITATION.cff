@@ -20,6 +20,6 @@ keywords:
   - medical education
 license: CC-BY-NC-SA-4.0
 repository-code: "https://github.com/ckadipas/seizure-semiology-atlas"
-version: "2.1.4"
-date-released: 2026-10-08
+version: "2.1.5"
+date-released: 2026-10-09
 # doi: 10.5281/zenodo.XXXXXXX   # if linking Zenodo and publishing a release

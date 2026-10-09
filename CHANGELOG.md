@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.1.5
+
+- Present localization, lateralization and statistics in compact tables, with full study context and source information available through Source details.
+- Preserve original paper tables where appropriate and keep related results together without combining distinct measurements.
+- Put concise, source-supported summaries first, load the brain and paper results independently, and order Sources by title.
+
 ## 2.1.4
 
 - Add the 2025 systematic review and meta-analysis of ictal head turning with distinct source observations, statistics and citations.

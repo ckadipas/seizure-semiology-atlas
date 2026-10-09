@@ -1,8 +1,9 @@
 {
-  "version": "2.1.4",
-  "released_at": "2026-10-08T07:06:21Z",
+  "version": "2.1.5",
+  "released_at": "2026-10-09T16:49:05Z",
   "changes": [
-    "Add the 2025 systematic review and meta-analysis of ictal head turning, preserving separately reported statistics and source context.",
-    "Link general and timing-specific head-turning signs without merging their identities, and apply the approved ILAE and Lüders classifications."
+    "Present localization, lateralization and reported statistics in compact tables, with study context and full source information available through Source details.",
+    "Preserve original paper tables where appropriate, keep related results together and place concise, source-supported summaries first.",
+    "Load the brain and paper results independently, and order Sources by title."
   ]
 }
