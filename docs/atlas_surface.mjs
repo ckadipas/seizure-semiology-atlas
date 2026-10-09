@@ -80,7 +80,7 @@ function smoothDisplay(positions, indices) {
 }
 
 async function loadMesh(record, palette) {
-  const response = await fetch(`/local-surfaces/${encodeURIComponent(record.file)}`, {cache:'no-store'});
+  const response = await fetch(`/local-surfaces/${encodeURIComponent(record.file)}?v=${encodeURIComponent(record.sha256)}`);
   if (!response.ok) throw new Error('The local surface could not be loaded.');
   const data = await new Response(response.body.pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
   const header = new DataView(data);
@@ -156,8 +156,8 @@ export function bindSurfaceGestures(canvas, rotate, zoom, pick) {
 }
 
 class SurfaceCanvas {
-  constructor(canvas, meshes, onPick) {
-    this.canvas=canvas; this.meshes=meshes; this.onPick=onPick; this.zoom=1; this.selection=[]; this.pickingEnabled=true;
+  constructor(canvas, meshes, onPick, boundsRecords=meshes) {
+    this.canvas=canvas; this.meshes=[];this.boundsRecords=boundsRecords; this.onPick=onPick; this.zoom=1; this.selection=[]; this.pickingEnabled=true;
     this.gl=canvas.getContext('webgl2', {antialias:true, alpha:false, preserveDrawingBuffer:false});
     if (!this.gl) throw new Error('This browser does not support WebGL 2.');
     const gl=this.gl, program=gl.createProgram();
@@ -170,19 +170,7 @@ class SurfaceCanvas {
     if (!gl.getProgramParameter(program,gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program));
     this.program=program;
     this.uniforms=Object.fromEntries(['rotation','center','extent','depth','opacity','selectionPass'].map(name=>[name,gl.getUniformLocation(program,name)]));
-    for (const mesh of meshes) {
-      mesh.vao=gl.createVertexArray(); gl.bindVertexArray(mesh.vao);
-      for (const [name, values, size] of [['position',mesh.positions,3],['normal',mesh.normals,3],['color',mesh.colors,3],['selected',new Float32Array(mesh.labels.length).fill(1),1]]) {
-        const buffer=gl.createBuffer();if(name==='selected')mesh.selectionBuffer=buffer;
-        gl.bindBuffer(gl.ARRAY_BUFFER,buffer); gl.bufferData(gl.ARRAY_BUFFER,values,gl.STATIC_DRAW);
-        const location=gl.getAttribLocation(program,name); gl.enableVertexAttribArray(location);
-        gl.vertexAttribPointer(location,size,gl.FLOAT,false,0,0);
-      }
-      for(const key of ['indices','insulaIndices']){
-        mesh[key+'Buffer']=gl.createBuffer();gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,mesh[key+'Buffer']);
-        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,mesh[key],gl.STATIC_DRAW);
-      }
-    }
+    for (const mesh of meshes) this.addMesh(mesh);
     gl.enable(gl.DEPTH_TEST); gl.clearColor(1,1,1,1);
     this.observer=new ResizeObserver(()=>this.draw()); this.observer.observe(canvas);
     bindSurfaceGestures(canvas,(x,y)=>this.rotate(x,y),factor=>this.zoomBy(factor),(x,y)=>this.pick(x,y));
@@ -198,16 +186,38 @@ class SurfaceCanvas {
     canvas.addEventListener('webglcontextlost',event=>{event.preventDefault();onPick([], 'The graphics context was interrupted. Reload the page to restore the surface.');});
   }
 
+  addMesh(mesh) {
+    const gl=this.gl;
+    mesh.vao=gl.createVertexArray(); gl.bindVertexArray(mesh.vao);
+    for (const [name, values, size] of [['position',mesh.positions,3],['normal',mesh.normals,3],['color',mesh.colors,3],['selected',new Float32Array(mesh.labels.length).fill(1),1]]) {
+      const buffer=gl.createBuffer();if(name==='selected')mesh.selectionBuffer=buffer;
+      gl.bindBuffer(gl.ARRAY_BUFFER,buffer); gl.bufferData(gl.ARRAY_BUFFER,values,gl.STATIC_DRAW);
+      const location=gl.getAttribLocation(this.program,name); gl.enableVertexAttribArray(location);
+      gl.vertexAttribPointer(location,size,gl.FLOAT,false,0,0);
+    }
+    for(const key of ['indices','insulaIndices']){
+      mesh[key+'Buffer']=gl.createBuffer();gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,mesh[key+'Buffer']);
+      gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,mesh[key],gl.STATIC_DRAW);
+    }
+    this.meshes.push(mesh);
+    this.refreshMeshes();
+  }
+
+  refreshMeshes() {
+    if(!this.view)return;
+    const included=mesh=>(this.hemisphere==='both'||mesh.hemisphere===this.hemisphere)&&(this.layer!=='mesial'||mesh.structure!=='cortex')&&(this.layer!=='insula'||mesh.structure==='cortex');
+    this.visible=this.meshes.filter(included);
+    const records=this.boundsRecords.filter(included);
+    const bounds=[0,1,2].map(axis=>[Math.min(...records.map(m=>m.bounds[axis][0])),Math.max(...records.map(m=>m.bounds[axis][1]))]);
+    this.center=records.length?bounds.map(([low,high])=>(low+high)/2):[0,0,0];
+    this.radius=records.length?Math.max(...bounds.map(([low,high])=>high-low))*.57:1;
+    this.projected=new Map();this.anchorViews?.clear();this.draw();
+  }
+
   setView(view, hemisphere, layer, reset=false) {
     if (!reset&&view===this.view&&hemisphere===this.hemisphere&&layer===this.layer) {this.draw();return;}
     this.view=view;this.hemisphere=hemisphere;this.layer=layer;this.zoom=1;
-    this.projected=new Map();
-    this.rotation=viewRotation(view,hemisphere);
-    this.visible=this.meshes.filter(mesh=>(hemisphere==='both'||mesh.hemisphere===hemisphere)&&(layer!=='mesial'||mesh.structure!=='cortex')&&(layer!=='insula'||mesh.structure==='cortex'));
-    const bounds=[0,1,2].map(axis=>[Math.min(...this.visible.map(m=>m.bounds[axis][0])),Math.max(...this.visible.map(m=>m.bounds[axis][1]))]);
-    this.center=bounds.map(([low,high])=>(low+high)/2);
-    this.radius=Math.max(...bounds.map(([low,high])=>high-low))*.57;
-    this.draw();
+    this.rotation=viewRotation(view,hemisphere);this.refreshMeshes();
   }
 
   rotate(x,y) {
@@ -502,34 +512,53 @@ export class SurfacePanel {
     this.syncRegionMenu();this.filterRegionMenu();
     host.querySelector('.surface-clear').addEventListener('click',onClear);
     host.querySelector('.surface-reset').addEventListener('click',()=>this.update(true));
-    this.ready=Promise.all([
-      Promise.all(catalogue.meshes.map(mesh=>loadMesh(mesh,this.palette))),
-      this.loadLabelAssignments(catalogue.label_assignments),
-    ]).then(([meshes])=>{
-      if(this.brodmannArgs)this.setBrodmann(...this.brodmannArgs);
-      this.renderer=new SurfaceCanvas(this.canvas,meshes,(rows,error)=>{
-        if(error){this.status.textContent=error;return;}
-        if(rows.some(row=>this.palette.get(row.index).name==='unknown'))return;
-        const boundary=host.querySelector('.surface-boundary');boundary.replaceChildren();
-        if(rows.length===1)this.toggle(rows[0]);
-        else{
-          this.status.textContent='Region boundary — choose an adjacent region:';
-          for(const row of rows){const button=document.createElement('button');button.type='button';button.textContent=this.label(row);button.addEventListener('click',()=>this.toggle(row));boundary.append(button);}
-        }
-      });
-      this.renderer.onRender=()=>{
-        this.layoutLabels();
-        if(!this.canvas.hidden&&this.layer==='all')this.renderer.labelVisibility(this.markers);
-      };
-      host.dataset.ready='true';this.select(this.selection,false);this.update();
-    }).catch(error=>{this.status.textContent=error.message;host.dataset.error='true';});
+    this.labelsReady=!catalogue.label_assignments;
+    const labels=this.loadLabelAssignments(catalogue.label_assignments).then(()=>{
+      this.labelsReady=true;if(this.brodmannArgs)this.setBrodmann(...this.brodmannArgs);this.update();
+    }).catch(error=>{this.labelError=error.message;this.update();});
+    let waiting=[];
+    const attach=mesh=>{
+      if(!this.renderer){
+        waiting.push(mesh);if(mesh.structure!=='cortex')return;
+        this.renderer=new SurfaceCanvas(this.canvas,waiting,(rows,error)=>{
+          if(error){this.status.textContent=error;return;}
+          if(rows.some(row=>this.palette.get(row.index).name==='unknown'))return;
+          const boundary=host.querySelector('.surface-boundary');boundary.replaceChildren();
+          if(rows.length===1)this.toggle(rows[0]);
+          else{
+            this.status.textContent='Region boundary — choose an adjacent region:';
+            for(const row of rows){const button=document.createElement('button');button.type='button';button.textContent=this.label(row);button.addEventListener('click',()=>this.toggle(row));boundary.append(button);}
+          }
+        },catalogue.meshes);
+        waiting=[];
+        this.renderer.onRender=()=>{
+          if(this.labelsReady&&this.atlas.checked){
+            this.layoutLabels();
+            if(!this.canvas.hidden&&this.layer==='all')this.renderer.labelVisibility(this.markers);
+          }
+        };
+      }else this.renderer.addMesh(mesh);
+      host.dataset.ready='true';this.updateSelection();this.update();
+    };
+    const initial=catalogue.meshes.find(mesh=>mesh.structure==='cortex'&&mesh.hemisphere==='left')||catalogue.meshes.find(mesh=>mesh.structure==='cortex');
+    this.ready=(async()=>{
+      try{
+        attach(await loadMesh(initial,this.palette));
+        await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+      }catch(error){this.surfaceError=error.message;this.update();}
+      await Promise.allSettled(catalogue.meshes.filter(mesh=>mesh!==initial).map(async mesh=>{
+        try{attach(await loadMesh(mesh,this.palette));}catch(error){this.surfaceError=error.message;this.update();}
+      }));
+      await labels;
+      if(!this.renderer){host.dataset.error='true';this.status.textContent=this.surfaceError;}
+    })();
   }
 
   async loadLabelAssignments(defaults) {
     if(!defaults)return;
     if(defaults.file){
       if(defaults.file!=='brodmann-label-nodes.json')throw new Error('Unsupported label assignment file.');
-      const response=await fetch(`/local-surfaces/${defaults.file}`,{cache:'no-store'});
+      const response=await fetch(`/local-surfaces/${defaults.file}?v=${encodeURIComponent(defaults.revision)}`);
       if(!response.ok)throw new Error('The Brodmann labels could not be loaded.');
       const data=await response.arrayBuffer();
       const digest=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',data)),value=>value.toString(16).padStart(2,'0')).join('');
@@ -724,7 +753,7 @@ export class SurfacePanel {
     return {x:box.x+(box.width-width)/2,y:box.y+(box.height-height)/2,width,height};
   }
   layoutLabels() {
-    if(!this.markers.length)return;
+    if(this.labelsReady===false||!this.markers.length)return;
     const stage=this.host.querySelector('.surface-stage').getBoundingClientRect();
     if(this.canvas.hidden){
       const box=this.imageBounds();
@@ -747,11 +776,11 @@ export class SurfacePanel {
   update(reset=false) {
     if(!this.view)return;
     const brodmann=this.atlas.checked;
-    this.host.querySelector('.surface-ba-labels').hidden=!brodmann;
+    this.host.querySelector('.surface-ba-labels').hidden=!brodmann||this.labelsReady===false;
     this.host.querySelector('.surface-label-controls > span').hidden=!brodmann;
     this.host.querySelector('.surface-stage').classList.toggle('surface-edit-labels',brodmann&&this.editToggle?.checked);
     if(this.renderer)this.renderer.pickingEnabled=!brodmann;
-    this.host.querySelector('.surface-help').textContent='Drag to rotate · pinch or scroll to zoom · tap '+(brodmann?'Brodmann labels':'regions')+' to select';
+    this.host.querySelector('.surface-help').textContent='Drag to rotate · pinch or scroll to zoom · tap '+(brodmann?'Brodmann labels':'regions')+' to select'+[this.surfaceError,this.labelError].filter(Boolean).map(message=>' · '+message).join('');
     const images=this.layer==='images',plates=this.host.querySelector('.surface-plates');
     this.canvas.hidden=images;plates.hidden=!images;
     this.host.querySelector('.surface-help').hidden=images;

@@ -2,11 +2,16 @@
 let atlasSnapshot;
 let atlasCatalogue;
 let atlasDetails;
+const atlasSourceDetails = new Map(), atlasLoadedSources = new WeakMap();
 const atlasAsciiLower = value => String(value ?? '').replace(/[A-Z]/g, c => c.toLowerCase());
 
 async function atlasAsset(name, signal, bound = true) {
   const version = document.documentElement.dataset.snapshot;
-  const response = await fetch(`${name}${version ? `?v=${encodeURIComponent(version)}` : ''}`, { signal });
+  const revision = new URL(import.meta.url).searchParams.get('v');
+  const query = new URLSearchParams();
+  if (version) query.set('v', version);
+  if (revision) query.set('ui', revision);
+  const response = await fetch(`${name}${query.size ? `?${query}` : ''}`, { signal });
   if (!response.ok) throw new Error('Atlas data unavailable');
   const value = await new Response(response.body.pipeThrough(new DecompressionStream('gzip'))).json();
   if (bound && value.snapshot_sha256 !== version) throw new Error('Atlas files belong to different releases');
@@ -27,11 +32,49 @@ export function atlasExpandBrowse(value, catalogue) {
       if (!Number.isInteger(index) || index < 0 || index >= records.length) throw new Error('Invalid atlas navigation reference');
       return records[index];
     })])) }));
-  return { ...snapshot, catalogue, weights: {}, appraisal_receipts: {}, details_url: 'atlas-details.json.gz' };
+  return { ...snapshot, catalogue, weights: {}, appraisal_receipts: {}, result_tables: {}, details_url: 'atlas-details.json.gz' };
 }
 
-export async function atlasLoadDetails(data) {
+function atlasProjectResultTables(tables, statistics) {
+  return Object.fromEntries(Object.entries(tables || {}).map(([sourceId, layouts]) => [sourceId, layouts.map(table => {
+    const cells = table.cells.filter(cell => statistics[cell.statistic_id]);
+    const rows = new Set(cells.map(cell => cell.row_id)), columns = new Set(cells.map(cell => cell.column_id));
+    return { ...table, cells, rows: table.rows.filter(row => rows.has(row.row_id)),
+      columns: table.columns.filter(column => columns.has(column.column_id)),
+      footnotes: (table.footnotes || []).filter(note => (!note.row_ids?.length || note.row_ids.some(id => rows.has(id)))
+        && (!note.column_ids?.length || note.column_ids.some(id => columns.has(id)))).map(note => ({ ...note,
+          ...(note.row_ids ? { row_ids: note.row_ids.filter(id => rows.has(id)) } : {}),
+          ...(note.column_ids ? { column_ids: note.column_ids.filter(id => columns.has(id)) } : {}) })) };
+  }).filter(table => table.cells.length)]).filter(([, tables]) => tables.length));
+}
+
+export async function atlasLoadDetails(data, sourceId) {
   if (!data.details_url) return data;
+  if (sourceId && data.source_details) {
+    const path = data.source_details[sourceId];
+    if (!path) throw new Error('Atlas source unavailable');
+    const loaded = atlasLoadedSources.get(data) || new Set();
+    atlasLoadedSources.set(data, loaded);
+    if (loaded.has(sourceId)) return data;
+    if (!atlasSourceDetails.has(path)) atlasSourceDetails.set(path,
+      atlasAsset(path, AbortSignal.timeout(30000)).catch(error => { atlasSourceDetails.delete(path); throw error; }));
+    const details = await atlasSourceDetails.get(path);
+    if (details.source_id !== sourceId) throw new Error('Atlas evidence belongs to a different paper');
+    const ids = new Set(data.rows.filter(row => row.source.id === sourceId).flatMap(row => row.statistic_ids));
+    const statistics = Object.fromEntries([...ids].map(id => {
+      if (!details.statistics[id]) throw new Error('Atlas statistic unavailable');
+      return [id, details.statistics[id]];
+    }));
+    const weights = atlasProjectWeights(details.weights, data.rows);
+    Object.assign(data.statistics, statistics);
+    Object.assign(data.result_tables ||= {}, atlasProjectResultTables(details.result_tables, data.statistics));
+    for (const axis of Object.keys(weights)) data.weights[axis] = [...new Map(
+      [...(data.weights[axis] || []), ...weights[axis]].map(value => [value.id, value])).values()];
+    Object.assign(data.appraisal_receipts, details.appraisal_receipts);
+    loaded.add(sourceId);
+    if (data.rows.every(row => loaded.has(row.source.id))) { delete data.details_url; delete data.source_details; }
+    return data;
+  }
   if (!atlasDetails) atlasDetails = atlasAsset(data.details_url, AbortSignal.timeout(30000))
     .catch(error => { atlasDetails = null; throw error; });
   const details = await atlasDetails;
@@ -42,7 +85,8 @@ export async function atlasLoadDetails(data) {
   }));
   data.weights = atlasProjectWeights(details.weights, data.rows);
   data.appraisal_receipts = details.appraisal_receipts;
-  delete data.details_url;
+  data.result_tables = atlasProjectResultTables(details.result_tables, data.statistics);
+  delete data.details_url; delete data.source_details;
   return data;
 }
 
@@ -179,7 +223,9 @@ export function atlasPivot(snapshot, parameters) {
       .map(id => [id, snapshot.statistics[id]])),
     weights: atlasProjectWeights(snapshot.weights, rows),
     appraisal_receipts: snapshot.appraisal_receipts || {},
+    result_tables: atlasProjectResultTables(snapshot.result_tables, Object.fromEntries([...new Set(page.flatMap(row => row.statistic_ids))].map(id => [id, snapshot.statistics[id]]))),
     ...(snapshot.details_url ? { details_url: snapshot.details_url } : {}),
+    ...(snapshot.source_details ? { source_details: snapshot.source_details } : {}),
   };
 }
 
@@ -435,23 +481,25 @@ export function atlasWeightPresentation(contribution, axis) {
   const applied = unassessed ? 'Not assigned' : pending ? 'Pending' : c.final_weight == null ? '—' : format(c.final_weight, 2);
   const ready = [...factors, c.potential_weight].every(value => typeof value === 'number' && Number.isFinite(value));
   const product = factors.reduce((value, factor) => value * factor, 1);
-  const calculation = ready ? (unassessed ? 'Stored calculation: ' : 'Weight before eligibility: ') + factors.map(value => format(value, 4)).join(' × ') +
+  const calculation = ready ? (unassessed ? 'Calculation: ' : 'Weight before eligibility: ') + factors.map(value => format(value, 4)).join(' × ') +
     (product === c.potential_weight ? ' = ' : ' ≈ ') + format(c.potential_weight, 4) : '';
-  const reason = unassessed ? 'Evidence class has not been assigned; the stored calculation is not an assessed weight.' :
+  const reason = unassessed ? 'Evidence class has not been assigned; the calculation is not an assessed weight.' :
     !c.complete ? 'Weight unavailable for this filtered subset.' :
     status === 'NOT_APPLIED_WEIGHT_METADATA_UNRESOLVED' ? 'No weight is assigned to this result.' :
     status === 'NOT_APPLIED_CONTRIBUTION_SCOPE_UNRESOLVED' ? 'No separate contribution is assigned to this result.' :
     pending ? 'Weight not calculated.' : status === 'NOT_APPLIED_SEPARATE_EVIDENCE_PARTITION' ?
     'Not included in the primary-evidence total.' : status === 'NOT_APPLIED_NO_USABLE_AXIS_TARGET' ?
-    'No eligible source-reported ' + (axis === 'LATERALIZATION' ? 'lateralization' : 'localization') + ' target.' : c.weight_status_label || '';
+    'No ' + (axis === 'LATERALIZATION' ? 'lateralization' : 'localization') + ' available for calculating this weight.' :
+    status === 'APPLIED_TO_SOURCE_REPORTED_RELATIONSHIP' ? 'Included in the evidence total.' : '';
   const stored = !unassessed && typeof c.potential_weight === 'number' && Number.isFinite(c.potential_weight) && (ready || !/UNRESOLVED|PENDING/.test(status));
   return { label: stored ? format(c.potential_weight,2) : '—', calculation, applied, reason };
 }
 
 const atlasEscape = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
-const atlasRoleLabel = value => String(value ?? '').replace(/_/g,' ').toLowerCase().replace(/\b\w/g, letter => letter.toUpperCase());
+const atlasRoleLabels = {ANATOMICAL_SEMIOLOGY_MAPPING:'',SOURCE_REVIEW:'Review',CITED_SOURCE_CONTEXT:'Earlier research',FINDING_BOUND_CITED_SOURCE_TITLE_ONLY:'Earlier research',SOURCE_ANATOMICAL_CONTEXT:'Anatomical context',SOURCE_REPORTED_CONTEXT:'Reported anatomy',SOURCE_REPORTED_ASSOCIATION:'Reported association',ANATOMICAL_MEASUREMENT_CONTEXT:'Anatomical measurements',CITED_STUDY_RESTATEMENT:"Earlier research",CITED_STUDY_COHORT_CONTEXT:"Population in earlier research",CITED_NETWORK_CONTEXT:"Network described in earlier research",ILLUSTRATIVE_SOURCE_CASE:"Illustrative clinical case",SAME_SOURCE_LANGUAGE_AREA_HIERARCHY:"Relationship between language areas in this paper",CASE_ICTAL_EEG_ONSET:"Seizure onset recorded by EEG in this case",CASE_MRI_LESION:"MRI lesion in this case",EEG_FIELD_DISTRIBUTION:"EEG field distribution",PET_HYPOMETABOLISM:"PET hypometabolism",SCALP_EEG_CASE_LOCALIZATION:"Scalp EEG localization in this case",NEGATIVE_ANATOMY_NONINVOLVEMENT:"Reported absence of involvement",CITED_NEUROPATHOLOGY_DIRECT_RELEVANCE_UNKNOWN:"Earlier neuropathology research; direct relevance uncertain",ICTAL_EEG:"Ictal EEG",INTRACRANIAL_EEG:"Intracranial EEG",SCALP_EEG:"Scalp EEG",MRI:"MRI",STRUCTURAL_MRI:"Structural MRI",PET:"PET",DIFFUSION_MRI_QUANTITATIVE_ANISOTROPY:"Diffusion MRI: quantitative anisotropy"};
+export const atlasRoleLabel = value => atlasRoleLabels[value] ?? String(value ?? '').replace(/_/g,' ').toLowerCase().replace(/\b\w/g, letter => letter.toUpperCase());
 const atlasComparableText = value => String(value ?? '').trim().toLowerCase().replace(/\s+/g,' ');
-const atlasResolvedAxis = value => value.mapping_status == null || ['EXACT_SOURCE','OWNER_APPROVED'].includes(value.mapping_status);
+export const atlasResolvedAxis = value => value.mapping_status == null || ['EXACT_SOURCE','OWNER_APPROVED'].includes(value.mapping_status);
 
 export function atlasSourceLocator(value) {
   let parsed=value;
@@ -495,7 +543,7 @@ function groupedSourceAnatomy(row) {
   return [...groups.values()];
 }
 
-export function atlasSourceAnatomyMarkup(row, seenExcerpts=new Set(), {h=atlasEscape, roleLabel=atlasRoleLabel, sourceLocator=atlasSourceLocator, comparableText=atlasComparableText}={}) {
+export function atlasSourceAnatomyMarkup(row, seenExcerpts=new Set(), {h=atlasEscape, roleLabel=atlasRoleLabel, sourceLocator=atlasSourceLocator, comparableText=atlasComparableText,includeSourceWording=true}={}) {
   const contextLabels = {
     MEASURED_TRACT_ASSOCIATION: 'Measured tract association',
     HYPOTHESIZED_MECHANISM: 'Hypothesized mechanism',
@@ -519,12 +567,12 @@ export function atlasSourceAnatomyMarkup(row, seenExcerpts=new Set(), {h=atlasEs
       seenExcerpts.add(key);
       return ['<blockquote>'+h(excerpt)+'</blockquote>'];
     }).join('');
-    const label = !atlasResolvedAxis(value) ? 'Source wording — anatomical mapping unconfirmed' : {COHORT_CONTEXT:'Study population anatomy',COMPARATOR_CONTEXT:'Comparison group anatomy',
+    const label = !atlasResolvedAxis(value) ? includeSourceWording ? 'Source wording — anatomical mapping unconfirmed' : 'Reported anatomy' : {COHORT_CONTEXT:'Study population anatomy',COMPARATOR_CONTEXT:'Comparison group anatomy',
       ONSET:'Seizure onset',STIMULATION:'Stimulation site',NETWORK:'Network',
       SYMPTOMATOGENIC:'Symptom-producing region',LESION:'Lesion location',SOURCE_REPORTED:'Reported localization'}[value.role] || 'Reported anatomy';
     return '<div class="source-detail">'+(value.source_sign_label?'<strong>'+h(value.source_sign_label)+':</strong> ':'')+(value.source_scope==='CLAIM'&&!value.source_sign_id?'<span>Finding context · </span>':'')+'<strong>'+h(value.decision_role==='CONTEXT' && value.role==='SOURCE_REPORTED' ? 'Anatomical context' : label)+':</strong> '+h([...group.targets].join('; ') || [...group.terms].join('; '))+
-      (qualifiers.length?' · '+qualifiers.map(h).join(' · '):'')+
-      (group.targets.size && [...group.terms].join('; ')!==[...group.targets].join('; ') ? '<p>'+h([...group.terms].join('; '))+'</p>' : '')+
+      (qualifiers.some(Boolean)?' · '+qualifiers.filter(Boolean).map(h).join(' · '):'')+
+      (includeSourceWording && group.targets.size && [...group.terms].join('; ')!==[...group.targets].join('; ') ? '<p>'+h([...group.terms].join('; '))+'</p>' : '')+
       (value.locator?'<small>'+h(sourceLocator(value.locator))+'</small>':'')+support+'</div>';
   }).join('');
 }
@@ -555,7 +603,7 @@ export function atlasSourceFindingsMarkup(rows, {compact=false,localizationAnnot
           const section=subject.axes.get(axisKey);
           const propagation=(row.modifiers || []).some(modifier=>value.link_id && modifier.evidence_link_id===value.link_id && modifier.target_axis===axis && modifier.modifier_type==='PROPAGATION');
           const qualifiers=[value.context_polarity && value.context_polarity!=='POSITIVE_ASSOCIATION' ? atlasRoleLabel(value.context_polarity) : '',
-            value.context_qualifier ? atlasRoleLabel(value.context_qualifier) : '',value.context_modality,propagation?'Propagation':''].filter(Boolean);
+            value.context_qualifier ? atlasRoleLabel(value.context_qualifier) : '',value.context_modality ? atlasRoleLabel(value.context_modality) : '',propagation?'Propagation':''].filter(Boolean);
           const contextKey=JSON.stringify([value.source_scope || '',value.decision_role || '',value.context_polarity || '',value.context_qualifier || '',value.context_modality || '',propagation]);
           if(!section.contexts.has(contextKey))section.contexts.set(contextKey,{qualifiers:[...new Set(qualifiers)],targets:new Map()});
           const targets=section.contexts.get(contextKey).targets,key=JSON.stringify([value.target_id || value.id || target,target]);

@@ -1,4 +1,7 @@
-import { atlasSearchRows, atlasGroups, atlasCounts, atlasEvidenceSection, atlasNavigationGroups, atlasDictionaryGroups, atlasSignSections, atlasRegionRank, atlasMetricLabels, atlasMetricTypes, atlasWeightPresentation, atlasAppraisalLabel, atlasSourceFindingsMarkup, atlasSourceFindingGroups, atlasSourceLocator, atlasStatisticGroups, atlasLoadDetails } from './atlas_projection.mjs?v=b054749f3c933e2cd91621473ca147d98a57903a92bcc663b3f66d284a7e9d32';
+import { atlasSearchRows, atlasGroups, atlasCounts, atlasEvidenceSection, atlasNavigationGroups, atlasDictionaryGroups, atlasSignSections, atlasRegionRank, atlasMetricLabels, atlasMetricTypes, atlasWeightPresentation, atlasAppraisalLabel, atlasSourceFindingsMarkup, atlasSourceFindingGroups, atlasSourceLocator, atlasStatisticGroups, atlasLoadDetails, atlasResolvedAxis } from './atlas_projection.mjs?v=343617db8d7e4f085989a3b252463726dad13ecdd3d70f905708a9d27444a00d';
+
+const evidenceRoleLabels = {PRIMARY_RESULT:'Results from this study',CASE_OBSERVATION:'Clinical case',REVIEW_SYNTHESIS:'Review findings',REVIEW_AUTHOR_SYNTHESIS:'Review findings',GUIDELINE_RECOMMENDATION:'Clinical guidance',CITED_STUDY_RESTATEMENT:'Earlier research',PRIMARY_RESULT_SAME_SOURCE_RESTATEMENT:'Results from this study',EDUCATIONAL_STATEMENT:'Background',METHOD_OR_DEFINITION:'Method or definition',SOURCE_CONTEXT:'Background',COHORT_CONTEXT:'Study population',SOURCE_REPORTED_TARGET:'Reported relationship',SOURCE_REPORTED:'Reported relationship',STIMULATION:'Stimulation',OWNER_APPROVED_INTERPRETATION:'Interpretation'};
+export function atlasEvidenceRoleLabel(value) { return evidenceRoleLabels[String(value || '').replace(/^EVIDENCE:/,'')] || ''; }
 
 const styles = `
 .weight-table td>strong{font-size:12px;font-weight:600}.weight-table td>span{display:block;font-size:12px}.weight-table td>small:last-of-type{margin-top:10px}.weight-table td>small:first-child{margin-top:0}
@@ -17,14 +20,14 @@ footer{max-width:1220px;margin:auto;padding:4px 28px 28px;display:flex;justify-c
 .inside-controls{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto}.inside-controls .field{min-width:0}.inside-controls .field:nth-of-type(3){grid-column:1/-1}.inside-controls .filter-button{grid-column:3;grid-row:1;padding:0 2px}.filter-row .field select{font-size:14px}
 .sign-card:not([open])>summary .sign-title strong{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 
-.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}.active-filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}.filter-chip{font-size:12px;padding:6px 9px;background:#eaf2ed;border-radius:5px}.dictionary-controls{grid-template-columns:minmax(0,1fr) minmax(0,1fr);margin-bottom:18px}.shared-context{font-size:12px;color:var(--muted);margin:10px 0 18px;overflow-wrap:anywhere}.source-result{margin:16px 0 20px}.source-result>h4{font-size:13px;font-weight:600;margin-bottom:9px;overflow-wrap:anywhere}.result-table,.weight-table{border-collapse:collapse;table-layout:fixed;width:100%;font-size:12px}.result-table th,.result-table td,.weight-table th,.weight-table td{border-bottom:1px solid var(--line);padding:10px 9px;text-align:left;vertical-align:top;overflow-wrap:anywhere}.result-table th,.weight-table th{color:var(--muted);font-size:11px;font-weight:600;background:#f4f7f2}.result-table th:nth-child(1){width:31%}.result-table th:nth-child(2){width:33%}.result-table th:nth-child(3){width:22%}.result-table th:nth-child(4){width:14%}.result-table small{display:block;color:var(--muted);font-size:11px;margin-top:4px;font-weight:400}.result-number{font-weight:650;color:var(--teal);font-variant-numeric:tabular-nums}.result-role{margin-top:7px}.paper-weights{margin:17px 0}.paper-weights>h4{font-size:12px;margin-bottom:7px}.weight-table th:first-child{width:62%}.weight-table th:nth-child(n+2),.weight-table td:nth-child(n+2){text-align:right;font-variant-numeric:tabular-nums}.weight-table th button{font-size:11px;padding:0;text-align:right}.calculation-line{font-size:11px;margin:12px 0;color:var(--muted);overflow-wrap:anywhere}.paper{margin-top:26px;padding-top:22px}.paper:first-of-type{margin-top:0}
-@media(max-width:540px){.result-table,.result-table tbody{display:block}.result-table thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}.result-table tr{display:grid;grid-template-columns:minmax(0,1fr);padding:11px 0;border-top:1px solid var(--line)}.result-table td{display:block;width:auto!important;border:0;padding:4px 0;font-size:12px}.result-table td::before{content:attr(data-label);display:block;color:var(--muted);font-size:10px;font-weight:400;margin-bottom:3px}.result-table td:nth-child(3){grid-row:1;font-size:20px}.result-table td:nth-child(4){padding-top:0}.result-table td:nth-child(4) button{min-height:34px}.weight-table{font-size:11px}.weight-table th,.weight-table td{padding:8px 4px}.weight-table th:first-child{width:52%}.weight-table th button{font-size:9px}.shared-context{font-size:11px}.source-result>h4{font-size:12px}.dictionary-controls select{font-size:14px}.paper{margin-top:23px}.paper-title h3{font-size:16px}}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}.active-filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}.filter-chip{font-size:12px;padding:6px 9px;background:#eaf2ed;border-radius:5px}.dictionary-controls{grid-template-columns:minmax(0,1fr) minmax(0,1fr);margin-bottom:18px}.shared-context{font-size:12px;color:var(--muted);margin:10px 0 18px;overflow-wrap:anywhere}.source-result{margin:16px 0 20px}.source-result>h4{font-size:13px;font-weight:600;margin-bottom:9px;overflow-wrap:anywhere}.result-table,.weight-table{border-collapse:collapse;table-layout:fixed;width:100%;font-size:12px}.result-table th,.result-table td,.weight-table th,.weight-table td{border-bottom:1px solid var(--line);padding:10px 9px;text-align:left;vertical-align:top;overflow-wrap:anywhere}.result-table th,.weight-table th{color:var(--muted);font-size:11px;font-weight:600;background:#f4f7f2}.result-table th:nth-child(1){width:55%}.result-table th:nth-child(2){width:45%}.result-table small{display:block;color:var(--muted);font-size:11px;margin-top:4px;font-weight:400}.result-number{font-weight:650;color:var(--teal);font-variant-numeric:tabular-nums}.result-role{margin-top:7px}.paper-weights{margin:17px 0}.paper-weights>h4{font-size:12px;margin-bottom:7px}.weight-table th:first-child{width:62%}.weight-table th:nth-child(n+2),.weight-table td:nth-child(n+2){text-align:right;font-variant-numeric:tabular-nums}.weight-table th button{font-size:11px;padding:0;text-align:right}.calculation-line{font-size:11px;margin:12px 0;color:var(--muted);overflow-wrap:anywhere}.paper{margin-top:26px;padding-top:22px}.paper:first-of-type{margin-top:0}
+@media(max-width:540px){.result-table th,.result-table td{padding:8px 6px;font-size:12px}.weight-table{font-size:11px}.weight-table th,.weight-table td{padding:8px 4px}.weight-table th:first-child{width:52%}.weight-table th button{font-size:9px}.shared-context{font-size:11px}.source-result>h4{font-size:12px}.dictionary-controls select{font-size:14px}.paper{margin-top:23px}.paper-title h3{font-size:16px}}
 .toolbar{grid-template-columns:minmax(210px,1.4fr) minmax(150px,1fr) minmax(180px,1fr) minmax(140px,.8fr)}.dictionary-controls{grid-template-columns:repeat(3,minmax(0,1fr))}.dictionary-controls .field:nth-of-type(3){grid-column:auto}.evidence-class-label{display:inline-block;color:var(--teal);font-size:11px;font-weight:600}.weight-table td small{display:block;color:var(--muted);font-size:10px;font-weight:400;margin-top:3px}
 @media(max-width:850px){.toolbar{grid-template-columns:1fr 1fr}#evidence-class-field{grid-column:1/-1}}
 @media(max-width:540px){.dictionary-controls{grid-template-columns:1fr 1fr}.dictionary-controls .field:nth-of-type(3){grid-column:1/-1}}
 .source-scope{font-size:11px;color:var(--teal);font-weight:600;margin:0 0 8px}
 .paper-anatomy{margin:14px 0 20px}.anatomy-result{margin:12px 0;font-size:12px;overflow-wrap:anywhere}.anatomy-result h4{font-size:13px;margin-bottom:5px}.source-detail{margin:7px 0}.source-detail p{margin-top:4px;color:var(--muted)}.source-detail small{display:block;margin-top:4px}.source-detail blockquote{margin:7px 0;padding-left:10px;border-left:2px solid var(--line);color:var(--muted)}
-.paper,.paper:first-child{border:1px solid var(--line);border-radius:6px;padding:0;margin:10px 0 0}.paper>summary{background:#f5f8f4}.paper>summary .paper-tools{margin:7px 0 0;gap:10px}.paper-content{padding:12px 14px;max-height:min(68dvh,44rem);overflow:auto;scrollbar-gutter:stable;border-top:1px solid var(--line);font-size:12px}.paper-content> a{display:inline-block;margin-bottom:8px}.compact-anatomy{display:grid;gap:9px;padding:8px 0}.anatomy-subject{min-width:0;overflow-wrap:anywhere}.compact-anatomy h4{margin:0 0 2px;font-size:inherit}.compact-anatomy dl,.compact-anatomy dd{margin:0}.anatomy-axis{display:flex;flex-wrap:wrap;gap:0 5px}.anatomy-axis dt{color:var(--muted)}.anatomy-axis dd>span{display:block}.anatomy-qualifier{color:var(--muted)}.paper-content .shared-context{margin:8px 0}.paper-content .context-details{margin:8px 0 0}.paper-content .result-table{margin-top:10px}.paper-content .result-table th{position:sticky;top:0;background:#f1f5ee;z-index:1}.result-table td>strong{display:block}.paper-content .paper-weights{margin:8px 0}.paper-content .calculation-line{margin:10px 0}.paper-content .source-detail{margin:8px 0}.paper-content .source-detail small{display:block}.paper-content .source-detail blockquote{margin:5px 0;padding-left:10px;border-left:2px solid var(--line)}.paper-content .anatomy-result{margin:10px 0}.paper-content .result-table td,.paper-content .weight-table td{padding-top:9px;padding-bottom:9px}
+.paper,.paper:first-child{border:1px solid var(--line);border-radius:6px;padding:0;margin:10px 0 0}.paper>summary{background:#f5f8f4}.paper>summary .paper-tools{margin:7px 0 0;gap:10px}.paper-content{padding:12px 14px;max-height:min(68dvh,44rem);overflow:auto;scrollbar-gutter:stable;border-top:1px solid var(--line);font-size:12px}.paper-content> a{display:inline-block;margin-bottom:8px}.compact-anatomy{display:grid;gap:9px;padding:8px 0}.anatomy-subject{min-width:0;overflow-wrap:anywhere}.compact-anatomy h4{margin:0 0 2px;font-size:inherit}.compact-anatomy dl,.compact-anatomy dd{margin:0}.anatomy-axis{display:flex;flex-wrap:wrap;gap:0 5px}.anatomy-axis dt{color:var(--muted)}.anatomy-axis dd>span{display:block}.anatomy-qualifier{color:var(--muted)}.paper-content .shared-context{margin:8px 0}.paper-content .context-details{margin:8px 0 0}.paper-content .result-table{margin-top:10px}.paper-content .result-table th{position:sticky;top:0;background:#f1f5ee;z-index:1}.result-table td>strong{display:block}.result-table .result-finding-header td{background:#eef5fa}.paper-content .paper-weights{margin:8px 0}.paper-content .calculation-line{margin:10px 0}.paper-content .source-detail{margin:8px 0}.paper-content .source-detail small{display:block}.paper-content .source-detail blockquote{margin:5px 0;padding-left:10px;border-left:2px solid var(--line)}.paper-content .anatomy-result{margin:10px 0}.paper-content .result-table td,.paper-content .weight-table td{padding-top:9px;padding-bottom:9px}
 @media(max-width:540px){.paper>summary{padding:11px 10px}.paper-content{padding:10px;max-height:65dvh;scrollbar-gutter:auto}.compact-anatomy{gap:8px}.paper-content .result-table th{position:static}.paper-title p{font-size:12px}}
 
 
@@ -33,12 +36,12 @@ footer{max-width:1220px;margin:auto;padding:4px 28px 28px;display:flex;justify-c
 .organization-controls{display:contents}.toolbar slot[name=filters]{display:none}.embedded-help{display:none}:host([data-embedded]){--ink:#1a1d2e;--muted:#667085;--teal:#0a7a8a;--pale:#edf4f9;--line:#e3e8f0;--canvas:#fff;--serif:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;font:14px/1.5 Inter,ui-sans-serif,system-ui,sans-serif;background:transparent;display:block;min-width:0;container-type:inline-size}:host([data-embedded]) .owner-only,:host([data-embedded]) .intro h1{display:none}:host([data-embedded]) .embedded-help{display:block}:host([data-embedded]) main{max-width:none;margin:0;padding:0}:host([data-embedded]) .intro{display:none}:host([data-embedded]) .list-meta{flex-wrap:wrap;gap:6px 12px;margin:12px 0}:host([data-embedded]) #match-count{margin-right:auto}:host([data-embedded]) .list-meta slot{display:contents}:host([data-embedded]) .toolbar{grid-template-columns:minmax(0,1fr) minmax(0,1.35fr);align-items:start;padding:0;gap:20px;border:0}:host([data-embedded]) .organization-controls{display:grid;gap:12px;min-width:0}:host([data-embedded]) .toolbar slot[name=organization]{display:contents}:host([data-embedded]) .toolbar slot[name=filters]{display:block;min-width:0;align-self:stretch;border-left:1px solid var(--line);padding-left:20px}@container(max-width:520px){:host([data-embedded]) .toolbar{grid-template-columns:minmax(0,1fr);gap:12px}:host([data-embedded]) .organization-controls{grid-template-columns:repeat(auto-fit,minmax(min(140px,100%),1fr));gap:10px}:host([data-embedded]) .toolbar .organization-controls select{font-size:16px}:host([data-embedded]) .toolbar slot[name=filters]{border-left:0;border-top:1px solid var(--line);padding:12px 0 0}:host([data-embedded]) .list-meta{display:grid;grid-template-columns:minmax(0,1fr);gap:4px;margin:10px 0}:host([data-embedded]) .list-meta .help-button{max-width:none;min-height:44px;padding:4px 0;text-align:left;justify-self:start;line-height:1.4}}:host([data-embedded]) .toolbar label{font-size:14px;font-weight:650;color:var(--navy,#142653)}:host([data-embedded]) .toolbar select{height:44px;font-size:14px;font-weight:500;border:1px solid var(--line);border-radius:8px;background:#f8fafc;color:var(--navy,#142653)}:host([data-embedded]) .sign-card>summary{padding:12px 14px}:host([data-embedded]) .sign-title strong{font-size:15px}:host([data-embedded]) .sign-body{padding:12px}:host([data-embedded]) #reset{display:none}@media(max-width:850px){.toolbar>.toolbar-label+.field{grid-column:1/-1}}`;
 
 const mobileStyles = `
+.source-table{margin:12px 0 18px;font-size:13px}.source-table>h4{font-size:14px;font-weight:650;background:var(--pale);padding:10px}.source-table-context,.source-table-note,.source-table-locator{font-size:13px;margin:8px 0;line-height:1.5}.source-table-locator{color:var(--muted)}.source-table-region{max-width:100%;overflow-x:auto;border:1px solid var(--line);border-radius:5px;scrollbar-gutter:stable}.source-comparison{border-collapse:separate;border-spacing:0;width:100%;min-width:36rem;font-size:13px}.source-comparison th,.source-comparison td{padding:9px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);text-align:left;vertical-align:top;overflow-wrap:anywhere}.source-comparison thead th{position:sticky;top:0;z-index:2;background:#f1f5ee;color:var(--ink);font-size:13px}.source-comparison thead th:first-child{left:0;z-index:3}.source-comparison tbody th{position:sticky;left:0;z-index:1;background:var(--canvas);min-width:9rem;font-weight:600}.source-comparison th small,.source-comparison td small{display:block;font-size:13px;font-weight:400;line-height:1.45;margin-top:5px}.source-comparison .result-number{font-size:14px;min-height:34px;padding:3px 0;text-align:left;text-decoration:underline;text-underline-offset:3px}.source-comparison .compact-anatomy{margin:5px 0}.source-comparison th:last-child,.source-comparison td:last-child{border-right:0}.source-comparison tr:last-child>*{border-bottom:0}
 .paper-content{font-size:14px;line-height:1.55}
 .paper-summary{margin:14px 0 22px}.paper-summary h4{font-size:14px;margin-bottom:10px}.paper-summary p{margin:10px 0;color:var(--ink)}
-.paper-content .result-table{font-size:13px}.paper-content .result-table thead th{font-size:13px}.paper-content .result-table th:nth-child(1){width:40%}.paper-content .result-table th:nth-child(2){width:35%}.paper-content .result-table th:nth-child(3){width:25%}
-.paper-content .result-table .result-group th{position:static;text-align:left;background:var(--pale);color:var(--ink);font-size:14px;width:auto}
+.paper-content .result-table{font-size:13px}.paper-content .result-table thead th{font-size:13px}.paper-content .result-table th:nth-child(1){width:55%}.paper-content .result-table th:nth-child(2){width:45%}
 .paper-content .result-table .compact-anatomy{margin-top:8px;font-size:13px}.paper-content .result-table .compact-anatomy h4{font-size:13px;font-weight:500}.paper-content .result-table small{font-size:13px}.paper-content .result-number{font-size:14px}.paper-content .result-table .text-button{display:block;font-size:13px}
-@media(max-width:540px){.paper-content .result-table td{font-size:13px}.paper-content .result-table td:nth-child(3){grid-row:auto;font-size:14px}.paper-content .result-table td:before{display:none}.paper-content .result-table .result-group{padding:0;border:0}.paper-content .result-table .result-group th{padding:10px}.paper-content .result-table td:empty{display:none}}
+@media(max-width:540px){.paper-content .result-table td{font-size:12px}.paper-content .result-table small{font-size:11px}}
 .controls-toggle{display:none}
 @media(max-width:780px){
   :host([data-embedded]) .controls-toggle{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:44px;margin:0 0 12px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--pale);color:var(--navy,#142653);font:inherit;font-weight:650;text-align:left}
@@ -57,7 +60,8 @@ const markup = `
 </main>
 <footer class="owner-only"><span>Owner preview</span><a href="https://www.semiologyatlas.org/" target="_blank" rel="noopener">Public atlas ↗</a></footer>
 <dialog id="record-dialog" aria-labelledby="dialog-title"><div class="dialog-head"><h2 id="dialog-title"></h2><button id="close-dialog" aria-label="Close details">Close</button></div><div class="dialog-body" id="dialog-body"></div></dialog>
-<template id="scientific-explanation"><h3>Signs and publication counts</h3><p>All signs lists each sign once. Region, ILAE and Lüders organize the same sign cards under their recorded categories, with matching papers underneath. A sign can appear in more than one supported category; totals count each sign and paper once. Region cards include only papers with a linked result in that region. Within Region, the sort control can add ILAE or Lüders subcategories. Anatomy and evidence filters narrow the results; sorting by A–Z, publications or evidence class preserves the sign names and source findings.</p><p>Sources retains every paper result, including contextual records and results without a sign group. Evidence publication totals count each matching paper once across Signs and Sources. Classification references without extracted results are counted separately and appear when no evidence filter is applied.</p><h3>Anatomy on the map</h3><p>Reported anatomy retains the regions linked to the selected findings. Study population and Comparison group describe the groups studied; they do not by themselves establish where a sign originates. Broader regions contain the linked anatomy. Overlapping atlas regions share some anatomical extent with the linked region according to the recorded relationships; overlap is not anatomical identity or a parent region. DKT40 parcels and Brodmann areas are separate atlas representations. The map displays the recorded links without adding localizing evidence.</p><h3>Reported statistics</h3><p>Statistic selectors list statistical and quantitative measures. Clinical features, sequence descriptions, and other paper-specific fields remain in the paper results under All statistics.</p><p>Each reported value retains its source, measured phenomenon, population, subgroup, analysis unit, denominator, comparator, and uncertainty. Shared context is displayed once per paper; differences remain in the result rows. </p><h3>Evidence class</h3><p>Evidence-class filters select existing assignments for the displayed sign and source results. A result matches when the selected class is recorded for localization or lateralization. Unclassified includes records marked unclassified and records without a class assignment. The sign list shows terms with matching evidence; it does not assign a class to the sign itself.</p><p>Evidence-class ordering lists Class I, II, and III in that sequence, followed by unclassified evidence. Where a sign group or paper has several recorded classes, its lowest numbered class determines its position. All classes remain available in the findings; this ordering does not assign an overall class or calculate a new evidence score. The same order applies to papers inside each sign.</p><h3>Paper weights</h3><p>Each appraisal retains its original sign, paper, findings, and statistics. The table shows that stored appraisal once. A changed or narrower sign grouping can reference the appraisal without receiving a separate numerical contribution. Appraisals are not summed into a dictionary-level score.</p><p><strong>Appraised weight = class base × method factor × size factor.</strong> The applied contribution also depends on the recorded eligibility and scope. The class bases are 3, 2, or 1; an unclassified source can have a base of 0. Method factors are 1.5 for SEEG or postoperative evidence, 1.35 for other intracranial evidence, 1.2 for video, 1.15 for imaging, 1.1 for scalp EEG, 1 for review evidence, and 0.9 when the method is absent.</p><p>The size factor is min(2, 1 + log₁₀(N)/2). Missing N gives a factor of 1, and the class-I calculation does not use sample size. The selected N is unavailable here. A dash indicates that an appraisal is unavailable for that axis. A zero produced by an unresolved evidence class is unavailable, not a numerical assessment of the evidence. Calculation details retain the recorded factors and explain contribution eligibility and scope. An applied contribution of 0 indicates exclusion from the primary-evidence total; an unassigned contribution has not been established for the displayed scope. Approximate equality reflects rounded recorded factors.</p><h3>Combined estimates</h3><p>A pooled estimate requires a defined clinical question, compatible measures, appropriate uncertainty, and assessment of overlapping cohorts. Several results from one paper do not represent independent studies. The existing paper weights do not pool reported statistics or provide a validated clinical prediction score.</p></template>
+<template id="scientific-explanation"><h3>Signs and publication counts</h3><p>All signs lists each sign once. Region, ILAE and Lüders organize the same sign cards under their recorded categories, with matching papers underneath. A sign can appear in more than one supported category; totals count each sign and paper once. Region cards include only papers with a linked result in that region. Within Region, the sort control can add ILAE or Lüders subcategories. Anatomy and evidence filters narrow the results; sorting by A–Z, publications or evidence class preserves the sign names and source findings.</p><p>Sources includes all findings from each paper, including background information and findings without a sign group. Evidence publication totals count each matching paper once across Signs and Sources. Classification references without findings are counted separately and appear when no evidence filter is applied.</p><h3>Anatomy on the map</h3><p>Reported anatomy retains the regions linked to the selected findings. Study population and Comparison group describe the groups studied; they do not by themselves establish where a sign originates. Broader regions contain the linked anatomy. Overlapping atlas regions share some anatomical extent with the linked region according to the recorded relationships; overlap is not anatomical identity or a parent region. DKT40 parcels and Brodmann areas are separate atlas representations. The map displays the recorded links without adding localizing evidence.</p><h3>Reported statistics</h3><p>Statistic selectors list statistical and quantitative measures. Clinical features, sequence descriptions, and other paper-specific fields remain in the paper results under All statistics.</p><p>Each reported value retains its source, measured phenomenon, population, subgroup, analysis unit, denominator, comparator, and uncertainty. Each result shows the context reported for it. </p><h3>Evidence class</h3><p>Evidence-class filters select existing assignments for the displayed sign and source results. A result matches when the selected class is recorded for localization or lateralization. Unclassified includes results without an evidence-class assignment. The sign list shows terms with matching evidence; it does not assign a class to the sign itself.</p><p>Evidence-class ordering lists Class I, II, and III in that sequence, followed by unclassified evidence. Where a sign group or paper has several recorded classes, its lowest numbered class determines its position. All classes remain available in the findings; this ordering does not assign an overall class or calculate a new evidence score. The same order applies to papers inside each sign.</p><h3>Paper weights</h3><p>Each appraisal retains its original sign, paper, findings, and statistics. The table shows each appraisal once. A changed or narrower sign grouping can reference the appraisal without receiving a separate numerical contribution. Appraisals are not added together to give a sign an overall score.</p><p><strong>Appraised weight = class base × method factor × size factor.</strong> The applied contribution also depends on the recorded eligibility and scope. The class bases are 3, 2, or 1; an unclassified source can have a base of 0. Method factors are 1.5 for SEEG or postoperative evidence, 1.35 for other intracranial evidence, 1.2 for video, 1.15 for imaging, 1.1 for scalp EEG, 1 for review evidence, and 0.9 when the method is absent.</p><p>The size factor is min(2, 1 + log₁₀(N)/2). Missing N gives a factor of 1, and the class-I calculation does not use sample size. The selected N is unavailable here. A dash indicates that an appraisal is unavailable for that axis. A zero produced by an unresolved evidence class is unavailable, not a numerical assessment of the evidence. Calculation details retain the recorded factors and explain contribution eligibility and scope. An applied contribution of 0 indicates exclusion from the primary-evidence total; an unassigned contribution has not been established for the displayed scope. Approximate equality reflects rounded recorded factors.</p><h3>Combined estimates</h3><p>A pooled estimate requires a defined clinical question, compatible measures, appropriate uncertainty, and assessment of overlapping cohorts. Several results from one paper do not represent independent studies. The existing paper weights do not pool reported statistics or provide a validated clinical prediction score.</p></template>
+
 `;
 
 /** Render the shared evidence inside a site-owned host without fetching or remapping data. */
@@ -85,8 +89,7 @@ const metricNames = atlasMetricLabels;
 const metricName = value => metricNames[value] || words(value);
 const metricTypesFor = atlasMetricTypes;
 const sectionNames = {study:'Original study',review:'Review or guidance',background:'Cited or contextual',other:'Other evidence'};
-const roleNames = {PRIMARY_RESULT:'Original study result',CASE_OBSERVATION:'Case observation',REVIEW_SYNTHESIS:'Review synthesis',GUIDELINE_RECOMMENDATION:'Guideline recommendation',CITED_STUDY_RESTATEMENT:'Cited study result',PRIMARY_RESULT_SAME_SOURCE_RESTATEMENT:'Repeated result from the same source',EDUCATIONAL_STATEMENT:'Educational statement',METHOD_OR_DEFINITION:'Method or definition',SOURCE_CONTEXT:'Source context',COHORT_CONTEXT:'Study population',SOURCE_REPORTED_TARGET:'Reported relationship',SOURCE_REPORTED:'Reported relationship',STIMULATION:'Stimulation context'};
-const roleName = value => roleNames[value] || words(value);
+const roleName = value => atlasEvidenceRoleLabel(value) || (publicSite ? '' : words(value));
 function bibliography(id) { return sources.get(id)?.bibliography || {}; }
 function classificationReference(id) { return sources.get(id)?.source_roles?.includes('CLASSIFICATION_REFERENCE') || false; }
 function citation(id) {
@@ -97,7 +100,7 @@ function citation(id) {
 function paperCount(rows) { return new Set(rows.map(row => row.source.id)).size; }
 function rowKinds(row) { return uniq((row.facets.evidence || []).map(value => atlasEvidenceSection(value.id))); }
 function sourceTitle(id) { return sources.get(id)?.label || data.rows.find(row => row.source.id === id)?.source.title || 'Source document'; }
-function rolePill(role) { const section = atlasEvidenceSection(role); return `<span class="pill ${section === 'review' ? 'review' : ['background','other'].includes(section) ? 'context' : ''}">${esc(roleName(role))}</span>`; }
+function rolePill(role) { const label=roleName(role); if(!label)return ''; const section = atlasEvidenceSection(role); return `<span class="pill ${section === 'review' ? 'review' : ['background','other'].includes(section) ? 'context' : ''}">${esc(label)}</span>`; }
 function uncertainty(stat) {
   const scalar = value => value && typeof value === 'object' ? clean(value.value) : clean(value);
   const labels = {confidence_interval:'Confidence interval',ci:'Confidence interval',p_value:'P value',p:'P value',standard_error:'Standard error',standard_deviation:'Standard deviation',sd:'Standard deviation',range:'Range',interquartile_range:'Interquartile range',test_statistic:'Test statistic',other:'Other uncertainty'};
@@ -159,8 +162,8 @@ function locator(value) {
     const sourceCount=atlasCounts(data.rows).sources;
     $('corpus').innerHTML = sourceMode ? '' : `${number(groups.length)} ${termLabel()} terms · <button id="all-sources">${number(sourceCount)} ${sourceCount===1?'publication':'publications'}</button>`;
     $('order-label').textContent = sourceMode ? 'Sort papers' : 'Sort signs by';
-    const sorts = sourceMode ? [['name','Author A–Z'],['title','Title A–Z'],['year','Newest first'],['class','Evidence class (I–III)']] : [['name','A–Z'],...(organization==='region'?[['ilae','ILAE'],['luders','Lüders']]:[]),['papers','Number of publications'],['class','Evidence class (I–III)']];
-    if (!sorts.some(([id]) => id === state.order)) state.order = sourceMode ? 'name' : signOrder;
+    const sorts = sourceMode ? [['title','Title A–Z'],['name','Author A–Z'],['year','Newest first'],['class','Evidence class (I–III)']] : [['name','A–Z'],...(organization==='region'?[['ilae','ILAE'],['luders','Lüders']]:[]),['papers','Number of publications'],['class','Evidence class (I–III)']];
+    if (!sorts.some(([id]) => id === state.order)) state.order = sourceMode ? 'title' : signOrder;
     $('order').innerHTML = sorts.map(([id,label]) => option(id,label)).join(''); $('order').value = state.order;
     $('evidence-class').innerHTML = classOptions(classesFor(data.rows)); $('evidence-class').value = state.filters.evidence_class || '';
     $('evidence-class-field').hidden = options.embedded;
@@ -269,7 +272,7 @@ function locator(value) {
     const referenceCount=entries.filter(entry=>entry.referenceOnly).length;
     $('match-count').textContent = state.organize === 'source' ? [publicationCount?`${number(publicationCount)} evidence ${publicationCount===1?'publication':'publications'}`:'',referenceCount?`${number(referenceCount)} classification ${referenceCount===1?'reference':'references'}`:''].filter(Boolean).join(' · ') || '0 sources' : (termCount ? `${number(termCount)} ${termLabel()} ${termCount===1?'term':'terms'} · ` : '') + `${number(publicationCount)} ${publicationCount===1?'publication':'publications'} across Signs and Sources`;
     const list=listMarkup();
-    $('sign-list').innerHTML = list.html || `<div class="empty">${state.organize==='source'?'No papers match this selection.':extra.length ? 'No sign terms match this selection. Paper records are available in Sources.' : 'No sign terms match this selection.'}</div>`;
+    $('sign-list').innerHTML = list.html || `<div class="empty">${state.organize==='source'?'No papers match this selection.':extra.length ? 'No sign terms match this selection. Papers are available in Sources.' : 'No sign terms match this selection.'}</div>`;
     root.querySelectorAll('.sign-card[open]').forEach(renderEntry);
     evidenceMap?.update?.(visibleRows);
 
@@ -279,8 +282,8 @@ function locator(value) {
     return `<details class="sign-card" data-entry="${index}" ${opened.has(entry.key)?'open':''}><summary><div class="sign-title"><strong>${esc(entry.type==='source'?sourceTitle(entry.group.id):entry.group.label)}</strong><span class="sign-meta">${entry.type==='source'?esc(citation(entry.group.id)):`${papers} ${papers===1?'paper':'papers'}`}</span>${entry.type==='source'&&classificationReference(entry.group.id)?'<span class="pill context">Classification reference</span>':''}</div></summary><div class="sign-body"></div></details>`;
   }
   function contexts(stat) {
-    const metadata = value => clean(value).split(';').map(part => clean(part)).filter(Boolean).join('; ');
-    const denominator = clean(stat.denominator) || (stat.denominator_value != null ? String(stat.denominator_value) : '');
+    const metadata = value => clean(value).split(';').map(part => clean(part)).filter(Boolean).join('; ').replace(/\bNOT_REPORTED\b/g,'not available');
+    const denominator = metadata(stat.denominator) || (stat.denominator_value != null ? String(stat.denominator_value) : '');
     return [['Population',metadata(stat.population)],['Subgroup',metadata(stat.subgroup)],['Analysis unit',metadata(stat.analysis_unit)],['Denominator',denominator],['Timepoint',metadata(stat.timepoint)],['Endpoint',metadata(stat.endpoint)],['Comparator',metadata(stat.comparator)]];
   }
   function paperResultGroups(rows,stats=[]) {
@@ -312,19 +315,94 @@ function locator(value) {
     }
     return [...groups.values()].sort((a,b)=>a.label.localeCompare(b.label));
   }
-  function resultsMarkup(stats,rows) {
-    const groups=paperResultGroups(rows,stats).filter(group=>group.results.length);
-    if(!groups.length)return '';
-    return `<table class="result-table"><thead><tr><th>Finding and anatomy</th><th>Study context</th><th>Reported result</th></tr></thead>${groups.map(group=>`<tbody><tr class="result-group"><th colspan="3" scope="rowgroup">${esc(group.label)}</th></tr>${group.results.map(({stat,rows:owners})=>{
-      const terms=uniq(owners.map(row=>row.term)),label=stat?metricName(stat.metric_type):'';
-      const context=stat?contexts(stat).filter(([key,value])=>value && !(key==='Endpoint' && terms.includes(value))).map(([key,value])=>`${esc(key)}: ${esc(value)}`).join('<br>'):'';
-      const anatomy=atlasSourceFindingsMarkup(owners,{compact:true,localizationAnnotation,omitHeadings:[group.label,...terms]});
-      const role=uniq([stat?.evidence_role,...owners.flatMap(row=>(row.facets.evidence || []).map(value=>value.id.replace(/^EVIDENCE:/,'')))].filter(Boolean)).map(roleName).join(' · ');
-      const contextLabel=owners.every(row=>row.record_kind==='CONTEXT_ONLY')?'Study context':'';
-      const description=stat && clean(stat.measure) && clean(stat.measure).toLocaleLowerCase()!==label.toLocaleLowerCase() && clean(stat.measure)!==clean(stat.value_text)?`<small>${esc(stat.measure)}</small>`:'';
-      const details=stat?`data-stat="${esc(stat.statistic_id)}"`:`data-findings="${esc(JSON.stringify(owners.map(row=>row.id)))}"`;
-      return `<tr${stat?` data-statistic="${esc(stat.statistic_id)}"`:''} data-result-owners="${esc(JSON.stringify(owners.map(row=>row.id)))}"><td>${terms.some(term=>term.toLocaleLowerCase()!==group.label.toLocaleLowerCase())?`<strong>${terms.map(esc).join(' · ')}</strong>`:''}${anatomy}</td><td>${contextLabel?`<strong>${contextLabel}</strong><br>`:''}${context}${role?`<small>${esc(role)}</small>`:''}</td><td>${stat?`<span${label?' class="result-number"':''}>${esc(valueText(stat))}</span>${label?`<small>${esc(label)}</small>`:''}${description}${uncertainty(stat)?`<small>${esc(uncertainty(stat))}</small>`:''}`:''}<small>${esc(locator(stat?.source_locator || owners[0].source.locator))}</small><button class="text-button" ${details}>Source details</button></td></tr>`;
-    }).join('')}</tbody>`).join('')}</table>`;
+  function sourceTableGroups(groups,stats,rows) {
+    const tables=[],used=new Set(),representatives=new Map(groups.flatMap(group=>group.results.filter(result=>result.stat).map(result=>[result.stat.statistic_id,result]))),results=new Map();
+    for(const {statistic,statements} of atlasStatisticGroups(stats)){
+      const representative=representatives.get(statistic.statistic_id);
+      if(representative)for(const stat of statements)results.set(stat.statistic_id,{...representative,stat,rows:ownersFor(stat,rows),representative_id:statistic.statistic_id});
+    }
+    for(const sourceId of uniq(groups.flatMap(group=>group.rows.map(row=>row.source.id))))for(const table of data.result_tables?.[sourceId] || []){
+      const rowIds=new Set(table.rows?.map(row=>row.row_id)),columnIds=new Set(table.columns?.map(column=>column.column_id)),positions=new Set();
+      if(!table.table_id || !table.source_sha256 || !table.source_report_sha256 || !table.report_unit_id || !table.rows?.length || !table.columns?.length || !Array.isArray(table.cells) || rowIds.size!==table.rows.length || columnIds.size!==table.columns.length || table.rows.some(row=>!row.row_id || !clean(row.label)) || table.columns.some(column=>!column.column_id || !clean(column.label)))throw new Error('Source table layout is incomplete');
+      let version;
+      for(const cell of table.cells){
+        const stat=data.statistics[cell.statistic_id],position=JSON.stringify([cell.row_id,cell.column_id]);
+        if(!rowIds.has(cell.row_id) || !columnIds.has(cell.column_id) || positions.has(position) || used.has(cell.statistic_id) || !stat || ['source_sha256','source_report_sha256','report_unit_id'].some(key=>stat[key]!==table[key]) || version && version!==stat.source_version_role)throw new Error('Source table cell changes source, version or measurement ownership');
+        const owners=statOwners.get(cell.statistic_id) || [];
+        if(owners.some(row=>row.source.id!==sourceId || row.source.finding?.source_sha256!==stat.source_sha256))throw new Error('Source table cell belongs to a different paper');
+        positions.add(position);used.add(cell.statistic_id);version=stat.source_version_role;
+      }
+      for(const note of table.footnotes || [])if((note.row_ids || []).some(id=>!rowIds.has(id)) || (note.column_ids || []).some(id=>!columnIds.has(id)))throw new Error('Source table footnote changes its scope');
+      const cells=table.cells.filter(cell=>results.has(cell.statistic_id));
+      if(cells.length)tables.push({table,cells,results,first:groups.findIndex(group=>group.results.some(result=>cells.some(cell=>results.get(cell.statistic_id).representative_id===result.stat?.statistic_id)))});
+    }
+    return tables;
+  }
+  function compactStatisticValue(stat,raw=stat.value_text){
+    const text=clean(raw);if(!/\d/.test(text))return '';
+    const labels=[metricName(stat.metric_type),clean(stat.unit),'confidence interval','reported interval','interquartile range','standard deviation','standard error','p value','range','mean','median','approximately','approx.','about','above','below','at least','at most','more than','less than','up to','patients','patient','seizures','seizure','cases','case','s','ms','sec','min','h','Hz','mm','cm','years','year','months','month','days','day','seconds','second','OR','RR','HR','CI','SD','SE','SEM','p','n'].filter(Boolean).sort((a,b)=>b.length-a.length);
+    let remainder=text;
+    for(const label of labels)remainder=remainder.replace(new RegExp('(?<![A-Za-z])'+label.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'(?![A-Za-z])','gi'),'');
+    if(/^[\d\s.,;:+\-−–—<>≤≥=~≈±%()\[\]/×*^eE]+$/.test(remainder))return text;
+    const unit=clean(stat.unit).replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),number='[+-]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)(?:[eE][+-]?\\d+)?';
+    const pattern=new RegExp('(?<![A-Za-z0-9])((?:(?:approximately|about|above|below|at least|at most|more than|less than|up to)\\s+)?(?:[<>≤≥~≈]\\s*)?('+number+')(?:\\s*/\\s*('+number+'))?(?:\\s*(?:±|[-−–])\\s*'+number+')?(?:\\s*(?:%'+(unit?'|'+unit:'')+'))?(?:\\s*\\(\\s*('+number+')\\s*%\\s*\\))?)','gi');
+    for(const match of text.matchAll(pattern)){
+      if(/^\s*(?:[-−–±/×*]|to\b)/i.test(text.slice(match.index+match[0].length)))continue;
+      const matches=match[3]?Number(match[2])===stat.numerator_value && Number(match[3])===stat.denominator_value:Number(match[2])===stat.numeric_value;
+      if(matches || match[4] && Number(match[4])===stat.numeric_value)return match[1].trim();
+    }
+    return '';
+  }
+  function compactStatisticMarkup(stat,label,{metric=true}={}){
+  const value=compactStatisticValue(stat),qualifiers=uncertainty(stat).split('; ').map(text=>compactStatisticValue(stat,text)).filter(Boolean).join('; '),name=metric && value?metricName(stat.metric_type):'';
+  return `<button class="${value?'result-number':'text-button'}" data-stat="${esc(stat.statistic_id)}" aria-label="${esc(label+' — Source details')}">${esc(value || 'Source details')}</button>${name && name!=='Other'?`<small>${esc(name)}</small>`:''}${qualifiers?`<small>${esc(qualifiers)}</small>`:''}`;
+  }
+  function compactReportedAxes(rows){
+    const filtered=rows.map(row=>({...row,source_anatomy:(row.source_anatomy || []).filter(value=>atlasResolvedAxis(value) && !['COHORT_CONTEXT','COMPARATOR_CONTEXT'].includes(value.role) && value.decision_role!=='CONTEXT' && (!value.scope || value.scope==='EXACT')),source_laterality:(row.source_laterality || []).filter(value=>atlasResolvedAxis(value) && !['COHORT_CONTEXT','COMPARATOR_CONTEXT'].includes(value.role) && value.decision_role!=='CONTEXT' && (!value.scope || value.scope==='EXACT'))}));
+    return atlasSourceFindingsMarkup(filtered,{compact:true,omitHeadings:rows.map(row=>row.term)});
+  }
+  function sourceTableMarkup({table,cells,results}){
+  const tableRows=table.rows.filter(row=>cells.some(cell=>cell.row_id===row.row_id)),columns=table.columns.filter(column=>cells.some(cell=>cell.column_id===column.column_id));
+  const raw=parse(table.source_locator),locators=(Array.isArray(raw)?raw:[raw]).filter(value=>value && typeof value==='object'),title=uniq(locators.map(value=>clean(value.object)).filter(Boolean)).join(' · ') || 'Reported statistics',pages=uniq(locators.filter(value=>value.page!=null).map(value=>'p. '+value.page)).join('; ');
+  const items=cells.map(cell=>results.get(cell.statistic_id)),ownerKey=result=>JSON.stringify(result.rows.map(row=>row.id).sort()),sharedOwners=items.every(result=>ownerKey(result)===ownerKey(items[0]));
+    return `<section class="source-table"><h4>${esc(title)}${pages?` <small>${esc(pages)}</small>`:''}</h4>${sharedOwners?compactReportedAxes(items[0].rows):''}<div class="source-table-region" role="region" aria-label="${esc(title)}" tabindex="0"><table class="source-comparison" data-source-table="${esc(table.table_id)}"><thead><tr><th scope="col">${esc(clean(table.row_header) || 'Finding / group')}</th>${columns.map(column=>`<th scope="col">${esc(column.label)}</th>`).join('')}</tr></thead><tbody>${tableRows.map(row=>`<tr><th scope="row">${esc(row.label)}${!sharedOwners?compactReportedAxes(uniq(cells.filter(cell=>cell.row_id===row.row_id).flatMap(cell=>results.get(cell.statistic_id).rows))):''}</th>${columns.map(column=>{
+    const cell=cells.find(cell=>cell.row_id===row.row_id && cell.column_id===column.column_id);if(!cell)return '<td aria-label="No result in the selected evidence">—</td>';
+    const result=results.get(cell.statistic_id),stat=result.stat;
+    return `<td data-statistic="${esc(stat.statistic_id)}" data-source-row="${esc(row.row_id)}" data-source-column="${esc(column.column_id)}" data-result-owners="${esc(JSON.stringify(result.rows.map(owner=>owner.id)))}">${compactStatisticMarkup(stat,row.label+', '+column.label,{metric:false})}</td>`;
+  }).join('')}</tr>`).join('')}</tbody></table></div></section>`;
+  }
+  function resultsMarkup(stats,rows){
+    const groups=paperResultGroups(rows,stats).filter(group=>group.results.length);if(!groups.length)return '';
+    const tables=sourceTableGroups(groups,stats,rows),tableIds=new Set(tables.flatMap(({cells,results})=>cells.map(cell=>results.get(cell.statistic_id).representative_id))),pieces=[],ordinary=[];
+    const flush=()=>{if(ordinary.length)pieces.push(`<div class="source-table-region"><table class="result-table"><thead><tr><th>Statistic</th><th>Result</th></tr></thead><tbody>${ordinary.splice(0).join('')}</tbody></table></div>`);};
+    for(const [index,group] of groups.entries()){
+      const sourceTables=tables.filter(table=>table.first===index).map(sourceTableMarkup).join('');if(sourceTables){flush();pieces.push(sourceTables);}
+      const ownedGroups=new Map();
+      for(const result of group.results.filter(result=>!tableIds.has(result.stat?.statistic_id))){
+        const key=JSON.stringify([result.rows.map(owner=>owner.id).sort(),clean(result.stat?.subgroup)]);
+        if(!ownedGroups.has(key))ownedGroups.set(key,[]);
+        ownedGroups.get(key).push(result);
+      }
+      for(const results of ownedGroups.values()){
+        const owners=results[0].rows,signs=uniq(owners.flatMap(row=>(row.facets.sign || []).map(sign=>sign.label))),finding=signs.join(' · ') || uniq(owners.map(row=>row.term)).join(' · ') || 'Reported finding',subgroup=clean(results[0].stat?.subgroup),label=uniq([finding,subgroup].filter(Boolean)).join(' · ');
+        const endpoints=uniq(results.map(result=>clean(result.stat?.endpoint))),sharedEndpoint=endpoints.length===1?endpoints[0]:'',briefEndpoint=endpoint=>endpoint && !label.toLocaleLowerCase().includes(endpoint.toLocaleLowerCase()) && !/[.;!?\n]/.test(endpoint)?endpoint:'';
+        ordinary.push(`<tr class="result-finding-header" data-finding-owners="${esc(JSON.stringify(owners.map(row=>row.id).sort()))}" data-subgroup="${esc(subgroup)}"><td colspan="2"><strong>${esc(label)}</strong>${briefEndpoint(sharedEndpoint)?`<small>${esc(sharedEndpoint)}</small>`:''}${compactReportedAxes(owners)}</td></tr>`);
+        for(const {stat,rows:resultOwners} of results){
+          const endpoint=clean(stat?.endpoint),name=stat?metricName(stat.metric_type):'',metric=name==='Other'?'':name,detailLabel=uniq([label,metric,endpoint].filter(Boolean)).join(' · '),endpointLabel=!sharedEndpoint?briefEndpoint(endpoint):'';
+          const details=stat?compactStatisticMarkup(stat,detailLabel,{metric:false}):`<button class="text-button" data-findings="${esc(JSON.stringify(resultOwners.map(row=>row.id)))}">Source details</button>`;
+          ordinary.push(`<tr${stat?` data-statistic="${esc(stat.statistic_id)}"`:''} data-result-owners="${esc(JSON.stringify(resultOwners.map(row=>row.id)))}"><td>${metric?`<strong>${esc(metric)}</strong>`:''}${endpointLabel?`<small>${esc(endpointLabel)}</small>`:''}</td><td>${details}</td></tr>`);
+        }
+      }
+    }
+    flush();return pieces.join('');
+  }
+
+  function sourceTableDetails(stat){
+  return Object.values(data.result_tables || {}).flat().flatMap(table=>table.cells.filter(cell=>cell.statistic_id===stat.statistic_id).map(cell=>{
+    const row=table.rows.find(row=>row.row_id===cell.row_id),column=table.columns.find(column=>column.column_id===cell.column_id),sourceLocator=locator(Array.isArray(table.source_locator)?table.source_locator:[table.source_locator]);
+    const notes=(table.footnotes || []).filter(note=>(!note.row_ids?.length || note.row_ids.includes(cell.row_id)) && (!note.column_ids?.length || note.column_ids.includes(cell.column_id)));
+    return `<h3>${esc(clean(table.caption) || sourceLocator || 'Source table')}</h3><p>${esc([row?.label,column?.label,sourceLocator].filter(Boolean).join(' · '))}</p>${notes.map(note=>`<p>${esc(note.text)}</p>`).join('')}`;
+  })).join('');
   }
   function weightRows(rows,sourceId,setting) {
     const selected=new Set(rows.map(row=>row.id)),records=new Map();
@@ -387,28 +465,15 @@ function locator(value) {
     const other=context.length?`<details class="calculation"><summary>Appraisals for other signs in this paper</summary>${context.map(item=>`<section class="calculation-line"><strong>${esc(signLabel(item))}</strong><details><summary>Source wording</summary><p>${esc(item.label)}</p></details>${axes.filter(axis=>item.values[axis]).map(axis=>{const value=item.values[axis],view=atlasWeightPresentation(value,axis);return `<section data-context-appraisal="${esc(value.id)}"><h5>${axisName(axis)}</h5><p>Appraised weight: ${esc(view.label)}${['I','II','III'].includes(value.evidence_class)?` · ${esc(classLabel(value.evidence_class))}`:''}</p>${!publicSite&&value.original_sign_label?`<details><summary>Original database label</summary><p>${esc(value.original_sign_label)}</p></details>`:''}</section>`;}).join('')}</section>`).join('')}</details>`:'';
     return `<details class="context-details paper-weights"><summary>Evidence weights</summary><table class="weight-table"><thead><tr><th>Assessed sign</th>${axes.map(axis=>`<th>${options.embedded?axisName(axis):`<button data-weight-order="${axis}" data-group="${esc(groupId)}" title="Order by ${axisName(axis).toLowerCase()} appraised weight">${axisName(axis)} ↓</button>`}</th>`).join('')}</tr></thead><tbody>${table}</tbody></table><details class="calculation"><summary>Calculation details</summary>${details}</details>${other}</details>`;
   }
-  function findingsMarkup(rows,{support=false}={}) {
-    if(!support){
-      const seen=new Set();
-      return paperResultGroups(rows,statisticsFor(rows)).flatMap(group=>group.results).map(result=>{
-        const statements=atlasSourceFindingGroups(result.rows).map(row=>{
-          const claim=clean(row.source.finding?.statement) || clean(row.source.excerpt);
-          return {finding_ref:findingRefFor(row),claim:claim && (row.record_kind==='CONTEXT_ONLY'?'Study context: ':'')+claim};
-        }).concat(result.support || []).flatMap(item=>{
-          if(seen.has(item.finding_ref) || !clean(item.claim))return [];
-          seen.add(item.finding_ref);
-          return [clean(item.claim)];
-        });
-        return statements.length?`<p>${statements.map(esc).join(' ')}</p>`:'';
-      }).join('');
-    }
+  function findingsMarkup(rows) {
     return atlasSourceFindingGroups(rows).map(row=>{
       const statement=clean(row.source.finding?.statement) || clean(row.source.excerpt);
       const passages=uniq([row.source.excerpt,...(row.source_passages || []).map(value=>value.excerpt),...(row.source_anatomy || []).map(value=>value.source_excerpt),...(row.source_laterality || []).map(value=>value.source_excerpt)].map(clean).filter(Boolean));
       const excerpts=passages.filter(text=>text!==statement && !passages.some(other=>other!==text && other.includes(text)));
       const sourceWording=uniq([...(row.source_anatomy || []),...(row.source_laterality || [])].map(value=>clean(value.source_term)).filter(Boolean)).filter(text=>!statement.includes(text) && !passages.some(passage=>passage.includes(text)));
+      const pending=publicSite?[['Reported anatomy',row.source_anatomy || []],['Reported side',row.source_laterality || []]].map(([label,values])=>[label,uniq(values.filter(value=>!atlasResolvedAxis(value)).map(value=>clean(value.source_term)).filter(Boolean))]).filter(([,terms])=>terms.length).map(([label,terms])=>`<p><strong>${label}:</strong> ${esc(terms.join('; '))}</p>`).join(''):'';
       const locators=uniq([row.source.locator,...(row.source_passages || []).map(value=>value.locator),...(row.source_anatomy || []).map(value=>value.locator),...(row.source_laterality || []).map(value=>value.locator)].map(atlasSourceLocator).filter(Boolean));
-      return `<article class="finding"><h4>${esc(row.term)}</h4>${statement?`<p>${esc(statement)}</p>`:''}${excerpts.map(text=>`<blockquote>${esc(text)}</blockquote>`).join('')}${sourceWording.length?`<p>Source wording: ${esc(sourceWording.join('; '))}</p>`:''}<p>${esc(locators.join('; '))}</p></article>`;
+      return `<article class="finding"><h4>${esc(row.term)}</h4>${statement?`<p>${esc(statement)}</p>`:''}${excerpts.map(text=>`<blockquote>${esc(text)}</blockquote>`).join('')}${pending}${!publicSite&&sourceWording.length?`<p>Source wording: ${esc(sourceWording.join('; '))}</p>`:''}<p>${esc(locators.join('; '))}</p></article>`;
     }).join('');
   }
   function sourceLink(id) { const doi=clean(bibliography(id).doi); return doi ? `<a href="https://doi.org/${esc(encodeURI(doi))}" target="_blank" rel="noopener">Publication ↗</a>` : ''; }
@@ -418,11 +483,17 @@ function locator(value) {
     const labels=uniq(matches.filter(item=>item.scope==='OVERLAP' && !exact.has(item.id)).map(item=>item.label).filter(Boolean));
     return labels.length ? `Anatomical overlap · ${labels.join('; ')}` : '';
   }
+  function paperOverview(id,rows) {
+    const sourceSHAs=new Set(rows.map(row=>row.source.finding?.source_sha256));
+    const documents=(bibliography(id).document_overviews || []).filter(document=>sourceSHAs.has(document.source_sha256) && clean(document.summary) && clean(document.summary).toLocaleLowerCase()!==clean(sourceTitle(id)).toLocaleLowerCase());
+    const canonical=documents.filter(document=>document.version_role==='CANONICAL_REVIEWED_VERSION'),overviews=canonical.length?canonical:documents;
+    return overviews.length?`<section class="paper-summary"><h4>Summary of findings</h4>${overviews.flatMap(document=>clean(document.summary).split(/\n\s*\n/)).map(paragraph=>`<p>${esc(paragraph.trim())}</p>`).join('')}</section>`:'';
+  }
   function paperContent(id,rows,setting,groupId,embedded) {
     const roles=uniq(rows.flatMap(row=>(row.facets.evidence || []).map(item=>item.id.replace(/^EVIDENCE:/,''))));
     const evidenceClasses=classesFor(rows).map(classLabel).join(' · ');
     const stats=evidenceStats(rows,setting).filter(stat=>!selectedMetricIds.size || selectedMetricIds.has('METRIC:'+stat.metric_type));
-    return `${embedded?`<div class="paper-tools"><span class="evidence-class-label">${esc(evidenceClasses)}</span>${roles.map(rolePill).join(' ')}</div>`:''}<div class="paper-links">${sourceLink(id)}${publicSite?`<button class="text-button map-link" data-show-map="${esc(groupId)}" data-map-source="${esc(id)}">Show on map</button>`:''}</div><section class="paper-summary"><h4>Summary of findings</h4>${findingsMarkup(rows)}</section>${resultsMarkup(stats,rows)}${paperWeights(rows,id,setting,groupId)}`;
+    return `${embedded?`<div class="paper-tools"><span class="evidence-class-label">${esc(evidenceClasses)}</span>${roles.map(rolePill).join(' ')}</div>`:''}<div class="paper-links">${sourceLink(id)}${publicSite?`<button class="text-button map-link" data-show-map="${esc(groupId)}" data-map-source="${esc(id)}">Show on map</button>`:''}</div>${paperOverview(id,rows)}${resultsMarkup(stats,rows)}${paperWeights(rows,id,setting,groupId)}`;
   }
   function paperMarkup(id,rows,setting,groupId,embedded=false) {
     const roles=uniq(rows.flatMap(row=>(row.facets.evidence || []).map(item=>item.id.replace(/^EVIDENCE:/,''))));
@@ -438,22 +509,22 @@ function locator(value) {
     if(!body || ['loading','loaded'].includes(body.dataset.load))return;
     const card=body.closest('.sign-card'),paper=body.closest('.paper'),entry=entries[Number(card?.dataset.entry)];
     if(!entry || !card.open || paper && !paper.open)return;
+    const setting=settings(entry.group.id),id=body.dataset.evidencePaper;
+    const rows=entry.group.rows.filter(row=>row.source.id===id && classMatches(row,setting.evidenceClass));
     body.dataset.load='loading';body.setAttribute('aria-busy','true');
     try {
       if(!detailsReady){
-        body.innerHTML='<p role="status">Loading evidence…</p>';
-        await atlasLoadDetails(data);
-        if(!detailsReady){indexWeights();detailsReady=true;}
+        body.innerHTML=paperOverview(id,rows)+'<p role="status">Loading evidence…</p>';
+        await atlasLoadDetails(data,id);
+        indexWeights();detailsReady=!data.details_url;
       }
       delete body.dataset.load;
       if(!body.isConnected || !card.open || paper && !paper.open)return;
-      const setting=settings(entry.group.id),id=body.dataset.evidencePaper;
-      const rows=entry.group.rows.filter(row=>row.source.id===id && classMatches(row,setting.evidenceClass));
       body.innerHTML=paperContent(id,rows,setting,entry.group.id,entry.type==='source');
       body.dataset.load='loaded';
     } catch(error) {
       delete body.dataset.load;
-      if(body.isConnected)body.innerHTML='<p role="alert">Evidence details could not be loaded.</p><button class="text-button" data-retry-evidence>Retry loading evidence</button>';
+      if(body.isConnected)body.innerHTML=paperOverview(id,rows)+'<p role="alert">Evidence details could not be loaded.</p><button class="text-button" data-retry-evidence>Retry loading evidence</button>';
       console.error('Evidence details could not be loaded',error);
     } finally { body.removeAttribute('aria-busy'); }
   }
@@ -475,9 +546,13 @@ function locator(value) {
   function openStatistic(id) {
     const stat=data.statistics[id]; if(!stat)return; const rows=statOwners.get(id)||[];
     const statements=atlasStatisticGroups(Object.values(data.statistics)).find(group=>group.statistic.statistic_id===id)?.statements || [stat];
-    const fields=[...(metricName(stat.metric_type)?[['Statistic',metricName(stat.metric_type)]]:[]),['Reported measure',stat.measure],['Numerator',clean(stat.numerator)||stat.numerator_value],...contexts(stat),['Reported unit',stat.unit],['Phase',stat.phase],['Anatomy / laterality',stat.anatomy_laterality_context],['Uncertainty',uncertainty(stat)],['Evidence role',roleName(stat.evidence_role)],['Independence classification',stat.independent_evidence===1?'Independent observation; independence of cohorts is not established.':stat.independent_evidence===0?'Not classified as independent evidence.':'Not recorded'],['Source locator',locator(stat.source_locator)]];
-    if(stat.independence_status)fields.push(['Reporting status',roleName(stat.independence_status)]);
-    if(stat.restatement_explanation)fields.push(['Restatement context',stat.restatement_explanation]);
+    const fields=[...(metricName(stat.metric_type)?[['Statistic',metricName(stat.metric_type)]]:[]),['Reported measure',stat.measure],['Numerator',clean(stat.numerator)||stat.numerator_value],...contexts(stat),['Reported unit',stat.unit],['Phase',stat.phase],['Anatomy / laterality',stat.anatomy_laterality_context],['Uncertainty',uncertainty(stat)],['Source',roleName(stat.evidence_role)],['Citation',stat.citation],['Source locator',locator(stat.source_locator)]];
+    const displayValue=(label,value)=>['Numerator','Reported unit','Phase','Anatomy / laterality'].includes(label)?clean(value).replace(/\bNOT_REPORTED\b/g,'not available'):clean(value);
+    if(!publicSite){
+      fields.push(['Independence classification',stat.independent_evidence===1?'Independent observation; independence of cohorts is not established.':stat.independent_evidence===0?'Not classified as independent evidence.':'Not recorded']);
+      if(stat.independence_status)fields.push(['Reporting status',roleName(stat.independence_status)]);
+    }
+    if(!publicSite && stat.restatement_explanation)fields.push(['Restatement context',stat.restatement_explanation]);
     const support=findingSupportFor(statements),supportRefs=new Set(support.map(item=>item.finding_ref));
     const relatedRows=uniq([...statements.flatMap(item=>(statOwners.get(item.statistic_id)||[])),...data.rows.filter(row=>supportRefs.has(findingRefFor(row)))]);
     for(const item of support)if(!relatedRows.some(row=>findingRefFor(row)===item.finding_ref))relatedRows.push({
@@ -485,7 +560,7 @@ function locator(value) {
       source:{id:rows[0]?.source.id,locator:item.source_locator,excerpt:item.source_excerpt,
         finding:{finding_ref:item.finding_ref,statement:item.claim}},
     });
-    openDialog(clean(stat.measure)||metricName(stat.metric_type)||'Reported finding',`<div${metricName(stat.metric_type)?' class="dialog-value"':''}>${esc(valueText(stat))}</div><p>${paperIds(rows).map(id=>esc(citation(id))).join(' · ')}</p><dl>${fields.map(([label,value])=>`<dt>${esc(label)}</dt><dd>${esc(clean(value)||'Not recorded')}</dd>`).join('')}</dl><h3>Source passages</h3>${statements.map(item=>`<p><strong>${esc(locator(item.source_locator))}</strong><br>${esc(item.source_excerpt)}</p>`).join('')}${findingsMarkup(relatedRows,{support:true})}`);
+    openDialog(clean(stat.measure)||metricName(stat.metric_type)||'Reported finding',`<div${metricName(stat.metric_type)?' class="dialog-value"':''}>${esc(valueText(stat))}</div><p>${paperIds(rows).map(id=>esc(citation(id))).join(' · ')}</p><dl>${fields.filter(([,value])=>!publicSite || clean(value)).map(([label,value])=>`<dt>${esc(label)}</dt><dd>${esc(displayValue(label,value)||'Not recorded')}</dd>`).join('')}</dl><h3>Source passages</h3>${statements.map(item=>`<p><strong>${esc(locator(item.source_locator))}</strong><br>${esc(item.source_excerpt)}</p>`).join('')}${sourceTableDetails(stat)}${findingsMarkup(relatedRows,{support:true})}`);
   }
   function explain() { openDialog('Weights & statistics explained',root.getElementById('scientific-explanation').innerHTML); }
   function refresh() { state.limit=30;expandedSections.clear(); opened.clear(); bannerState.clear(); grouping(); syncControls(); renderList(); }
@@ -519,7 +594,7 @@ function locator(value) {
     if(button.dataset.showMap){showMapFor(button);return;}
     if(button.id==='close-dialog')$('record-dialog').close();
     if(button.id==='reset'){if(options.embedded && options.onClearFilters)options.onClearFilters();else resetFilters();return;}
-    if(button.id==='all-sources'){if(options.embedded){options.onViewSources?.();return;}evidenceMap?.clear(false);mapResultIds=null;Object.assign(state,{query:'',sourceQuery:'',organize:'source',filters:{},order:'name',focus:''});$('search').value='';updateQuery();refresh();}
+    if(button.id==='all-sources'){if(options.embedded){options.onViewSources?.();return;}evidenceMap?.clear(false);mapResultIds=null;Object.assign(state,{query:'',sourceQuery:'',organize:'source',filters:{},order:'title',focus:''});$('search').value='';updateQuery();refresh();}
     if(button.hasAttribute('data-more-section')){expandedSections.add(button.dataset.moreSection);renderList();}
     if(button.dataset.clearFilter){delete state.filters[button.dataset.clearFilter];refresh();}
     if(button.hasAttribute('data-retry-evidence')){renderPaper(button.closest('.paper-content'));return;}
@@ -533,7 +608,7 @@ function locator(value) {
     const {id,value,dataset}=event.target;
     if(dataset.detail){settings(dataset.group)[dataset.detail]=value;refreshGroup(dataset.group);return;}
     if(dataset.facet){if(value)state.filters[dataset.facet]=value;else delete state.filters[dataset.facet];refresh();return;}
-    if(id==='organize'){state.organize=value;state.order='name';state.focus='';}
+    if(id==='organize'){state.organize=value;state.order=value==='source'?'title':'name';state.focus='';}
     else if(id==='evidence-class'){setEvidenceClass(value);return;}
     else if(id==='order'){state.order=value;if(state.organize!=='source' && !['ilae','luders'].includes(value))signOrder=value;}
     else return;
@@ -560,7 +635,7 @@ function locator(value) {
       classificationFilters={ilae:queryContext.ilae || [],luders:queryContext.luders || []};
       sourceSelection=typeof queryContext.evidenceFiltered==='boolean'?{evidenceFiltered:queryContext.evidenceFiltered,sourceIds:queryContext.sourceIds || []}:null;
       queryRows=rows;mapResultIds=new Set(rows.map(row=>row.id));state.query=query;state.focus=pendingFocus;pendingFocus='';
-      if(view!==currentView){if(currentView!=='sources' && !['ilae','luders'].includes(state.order))signOrder=state.order;state.organize=view==='sources'?'source':'sign';state.order=view==='sources'?'name':signOrder;currentView=view;}
+      if(view!==currentView){if(currentView!=='sources' && !['ilae','luders'].includes(state.order))signOrder=state.order;state.organize=view==='sources'?'source':'sign';state.order=view==='sources'?'title':signOrder;currentView=view;}
       refresh();
     },
     collapseAll(){root.querySelectorAll('details[open]').forEach(element=>{element.open=false;});opened.clear();},

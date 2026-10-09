@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-projection="static" data-snapshot="e8c4488ae0ca3f84d55a73362be74bf1c6d13893aae613e515441e18c0926852" data-delivery="split-v1" data-label-editing="disabled">
+<html lang="en" data-projection="static" data-snapshot="2d3b812d789412df11d43d740595be8c921bde33e5b0fe6b0f32d127e215cadb" data-delivery="split-v1" data-label-editing="disabled">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -522,8 +522,8 @@
     }
   </script>
   <script type="module">
-    import { createEvidenceReview } from './atlas_evidence.mjs?v=abc8a25c8d41aaed6912729ae5cf4ddd7425665dc8c5c0c32cfe36b67e19a8d3';
-    import { atlasData, atlasPivot, atlasGroups, atlasRegionRank, atlasClassificationGroups, atlasCounts, atlasWeights, atlasWeightPresentation, atlasAppraisalLabel, atlasStatisticGroups, atlasSourceAnatomyMarkup } from './atlas_projection.mjs?v=b054749f3c933e2cd91621473ca147d98a57903a92bcc663b3f66d284a7e9d32';
+    import { createEvidenceReview, atlasEvidenceRoleLabel } from './atlas_evidence.mjs?v=6221a64a5f0a4f5b91bd7122aafce2695aecc00ccbf6ef099a5f1a6f1c175bc0';
+    import { atlasData, atlasPivot, atlasGroups, atlasRegionRank, atlasClassificationGroups, atlasCounts, atlasWeights, atlasWeightPresentation, atlasAppraisalLabel, atlasStatisticGroups, atlasSourceAnatomyMarkup, atlasRoleLabel } from './atlas_projection.mjs?v=343617db8d7e4f085989a3b252463726dad13ecdd3d70f905708a9d27444a00d';
     (() => {
       "use strict";
       if (location.protocol === 'file:') return;
@@ -1056,7 +1056,7 @@
           if (!surfacePanel && !surfacePanelLoading) {
             surfacePanelLoading = true;
             host.textContent = 'Loading surfaces…';
-            import('./atlas_surface.mjs?v=eac603552211e469966813559aeb355c86b409d5192441f695664aeed0e85ce1').then(({SurfacePanel}) => {
+            import('./atlas_surface.mjs?v=608d22c56c3aedd36ffaacd8211ff151ce55c19148dc9488d16f28b429c8d953').then(({SurfacePanel}) => {
               surfacePanel = new SurfacePanel(host, {...localSurfaces,groups:state.catalogue.maps.region_groups,brodmann:facetItems('anatomy').filter(row=>row.reference==='ATLAS:BRODMANN').sort((a,b)=>a.label.localeCompare(b.label,undefined,{numeric:true}))}, (view, hemisphere) => {
                 setMapView(view,hemisphere);
               }, rows => {
@@ -1166,9 +1166,7 @@
         };
         const shown = (statistic, key) => {
           if (key === 'source_locator') return sourceLocator(statistic.source_locator);
-          if (key === 'evidence_role') return text(statistic.evidence_role) ? roleLabel(statistic.evidence_role) : '';
-          if (key === 'independence_status') return text(statistic.independence_status) ? roleLabel(statistic.independence_status) : '';
-          if (key === 'independent_evidence') return statistic.independent_evidence === 0 ? 'Not an independent observation' : statistic.independent_evidence === 1 ? 'Independent observation' : '';
+          if (key === 'evidence_role') return atlasEvidenceRoleLabel(statistic.evidence_role);
           if (key === 'uncertainty') return statisticUncertainty(statistic).lines.join(' · ');
           if (key === 'counts') return counts(statistic);
           const value=text(statistic[key]);
@@ -1178,15 +1176,14 @@
               === comparableText(text(statistic.measure).replaceAll('_',' '))
               || containsLiteral(text(statistic.measure).replaceAll('_',' '), value.replaceAll('_',' ')))
           ) return '';
-          return missingValues.has(value) ? '' : value;
+          return missingValues.has(value) ? '' : contextFields.some(([field])=>field===key) ? value.replace(/\bNOT_REPORTED\b/g,'not available') : value;
         };
         const contextFields = [
           ['population','Population'], ['subgroup','Group'], ['comparator','Comparison'],
           ['unit','Unit'], ['timepoint','Timepoint'], ['endpoint','Endpoint'],
           ['metric_type','Measurement type'], ['analysis_unit','Analysis unit'], ['phase','Phase'],
           ['anatomy_laterality_context','Anatomy / lateralization context'],
-          ['source_locator','Statistic locator'], ['evidence_role','Evidence type'],
-          ['independent_evidence','Evidence independence']
+          ['source_locator','Statistic locator'], ['evidence_role','Source']
         ];
         const common = [], varyingContext = [];
         for (const field of contextFields) {
@@ -1203,13 +1200,13 @@
           if (key === 'evidence_role' && cardRoles.has(statistics[0].evidence_role)) return false;
           if (key === 'phase' && value === text(row?.source_phase)) return false;
           if (key === 'metric_type' && value === 'PERCENTAGE' && sharedUnit === '%') return false;
-          return key !== 'independent_evidence' || statistics[0].independent_evidence === 0;
+          return true;
         });
         const measureRepeatsValue = statistics.every(value =>
           !text(value.measure) || !text(value.value_text) || comparableText(value.measure) === comparableText(value.value_text));
         const varyingOrder = [
           'subgroup','comparator','unit','timepoint','endpoint','metric_type','analysis_unit',
-          'population','phase','anatomy_laterality_context','source_locator','evidence_role','independent_evidence'
+          'population','phase','anatomy_laterality_context','source_locator','evidence_role'
         ];
         const varyingByKey = new Map(varyingContext.map(field => [field[0],field]));
         const rowFields = [
@@ -1226,7 +1223,7 @@
             const tag=index===0?'th':'td', scope=index===0?' scope="row"':'', value=shown(statistic,key)||'—';
             return '<'+tag+scope+' data-field="'+h(key)+'">'+h(value)+'</'+tag+'>';
           }).join('')+'<td><details><summary>Source details</summary>'+statements.get(statistic.statistic_id).map(statement=>
-            '<section data-statement="'+h(statement.statistic_id)+'"><dl>'+[['measure','Measurement'],['value_text','Result'],['counts','Counts'],...contextFields,['uncertainty','Uncertainty / test'],['independence_status','Reporting status'],['restatement_explanation','Restatement context']].filter(([key])=>shown(statement,key)).map(([key,label])=>'<dt>'+h(label)+'</dt><dd>'+h(shown(statement,key))+'</dd>').join('')+'</dl>'+(text(statement.source_excerpt)?'<blockquote>'+h(statement.source_excerpt)+'</blockquote>':'')+'</section>').join('')+'</details></td></tr>').join('')+'</tbody></table></div>';
+            '<section data-statement="'+h(statement.statistic_id)+'"><dl>'+[['measure','Measurement'],['value_text','Result'],['counts','Counts'],...contextFields,['uncertainty','Uncertainty / test']].filter(([key])=>shown(statement,key)).map(([key,label])=>'<dt>'+h(label)+'</dt><dd>'+h(shown(statement,key))+'</dd>').join('')+'</dl>'+(text(statement.source_excerpt)?'<blockquote>'+h(statement.source_excerpt)+'</blockquote>':'')+'</section>').join('')+'</details></td></tr>').join('')+'</tbody></table></div>';
         return context + table;
       }
 
@@ -1373,14 +1370,12 @@
       function evidenceRoleChips(row) {
         const values = mergedFacetValues(rowFacetValues(row, "evidence"));
         if (!values.length) return "";
-        return '<div class="chips">'+values.map(value => {
-          const label = value.label || (value.role ? roleLabel(value.role) : roleLabel(String(value.id || "").replace(/^EVIDENCE:/, "")));
-          return '<span class="chip role">'+h(label)+'</span>';
-        }).join('')+'</div>';
+        const labels=[...new Set(values.map(value=>atlasEvidenceRoleLabel(value.id || value.role)).filter(Boolean))];
+        return labels.length?'<div class="chips">'+labels.map(label=>'<span class="chip role">'+h(label)+'</span>').join('')+'</div>':'';
       }
 
       function renderSourceAnatomy(row, seenExcerpts=new Set()) {
-        return atlasSourceAnatomyMarkup(row, seenExcerpts, {h, roleLabel, sourceLocator, comparableText});
+        return atlasSourceAnatomyMarkup(row, seenExcerpts, {h, roleLabel:atlasRoleLabel, sourceLocator, comparableText,includeSourceWording:false});
       }
 
       function renderRow(row, options = {}) {
@@ -1528,10 +1523,9 @@
         const applied=value=>/UNRESOLVED/.test(value.weight_status||'')?'Not assigned':atlasWeightPresentation(value).applied;
         const render=appraisal=>{
           const view=atlasWeightPresentation(appraisal,appraisal.axis),evidenceClass=appraisal.evidence_class==='UNCLASSIFIED'?'Unclassified':'Class '+appraisal.evidence_class;
-          return '<section class="stat" data-'+(appraisal.context?'context-':'')+'appraisal="'+h(appraisal.id)+'"><strong>'+h(atlasAppraisalLabel(appraisal))+' · '+axisLabel(appraisal.axis)+'</strong><p>Stored weight: '+h(view.label)+' · '+h(evidenceClass)+'</p>'+
+          return '<section class="stat" data-'+(appraisal.context?'context-':'')+'appraisal="'+h(appraisal.id)+'"><strong>'+h(atlasAppraisalLabel(appraisal))+' · '+axisLabel(appraisal.axis)+'</strong><p>Appraised weight: '+h(view.label)+' · '+h(evidenceClass)+'</p>'+
             (appraisal.context?'':'<p>Applied: '+h([...new Set(appraisal.current.map(applied))].join(' · '))+'</p>')+
             '<details><summary>Calculation and contribution scope</summary>'+(view.calculation?'<p>'+h(view.calculation)+'</p>':'')+
-            (appraisal.original_sign_label?'<p>Original database label: '+h(appraisal.original_sign_label)+'</p>':'')+
             (appraisal.context?'':appraisal.current.map(value=>{const currentView=atlasWeightPresentation(value,appraisal.axis);return '<p>'+h(value.label)+': '+h(applied(value))+(currentView.reason?'<br>'+h(currentView.reason):'')+'</p>';}).join(''))+'</details></section>';
         };
         const scoped=[...appraisals.values()].filter(value=>!value.context),context=[...appraisals.values()].filter(value=>value.context);
