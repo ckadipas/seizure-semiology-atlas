@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.1.6
+
+- Organize long paper results by their main and secondary findings, retaining concise summaries and original comparison tables.
+- Link the reviewed head-turning anatomy to the brain map while preserving each anatomical relationship’s study role.
+- Keep comparison-table columns accessible on phones and show the website update time independently of the evidence release date.
+
 ## 2.1.5
 
 - Present localization, lateralization and statistics in compact tables, with full study context and source information available through Source details.

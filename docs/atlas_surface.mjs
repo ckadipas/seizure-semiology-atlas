@@ -647,12 +647,7 @@ export class SurfacePanel {
     const mappedBrodmann=new Set(this.markers.map(marker=>marker.button.dataset.anatomy).filter(id=>this.evidenceAnatomy.has(id)));
     const brodmann=(this.catalogue.brodmann||[]).filter(row=>this.brodmannSelection.has(row.id)||mappedBrodmann.has(row.id)||this.linkedSelection.has(row.id)).map(row=>[row.label,row.area_name].filter(Boolean).join(' — '));
     const unavailable=this.evidenceActive&&!highlighted.length&&!mappedBrodmann.size;
-    const drawable=new Set([...this.options.map(row=>this.palette.get(row.index).anatomy_id),...mappedBrodmann]);
-    const mappedValues=this.evidenceValues.filter(value=>drawable.has(value.id)||value.scope==='EXACT'&&this.groups.some(group=>group.id===value.id&&group.anatomy_ids.some(id=>drawable.has(id))));
-    const contextual=value=>['COHORT_CONTEXT','COMPARATOR_CONTEXT'].includes(value.role);
-    const contextOnly=mappedValues.length>0&&mappedValues.every(contextual);
-    const note=unavailable?(this.evidenceAnatomy.size?'The reported anatomy has no corresponding region on this map. See the findings for the recorded anatomy.':'No mapped anatomy is recorded for this result.'):
-      contextOnly?'Highlights show study-population or comparison anatomy. They do not show a reported localization for this sign.':'';
+    const note=unavailable?(this.evidenceAnatomy.size?'The reported anatomy has no corresponding region on this map. See the findings for the recorded anatomy.':'No mapped anatomy is recorded for this result.'):'';
     this.evidenceNote.hidden=!note;this.evidenceNote.textContent=note;
     const atlases=[{label:this.catalogue.title||'Cortical atlas',regions:selected.map(row=>this.label(row))},{label:'Brodmann',regions:brodmann}].filter(atlas=>atlas.regions.length);
     this.atlasSelection.replaceChildren(...atlases.map(atlas=>{

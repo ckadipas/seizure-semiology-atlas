@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-projection="static" data-snapshot="2d3b812d789412df11d43d740595be8c921bde33e5b0fe6b0f32d127e215cadb" data-delivery="split-v1" data-label-editing="disabled">
+<html lang="en" data-projection="static" data-snapshot="4e62599575dd4cdc437ec303e372ec2c636be594f012ba86681f981c8e21d62c" data-website-updated-at="2026-10-10T04:21:13+00:00" data-delivery="split-v1" data-label-editing="disabled">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -522,7 +522,7 @@
     }
   </script>
   <script type="module">
-    import { createEvidenceReview, atlasEvidenceRoleLabel } from './atlas_evidence.mjs?v=6221a64a5f0a4f5b91bd7122aafce2695aecc00ccbf6ef099a5f1a6f1c175bc0';
+    import { createEvidenceReview, atlasEvidenceRoleLabel } from './atlas_evidence.mjs?v=0a8045a471e3658d90bc6c0541625d7005a7c4ed08946cfadfd2d27a0a832846';
     import { atlasData, atlasPivot, atlasGroups, atlasRegionRank, atlasClassificationGroups, atlasCounts, atlasWeights, atlasWeightPresentation, atlasAppraisalLabel, atlasStatisticGroups, atlasSourceAnatomyMarkup, atlasRoleLabel } from './atlas_projection.mjs?v=343617db8d7e4f085989a3b252463726dad13ecdd3d70f905708a9d27444a00d';
     (() => {
       "use strict";
@@ -1056,7 +1056,7 @@
           if (!surfacePanel && !surfacePanelLoading) {
             surfacePanelLoading = true;
             host.textContent = 'Loading surfaces…';
-            import('./atlas_surface.mjs?v=608d22c56c3aedd36ffaacd8211ff151ce55c19148dc9488d16f28b429c8d953').then(({SurfacePanel}) => {
+            import('./atlas_surface.mjs?v=58be463e3f271c0aad688004dbf81a5cc017226127e747cceefe30855f4a5ab6').then(({SurfacePanel}) => {
               surfacePanel = new SurfacePanel(host, {...localSurfaces,groups:state.catalogue.maps.region_groups,brodmann:facetItems('anatomy').filter(row=>row.reference==='ATLAS:BRODMANN').sort((a,b)=>a.label.localeCompare(b.label,undefined,{numeric:true}))}, (view, hemisphere) => {
                 setMapView(view,hemisphere);
               }, rows => {
@@ -1860,7 +1860,7 @@
           });
           if (payload.release?.version && payload.release?.released_at) {
             const release = payload.release;
-            const date = new Date(release.released_at).toLocaleString('en-US', {year:'numeric',month:'short',day:'numeric',hour:'numeric',minute:'2-digit',timeZone:'America/Chicago',timeZoneName:'short'});
+            const date = new Date(document.documentElement.dataset.websiteUpdatedAt || release.released_at).toLocaleString('en-US', {year:'numeric',month:'short',day:'numeric',hour:'numeric',minute:'2-digit',timeZone:'America/Chicago',timeZoneName:'short'});
             $('#releaseNote').textContent = `v${release.version} · Updated ${date}`;
             $('#releaseNote').hidden = false;
             $('#releaseNotes').innerHTML = `<summary>What's new in v${h(release.version)}</summary><ul>${(release.changes || []).map(change=>`<li>${h(change)}</li>`).join('')}</ul>`;
