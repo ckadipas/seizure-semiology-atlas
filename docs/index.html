@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-projection="static" data-snapshot="4e62599575dd4cdc437ec303e372ec2c636be594f012ba86681f981c8e21d62c" data-website-updated-at="2026-10-10T04:21:13+00:00" data-delivery="split-v1" data-label-editing="disabled">
+<html lang="en" data-projection="static" data-snapshot="f522718fef7d6ecf3a0357f7ddd2b0120c72e676ffad89f036b9fbbcc7fb6843" data-website-updated-at="2026-10-10T05:46:24+00:00" data-delivery="split-v1" data-label-editing="disabled">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -1010,7 +1010,7 @@
         }).join("") : `<span class="map-note">No regional facet is available for this result set.</span>`;
       }
 
-      function renderMap() {
+      function renderMap(signal) {
         const config = mapConfig();
         const linkedValues = [...new Set([...selected('anatomy'),...selected('region')])].flatMap(id=>
           (state.catalogue.maps?.selection_targets?.[id] || []).map(target=>({...target,label:itemLabel('anatomy',target.id)})));
@@ -1054,9 +1054,8 @@
           host.classList.add('surface-host');
           host.setAttribute('aria-label','DKT40 anatomical surfaces');
           if (!surfacePanel && !surfacePanelLoading) {
-            surfacePanelLoading = true;
             host.textContent = 'Loading surfaces…';
-            import('./atlas_surface.mjs?v=58be463e3f271c0aad688004dbf81a5cc017226127e747cceefe30855f4a5ab6').then(({SurfacePanel}) => {
+            surfacePanelLoading = import('./atlas_surface.mjs?v=ae22f3fd0fd46a71ede937aae3bfaa9496c8a2aeab86163f495888cf5d78d589').then(({SurfacePanel}) => {
               surfacePanel = new SurfacePanel(host, {...localSurfaces,groups:state.catalogue.maps.region_groups,brodmann:facetItems('anatomy').filter(row=>row.reference==='ATLAS:BRODMANN').sort((a,b)=>a.label.localeCompare(b.label,undefined,{numeric:true}))}, (view, hemisphere) => {
                 setMapView(view,hemisphere);
               }, rows => {
@@ -1064,7 +1063,7 @@
                 const anatomy=[...new Set([...selected('anatomy').filter(id=>!mapped.has(id)),...rows.map(row=>row.anatomy_id).filter(Boolean)])];
                 if(anatomy.length)state.filters.anatomy=anatomy;else delete state.filters.anatomy;
                 runQuery();
-              }, () => { clearMapSelection(); renderFilters(); runQuery(); }, document.documentElement.dataset.labelEditing!=='disabled');
+              }, () => { clearMapSelection(); renderFilters(); runQuery(); }, document.documentElement.dataset.labelEditing!=='disabled', signal);
               const atlasOutputs=document.createElement('div');
               atlasOutputs.id='atlasOutputs';atlasOutputs.className='map-outputs';atlasOutputs.tabIndex=0;
               atlasOutputs.setAttribute('role','region');atlasOutputs.setAttribute('aria-label','Selected atlas regions');atlasOutputs.setAttribute('aria-live','polite');
@@ -1080,6 +1079,7 @@
               host.querySelector('.surface-label-controls > span').before($('.map-count-toggle'));
               surfacePanel.setView(state.mapView,state.mapHemisphere);
               renderMap();
+              return surfacePanel.firstPaint;
             }).catch(error => { host.textContent = error.message; });
           }
           surfacePanel?.setView(state.mapView,state.mapHemisphere);
@@ -1118,6 +1118,7 @@
         $('#mapEvidenceHeading p').hidden = !state.mapSourceLabel;
         const contextHeadings=$("#mapSelection").querySelectorAll(".map-context > h3");
         $("#mapOutputs .map-output-title").textContent=contextHeadings.length===1?contextHeadings[0].textContent:"Anatomy relationships";
+        return surfacePanel?.firstPaint || surfacePanelLoading;
       }
 
       function rowFacetValues(row, facetId) {
@@ -1827,25 +1828,23 @@
       }
 
       async function start() {
-        const request = requestContext();
+        let request = requestContext();
         state.loading = true;
         removeFailure();
         setSearchReady(false);
         try {
-          const [payload,completeResponse] = await Promise.all([
-            atlasData(requestUrl("/api/catalogue", request), request.controller.signal).then(cataloguePayload => {
-              const catalogue = validateCatalogue(cataloguePayload);
-              if (isCurrent(request)) {
-                state.catalogue = catalogue;
-                if(catalogue.maps?.local_surfaces && !state.mapView){state.mapView='lateral';state.mapHemisphere='left';}
-                catalogueItems = new Map(catalogue.facets.map(facet => [facet.id, catalogue.items.filter(item => item.facet === facet.id)]));
-                catalogueLabels = new Map([...catalogueItems].map(([id, items]) => [id, new Map(items.map(item => [item.id, item.label]))]));
-                renderMap();
-              }
-              return catalogue;
-            }),
-            atlasData(requestUrl("/api/query?limit=all", request), request.controller.signal),
-          ]);
+          const payload = validateCatalogue(await atlasData(requestUrl("/api/catalogue", request), request.controller.signal));
+          if (!isCurrent(request)) return;
+          state.catalogue = payload;
+          if(payload.maps?.local_surfaces && !state.mapView){state.mapView='lateral';state.mapHemisphere='left';}
+          catalogueItems = new Map(payload.facets.map(facet => [facet.id, payload.items.filter(item => item.facet === facet.id)]));
+          catalogueLabels = new Map([...catalogueItems].map(([id, items]) => [id, new Map(items.map(item => [item.id, item.label]))]));
+          await renderMap(request.controller.signal);
+          if (!isCurrent(request)) return;
+          finishRequest(request);
+          request = requestContext();
+          state.loading = true;
+          const completeResponse = await atlasData(requestUrl("/api/query?limit=all", request), request.controller.signal);
           validateQuery(completeResponse);
           if (!isCurrent(request)) return;
           if (!evidenceReview) evidenceReview = createEvidenceReview($('#results'), {

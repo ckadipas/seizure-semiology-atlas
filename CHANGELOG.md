@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.1.7
+
+- Display the initial brain view before downloading evidence results; load the remaining brain structures in the background.
+- Preserve paper details on demand and allow evidence to load after an initial surface failure.
+
 ## 2.1.6
 
 - Organize long paper results by their main and secondary findings, retaining concise summaries and original comparison tables.

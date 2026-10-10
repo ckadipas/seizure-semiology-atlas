@@ -79,8 +79,8 @@ function smoothDisplay(positions, indices) {
   return output;
 }
 
-async function loadMesh(record, palette) {
-  const response = await fetch(`/local-surfaces/${encodeURIComponent(record.file)}?v=${encodeURIComponent(record.sha256)}`);
+async function loadMesh(record, palette, signal) {
+  const response = await fetch(`/local-surfaces/${encodeURIComponent(record.file)}?v=${encodeURIComponent(record.sha256)}`, {signal});
   if (!response.ok) throw new Error('The local surface could not be loaded.');
   const data = await new Response(response.body.pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
   const header = new DataView(data);
@@ -419,7 +419,7 @@ class SurfaceCanvas {
 }
 
 export class SurfacePanel {
-  constructor(host, catalogue, onViewChange, onSelection, onClear, allowEditing=true) {
+  constructor(host, catalogue, onViewChange, onSelection, onClear, allowEditing=true, signal) {
     this.allowEditing=allowEditing;
     this.host=host;this.catalogue=catalogue;this.palette=new Map(catalogue.palette.map(row=>[row.index,row]));
     this.onViewChange=onViewChange;this.onSelection=onSelection;this.selection=[];this.groups=catalogue.groups||[];this.groupSelection=[];this.evidenceHighlight=new Set();this.linkedSelection=new Set();
@@ -541,17 +541,20 @@ export class SurfacePanel {
       host.dataset.ready='true';this.updateSelection();this.update();
     };
     const initial=catalogue.meshes.find(mesh=>mesh.structure==='cortex'&&mesh.hemisphere==='left')||catalogue.meshes.find(mesh=>mesh.structure==='cortex');
-    this.ready=(async()=>{
+    this.firstPaint=(async()=>{
       try{
-        attach(await loadMesh(initial,this.palette));
+        attach(await loadMesh(initial,this.palette,signal));
         await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
       }catch(error){this.surfaceError=error.message;this.update();}
+    })();
+    this.ready=this.firstPaint.then(async()=>{
+      await new Promise(resolve=>requestAnimationFrame(resolve));
       await Promise.allSettled(catalogue.meshes.filter(mesh=>mesh!==initial).map(async mesh=>{
         try{attach(await loadMesh(mesh,this.palette));}catch(error){this.surfaceError=error.message;this.update();}
       }));
       await labels;
       if(!this.renderer){host.dataset.error='true';this.status.textContent=this.surfaceError;}
-    })();
+    });
   }
 
   async loadLabelAssignments(defaults) {

@@ -1,9 +1,8 @@
 {
-  "version": "2.1.6",
-  "released_at": "2026-10-10T03:16:53Z",
+  "version": "2.1.7",
+  "released_at": "2026-10-10T05:43:32Z",
   "changes": [
-    "Organize long paper results by their main and secondary findings, keeping concise summaries and original comparison tables together.",
-    "Link the reviewed head-turning anatomy to the brain map and keep study population, findings and comparison anatomy distinct.",
-    "Keep every column of comparison tables accessible on phones and show the current website update time."
+    "Display the initial brain view before downloading the evidence results, with remaining brain structures loading in the background.",
+    "Load paper details when opened and keep evidence available if the initial brain surface cannot load."
   ]
 }
