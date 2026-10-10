@@ -36,12 +36,13 @@ footer{max-width:1220px;margin:auto;padding:4px 28px 28px;display:flex;justify-c
 .organization-controls{display:contents}.toolbar slot[name=filters]{display:none}.embedded-help{display:none}:host([data-embedded]){--ink:#1a1d2e;--muted:#667085;--teal:#0a7a8a;--pale:#edf4f9;--line:#e3e8f0;--canvas:#fff;--serif:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;font:14px/1.5 Inter,ui-sans-serif,system-ui,sans-serif;background:transparent;display:block;min-width:0;container-type:inline-size}:host([data-embedded]) .owner-only,:host([data-embedded]) .intro h1{display:none}:host([data-embedded]) .embedded-help{display:block}:host([data-embedded]) main{max-width:none;margin:0;padding:0}:host([data-embedded]) .intro{display:none}:host([data-embedded]) .list-meta{flex-wrap:wrap;gap:6px 12px;margin:12px 0}:host([data-embedded]) #match-count{margin-right:auto}:host([data-embedded]) .list-meta slot{display:contents}:host([data-embedded]) .toolbar{grid-template-columns:minmax(0,1fr) minmax(0,1.35fr);align-items:start;padding:0;gap:20px;border:0}:host([data-embedded]) .organization-controls{display:grid;gap:12px;min-width:0}:host([data-embedded]) .toolbar slot[name=organization]{display:contents}:host([data-embedded]) .toolbar slot[name=filters]{display:block;min-width:0;align-self:stretch;border-left:1px solid var(--line);padding-left:20px}@container(max-width:520px){:host([data-embedded]) .toolbar{grid-template-columns:minmax(0,1fr);gap:12px}:host([data-embedded]) .organization-controls{grid-template-columns:repeat(auto-fit,minmax(min(140px,100%),1fr));gap:10px}:host([data-embedded]) .toolbar .organization-controls select{font-size:16px}:host([data-embedded]) .toolbar slot[name=filters]{border-left:0;border-top:1px solid var(--line);padding:12px 0 0}:host([data-embedded]) .list-meta{display:grid;grid-template-columns:minmax(0,1fr);gap:4px;margin:10px 0}:host([data-embedded]) .list-meta .help-button{max-width:none;min-height:44px;padding:4px 0;text-align:left;justify-self:start;line-height:1.4}}:host([data-embedded]) .toolbar label{font-size:14px;font-weight:650;color:var(--navy,#142653)}:host([data-embedded]) .toolbar select{height:44px;font-size:14px;font-weight:500;border:1px solid var(--line);border-radius:8px;background:#f8fafc;color:var(--navy,#142653)}:host([data-embedded]) .sign-card>summary{padding:12px 14px}:host([data-embedded]) .sign-title strong{font-size:15px}:host([data-embedded]) .sign-body{padding:12px}:host([data-embedded]) #reset{display:none}@media(max-width:850px){.toolbar>.toolbar-label+.field{grid-column:1/-1}}`;
 
 const mobileStyles = `
-.source-table{margin:12px 0 18px;font-size:13px}.source-table>h4{font-size:14px;font-weight:650;background:var(--pale);padding:10px}.source-table-context,.source-table-note,.source-table-locator{font-size:13px;margin:8px 0;line-height:1.5}.source-table-locator{color:var(--muted)}.source-table-region{max-width:100%;overflow-x:auto;border:1px solid var(--line);border-radius:5px;scrollbar-gutter:stable}.source-comparison{border-collapse:separate;border-spacing:0;width:100%;min-width:36rem;font-size:13px}.source-comparison th,.source-comparison td{padding:9px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);text-align:left;vertical-align:top;overflow-wrap:anywhere}.source-comparison thead th{position:sticky;top:0;z-index:2;background:#f1f5ee;color:var(--ink);font-size:13px}.source-comparison thead th:first-child{left:0;z-index:3}.source-comparison tbody th{position:sticky;left:0;z-index:1;background:var(--canvas);min-width:9rem;font-weight:600}.source-comparison th small,.source-comparison td small{display:block;font-size:13px;font-weight:400;line-height:1.45;margin-top:5px}.source-comparison .result-number{font-size:14px;min-height:34px;padding:3px 0;text-align:left;text-decoration:underline;text-underline-offset:3px}.source-comparison .compact-anatomy{margin:5px 0}.source-comparison th:last-child,.source-comparison td:last-child{border-right:0}.source-comparison tr:last-child>*{border-bottom:0}
+.source-table{margin:12px 0 18px;font-size:13px}.source-table>h4{font-size:14px;font-weight:650;background:var(--pale);padding:10px}.source-table-context,.source-table-note,.source-table-locator{font-size:13px;margin:8px 0;line-height:1.5}.source-table-locator{color:var(--muted)}.source-table-region{max-width:100%;overflow-x:auto;border:1px solid var(--line);border-radius:5px;scrollbar-gutter:stable}.source-comparison{border-collapse:separate;border-spacing:0;table-layout:fixed;width:100%;min-width:44rem;font-size:13px}.source-comparison th,.source-comparison td{padding:9px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);text-align:left;vertical-align:top;overflow-wrap:anywhere}.source-comparison thead th{position:sticky;top:0;z-index:2;background:#f1f5ee;color:var(--ink);font-size:13px}.source-comparison thead th:first-child{width:9rem;left:0;z-index:3}.source-comparison tbody th{position:sticky;left:0;z-index:1;background:var(--canvas);min-width:9rem;font-weight:600}.source-comparison th small,.source-comparison td small{display:block;font-size:13px;font-weight:400;line-height:1.45;margin-top:5px}.source-comparison .result-number{font-size:14px;min-height:34px;padding:3px 0;text-align:left;text-decoration:underline;text-underline-offset:3px}.source-comparison .compact-anatomy{margin:5px 0}.source-comparison th:last-child,.source-comparison td:last-child{border-right:0}.source-comparison tr:last-child>*{border-bottom:0}@media(max-width:540px){.source-comparison tbody th{position:static}.source-comparison thead th:first-child{left:auto}}
 .paper-content{font-size:14px;line-height:1.55}
 .paper-summary{margin:14px 0 22px}.paper-summary h4{font-size:14px;margin-bottom:10px}.paper-summary p{margin:10px 0;color:var(--ink)}
 .paper-content .result-table{font-size:13px}.paper-content .result-table thead th{font-size:13px}.paper-content .result-table th:nth-child(1){width:55%}.paper-content .result-table th:nth-child(2){width:45%}
 .paper-content .result-table .compact-anatomy{margin-top:8px;font-size:13px}.paper-content .result-table .compact-anatomy h4{font-size:13px;font-weight:500}.paper-content .result-table small{font-size:13px}.paper-content .result-number{font-size:14px}.paper-content .result-table .text-button{display:block;font-size:13px}
 @media(max-width:540px){.paper-content .result-table td{font-size:12px}.paper-content .result-table small{font-size:11px}}
+.paper-topics{display:flex;flex-wrap:wrap;gap:4px 16px;margin:0 0 16px;padding:8px 0;border-bottom:1px solid var(--line)}.paper-topics button{min-height:36px;text-align:left}.paper-topic{margin:18px 0;min-width:0}.paper-topic>h4{font-size:15px;font-weight:650;margin-bottom:10px}.paper-topic>p{margin:8px 0 12px}.paper-finding{margin:10px 0;padding:8px 0;border-bottom:1px solid var(--line)}.paper-finding>.text-button{display:block;margin-top:6px}.paper-source-details{margin:14px 0 8px}.paper-source-details>button{min-height:44px}.paper-additional{margin:20px 0 8px;border-top:1px solid var(--line)}.paper-additional>summary{min-height:44px;padding:10px 0;font-size:14px;font-weight:650;color:var(--teal)}@media(max-width:540px){.paper-topics{gap:2px 12px}.paper-topics button{min-height:44px}.paper-topic{margin:16px 0}}
 .controls-toggle{display:none}
 @media(max-width:780px){
   :host([data-embedded]) .controls-toggle{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:44px;margin:0 0 12px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--pale);color:var(--navy,#142653);font:inherit;font-weight:650;text-align:left}
@@ -110,7 +111,11 @@ function uncertainty(stat) {
     if (value == null) return [];
     if (typeof value !== 'object') return [String(value)];
     if (Array.isArray(value)) return value.flatMap(display);
-    if (clean(value.value_text)) return [value.value_text];
+    if (clean(value.value_text)) {
+      const text=clean(value.value_text),type=words(value.type || value.kind),level=scalar(value.level ?? value.confidence_level);
+      const confidence=/confidence interval|\bci\b/i.test(type),label=confidence?[level && `${level}%`,'CI'].filter(Boolean).join(' '):type;
+      return [label && !(confidence?/confidence interval|\bci\b/i.test(text):text.toLowerCase().includes(label.toLowerCase()))?`${label}: ${text}`:text];
+    }
     const lower = scalar(value.lower ?? value.lower_bound ?? value.ci_lower), upper = scalar(value.upper ?? value.upper_bound ?? value.ci_upper);
     if (lower && upper) return [[scalar(value.level ?? value.confidence_level) && `${scalar(value.level ?? value.confidence_level)}%`,words(value.type || value.kind) || 'Reported interval',`${lower}–${upper}`].filter(Boolean).join(' ')];
     return Object.entries(labels).flatMap(([key,label]) => display(value[key]).map(text => `${label}: ${text}`));
@@ -483,17 +488,77 @@ function locator(value) {
     const labels=uniq(matches.filter(item=>item.scope==='OVERLAP' && !exact.has(item.id)).map(item=>item.label).filter(Boolean));
     return labels.length ? `Anatomical overlap · ${labels.join('; ')}` : '';
   }
+  function paperPresentation(document) {
+    const plan=document.presentation;
+    return plan?.schema_version==='paper-presentation-1.0.0' && plan.source_sha256===document.source_sha256 && plan.source_version_role===document.version_role?plan:null;
+  }
   function paperOverview(id,rows) {
     const sourceSHAs=new Set(rows.map(row=>row.source.finding?.source_sha256));
-    const documents=(bibliography(id).document_overviews || []).filter(document=>sourceSHAs.has(document.source_sha256) && clean(document.summary) && clean(document.summary).toLocaleLowerCase()!==clean(sourceTitle(id)).toLocaleLowerCase());
+    const documents=(bibliography(id).document_overviews || []).filter(document=>sourceSHAs.has(document.source_sha256));
     const canonical=documents.filter(document=>document.version_role==='CANONICAL_REVIEWED_VERSION'),overviews=canonical.length?canonical:documents;
-    return overviews.length?`<section class="paper-summary"><h4>Summary of findings</h4>${overviews.flatMap(document=>clean(document.summary).split(/\n\s*\n/)).map(paragraph=>`<p>${esc(paragraph.trim())}</p>`).join('')}</section>`:'';
+    const summaries=overviews.flatMap(document=>{const plan=paperPresentation(document);return plan?plan.sections.filter(section=>section.placement==='MAIN').map(section=>clean(section.summary)):[clean(document.summary)].filter(summary=>summary.toLocaleLowerCase()!==clean(sourceTitle(id)).toLocaleLowerCase());});
+    const paragraphs=uniq(summaries.filter(Boolean).flatMap(summary=>summary.split(/\n\s*\n/)).map(paragraph=>paragraph.trim()));
+    return paragraphs.length?'<section class="paper-summary"><h4>Summary of findings</h4>'+paragraphs.map(paragraph=>'<p>'+esc(paragraph)+'</p>').join('')+'</section>':'';
+  }
+  function openFindingDetails(rows,statisticIds=[]) {
+    const stats=statisticIds.map(id=>data.statistics[id]);
+    if(stats.some(stat=>!stat))throw new Error('Source details reference a missing reported result');
+    openDialog('Source details',(stats.length?resultsMarkup(stats,rows):'')+findingsMarkup(rows,{support:true}));
+  }
+  function qualitativeResultsMarkup(rows) {
+    return paperResultGroups(rows).filter(group=>group.results.length).map(group=>'<div class="paper-finding"><strong>'+esc(group.label)+'</strong>'+compactReportedAxes(group.rows)+'<button class="text-button" data-findings="'+esc(JSON.stringify(group.rows.map(row=>row.id)))+'">Source details</button></div>').join('');
+  }
+  function paperResults(id,stats,rows) {
+    const sourceSHAs=new Set(rows.map(row=>row.source.finding?.source_sha256));
+    const documents=(bibliography(id).document_overviews || []).filter(document=>sourceSHAs.has(document.source_sha256));
+    const plans=documents.filter(paperPresentation);
+    if(!plans.length)return resultsMarkup(stats,rows);
+    const groups=atlasStatisticGroups(stats),selected=new Map(groups.flatMap(group=>group.statements.map(stat=>[stat.statistic_id,group]))),assigned=new Map(),seenFindings=new Set(),sections=[];
+    for(const document of plans){
+      const plan=document.presentation,bound=stat=>{
+        const binding=plan.statistic_bindings?.[stat.statistic_id] || data.presentation?.statistic_bindings?.[stat.statistic_id] || stat;
+        if(!['source_sha256','source_report_sha256','source_version_role'].every(key=>binding[key]===plan[key]) || !['source_sha256','source_version_role'].every(key=>stat[key]==null || stat[key]===binding[key]))return false;
+        return stat.source_report_sha256==null || stat.source_report_sha256===binding.source_report_sha256 || stat.source_report_sha256===binding.retained_source_report_sha256 && (plan.report_lineage || []).some(lineage=>lineage.prior_report_sha256===stat.source_report_sha256 && lineage.current_report_sha256===plan.source_report_sha256 && lineage.statistics.some(item=>item.statistic_id===stat.statistic_id && item.finding_ref===stat.finding_ref));
+      };
+      for(const section of plan.sections)for(const id of section.statistic_ids){
+        const group=selected.get(id);if(!group)continue;
+        if(!bound(data.statistics[id]))throw new Error('Paper section changes source or report ownership');
+        const prior=assigned.get(group);
+        if(!prior || section.placement==='MAIN' && prior.placement!=='MAIN')assigned.set(group,section);
+      }
+      for(const section of plan.sections){
+        const sectionGroups=new Set();
+        for(const id of section.statistic_ids){
+          const group=selected.get(id);if(!group)continue;
+          if(!bound(data.statistics[id]))throw new Error('Paper section changes source or report ownership');
+          if(assigned.get(group)===section)sectionGroups.add(group);
+        }
+        const refs=new Set(section.finding_refs),qualitative=rows.filter(row=>row.source.finding?.source_sha256===plan.source_sha256 && !row.statistic_ids.length && refs.has(findingRefFor(row)) && !seenFindings.has(findingRefFor(row)));
+        for(const row of qualitative)seenFindings.add(findingRefFor(row));
+        const sectionStats=[...sectionGroups].flatMap(group=>group.statements),owners=new Set(sectionStats.flatMap(stat=>ownersFor(stat,rows).map(row=>row.id))),sectionRows=rows.filter(row=>owners.has(row.id) || qualitative.includes(row));
+        if(sectionRows.length)sections.push({...section,stats:sectionStats,rows:sectionRows,overview:document.summary});
+      }
+    }
+    for(const table of data.result_tables?.[id] || []){
+      const placements=new Set(table.cells.filter(cell=>selected.has(cell.statistic_id)).map(cell=>assigned.get(selected.get(cell.statistic_id)) || null));
+      if(placements.size>1)throw new Error('Source table is split across paper sections');
+    }
+    const remainderStats=groups.filter(group=>!assigned.has(group)).flatMap(group=>group.statements),remainderOwners=new Set(remainderStats.flatMap(stat=>ownersFor(stat,rows).map(row=>row.id)));
+    const remainderRows=rows.filter(row=>remainderOwners.has(row.id) || !row.statistic_ids.length && !seenFindings.has(findingRefFor(row)));
+    const supporting=remainderRows.length?'<div class="paper-source-details"><button class="text-button" data-findings="'+esc(JSON.stringify(remainderRows.map(row=>row.id)))+'" data-statistics="'+esc(JSON.stringify(remainderStats.map(stat=>stat.statistic_id)))+'">Source details for additional results</button></div>':'';
+    const render=section=>{
+      const summary=clean(section.summary),overview=clean(section.overview),distinct=section.placement!=='MAIN' && summary && summary!==overview && !overview.split(/\n\s*\n/).includes(summary);
+      return '<section class="paper-topic" data-paper-section="'+esc(section.section_id)+'" tabindex="-1"><h4>'+esc(section.heading)+'</h4>'+(distinct?'<p>'+esc(summary)+'</p>':'')+(section.stats.length?resultsMarkup(section.stats,section.rows):qualitativeResultsMarkup(section.rows))+'</section>';
+    };
+    const main=sections.filter(section=>section.placement==='MAIN'),additional=sections.filter(section=>section.placement==='SECONDARY');
+    const navigation=sections.length>1?'<nav class="paper-topics" aria-label="Topics in this paper">'+sections.map(section=>'<button class="text-button" data-paper-topic="'+esc(section.section_id)+'">'+esc(section.heading)+'</button>').join('')+'</nav>':'';
+    return navigation+main.map(render).join('')+(additional.length?'<details class="paper-additional"><summary>Additional results</summary>'+additional.map(render).join('')+'</details>':'')+supporting;
   }
   function paperContent(id,rows,setting,groupId,embedded) {
     const roles=uniq(rows.flatMap(row=>(row.facets.evidence || []).map(item=>item.id.replace(/^EVIDENCE:/,''))));
     const evidenceClasses=classesFor(rows).map(classLabel).join(' · ');
     const stats=evidenceStats(rows,setting).filter(stat=>!selectedMetricIds.size || selectedMetricIds.has('METRIC:'+stat.metric_type));
-    return `${embedded?`<div class="paper-tools"><span class="evidence-class-label">${esc(evidenceClasses)}</span>${roles.map(rolePill).join(' ')}</div>`:''}<div class="paper-links">${sourceLink(id)}${publicSite?`<button class="text-button map-link" data-show-map="${esc(groupId)}" data-map-source="${esc(id)}">Show on map</button>`:''}</div>${paperOverview(id,rows)}${resultsMarkup(stats,rows)}${paperWeights(rows,id,setting,groupId)}`;
+    return `${embedded?`<div class="paper-tools"><span class="evidence-class-label">${esc(evidenceClasses)}</span>${roles.map(rolePill).join(' ')}</div>`:''}<div class="paper-links">${sourceLink(id)}${publicSite?`<button class="text-button map-link" data-show-map="${esc(groupId)}" data-map-source="${esc(id)}">Show on map</button>`:''}</div>${paperOverview(id,rows)}${paperResults(id,stats,rows)}${paperWeights(rows,id,setting,groupId)}`;
   }
   function paperMarkup(id,rows,setting,groupId,embedded=false) {
     const roles=uniq(rows.flatMap(row=>(row.facets.evidence || []).map(item=>item.id.replace(/^EVIDENCE:/,''))));
@@ -598,8 +663,12 @@ function locator(value) {
     if(button.hasAttribute('data-more-section')){expandedSections.add(button.dataset.moreSection);renderList();}
     if(button.dataset.clearFilter){delete state.filters[button.dataset.clearFilter];refresh();}
     if(button.hasAttribute('data-retry-evidence')){renderPaper(button.closest('.paper-content'));return;}
+    if(button.dataset.paperTopic){
+      const body=button.closest('.paper-content'),section=[...body.querySelectorAll('[data-paper-section]')].find(section=>section.dataset.paperSection===button.dataset.paperTopic);
+      if(section){const additional=section.closest('.paper-additional');if(additional)additional.open=true;body.scrollTo({top:body.scrollTop+section.getBoundingClientRect().top-body.getBoundingClientRect().top-12,behavior:'auto'});section.focus({preventScroll:true});}return;
+    }
     if(button.dataset.stat)openStatistic(button.dataset.stat);
-    if(button.dataset.findings){const ids=new Set(JSON.parse(button.dataset.findings));openDialog('Source details',findingsMarkup(data.rows.filter(row=>ids.has(row.id)),{support:true}));return;}
+    if(button.dataset.findings){const ids=new Set(JSON.parse(button.dataset.findings));openFindingDetails(data.rows.filter(row=>ids.has(row.id)),JSON.parse(button.dataset.statistics || '[]'));return;}
     if(button.dataset.allTerm){if(options.embedded){pendingFocus=button.dataset.allTerm;options.onClearFilters?.({preserveFocus:true});return;}state.query='';state.focus=button.dataset.allTerm;$('search').value='';updateQuery();opened.clear();opened.add(state.focus);grouping();syncControls();renderList();}
     if(button.dataset.morePapers){settings(button.dataset.morePapers).papers=Infinity;refreshGroup(button.dataset.morePapers);}
     if(button.dataset.weightOrder){settings(button.dataset.group).weights=button.dataset.weightOrder;refreshGroup(button.dataset.group);}

@@ -1,9 +1,9 @@
 {
-  "version": "2.1.5",
-  "released_at": "2026-10-09T16:49:05Z",
+  "version": "2.1.6",
+  "released_at": "2026-10-10T03:16:53Z",
   "changes": [
-    "Present localization, lateralization and reported statistics in compact tables, with study context and full source information available through Source details.",
-    "Preserve original paper tables where appropriate, keep related results together and place concise, source-supported summaries first.",
-    "Load the brain and paper results independently, and order Sources by title."
+    "Organize long paper results by their main and secondary findings, keeping concise summaries and original comparison tables together.",
+    "Link the reviewed head-turning anatomy to the brain map and keep study population, findings and comparison anatomy distinct.",
+    "Keep every column of comparison tables accessible on phones and show the current website update time."
   ]
 }
