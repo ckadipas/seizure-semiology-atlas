@@ -1,0 +1,23 @@
+name: JavaScript action runtime
+
+on:
+  push:
+    branches: [maintenance/node-runtime-check]
+  workflow_dispatch: {}
+
+permissions: {}
+
+jobs:
+  runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Verify the JavaScript action runtime
+        uses: actions/github-script@v7
+        with:
+          script: |
+            console.log(JSON.stringify({node: process.version, executable: process.execPath}));
+            const [major, minor, patch] = process.versions.node.split('.').map(Number);
+            if (major !== 24 || minor < 22 || (minor === 22 && patch < 1)) {
+              core.setFailed('The JavaScript action requires Node.js 24.22.1 or a later Node.js 24 patch.');
+            }
