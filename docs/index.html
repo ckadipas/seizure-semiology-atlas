@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-projection="static" data-snapshot="f522718fef7d6ecf3a0357f7ddd2b0120c72e676ffad89f036b9fbbcc7fb6843" data-website-updated-at="2026-10-10T05:46:24+00:00" data-delivery="split-v1" data-label-editing="disabled">
+<html lang="en" data-projection="static" data-snapshot="f8d1faee7c94a2a59e8bb0df6e8ec87d08fc59affbc71022e175d4f27f65c51a" data-website-updated-at="2026-11-15T19:17:04+00:00" data-delivery="split-v1" data-label-editing="disabled">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -522,8 +522,8 @@
     }
   </script>
   <script type="module">
-    import { createEvidenceReview, atlasEvidenceRoleLabel } from './atlas_evidence.mjs?v=0a8045a471e3658d90bc6c0541625d7005a7c4ed08946cfadfd2d27a0a832846';
-    import { atlasData, atlasPivot, atlasGroups, atlasRegionRank, atlasClassificationGroups, atlasCounts, atlasWeights, atlasWeightPresentation, atlasAppraisalLabel, atlasStatisticGroups, atlasSourceAnatomyMarkup, atlasRoleLabel } from './atlas_projection.mjs?v=343617db8d7e4f085989a3b252463726dad13ecdd3d70f905708a9d27444a00d';
+    import { createEvidenceReview, atlasEvidenceRoleLabel } from './atlas_evidence.mjs?v=2bc0abad6b6e2ded11fa36cad8605f4fb272c71b82efc25e8c1122bd57f81e75';
+    import { atlasData, atlasPivot, atlasGroups, atlasRegionRank, atlasClassificationGroups, atlasCounts, atlasWeights, atlasWeightPresentation, atlasAppraisalLabel, atlasStatisticGroups, atlasSourceAnatomyMarkup, atlasRoleLabel, atlasAnatomySearchIds } from './atlas_projection.mjs?v=799e6247b5bb164350c819489972c4aa58808660cb813954cdc26e3940c7409a';
     (() => {
       "use strict";
       if (location.protocol === 'file:') return;
@@ -907,6 +907,7 @@
 
       function renderAnatomyChoices() {
         const query=(state.optionSearch.anatomy||'').toLocaleLowerCase();
+        const anatomyIds=atlasAnatomySearchIds(state.catalogue,query);
         const drawable=new Set((state.catalogue.maps?.local_surfaces?.palette||[]).map(item=>item.anatomy_id));
         const mapped=new Set([...drawable,...Object.entries(state.catalogue.maps?.selection_targets||{})
           .filter(([,targets])=>targets.some(target=>drawable.has(target.id))).map(([id])=>id)]);
@@ -916,7 +917,7 @@
           const items=facetItems(group.facetId).filter(item=>(group.facetId==='region'||item.reference===group.id)&&
             (group.facetId==='region'||!regions.has(item.id))&&
             (item.linked_count>0||selected(group.facetId).includes(item.id)||mapped.has(item.id))&&
-            `${item.label} ${item.area_name||''}`.toLocaleLowerCase().includes(query)).sort(alphabetical);
+             (anatomyIds.length?anatomyIds.includes(item.id):`${item.label} ${item.area_name||''}`.toLocaleLowerCase().includes(query))).sort(alphabetical);
           const choices=choicesByLabel(items);
           if(!choices.length)return '';
           return `<section data-facet="${h(group.facetId)}"><div class="choice-section">${h(group.label)}</div>${choices.map(item=>`<label><input type="checkbox" data-items="${h(JSON.stringify(item.ids))}" ${item.ids.some(id=>selected(group.facetId).includes(id))?'checked':''}><span>${h(group.facetId==='anatomy'?anatomyValueLabel(item):item.label)}</span></label>`).join('')}</section>`;
@@ -1716,10 +1717,10 @@
           }
           return;
         }
-        $('#results').className=rows.length?'':'empty';
+        $('#results').className=rows.length || evidenceReview?'':'empty';
         if(evidenceReview) {
           $('#expandGroups').textContent=view==='sources'?'Expand sources':state.browseBy==='region'?'Expand regions':['ilae','luders'].includes(state.browseBy)?'Expand categories':'Expand signs';
-          evidenceReview.update({rows,view,organization:state.browseBy,query:view==='sources'?'':state.query,queryContext:{anatomy:selected('anatomy'),ilae:selected('ilae'),luders:selected('luders'),regionIds:!selected('anatomy').length||state.anatomyMatch==='all'?selected('region'):[],metricIds:selected('metric'),sourceIds:selected('source'),evidenceFiltered:Boolean((view!=='sources' && state.query) || Object.entries(state.filters).some(([axis,ids])=>axis!=='source' && ids.length))}});
+          evidenceReview.update({rows,view,organization:state.browseBy,query:view==='sources'?'':state.query,queryContext:{anatomy:selected('anatomy'),ilae:selected('ilae'),luders:selected('luders'),regionIds:!selected('anatomy').length||state.anatomyMatch==='all'?selected('region'):[],metricIds:selected('metric'),sourceIds:selected('source'),sourceMentionsEligible:!Object.entries(state.filters).some(([axis,ids])=>!['source','anatomy'].includes(axis)&&ids.length)&&(view==='sources'||!state.query||atlasAnatomySearchIds(state.catalogue,state.query).length>0),evidenceFiltered:Boolean((view!=='sources' && state.query) || Object.entries(state.filters).some(([axis,ids])=>axis!=='source' && ids.length))}});
           return;
         }
         let content='';

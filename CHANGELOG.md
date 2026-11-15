@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.1.8
+
+- Find linked evidence through approved anatomy names, codes and aliases.
+- Show region-specific source passages with their citations and page references, including source-only mentions that do not contribute clinical weights.
+- Correct source-backed anatomical links and terminology while preserving the interactive 3D map.
+
 ## 2.1.7
 
 - Display the initial brain view before downloading evidence results; load the remaining brain structures in the background.

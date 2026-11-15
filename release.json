@@ -1,8 +1,9 @@
 {
-  "version": "2.1.7",
-  "released_at": "2026-10-10T05:43:32Z",
+  "version": "2.1.8",
+  "released_at": "2026-11-15T16:58:10Z",
   "changes": [
-    "Display the initial brain view before downloading the evidence results, with remaining brain structures loading in the background.",
-    "Load paper details when opened and keep evidence available if the initial brain surface cannot load."
+    "Find linked evidence through approved anatomy names, codes and aliases.",
+    "Show region-specific source passages with their citations and page references.",
+    "Correct source-backed anatomical links and terminology while preserving the interactive 3D map."
   ]
 }
