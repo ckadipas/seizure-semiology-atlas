@@ -597,8 +597,9 @@ function locator(value) {
     return sections.filter(([,items])=>items.length).map(([label,items])=>
       `<details class="paper-source-details"${selected?' open':''}><summary>${esc(label)}</summary><ul>${items.map(item=>{
         const text=clean(item.statement),locator=atlasSourceLocator(item.locator);
+        const role=rolePill(item.evidence_role)||(item.evidence_role?`<span class="pill context">${esc(words(item.evidence_role))}</span>`:'');
         const related=(item.anatomy_targets || []).filter(target=>anatomy.has(target.id) && target.scope!=='EXACT');
-        return `<li><strong>${esc(item.term)}</strong>${item.evidence_role?` ${rolePill(item.evidence_role)}`:''}${text&&text!==clean(item.term)?`<p>${esc(text)}</p>`:''}${related.length?`<p>${esc(uniq(related.map(target=>`${target.label} (${target.scope.toLowerCase()})`)).join('; '))}</p>`:''}${locator?`<p>${esc(locator)}</p>`:''}</li>`;
+        return `<li><strong>${esc(item.term)}</strong>${role?` ${role}`:''}${text&&text!==clean(item.term)?`<p>${esc(text)}</p>`:''}${related.length?`<p>${esc(uniq(related.map(target=>`${target.label} (${target.scope.toLowerCase()})`)).join('; '))}</p>`:''}${locator?`<p>${esc(locator)}</p>`:''}</li>`;
       }).join('')}</ul></details>`).join('');
   }
   function selectedPassagesMarkup(rows,embedded) {
