@@ -138,7 +138,41 @@ export async function atlasData(path, signal) {
   return atlasPivot(snapshot, url.searchParams);
 }
 
-function atlasSearchSelection(row, needle) {
+export function atlasAnatomySearchIds(catalogue, query) {
+  const needle=atlasAsciiLower(String(query || '').trim());
+  if(!needle)return [];
+  if(catalogue?.anatomy_search_terms)return Object.hasOwn(catalogue.anatomy_search_terms,needle)?catalogue.anatomy_search_terms[needle]:[];
+  return (catalogue?.items || []).filter(item=>item.facet==='anatomy' &&
+    (atlasAsciiLower(item.label)===needle || /^BA \d/.test(item.label) &&
+      atlasAsciiLower(item.label.replace('BA ','BA'))===needle)).map(item=>item.id);
+}
+
+export function atlasSelectionPassages(rows, anatomyIds=[]) {
+  const selected=new Set(anatomyIds),passages=new Map();
+  for(const row of rows){
+    const values=selected.size?(row.source_anatomy || []).flatMap(value=>{
+      const matches=(row.facets.anatomy || []).filter(item=>selected.has(item.id) &&
+        item.source_item_id===value.target_id && item.source_term===value.source_term && item.role===value.role);
+      return matches.length?[{term:value.source_term,excerpt:value.source_excerpt,locator:value.locator,
+        role:value.role,anatomy:matches.map(item=>({id:item.id,label:item.label,scope:item.scope}))}]:[];
+    }):[{term:row.term,excerpt:row.source.finding?.excerpt || row.source.excerpt,
+      locator:row.source.finding?.locator || row.source.locator,
+      role:(row.facets.evidence || [])[0]?.id?.replace(/^EVIDENCE:/,''),anatomy:[]}];
+    for(const value of values){
+      if(!String(value.excerpt || '').trim())continue;
+      const key=JSON.stringify([row.source.id,value.term,value.excerpt,value.locator,value.role,value.anatomy]);
+      if(!passages.has(key))passages.set(key,{...value,result_ids:[]});
+      if(!passages.get(key).result_ids.includes(row.id))passages.get(key).result_ids.push(row.id);
+    }
+  }
+  return [...passages.values()];
+}
+
+function atlasSearchSelection(row, needle, anatomyIds=[]) {
+  if(anatomyIds.length)return (row.facets.anatomy || []).some(item=>anatomyIds.includes(item.id))?{
+    matched_search_scope:'COMMON',
+    matched_navigation_ids:(row.search_memberships || (row.navigation_signs?.length?row.navigation_signs:row.facets.sign) || []).map(item=>item.id),
+  }:null;
   const matches=values=>(values || []).some(text=>atlasAsciiLower(text).includes(needle));
   if(!Array.isArray(row.search_memberships))return matches(row.search_text)?{}:null;
   const selected=row.search_memberships.filter(item=>matches(item.search_text));
@@ -149,16 +183,17 @@ function atlasSearchSelection(row, needle) {
   }:null;
 }
 
-export function atlasSearchMatches(row, query) {
+export function atlasSearchMatches(row, query, catalogue) {
   const needle=atlasAsciiLower(String(query || '').trim());
-  return !needle || atlasSearchSelection(row,needle)!==null;
+  return !needle || atlasSearchSelection(row,needle,atlasAnatomySearchIds(catalogue,query))!==null;
 }
 
-export function atlasSearchRows(rows, query) {
+export function atlasSearchRows(rows, query, catalogue) {
   const needle=atlasAsciiLower(String(query || '').trim());
   if(!needle)return rows;
+  const anatomyIds=atlasAnatomySearchIds(catalogue,query);
   return rows.flatMap(row=>{
-    const selection=atlasSearchSelection(row,needle);
+    const selection=atlasSearchSelection(row,needle,anatomyIds);
     return selection?[{...row,...selection}]:[];
   });
 }
@@ -189,7 +224,7 @@ export function atlasPivot(snapshot, parameters) {
   const rows = atlasSearchRows(snapshot.rows.filter(row =>
     regions.every(id => (row.facets.anatomy || []).some(value => value.id === id)) &&
     filters.every(([facet, ids]) => !ids.length || (row.facets[facet] || []).some(value => ids.includes(value.id)) ||
-      ['ilae','luders'].includes(facet) && (row.search_memberships || []).some(item=>matchesClassification(item.classification_ids?.[facet],ids)))),query);
+      ['ilae','luders'].includes(facet) && (row.search_memberships || []).some(item=>matchesClassification(item.classification_ids?.[facet],ids)))),query,snapshot.catalogue);
   const findings = new Set(), sources = new Set(), statisticIds = new Set(), facets = {};
   for (const row of rows) {
     findings.add(row.finding_ref);

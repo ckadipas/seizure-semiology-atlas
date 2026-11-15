@@ -1,4 +1,4 @@
-import { atlasSearchRows, atlasGroups, atlasCounts, atlasEvidenceSection, atlasNavigationGroups, atlasDictionaryGroups, atlasSignSections, atlasRegionRank, atlasMetricLabels, atlasMetricTypes, atlasWeightPresentation, atlasAppraisalLabel, atlasSourceFindingsMarkup, atlasSourceFindingGroups, atlasSourceLocator, atlasStatisticGroups, atlasLoadDetails, atlasResolvedAxis } from './atlas_projection.mjs?v=343617db8d7e4f085989a3b252463726dad13ecdd3d70f905708a9d27444a00d';
+import { atlasSelectionPassages, atlasAnatomySearchIds, atlasSearchRows, atlasGroups, atlasCounts, atlasEvidenceSection, atlasNavigationGroups, atlasDictionaryGroups, atlasSignSections, atlasRegionRank, atlasMetricLabels, atlasMetricTypes, atlasWeightPresentation, atlasAppraisalLabel, atlasSourceFindingsMarkup, atlasSourceFindingGroups, atlasSourceLocator, atlasStatisticGroups, atlasLoadDetails, atlasResolvedAxis } from './atlas_projection.mjs?v=799e6247b5bb164350c819489972c4aa58808660cb813954cdc26e3940c7409a';
 
 const evidenceRoleLabels = {PRIMARY_RESULT:'Results from this study',CASE_OBSERVATION:'Clinical case',REVIEW_SYNTHESIS:'Review findings',REVIEW_AUTHOR_SYNTHESIS:'Review findings',GUIDELINE_RECOMMENDATION:'Clinical guidance',CITED_STUDY_RESTATEMENT:'Earlier research',PRIMARY_RESULT_SAME_SOURCE_RESTATEMENT:'Results from this study',EDUCATIONAL_STATEMENT:'Background',METHOD_OR_DEFINITION:'Method or definition',SOURCE_CONTEXT:'Background',COHORT_CONTEXT:'Study population',SOURCE_REPORTED_TARGET:'Reported relationship',SOURCE_REPORTED:'Reported relationship',STIMULATION:'Stimulation',OWNER_APPROVED_INTERPRETATION:'Interpretation'};
 export function atlasEvidenceRoleLabel(value) { return evidenceRoleLabels[String(value || '').replace(/^EVIDENCE:/,'')] || ''; }
@@ -154,7 +154,7 @@ function locator(value) {
   const findingSupportFor = stats => [...new Map(stats.flatMap(stat=>stat.finding_support || []).map(item=>[item.finding_ref,item])).values()];
   const selectedRows = rows => rows.filter(row => (!mapResultIds || mapResultIds.has(row.id)) && Object.entries(state.filters).every(([facet,id]) => ['ilae','luders'].includes(facet) || (facet === 'evidence_class' ? classMatches(row,id) : !id || (row.facets[facet] || []).some(item => item.id === id))));
   const valueText = stat => clean(stat.value_text) || String(stat.numeric_value ?? 'Not reported');
-  const groupingRows = () => options.embedded ? queryRows || data.rows : atlasSearchRows(data.rows,state.query);
+  const groupingRows = () => options.embedded ? queryRows || data.rows : atlasSearchRows(data.rows,state.query,catalogue);
   function grouping() {
     ({groups,unplaced}=atlasNavigationGroups(groupingRows(),classificationFilters,catalogue.items));
   }
@@ -186,19 +186,40 @@ function locator(value) {
     return statisticsFor(rows).filter(stat=>!setting.metric || stat.metric_type===setting.metric).sort((a,b)=>
       metricName(a.metric_type).localeCompare(metricName(b.metric_type)) || clean(a.unit).localeCompare(clean(b.unit)) || a.statistic_id.localeCompare(b.statistic_id));
   }
+  function sourceTextMatches(value,query) {
+    const compact=text=>String(text||'').toLocaleLowerCase().replace(/[\s\-‐‑–]+/g,'');
+    return String(value||'').toLocaleLowerCase().includes(query.toLocaleLowerCase()) ||
+      Boolean(compact(query) && compact(value).includes(compact(query)));
+  }
   function sourceMatches(id) {
     const query=state.sourceQuery.trim().toLocaleLowerCase();
     if(!query)return true;
     const bib=bibliography(id),authors=parse(bib.authors_json)||[];
+    const anatomyIds=atlasAnatomySearchIds(catalogue,state.sourceQuery);
+    if(anatomyIds.length)return (bib.anatomy_ids || []).some(id=>anatomyIds.includes(id));
     const names=authors.map(author=>typeof author==='string'?author:Object.values(author||{}).filter(value=>typeof value==='string').join(' ')).join(' ');
-    return [sourceTitle(id),bib.title,bib.citation_text,names].some(value=>String(value||'').toLocaleLowerCase().includes(query));
+    const context=[...(bib.source_contexts || []),...(bib.source_citations || [])];
+    return [sourceTitle(id),bib.title,bib.citation_text,names,...context.flatMap(item=>[item.term,item.statement])]
+      .some(value=>sourceTextMatches(value,query));
+  }
+  function contextMatchesAnatomy(item,anatomy) {
+    return !anatomy.size || anatomy.has(item.anatomy_node_id) || (item.anatomy_targets || []).some(target=>anatomy.has(target.id));
   }
   function sourceGroups() {
     const rows=selectedRows(data.rows),groups=atlasGroups(rows,'source');
     const filtered=sourceSelection?.evidenceFiltered || selectedAnatomy.size || Object.entries(state.filters).some(([facet,id])=>id&&!['ilae','luders'].includes(facet));
     if(!filtered && (sourceSelection || rows.length===data.rows.length)) {
       const ids=new Set(groups.map(group=>group.id));
-      for(const source of sources.values())if(classificationReference(source.id)&&!ids.has(source.id)&&(!sourceSelection?.sourceIds.length||sourceSelection.sourceIds.includes(source.id)))groups.push({id:source.id,label:source.label,rows:[]});
+      for(const source of sources.values())if((classificationReference(source.id)||bibliography(source.id).source_contexts?.length||bibliography(source.id).source_citations?.length)&&!ids.has(source.id)&&(!sourceSelection?.sourceIds.length||sourceSelection.sourceIds.includes(source.id)))groups.push({id:source.id,label:source.label,rows:[]});
+    }
+    if(sourceSelection?.sourceMentionsEligible){
+      const anatomyGroups=[selectedAnatomy,new Set(atlasAnatomySearchIds(catalogue,state.query)),new Set(atlasAnatomySearchIds(catalogue,state.sourceQuery))].filter(group=>group.size);
+      const ids=new Set(groups.map(group=>group.id));
+      for(const source of sources.values())if(!ids.has(source.id) &&
+        (!sourceSelection.sourceIds.length || sourceSelection.sourceIds.includes(source.id)) &&
+        (bibliography(source.id).source_contexts || []).length &&
+        anatomyGroups.every(anatomy=>(bibliography(source.id).source_contexts || []).some(item=>contextMatchesAnatomy(item,anatomy))))
+          groups.push({id:source.id,label:source.label,rows:[]});
     }
     return groups;
   }
@@ -274,8 +295,9 @@ function locator(value) {
     const publicationCount = paperIds(visibleRows).length;
     const termCount = new Set(entries.map(entry => entry.group.id)).size;
     $('corpus').hidden = options.embedded || state.organize === 'source' || (!state.query.trim() && !state.focus && !Object.values(state.filters).some(Boolean) && (!mapResultIds || mapResultIds.size === data.rows.length));
-    const referenceCount=entries.filter(entry=>entry.referenceOnly).length;
-    $('match-count').textContent = state.organize === 'source' ? [publicationCount?`${number(publicationCount)} evidence ${publicationCount===1?'publication':'publications'}`:'',referenceCount?`${number(referenceCount)} classification ${referenceCount===1?'reference':'references'}`:''].filter(Boolean).join(' · ') || '0 sources' : (termCount ? `${number(termCount)} ${termLabel()} ${termCount===1?'term':'terms'} · ` : '') + `${number(publicationCount)} ${publicationCount===1?'publication':'publications'} across Signs and Sources`;
+    const referenceCount=entries.filter(entry=>entry.referenceOnly&&classificationReference(entry.group.id)).length;
+    const contextCount=entries.filter(entry=>entry.referenceOnly&&!classificationReference(entry.group.id)).length;
+    $('match-count').textContent = state.organize === 'source' ? [publicationCount?`${number(publicationCount)} evidence ${publicationCount===1?'publication':'publications'}`:'',contextCount?`${number(contextCount)} ${contextCount===1?'publication':'publications'} with source mentions`:'',referenceCount?`${number(referenceCount)} classification ${referenceCount===1?'reference':'references'}`:''].filter(Boolean).join(' · ') || '0 sources' : (termCount ? `${number(termCount)} ${termLabel()} ${termCount===1?'term':'terms'} · ` : '') + `${number(publicationCount)} ${publicationCount===1?'publication':'publications'} across Signs and Sources`;
     const list=listMarkup();
     $('sign-list').innerHTML = list.html || `<div class="empty">${state.organize==='source'?'No papers match this selection.':extra.length ? 'No sign terms match this selection. Papers are available in Sources.' : 'No sign terms match this selection.'}</div>`;
     root.querySelectorAll('.sign-card[open]').forEach(renderEntry);
@@ -554,11 +576,46 @@ function locator(value) {
     const navigation=sections.length>1?'<nav class="paper-topics" aria-label="Topics in this paper">'+sections.map(section=>'<button class="text-button" data-paper-topic="'+esc(section.section_id)+'">'+esc(section.heading)+'</button>').join('')+'</nav>':'';
     return navigation+main.map(render).join('')+(additional.length?'<details class="paper-additional"><summary>Additional results</summary>'+additional.map(render).join('')+'</details>':'')+supporting;
   }
+  function sourceContextMarkup(id) {
+    const bib=bibliography(id);
+    const anatomy=new Set([...selectedAnatomy,...atlasAnatomySearchIds(catalogue,state.query),...atlasAnatomySearchIds(catalogue,state.sourceQuery)]);
+    let contexts=(bib.source_contexts || []).filter(item=>contextMatchesAnatomy(item,anatomy));
+    const queries=[state.query,state.sourceQuery].map(query=>query.trim()).filter(query=>query && !atlasAnatomySearchIds(catalogue,query).length);
+    const matching=contexts.filter(item=>queries.every(query=>[item.term,item.statement].some(text=>sourceTextMatches(text,query))));
+    const selected=Boolean(anatomy.size || queries.length && matching.length);
+    if(queries.length && matching.length)contexts=matching;
+    const shared=new Map();
+    for(const item of contexts){
+      const key=JSON.stringify([item.source_sha256,clean(item.statement),item.locator,item.evidence_role]);
+      const group=shared.get(key)||{...item,terms:[],anatomy_targets:[]};
+      group.terms.push(item.term);
+      group.anatomy_targets.push(...(item.anatomy_targets || []));
+      shared.set(key,group);
+    }
+    contexts=[...shared.values()].map(item=>({...item,term:uniq(item.terms).join('; ')}));
+    const sections=[[selected?'Passages mentioning this selection':'Source context',contexts],['References cited in this source',selected?[]:bib.source_citations || []]];
+    return sections.filter(([,items])=>items.length).map(([label,items])=>
+      `<details class="paper-source-details"${selected?' open':''}><summary>${esc(label)}</summary><ul>${items.map(item=>{
+        const text=clean(item.statement),locator=atlasSourceLocator(item.locator);
+        const related=(item.anatomy_targets || []).filter(target=>anatomy.has(target.id) && target.scope!=='EXACT');
+        return `<li><strong>${esc(item.term)}</strong>${item.evidence_role?` ${rolePill(item.evidence_role)}`:''}${text&&text!==clean(item.term)?`<p>${esc(text)}</p>`:''}${related.length?`<p>${esc(uniq(related.map(target=>`${target.label} (${target.scope.toLowerCase()})`)).join('; '))}</p>`:''}${locator?`<p>${esc(locator)}</p>`:''}</li>`;
+      }).join('')}</ul></details>`).join('');
+  }
+  function selectedPassagesMarkup(rows,embedded) {
+    const anatomy=[...selectedAnatomy,...atlasAnatomySearchIds(catalogue,state.query),...atlasAnatomySearchIds(catalogue,state.sourceQuery)];
+    if(embedded && !anatomy.length && !state.query && !sourceSelection?.evidenceFiltered)return '';
+    const passages=atlasSelectionPassages(rows,anatomy);
+    if(!passages.length)return '';
+    return `<section class="paper-selection"><h4>Supporting passages for this selection</h4>${passages.map(item=>{
+      const overlaps=item.anatomy.filter(value=>value.scope==='OVERLAP').map(value=>value.label);
+      return `<article class="finding"><strong>${esc(item.term)}</strong> ${rolePill(item.role)}${overlaps.length?`<p>Anatomical overlap: ${esc(uniq(overlaps).join('; '))}</p>`:''}<blockquote>${esc(item.excerpt)}</blockquote><p>${esc(atlasSourceLocator(item.locator))}</p><button class="text-button" data-findings="${esc(JSON.stringify(item.result_ids))}">Source details</button></article>`;
+    }).join('')}</section>`;
+  }
   function paperContent(id,rows,setting,groupId,embedded) {
     const roles=uniq(rows.flatMap(row=>(row.facets.evidence || []).map(item=>item.id.replace(/^EVIDENCE:/,''))));
     const evidenceClasses=classesFor(rows).map(classLabel).join(' · ');
     const stats=evidenceStats(rows,setting).filter(stat=>!selectedMetricIds.size || selectedMetricIds.has('METRIC:'+stat.metric_type));
-    return `${embedded?`<div class="paper-tools"><span class="evidence-class-label">${esc(evidenceClasses)}</span>${roles.map(rolePill).join(' ')}</div>`:''}<div class="paper-links">${sourceLink(id)}${publicSite?`<button class="text-button map-link" data-show-map="${esc(groupId)}" data-map-source="${esc(id)}">Show on map</button>`:''}</div>${paperOverview(id,rows)}${paperResults(id,stats,rows)}${paperWeights(rows,id,setting,groupId)}`;
+    return `${embedded?`<div class="paper-tools"><span class="evidence-class-label">${esc(evidenceClasses)}</span>${roles.map(rolePill).join(' ')}</div>`:''}<div class="paper-links">${sourceLink(id)}${publicSite?`<button class="text-button map-link" data-show-map="${esc(groupId)}" data-map-source="${esc(id)}">Show on map</button>`:''}</div>${selectedPassagesMarkup(rows,embedded)}${embedded?sourceContextMarkup(id):''}${paperOverview(id,rows)}${paperResults(id,stats,rows)}${paperWeights(rows,id,setting,groupId)}`;
   }
   function paperMarkup(id,rows,setting,groupId,embedded=false) {
     const roles=uniq(rows.flatMap(row=>(row.facets.evidence || []).map(item=>item.id.replace(/^EVIDENCE:/,''))));
@@ -604,7 +661,7 @@ function locator(value) {
     const expand=state.query.trim() && fullRows.length>rowsForClass.length ? `<button class="text-button" data-all-term="${esc(group.id)}">View all ${paperIds(fullRows).length} papers for this term</button>` : '';
     return {paperCount:ids.length,html:expand + controls + (publicSite && !embedded?`<button class="text-button map-link" data-show-map="${esc(group.id)}">Show on map</button>`:'') + ids.slice(0,setting.papers).map(id=>paperMarkup(id,rowsForClass.filter(row=>row.source.id===id),setting,group.id,embedded)).join('') + (ids.length>setting.papers ? `<button class="more" data-more-papers="${esc(group.id)}">Show ${ids.length-setting.papers} remaining papers</button>` : '') + (!ids.length ? '<p class="empty">No papers match the selected filters.</p>' : '')};
   }
-  function entryBody(entry) { return entry.referenceOnly?{html:`<div class="paper-links">${sourceLink(entry.group.id)}</div>`,paperCount:0}:signBody(entry.group,entry.type==='source'); }
+  function entryBody(entry) { return entry.referenceOnly?{html:`<div class="paper-links">${sourceLink(entry.group.id)}</div>${sourceContextMarkup(entry.group.id)}`,paperCount:0}:signBody(entry.group,entry.type==='source'); }
   function renderEntry(card) { const entry=entries[Number(card.dataset.entry)]; if (!entry || !card.open) return; const body=entryBody(entry);card.querySelector('.sign-body').innerHTML=body.html; if(entry.type==='sign'){const count=body.paperCount,total=paperIds(entry.group.rows).length;card.querySelector('.sign-meta').textContent=count<total ? `${count} of ${total} papers` : `${count} ${count===1?'paper':'papers'}`;} card.dataset.loaded='true';card.querySelectorAll('.paper-content').forEach(renderPaper); }
   function refreshGroup(id) { root.querySelectorAll('.sign-card[open]').forEach(card=>{if(entries[Number(card.dataset.entry)]?.group.id===id)renderEntry(card);}); }
   function openDialog(title,body,rows=[]) { dialogRows=rows; $('dialog-title').textContent=title; $('dialog-body').innerHTML=body; $('record-dialog').showModal(); $('record-dialog').scrollTop=0; }
@@ -702,7 +759,7 @@ function locator(value) {
       selectedAnatomy=new Set(queryContext.anatomy || []);
       selectedMetricIds=new Set(queryContext.metricIds || []);
       classificationFilters={ilae:queryContext.ilae || [],luders:queryContext.luders || []};
-      sourceSelection=typeof queryContext.evidenceFiltered==='boolean'?{evidenceFiltered:queryContext.evidenceFiltered,sourceIds:queryContext.sourceIds || []}:null;
+      sourceSelection=typeof queryContext.evidenceFiltered==='boolean'?{evidenceFiltered:queryContext.evidenceFiltered,sourceMentionsEligible:Boolean(queryContext.sourceMentionsEligible),sourceIds:queryContext.sourceIds || []}:null;
       queryRows=rows;mapResultIds=new Set(rows.map(row=>row.id));state.query=query;state.focus=pendingFocus;pendingFocus='';
       if(view!==currentView){if(currentView!=='sources' && !['ilae','luders'].includes(state.order))signOrder=state.order;state.organize=view==='sources'?'source':'sign';state.order=view==='sources'?'title':signOrder;currentView=view;}
       refresh();

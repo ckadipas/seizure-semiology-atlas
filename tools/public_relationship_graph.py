@@ -259,6 +259,18 @@ SOURCE_ANATOMY_CONTEXT_FIELDS = (
     "statistic_ids", "result_component_id",
 )
 
+SOURCE_ANATOMY_MENTION_FIELDS = (
+    "mention_id", "source_evidence_id", "source_sha256", "pdf_page",
+    "source_locator", "source_native_term", "source_excerpt", "evidence_role",
+    "finding_ref", "anatomy_node_id", "mapping_status", "source_evidence_sha256",
+)
+SOURCE_ANATOMY_MENTION_CONTRACT = {
+    "authoritative_graph_group": "source_anatomy_mentions",
+    "field_order": list(SOURCE_ANATOMY_MENTION_FIELDS),
+    "identity_field": "mention_id", "retrieval_scope": "SOURCE_ONLY",
+    "clinical_placement": False, "statistic_ownership": False, "evidence_weight": 0,
+}
+
 GRAPH_PAYLOAD_FIELDS = (
     "schema_version", "projection_contract", "nodes", "result_relationships",
     "classification_assignments", "anatomy_evidence_traversals",
@@ -642,10 +654,20 @@ def file_sha256(path, chunk_size=1024 * 1024):
     return digest.hexdigest()
 
 
+def _has_source_anatomy_mentions(payload):
+    contract = payload.get("projection_contract") or {}
+    present = "source_anatomy_mentions" in payload
+    if (present != ("source_anatomy_mention_contract" in contract)
+            or present and (contract["source_anatomy_mention_contract"] != SOURCE_ANATOMY_MENTION_CONTRACT
+                            or not isinstance(payload["source_anatomy_mentions"], list)
+                            or not payload["source_anatomy_mentions"])):
+        raise ValueError("Source anatomy mentions lack their exact nonempty source-only contract.")
+    return present
+
+
 def graph_semantic_digest(payload):
-    return canonical_json_sha256({
-        field: deepcopy(payload.get(field)) for field in GRAPH_DIGEST_FIELDS
-    })
+    fields = GRAPH_DIGEST_FIELDS + (("source_anatomy_mentions",) if _has_source_anatomy_mentions(payload) else ())
+    return canonical_json_sha256({field: deepcopy(payload.get(field)) for field in fields})
 
 
 def assert_bundle_integrity(bundle):
@@ -686,7 +708,10 @@ class PublicRelationshipGraph:
     def __init__(self, payload):
         if not isinstance(payload, dict) or not payload:
             raise ValueError("The public bundle has no scientific relationship graph.")
-        if set(payload) != set(GRAPH_PAYLOAD_FIELDS):
+        fields = set(GRAPH_PAYLOAD_FIELDS)
+        if _has_source_anatomy_mentions(payload):
+            fields.add("source_anatomy_mentions")
+        if set(payload) != fields:
             raise ValueError("Scientific relationship graph fields differ.")
         if str(payload.get("schema_version") or "") != GRAPH_SCHEMA_VERSION:
             raise ValueError("Scientific relationship graph schema version differs.")
@@ -1341,6 +1366,9 @@ class PublicRelationshipGraph:
             "source_anatomy_contexts", SOURCE_ANATOMY_CONTEXT_FIELDS,
             "evidence_link_id",
         )
+        self.source_anatomy_mentions = self._contract_rows(
+            "source_anatomy_mentions", SOURCE_ANATOMY_MENTION_FIELDS, "mention_id",
+        ) if "source_anatomy_mentions" in self.payload else ()
 
         self.classification_assignments = self._contract_rows(
             "classification_assignments", CLASSIFICATION_ASSIGNMENT_FIELDS,
@@ -3894,13 +3922,25 @@ class PublicRelationshipGraph:
         )
         axis = str(row.get("axis") or "")
         domain = str(row.get("dictionary_domain") or "")
-        declared_unatomized_axis_term = (
-            kind in {"AXIS_EVIDENCE", "COHORT_FALLBACK"}
-            and not source_native_relationship_term
+        declared_unatomized_term = (
+            not source_native_relationship_term
             and source_native_term_status == "UNAVAILABLE_NOT_ATOMICALLY_STORED"
-            and axis in {"LOCALIZATION", "LATERALIZATION"}
-            and domain == (
-                "ANATOMY" if axis == "LOCALIZATION" else "LATERALIZATION"
+            and (
+                (
+                    kind in {"AXIS_EVIDENCE", "COHORT_FALLBACK"}
+                    and axis in {"LOCALIZATION", "LATERALIZATION"}
+                    and domain == ("ANATOMY" if axis == "LOCALIZATION" else "LATERALIZATION")
+                )
+                or (
+                    kind == "PHASE"
+                    and row.get("axis") is None
+                    and domain == "PHASE"
+                    and row.get("dictionary_item_id") == "PHASE:NOT_REPORTED"
+                    and row.get("relationship_role") == "HAS_PHASE"
+                    and row.get("relationship_status") == "OWNER_APPROVED"
+                    and row.get("source_native_relationship_term") is None
+                    and row.get("projectable") is False
+                )
             )
             and bool(str(row.get("dictionary_item_id") or "").strip())
             and bool(str(row.get("source_native_sign_term") or "").strip())
@@ -3963,7 +4003,7 @@ class PublicRelationshipGraph:
             or (
                 kind != "STATISTIC_REFERENCE"
                 and not source_native_relationship_term
-                and not declared_unatomized_axis_term
+                and not declared_unatomized_term
             )
             or (
                 kind == "STATISTIC_REFERENCE"
@@ -3971,7 +4011,7 @@ class PublicRelationshipGraph:
             )
             or (
                 source_native_term_status == "UNAVAILABLE_NOT_ATOMICALLY_STORED"
-                and not declared_unatomized_axis_term
+                and not declared_unatomized_term
             )
             or (
                 kind != "STATISTIC_REFERENCE"
@@ -5500,6 +5540,8 @@ class PublicRelationshipGraph:
             ("WEIGHTED_AXIS_SUMMARY", "weighted_axis_summaries"):
                 list(self.weighted_axis_summaries),
         }
+        if self.source_anatomy_mentions:
+            expected[("RESULT_RELATIONSHIP", "source_anatomy_mentions")] = list(self.source_anatomy_mentions)
         if serialized != expected:
             missing = sorted(set(expected) - set(serialized))
             extra = sorted(set(serialized) - set(expected))
