@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.1.9
+
+- Expand linked source coverage across Brodmann and DKT regions.
+- Show the relevant source passages, page references and context roles for selected anatomy.
+- Preserve supported anatomical overlaps and source-defined compound names.
+
 ## 2.1.8
 
 - Find linked evidence through approved anatomy names, codes and aliases.
