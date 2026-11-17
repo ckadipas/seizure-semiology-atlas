@@ -1,9 +1,8 @@
 {
-  "version": "2.1.9",
-  "released_at": "2026-11-15T22:44:45Z",
+  "version": "2.1.10",
+  "released_at": "2026-11-17T23:32:42Z",
   "changes": [
-    "Expand linked source coverage across Brodmann and DKT regions.",
-    "Show the relevant source passages, page references and context roles for selected anatomy.",
-    "Preserve supported anatomical overlaps and source-defined compound names."
+    "Add Hadidane et al. (2023) on basal temporal lobe epilepsy.",
+    "Index the Figure 2 case under Anomia and show “ictal anomia” in the paper’s findings."
   ]
 }
