@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.1.10
+
+- Add Hadidane et al. (2023) on basal temporal lobe epilepsy.
+- Index the Figure 2 case under Anomia and show “ictal anomia” in the paper’s findings.
+
 ## 2.1.9
 
 - Expand linked source coverage across Brodmann and DKT regions.
