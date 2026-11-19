@@ -1,8 +1,8 @@
 {
-  "version": "2.1.10",
-  "released_at": "2026-11-17T23:32:42Z",
+  "version": "2.1.11",
+  "released_at": "2026-11-19T01:48:13Z",
   "changes": [
-    "Add Hadidane et al. (2023) on basal temporal lobe epilepsy.",
-    "Index the Figure 2 case under Anomia and show “ictal anomia” in the paper’s findings."
+    "Restore BA37 evidence discovery through fusiform and basal temporal anatomy.",
+    "Restore BA36 and retrosplenial anatomical connections."
   ]
 }

@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.1.11
+
+- Restore BA37 evidence discovery through fusiform and basal temporal anatomy.
+- Restore BA36 and retrosplenial anatomical connections.
+
 ## 2.1.10
 
 - Add Hadidane et al. (2023) on basal temporal lobe epilepsy.
